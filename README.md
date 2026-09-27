@@ -8,6 +8,7 @@ Crowded is a platform that helps people discover, manage and attend events, prov
 
 - [Problem and Opportunity Report](/docs/deliverables/problem-and-opportunity-report.md)
 - [Product Vision](/docs/deliverables/product-vision.md)
+- [User Research](/docs/deliverables/user-research.md)
 
 ## Team
 
