@@ -1,25 +1,25 @@
-# Prompt usado para gerar o documento de Product Vision
+# Prompt used to generate the Product Vision document
 
-Estamos a fazer um projeto que se chama "Community Resilience and Everyday Services Platform" e a minha equipa teve a ideia do Crowded, uma plataforma de eventos. Preciso de ajuda para escrever a parte de Product Vision do documento, que tem de ter: visão do produto, personas, proposta de valor, principais jornadas de utilizador, benefício para a comunidade, o que fica dentro e fora do MVP, riscos e critérios de sucesso.
+We are working on a project called "Community Resilience and Everyday Services Platform", and my team came up with the idea of Crowded, an event platform. I need help writing the Product Vision section of the document, which must include: the product vision, personas, value proposition, main user journeys, community benefit, what is in and out of the MVP, risks, and success criteria.
 
-O problema que identificámos é que as pessoas usam várias plataformas diferentes para descobrir, gerir e participar em eventos, e não têm informação em tempo real sobre alterações ou sobre as condições no local, nem forma de conhecer outras pessoas que vão aos mesmos eventos.
+The problem we identified is that people use several different platforms to discover, manage, and attend events, but they do not have real-time information about changes or on-site conditions, nor a way to meet other people attending the same events.
 
-Os utilizadores-alvo são basicamente dois grupos: pessoas ativas socialmente e culturalmente que querem descobrir eventos na zona delas sem andar a procurar em mil sítios diferentes, e organizações que precisam de gerir os eventos e comunicar diretamente com quem vai participar, para evitar problemas de lotação ou falhas de comunicação. Queria que criasses duas personas a partir destes dois grupos, com nome, idade/contexto, o que querem alcançar e uma frustração real que o produto resolve.
+The target users are essentially divided into two groups: socially and culturally active people who want to discover events in their area without searching in a thousand different places, and organizations that need to manage events and communicate directly with participants to avoid overcrowding or communication failures. I would like you to create two personas based on these groups, including their name, age/context, goals, and a real frustration that the product solves.
 
-As funcionalidades que pensámos para os participantes são: descoberta de eventos por localização e raio configurável, recomendações com base em gostos musicais e interesses, um sistema de achievements/gamificação (tipo participar em 10, 100 ou 1000 concertos, com badges), notificações de alterações a eventos (cancelamentos, mudanças de data), reportar a lotação de um evento em tempo real (museus, festivais, exposições), conhecer e conectar-se com pessoas com interesses parecidos, comprar e gerir bilhetes na própria app, e fazer upload de bilhetes comprados fora da app para ter um histórico central de eventos.
+The features we have considered for participants are: event discovery by location and configurable radius, recommendations based on musical tastes and interests, an achievements/gamification system (for example, attending 10, 100, or 1,000 concerts and earning badges), notifications about event changes (cancellations or date changes), real-time crowd-level reports for an event (museums, festivals, and exhibitions), meeting and connecting with people who have similar interests, buying and managing tickets in the app, and uploading tickets purchased elsewhere to maintain a centralized event history.
 
-Para os organizadores pensámos em: criar e gerir eventos, criar sondagens para validar o interesse do público antes de um evento (por exemplo anunciar um artista e ver quantas pessoas têm intenção de ir, para estimar o espaço, logística, staff, etc.), e comunicar alterações ao evento a todos os inscritos.
+For organizers, we have considered: creating and managing events, creating polls to validate public interest before an event (for example, announcing an artist and seeing how many people intend to attend in order to estimate the required space, logistics, staff, and so on), and communicating event changes to everyone who has registered.
 
-A partir destas funcionalidades, transforma-as em jornadas de utilizador (não uma lista solta, mas sequências de passos), tanto para participantes como para organizadores.
+Based on these features, turn them into user journeys (not a loose list, but sequences of steps) for both participants and organizers.
 
-Também preciso de uma frase de visão curta que explique o porquê do produto e não apenas o que ele faz, e de uma proposta de valor que mostre o que nos distingue de apps de bilhética ou redes sociais normais. Na parte do benefício para a comunidade, gostava que ligasses isto ao tema central do projeto, que é ajudar comunidades a lidar com disrupções do dia a dia — neste caso cancelamentos, mudanças de última hora e sobrelotação de eventos.
+I also need a short vision statement that explains why the product exists, not just what it does, and a value proposition that shows what distinguishes us from ticketing apps or ordinary social networks. In the community benefit section, I would like you to connect this to the project's central theme: helping communities deal with everyday disruptions, in this case cancellations, last-minute changes, and overcrowded events.
 
-Para o MVP, o que acho que deve entrar já é a descoberta de eventos, as notificações de alterações, os reports de lotação e a criação de eventos com sondagens. O que pode ficar para depois é a gamificação completa, a compra de bilhetes na app, o upload de bilhetes externos e as recomendações mais avançadas.
+For the MVP, I think the following should be included from the start: event discovery, change notifications, crowd-level reports, and event creation with polls. The following can be left for later: full gamification, in-app ticket purchases, uploading external tickets, and more advanced recommendations.
 
-Também precisamos de identificar riscos, como por exemplo depender dos organizadores aderirem à plataforma, os dados de lotação reportados pelos utilizadores poderem não ser fiáveis, questões de privacidade nas funcionalidades sociais e de localização, e o produto só fazer sentido com um número mínimo de utilizadores numa zona.
+We also need to identify risks, such as depending on organizers to adopt the platform, user-reported crowd data potentially being unreliable, privacy concerns related to social and location features, and the product only being useful once a minimum number of users exists in an area.
 
-E por fim uns critérios de sucesso que dê para medir, tipo número de eventos descobertos por utilizador, percentagem de reports de lotação válidos, taxa de resposta às notificações, número de organizadores ativos por mês e retenção de utilizadores.
+Finally, we need measurable success criteria, such as the number of events discovered per user, the percentage of valid crowd reports, the response rate to notifications, the number of active organizers per month, and user retention.
 
 ---
 
-**Nota:** O conteúdo gerado a partir deste prompt foi revisto e ajustado pela equipa antes de ser considerado final.
+**Note:** The content generated from this prompt was reviewed and adjusted by the team before being considered final.
