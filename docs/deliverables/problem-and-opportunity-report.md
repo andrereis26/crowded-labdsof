@@ -2,7 +2,7 @@
 
 ## 1. Target Community
 
-### 1.1 Primary Community
+### 1.1 Event Attendees
 
 People who regularly attend public events, including:
 
@@ -15,7 +15,7 @@ People who regularly attend public events, including:
 
 These users rely on multiple platforms to discover events, purchase tickets, receive updates, and obtain information about venue/event conditions.
 
-### 1.2 Secondary Community
+### 1.2 Event Organizers
 
 Event organizers, promoters and cultural institutions that need better tools to:
 
