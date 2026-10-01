@@ -1,98 +1,96 @@
 # Product Vision
 
 ## Vision Statement
-O Crowded é a plataforma que ajuda pessoas a descobrir, participar e comunicar-se
-em torno de eventos culturais e sociais — substituindo canais dispersos e
-informação desatualizada por descoberta personalizada, comunicação em tempo real
-entre organizadores e participantes, e uma comunidade conectada por interesses
-comuns.
+Crowded is the platform that helps people discover, participate in, and communicate
+around cultural and social events — replacing fragmented channels and outdated
+information with personalized discovery, real-time communication between organizers
+and participants, and a community connected by shared interests.
 
 ## Personas
 
-### Persona 1 — Inês, a Participante Ativa
-- **Idade/contexto:** 24 anos, estudante universitária em Lisboa
-- **Objetivo:** descobrir concertos e eventos culturais na sua zona sem ter de
-  seguir dezenas de páginas de Instagram ou grupos de WhatsApp diferentes
-- **Frustração:** já chegou a um evento cancelado sem saber, ou ficou sem saber
-  se valia a pena ir por causa da lotação
-- **Como o Crowded ajuda:** recomendações personalizadas + notificações em tempo
-  real + reports de afluência de outros participantes
+### Persona 1 — Inês, the Active Participant
+- **Age/context:** 24 years old, university student in Lisbon
+- **Goal:** discover concerts and cultural events in her area without having to
+  follow dozens of different Instagram pages or WhatsApp groups
+- **Frustration:** she has already arrived at a canceled event without knowing,
+  or was unsure whether it was worth going because of crowd levels
+- **How Crowded helps:** personalized recommendations + real-time notifications
+  + attendance reports from other participants
 
-### Persona 2 — Miguel, o Organizador
-- **Idade/contexto:** 35 anos, gestor de eventos numa associação cultural local
-- **Objetivo:** perceber o interesse real do público antes de fechar logística
-  (espaço, staff, bebidas) e comunicar alterações rapidamente a todos os inscritos
-- **Frustração:** usa vários canais (email, redes sociais) para comunicar
-  alterações e nunca sabe se toda a gente ficou informada a tempo
-- **Como o Crowded ajuda:** sondagens de intenção de participação + notificações
-  push diretas a todos os inscritos
+### Persona 2 — Miguel, the Organizer
+- **Age/context:** 35 years old, event manager at a local cultural association
+- **Goal:** understand the real level of public interest before finalizing logistics
+  (space, staff, drinks) and communicate changes quickly to all registered attendees
+- **Frustration:** uses multiple channels (email, social media) to communicate
+  updates and never knows whether everyone has been informed in time
+- **How Crowded helps:** participation surveys + direct push notifications to all
+  registered attendees
 
 ## Value Proposition
-Ao contrário de plataformas de bilhética ou redes sociais genéricas, o Crowded
-combina três coisas num só produto: descoberta personalizada de eventos,
-comunicação em tempo real sobre alterações e condições no local, e ligação social
-entre participantes com interesses semelhantes — reduzindo a incerteza e a
-fragmentação que hoje existem em torno de eventos.
+Unlike ticketing platforms or generic social networks, Crowded combines three
+things in one product: personalized event discovery, real-time communication about
+changes and on-site conditions, and social connection between participants with
+similar interests — reducing uncertainty and fragmentation that exist around
+events today.
 
 ## Principal User Journeys
 
-1. **Descobrir e decidir participar**
-   Utilizador abre a app, recebe recomendações com base em localização e
-   interesses, explora um evento, consulta sondagens/intenção de participação
-   de outros utilizadores, e decide ir.
+1. **Discover and decide whether to participate**
+   The user opens the app, receives recommendations based on location and
+   interests, explores an event, checks other users' participation surveys/intent,
+   and decides to attend.
 
-2. **Acompanhar um evento em tempo real**
-   Utilizador que já vai a um evento recebe notificações de alterações
-   (cancelamento, mudança de horário/local), e pode consultar ou reportar o
-   nível de afluência antes de se deslocar.
+2. **Follow an event in real time**
+   A user who is already attending an event receives notifications about changes
+   (cancellation, schedule or venue changes) and can check or report crowd levels
+   before traveling there.
 
-3. **Criar e gerir um evento** (organizador)
-   Organizador cria o evento, lança uma sondagem para validar interesse,
-   ajusta logística com base nas respostas, e comunica alterações a todos os
-   inscritos de uma vez.
+3. **Create and manage an event** (organizer)
+   The organizer creates the event, launches a survey to validate interest,
+   adjusts logistics based on responses, and communicates changes to all
+   registered attendees at once.
 
-4. **Construir histórico e comunidade**
-   Utilizador regista bilhetes (comprados na app ou fora dela), acumula
-   histórico de eventos, ganha badges, e conecta-se com outros participantes
-   com gostos semelhantes.
+4. **Build history and community**
+   The user registers tickets (purchased in-app or elsewhere), accumulates an
+   event history, earns badges, and connects with other participants who share
+   similar tastes.
 
 ## Expected Community Benefit
-O Crowded reduz o impacto de disrupções comuns em eventos — cancelamentos,
-mudanças de horário/local, sobrelotação — ao centralizar comunicação fiável e
-dar visibilidade em tempo real sobre condições no terreno. Isto beneficia tanto
-participantes (menos deslocações inúteis, melhor decisão) como organizadores
-(menos sobrecarga de suporte, melhor planeamento logístico com base em
-sondagens de interesse).
+Crowded reduces the impact of common event disruptions — cancellations, schedule
+or venue changes, overcrowding — by centralizing reliable communication and
+providing real-time visibility into on-the-ground conditions. This benefits both
+participants (fewer useless trips, better decisions) and organizers (less support
+overload, better logistical planning based on interest surveys).
 
 ## MVP Boundary
 
-**Dentro do MVP:**
-- Descoberta de eventos por localização/raio
-- Notificações de alterações de eventos
-- Reporte de afluência em tempo real
-- Criação de eventos e sondagens de interesse (organizadores)
+**In the MVP:**
+- Event discovery by location/radius
+- Event change notifications
+- Real-time crowd reporting
+- Event creation and interest surveys (for organizers)
 
-**Fora do MVP (para versões futuras):**
-- Gamificação/achievements completos
-- Compra de bilhetes dentro da app
-- Upload/importação de bilhetes externos
-- Recomendações totalmente personalizadas (ML)
+**Out of scope for the MVP (for future versions):**
+- Full gamification/achievements
+- Buying tickets within the app
+- Uploading/importing external tickets
+- Fully personalized recommendations (ML)
 
 ## Product Risks
 
-- **Adoção por organizadores** — o valor do produto depende de organizadores
-  publicarem e manterem eventos atualizados; baixa adesão limita o efeito de rede.
-- **Fiabilidade dos reports de afluência** — dados gerados por utilizadores podem
-  ser imprecisos, desatualizados ou manipulados.
-- **Privacidade** — funcionalidades sociais (conectar com outros participantes) e
-  de localização levantam questões de exposição de dados pessoais.
-- **Efeito de rede insuficiente** — sem massa crítica de utilizadores numa área,
-  a descoberta e os reports perdem valor.
+- **Organizer adoption** — the value of the product depends on organizers posting
+  and maintaining updated events; low adoption limits network effects.
+- **Reliability of crowd reports** — user-generated data can be inaccurate,
+  outdated, or manipulated.
+- **Privacy** — social features (connecting with other participants) and location
+  features raise questions about personal data exposure.
+- **Insufficient network effect** — without a critical mass of users in an area,
+  discovery and reports lose value.
 
 ## Measurable Success Criteria
 
-- Nº médio de eventos descobertos/participados por utilizador ativo por mês
-- % de eventos com pelo menos um report de afluência válido
-- Taxa de resposta a notificações de alteração de evento (ex.: abertura em <15 min)
-- Nº de organizadores ativos que publicam ≥1 evento/mês
-- Taxa de retenção de utilizadores a 30/60 dias
+- Average number of events discovered/attended per active user per month
+- % of events with at least one valid crowd report
+- Event change notification response rate (e.g., opening within <15 minutes)
+- Number of active organizers publishing ≥1 event per month
+- User retention rate at 30/60 days
