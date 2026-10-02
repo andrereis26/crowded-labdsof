@@ -166,7 +166,7 @@ Early on, the platform may not have enough users to generate meaningful crowd in
 
 **Mitigation**
 
-> Seed the platform with publicly available event information and focus initially on event discovery.
+> Seed the platform with publicly available event information by scraping existing sources and focus initially on event discovery.
 
 ---
 
