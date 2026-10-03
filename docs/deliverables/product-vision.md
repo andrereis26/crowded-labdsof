@@ -1,96 +1,109 @@
 # Product Vision
 
 ## Vision Statement
-Crowded is the platform that helps people discover, participate in, and communicate
-around cultural and social events — replacing fragmented channels and outdated
-information with personalized discovery, real-time communication between organizers
-and participants, and a community connected by shared interests.
+Crowded keeps people informed when something changes or goes wrong at the events
+they are attending, and gives organizations the tools to communicate with and
+manage their audience before and during an event — bringing official changes,
+on-site conditions, and organizer alerts into one place, so that participants and
+organizations can make decisions based on current and reliable information.
 
 ## Personas
 
-### Persona 1 — Inês, the Active Participant
+### Persona 1 — Inês, the Participant
 - **Age/context:** 24 years old, university student in Lisbon
-- **Goal:** discover concerts and cultural events in her area without having to
-  follow dozens of different Instagram pages or WhatsApp groups
-- **Frustration:** she has already arrived at a canceled event without knowing,
-  or was unsure whether it was worth going because of crowd levels
-- **How Crowded helps:** personalized recommendations + real-time notifications
-  + attendance reports from other participants
+- **Goal:** keep track of the events she is going to — concerts bought on Ticketline,
+  free public events like Santos Populares — without having to monitor ticketing
+  sites, Instagram pages, and emails for updates
+- **Frustration:** she has already arrived at a cancelled event without knowing,
+  and has faced overcrowded venues and long queues she could have avoided
+- **How Crowded helps:** she imports her tickets or follows public events, receives
+  notifications when an event changes, and checks crowd levels, queues, and
+  organizer alerts before leaving home
 
 ### Persona 2 — Miguel, the Organizer
 - **Age/context:** 35 years old, event manager at a local cultural association
-- **Goal:** understand the real level of public interest before finalizing logistics
-  (space, staff, drinks) and communicate changes quickly to all registered attendees
+- **Goal:** plan capacity based on how many people actually intend to attend, and
+  communicate quickly with everyone who is on their way or already at the venue
 - **Frustration:** uses multiple channels (email, social media) to communicate
-  updates and never knows whether everyone has been informed in time
-- **How Crowded helps:** participation surveys + direct push notifications to all
-  registered attendees
+  updates, never knows whether everyone has been informed in time, and has no
+  direct way to redirect the audience when something goes wrong on site
+- **How Crowded helps:** attendance-intention polls for capacity planning, a
+  backoffice (or API) to publish crowd levels, queues, and incidents, and direct
+  alerts to every participant connected to the event
 
 ## Value Proposition
-Unlike ticketing platforms or generic social networks, Crowded combines three
-things in one product: personalized event discovery, real-time communication about
-changes and on-site conditions, and social connection between participants with
-similar interests — reducing uncertainty and fragmentation that exist around
-events today.
+Unlike ticketing platforms and event-discovery apps, which stop being useful once
+the ticket is bought, Crowded follows the event until it ends. It combines three
+sources of information in one product — official changes synchronized from the
+ticketing source, on-site conditions and alerts published by the organization, and
+incidents reported by participants — and always shows where each piece of
+information comes from and when it was last updated, reducing the uncertainty that
+surrounds event disruptions today.
 
 ## Principal User Journeys
 
-1. **Discover and decide whether to participate**
-   The user opens the app, receives recommendations based on location and
-   interests, explores an event, checks other users' participation surveys/intent,
-   and decides to attend.
+1. **Connect to an event**
+   The user imports a ticket bought elsewhere (AI extracts the event details from
+   the PDF or confirmation email, with manual confirmation as a fallback), follows
+   a public event, or scans a QR code at the venue. The user can also browse
+   events nearby, but discovery is an entry point, not the core of the product.
 
-2. **Follow an event in real time**
-   A user who is already attending an event receives notifications about changes
-   (cancellation, schedule or venue changes) and can check or report crowd levels
-   before traveling there.
+2. **Get notified of changes**
+   When the event is cancelled, postponed, or moved in the official source, the
+   user receives a notification labelled with its origin — ideally before leaving
+   home.
 
-3. **Create and manage an event** (organizer)
-   The organizer creates the event, launches a survey to validate interest,
-   adjusts logistics based on responses, and communicates changes to all
-   registered attendees at once.
+3. **Check conditions and decide**
+   On the day of the event, the user checks crowd levels, queues, organizer
+   alerts, and weather, each with its source and last-update time, and reports
+   incidents (lost and found, accessibility barriers, on-site problems) that are
+   routed to the organization.
 
-4. **Build history and community**
-   The user registers tickets (purchased in-app or elsewhere), accumulates an
-   event history, earns badges, and connects with other participants who share
-   similar tastes.
+4. **Plan and manage an event** (organizer)
+   Before the event, the organizer launches an attendance-intention poll and
+   adjusts staff and entrances based on the responses (an indication, not
+   guaranteed attendance). During the event, the organizer updates crowd levels
+   and queues through the backoffice or API, resolves incidents, and sends alerts
+   (e.g., "Gate B closed, use Gate C") from an AI-generated draft that they review
+   before sending.
 
 ## Expected Community Benefit
 Crowded reduces the impact of common event disruptions — cancellations, schedule
-or venue changes, overcrowding — by centralizing reliable communication and
-providing real-time visibility into on-the-ground conditions. This benefits both
-participants (fewer useless trips, better decisions) and organizers (less support
-overload, better logistical planning based on interest surveys).
+or venue changes, overcrowding, long queues, and on-site incidents — by
+centralizing reliable communication and giving visibility into on-the-ground
+conditions. This benefits participants (fewer wasted trips, safer and better-informed
+decisions) and organizations (better capacity planning, faster incident response,
+and a direct channel to their audience).
 
 ## MVP Boundary
 
 **In the MVP:**
-- Event discovery by location/radius
-- Event change notifications
-- Real-time crowd reporting
-- Event creation and interest surveys (for organizers)
+- Ticket wallet (ticket import), following public events, and venue QR codes
+- Minimal discovery ("near me / today")
+- Synchronization with the official event source (ticketing simulator) and change
+  notifications
+- Organizer backoffice: crowd levels, queues, incidents, alerts, and
+  attendance-intention polls
+- Organizer API for crowd levels and queues (with an entrance-counter simulator)
+- Incident reporting by participants
+- Provenance labels on all information
+- Threshold-based weather alerts
 
 **Out of scope for the MVP (for future versions):**
-- Full gamification/achievements
+- Advanced search, filters, map, and recommendations
 - Buying tickets within the app
-- Uploading/importing external tickets
-- Fully personalized recommendations (ML)
+- Social features and gamification
+- Zone-level crowd information
+- Real integrations with ticketing platforms and access-control systems
 
 ## Product Risks
 
-- **Organizer adoption** — the value of the product depends on organizers posting
-  and maintaining updated events; low adoption limits network effects.
-- **Reliability of crowd reports** — user-generated data can be inaccurate,
-  outdated, or manipulated.
-- **Privacy** — social features (connecting with other participants) and location
-  features raise questions about personal data exposure.
-- **Insufficient network effect** — without a critical mass of users in an area,
-  discovery and reports lose value.
-
-## Measurable Success Criteria
-
-- Average number of events discovered/attended per active user per month
-- % of events with at least one valid crowd report
-- Event change notification response rate (e.g., opening within <15 minutes)
-- Number of active organizers publishing ≥1 event per month
-- User retention rate at 30/60 days
+- **Organizer adoption** — crowd levels, queues, and alerts depend on organizations
+  using the backoffice or API; without them, only official changes and weather
+  are available.
+- **Stale information** — if organizations do not keep data updated, it loses
+  value; last-update times must always be visible and outdated data hidden.
+- **False alerts** — only the official source and verified organizations may
+  publish official information.
+- **Privacy** — tickets contain personal data and access codes; only the minimum
+  data is stored, and participant incident reports do not expose user identity.
