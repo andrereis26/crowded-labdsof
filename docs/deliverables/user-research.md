@@ -2,7 +2,7 @@
 
 ## Research Method
 
-To better understand the problems that Crownd is trying to solve, the team conducted user research through a **review of documented user experiences** from existing event platforms.
+To better understand the problems that Crowded is trying to solve, the team conducted user research through a **review of documented user experiences** from existing event platforms.
 
 The platforms reviewed were:
 
@@ -22,7 +22,7 @@ The team analysed user reviews related to **discovering, planning and attending 
 
 ## Findings
 
-The reviewed experiences showed both **problems and positive experiences** that are relevant to Crownd.
+The reviewed experiences showed both **problems and positive experiences** that are relevant to Crowded.
 
 ### Event Discovery and Search
 
@@ -30,7 +30,7 @@ One Eventbrite user reported difficulties seeing all available results because t
 
 In contrast, a Bandsintown user described being able to see upcoming shows in their area as a positive experience.
 
-These findings provide initial support for Crownd's focus on **location-based and centralised event discovery**. Crownd's Event Explorer persona identifies difficulty finding local experiences and missing events of interest as important pain points.
+These findings show that seeing local events is valued by users. In Crowded, discovery is kept as a **secondary entry point** (a simple "near me / today" list), since existing platforms already address it and it is not the core of the product.
 
 ### Review evidence
 
@@ -50,7 +50,7 @@ One Bandsintown user reported not receiving alerts about a band they liked even 
 
 Another Bandsintown user had a positive experience with reminders and personalised event updates.
 
-These experiences suggest that **event notifications can be useful but reliability and accessibility are important**. This supports Crownd's planned event notifications and reminders. The ticket-access problem also provides initial support for Crownd's focus on keeping ticket information accessible within the product.
+These experiences suggest that **event notifications can be useful but reliability and accessibility are important**. This supports Crowded's core focus on reliable event change notifications. The ticket-access problem also provides initial support for Crowded's ticket wallet, which keeps the user's tickets and their event information accessible in one place.
 
 ### Review evidence
 
@@ -68,7 +68,7 @@ These experiences suggest that **event notifications can be useful but reliabili
 
 A Songkick user reported difficulty finding a way to share an event with friends who might be interested in attending.
 
-This is relevant to Crownd's idea of connecting people interested in the same events. However, this finding is based on **one individual review**, so it should not be considered sufficient evidence that social sharing is a widespread problem.
+This finding is based on **one individual review**, so it should not be considered sufficient evidence that social sharing is a widespread problem. Social features are out of scope for Crowded's MVP.
 
 ### Review evidence
 
@@ -82,7 +82,7 @@ This is relevant to Crownd's idea of connecting people interested in the same ev
 
 A positive Eventbrite review described receiving updates about interesting events that were tailored to the user's personal preferences.
 
-This provides initial support for Crownd's focus on **personalised event discovery and recommendations**.
+This shows that personalised updates can be valued, but personalised recommendations are related to event discovery and are therefore out of scope for Crowded's MVP.
 
 ### Review evidence
 
@@ -96,14 +96,15 @@ This provides initial support for Crownd's focus on **personalised event discove
 
 The main findings can be summarised as follows:
 
-| Finding                              | Evidence from reviews                                                       | Relevance to Crownd                                       |
-| ------------------------------------ | --------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Event discovery can be difficult     | Eventbrite user had problems loading and exploring all search results       | Supports effective event discovery and search             |
-| Local discovery can be useful        | Bandsintown user valued seeing upcoming shows in their area                 | Supports radius-based discovery                           |
-| Event reminders can be useful        | Bandsintown user had a positive experience with reminders                   | Supports event reminders                                  |
-| Ticket access can be problematic     | Bandsintown user had difficulty accessing tickets while travelling          | Supports centralised ticket management                    |
-| Event sharing can be difficult       | Songkick user had difficulty sharing an event with friends                  | Provides an initial reason to investigate social features |
-| Personalised updates can be valuable | Eventbrite user liked updates based on personal preferences                 | Supports personalised recommendations                     |
+| Finding                              | Evidence from reviews                                                       | Relevance to Crowded                                       |
+| ------------------------------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Event discovery can be difficult     | Eventbrite user had problems loading and exploring all search results       | Discovery is kept only as a secondary entry point          |
+| Local discovery can be useful        | Bandsintown user valued seeing upcoming shows in their area                 | Supports a simple "near me / today" list                   |
+| Event notifications can fail         | Bandsintown user did not receive alerts despite having them enabled         | Supports reliable event change notifications (core)        |
+| Event reminders can be useful        | Bandsintown user had a positive experience with reminders                   | Supports notifications about the user's events             |
+| Ticket access can be problematic     | Bandsintown user had difficulty accessing tickets while travelling          | Supports the ticket wallet                                 |
+| Event sharing can be difficult       | Songkick user had difficulty sharing an event with friends                  | Out of scope for the MVP                                   |
+| Personalised updates can be valuable | Eventbrite user liked updates based on personal preferences                 | Out of scope for the MVP (related to discovery)            |
 
 ---
 
@@ -113,48 +114,51 @@ The research has several limitations that need to be considered when interpretin
 
 First, the research was based **only on documented user reviews from existing event platforms**.
 
-Second, there is limited information about the people who wrote the reviews. Their characteristics, event-attendance habits and specific circumstances are not known. Therefore, these individual experiences cannot be assumed to represent Crownd's target users as a whole.
+Second, there is limited information about the people who wrote the reviews. Their characteristics, event-attendance habits and specific circumstances are not known. Therefore, these individual experiences cannot be assumed to represent Crowded's target users as a whole.
 
 Third, the research does not provide **quantitative evidence** about how common the identified problems are. For example, one user reporting a notification problem shows that this problem occurred for that user, but does not establish how frequently notification failures occur across the platform.
 
-Finally, some of Crownd's proposed features are based mainly on the team's assumptions rather than evidence from these reviews. In particular, the research does not directly validate:
+Fourth, the reviewed platforms focus mainly on event discovery and ticketing. The research therefore provides little direct evidence about **on-site disruptions** such as overcrowding, queues and incidents, or about the needs of **event organizers**, who were not part of the research.
 
-* Crowd reports
-* Organiser interest polls
-* AI-powered recommendations
+Finally, some of Crowded's proposed features are based mainly on the team's assumptions rather than evidence from these reviews. In particular, the research does not directly validate:
+
+* Organizer-published crowd levels and queues
+* Organizer alerts and the organizer backoffice
+* Attendance-intention polls
+* Participant incident reporting
+* AI-assisted ticket extraction and alert drafting
+
+Future research should address these gaps, for example through a survey of event attendees about missed event changes and on-site problems, and interviews with local event organizers.
 
 ---
 
 ## Resulting Product Decisions
 
-Based on the research findings, the team identified which Crownd features have some initial supporting evidence and which remain assumptions requiring further validation.
+Based on the research findings, the team identified which Crowded features have some initial supporting evidence and which remain assumptions requiring further validation.
 
-| Research finding                                                   | Resulting product decision                                         | Current evidence        |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------ | ----------------------- |
-| Users may have difficulty finding available events                 | Keep effective event discovery and search as a core part of Crownd | Initially supported     |
-| Users value seeing events in their area                            | Include radius-based event discovery                               | Initially supported     |
-| Users may not receive important event alerts                       | Include reliable event notifications                               | Initially supported     |
-| Users value event reminders                                        | Include event reminders                                            | Initially supported     |
-| Users may experience difficulty accessing tickets                  | Include centralised ticket management/ticket upload                | Initially supported     |
-| Users value personalised event updates                             | Include personalised recommendations                               | Initially supported     |
-| Event sharing may be difficult                                     | Investigate social/event-sharing features further                  | Initial indication only |
-| No reviewed experience directly validates crowd reports            | Keep as an assumption requiring further research                   | Not validated           |
-| No reviewed experience directly validates organiser interest polls | Keep as an assumption requiring further research                   | Not validated           |
-| No reviewed experience directly validates AI recommendations       | Keep as an assumption requiring further research                   | Not validated           |
+| Research finding                                                     | Resulting product decision                                          | Current evidence        |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------- |
+| Users may not receive important event alerts                         | Make reliable event change notifications a core feature             | Initially supported     |
+| Users may experience difficulty accessing tickets                    | Include a ticket wallet with ticket import                          | Initially supported     |
+| Users value seeing events in their area                              | Keep a simple "near me / today" list as a secondary entry point     | Initially supported     |
+| Users may have difficulty finding available events                   | Do not compete on discovery; existing platforms already address it  | Initially supported     |
+| Users value personalised event updates                               | Leave personalised recommendations out of the MVP                   | Initially supported     |
+| Event sharing may be difficult                                       | Leave social features out of the MVP                                | Initial indication only |
+| No reviewed experience validates organizer-published on-site data    | Keep as an assumption requiring further research                    | Not validated           |
+| No reviewed experience validates organizer alerts                    | Keep as an assumption requiring further research                    | Not validated           |
+| No reviewed experience validates attendance-intention polls          | Keep as an assumption requiring further research                    | Not validated           |
+| No reviewed experience validates participant incident reporting      | Keep as an assumption requiring further research                    | Not validated           |
 
-These decisions are consistent with Crownd's current MVP, which includes:
+These decisions are consistent with Crowded's current MVP, which includes:
 
-* Event feed
-* Radius-based search
-* Category filtering
-* Personalised recommendations
-* User profiles
-* Favourites
-* Ticket upload
-* Event reminders
-* Event creation
-* Event updates
-* Interest polling
-* AI recommendation engine
+* Ticket wallet (ticket import)
+* Following public events and venue QR codes
+* Minimal event discovery ("near me / today")
+* Event change notifications
+* Organizer backoffice and API (crowd levels, queues, incidents, alerts)
+* Attendance-intention polls
+* Participant incident reporting
+* Provenance labels
+* Weather alerts
 
-The research therefore provides **initial evidence for several parts of Crownd's product direction**, particularly event discovery, location-based discovery, personalised updates, notifications and ticket management. At the same time, the research makes clear that other proposed capabilities remain assumptions.
+The research therefore provides **initial evidence for several parts of Crowded's product direction**, particularly event change notifications and ticket management. At the same time, the research makes clear that the organizer-side and on-site capabilities remain assumptions that need further validation.
