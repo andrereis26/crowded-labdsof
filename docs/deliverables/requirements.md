@@ -1,6 +1,6 @@
 # Requirements Specification
 
-This specification translates the Crowded product vision, research, opportunity analysis, assignment constraints, and responsible AI assessment into **functional**, **non-functional**, **security** and **technical** requirements. Priorities reflect the explicit MVP boundary and mandatory project deliverables.
+This specification translates the Crowded product vision, problem and opportunity report, user research, assignment constraints, and responsible AI assessment into **functional**, **non-functional**, **security** and **technical** requirements. Priorities reflect the MVP boundary — keeping participants and organizations informed when an event changes or something goes wrong on site — and the mandatory project deliverables.
 
 **Priority levels are defined as follows**:
 - **8-10: High - Must have for MVP**
@@ -9,34 +9,90 @@ This specification translates the Crowded product vision, research, opportunity 
 
 ## 1. Functional Requirements
 
+### 1.1 Connecting to Events
+
 | ID | Statement | Priority |
 |---|---|---|
-| FR-001 | The system shall present users with a feed of available events. | 10 |
-| FR-002 | The system shall allow a user to search for events within a location and a user-selected radius. | 10 |
-| FR-003 | The system shall allow a user to filter events by category (e.g. classic music, rock, sports, etc.). | 10 |
-| FR-004 | The system shall allow a user to open an event and view its available event information including its location in a map. | 8 |
-| FR-031 | The system shall let the user visualize a map with events near their configured location. | 7 |
-| FR-021 | The system shall display the weather information for the day of the event so users can plan accordingly. | 6 |
-| FR-005 | The system shall allow an organizer to create and publish an event with its available details, including its location and schedule. | 8 |
-| FR-006 | The system shall allow an authorized organizer to update event details, including changes to the event date, time, venue, or cancellation status. | 6 |
-| FR-008 | The system shall notify users interested in an event when its organizer publishes a event change. | 9 |
-| FR-009 | The system shall allow a user to submit a report about conditions at an event, including crowd level. | 9 |
-| FR-010 | The system shall display available crowd reports for an event with their submission times so users can assess their recency. | 8 |
-| FR-012 | The system shall allow an organizer to create an interest poll associated with an event or proposed event. | 8 |
-| FR-013 | The system shall allow a user to submit a response to an available event interest poll. | 8 |
-| FR-014 | The system shall present poll responses to the organizer as indications of potential demand and shall not represent them as guaranteed attendance. | 8 |
-| FR-015 | The system shall allow users to follow an event. | 8 |
-| FR-016 | The system shall offer an AI based event recommendations using the user's selected location, radius, categories, and interests. | 5 |
-| FR-018 | The system shall allow a user to provide approximate location or a manually selected location for location-based event discovery. | 8 |
-| FR-019 | The system shall allow a user to configure whether they receive event notifications. | 2 |
-| FR-020 | The system shall allow a user to view their event history and attendance records. | 4 |
-| FR-028 | The system shall allow users to review and change the interests and location settings used for event discovery. | 7 |
-| FR-029 | The system shall allow a user to keep their profile private and to control whether their event attendance is visible to other users. | 4 |
-| FR-030 | The system shall support user registration and authentication through federated identity providers (Google and Facebook) as well as through email and password credentials. | 5 |
-| FR-030 | The system shall provide AI-based alerts for certain weather conditions that may affect certain events. (e.g. severe thunderstorms, heavy rain, hot weather, etc) | 4 |
-| FR-031 | The system shall be self sustainable by having a web scraper that regularly adds new events to the system. | 5 |
-| FR-032 | The system shall allow authenticated users to permanently delete their account and all associated personal data. | 2 |
-| FR-033 | The system shall provide controls for users to disable notifications and to control profile and attendance visibility. | 2 |
+| FR-001 | The system shall allow a user to import a ticket bought on an external platform by uploading its PDF, extracting the event information (event name, date and time, venue, gate or sector, seat) with AI assistance. | 9 |
+| FR-002 | The system shall allow a user to import a ticket by pasting its confirmation email, extracting the event information with AI assistance. | 9 |
+| FR-003 | The system shall allow a user to review, correct and confirm the extracted ticket information before saving it, and to enter ticket information manually when extraction is unavailable or fails. | 10 |
+| FR-004 | The system shall match an imported ticket to an event in the synchronized event catalog and, when the match is ambiguous or has low confidence, ask the user to choose the correct event. | 9 |
+| FR-005 | The system shall present the user's ticket wallet, listing their tickets and upcoming events with the essential event information. | 9 |
+| FR-006 | The system shall allow a user to follow a public event (or mark it as "going") to receive its changes and alerts. | 9 |
+| FR-008 | The system shall allow a user to remove a ticket or stop following an event. | 6 |
+| FR-009 | The system shall present a simple list of events near the user or happening today, allowing the user to follow them. | 6 |
+| FR-010 | The system shall allow a user to provide an approximate or manually selected location for the nearby events list. | 5 |
+
+### 1.2 Official Event Changes
+
+| ID | Statement | Priority |
+|---|---|---|
+| FR-011 | The system shall periodically synchronize events from the external ticketing source and detect changes to their status, date, time or venue (e.g., cancellation, postponement, relocation). | 10 |
+| FR-012 | The system shall periodically synchronize public events from the external municipal agenda source and detect changes to them. | 3 |
+| FR-013 | The system shall notify every user connected to an event (ticket holders and followers) when a change to that event is detected or published. | 10 |
+| FR-014 | The system shall display an event's current status and its change history, each change with its source and time. | 8 |
+
+### 1.3 Organization Backoffice
+
+| ID | Statement | Priority |
+|---|---|---|
+| FR-015 | The system shall allow an organization to create and publish an event with its details, including location and schedule. | 8 |
+| FR-016 | The system shall allow an organization to update or cancel its own events, triggering notifications to connected users. | 9 |
+| FR-017 | The system shall allow an organization to request ownership of an existing synchronized event, subject to administrator approval. | 7 |
+| FR-018 | The system shall allow an organization to publish the current crowd level of its event (low, moderate, high, full) through the backoffice. | 10 |
+| FR-019 | The system shall allow an organization to publish queue waiting times for points of its event (e.g., entrances, ticket office, bars, toilets). | 8 |
+| FR-020 | The system shall allow an organization to send an operational alert (e.g., entrance closure, capacity reached, schedule delay) to every user connected to its event. | 10 |
+| FR-021 | The system shall generate an AI-assisted alert draft from the organization's brief input and the event's current state, which the organization must review, edit and approve before it is sent. | 8 |
+| FR-022 | The system shall provide predefined alert templates that the organization can fill in and send without AI assistance. | 9 |
+| FR-023 | The system shall present the organization with a live dashboard showing the event's crowd level, queues, open incidents and alerts sent. | 9 |
+| FR-024 | The system shall allow an organization to define its event's capacity and show the current crowd level relative to it. | 7 |
+| FR-025 | The system shall provide an API through which an organization's systems (e.g., entrance counters) can submit crowd counts and queue times automatically. | 6 |
+| FR-026 | The system shall allow an organization to create an attendance-intention poll for an event or proposed event. | 7 |
+| FR-027 | The system shall allow a user to respond to an available attendance-intention poll. | 7 |
+| FR-028 | The system shall present poll responses to the organization as indications of potential attendance and shall not represent them as guaranteed attendance. | 7 |
+| FR-051 | The system shall allow an organization to publish requests on the event page — confirmations (e.g., "Is Gate B still closed?"), polls or requests for ideas — and mark each request as urgent or non-urgent. | 8 |
+| FR-052 | The system shall notify connected users only of urgent requests; opening the notification shall take the user to the request on the event page. Non-urgent requests shall remain available on the event page without a notification. | 8 |
+| FR-029 | The system shall allow an organization to view reported incidents and mark them as acknowledged or resolved, notifying the reporting user. | 8 |
+| FR-053 | The system shall use AI to group similar incident reports into a single incident with a short summary, allow the organization to split incorrectly grouped reports, and fall back to grouping by category and time window when the AI service is unavailable. | 8 |
+| FR-030 | The system shall present the organization with a post-event summary (crowd peaks, incidents, alerts sent). | 3 |
+
+### 1.4 On-Site Information for Participants
+
+| ID | Statement | Priority |
+|---|---|---|
+| FR-031 | The system shall display an event's crowd level, queue times and alerts to connected users. | 10 |
+| FR-032 | The system shall label every piece of event information with its source (official source, organization, participant, AI-generated) and its last-update time. | 9 |
+| FR-033 | The system shall flag or hide on-site information that has not been updated within a configured period. | 8 |
+| FR-034 | The system shall allow a user to report an incident at an event, choosing a category (e.g., lost and found, accessibility barrier, on-site problem) and adding an optional description. | 8 |
+| FR-054 | The system shall notify a participant when the organization marks their report as helpful, showing its impact (e.g., the incident was resolved, or an alert was sent to N people). | 7 |
+| FR-035 | The system shall display the weather forecast for the day and location of the event. | 6 |
+| FR-036 | The system shall notify connected users when the weather forecast for an event meets a configured severe-weather threshold. | 7 |
+| FR-037 | The system shall make the essential information of the user's events (date, time, venue, ticket details, latest change) available offline. | 5 |
+| FR-055 | The system shall display public transport options to the event venue (e.g., metro, bus, train) with their upcoming departure times, and indicate service disruptions when the transport source reports them. | 6 |
+| FR-056 | The system shall display an integrated map showing the event venue and routes to it from the user's location. | 6 |
+| FR-038 | The system shall allow a user to view a private history of their reported incidents and the recognitions received for them. | 5 |
+
+### 1.5 Accounts and Preferences
+
+| ID | Statement | Priority |
+|---|---|---|
+| FR-039 | The system shall identify users and assign them a role (participant, organization member, administrator). | 10 |
+| FR-040 | The system shall allow an administrator to verify organizations before they can publish official information. | 6 |
+| FR-041 | The system shall allow a user to choose, per event, whether to receive notifications for all organization requests, only urgent requests, or none; official event changes and operational alerts shall always be delivered. | 8 |
+| FR-042 | The system shall allow authenticated users to permanently delete their account and all associated personal data. | 4 |
+| FR-043 | The system shall support registration and authentication with email and password credentials. | 9 |
+| FR-044 | The system shall support registration and authentication through federated identity providers (Google and Facebook). | 2 |
+
+### 1.6 Out of Scope for the MVP
+
+| ID | Statement | Priority |
+|---|---|---|
+| FR-045 | The system shall allow a user to search events within a radius and filter them by category. | 2 |
+| FR-046 | The system shall display events on a map. | 2 |
+| FR-047 | The system shall offer personalized event recommendations. | 1 |
+| FR-048 | The system shall display crowd levels per zone of the event venue. | 3 |
+| FR-049 | The system shall allow users to buy tickets within the app. | 1 |
+| FR-050 | The system shall allow users to connect with other participants of the same event. | 1 |
 
 ---
 
@@ -44,15 +100,25 @@ This specification translates the Crowded product vision, research, opportunity 
 
 | ID | Statement | Priority |
 |---|---|---|
-| NFR-001 | Notifications of event changes shall be delivered in a timely manner based on when the event changes occur (e.g., within 5 minutes of the change if the even is on the same day). | 6 |
-| NFR-001 | Notifications of extreme weather conditions shall be delivered in a timely manner based on when the event changes occur (e.g., within 5 minutes of the change if the even is on the same day). | 4 |
-| NFR-006 | The system shall provide structured application logs, relevant operational metrics, error reporting, and correlation or trace identifiers for its deployed components. | 8 |
-| NFR-012 | The system shall fail safely when external data is unavailable or stale and shall communicate the resulting limitation to affected users. | 5 |
+| NFR-001 | Critical notifications (cancellation, rescheduling, venue change, operational alert) shall be delivered within 1 minute of the change being detected or published. | 9 |
+| NFR-002 | Changes in the external event sources shall be detected within 5 minutes of occurring. | 8 |
+| NFR-003 | Notifications shall be delivered at least once and processed idempotently, so that a user never receives the same notification twice for the same event change. | 9 |
+| NFR-004 | Asynchronous workflows shall retry failed processing with backoff and move repeatedly failing messages to a dead-letter queue for inspection. | 8 |
+| NFR-005 | When an external event source is unavailable, delayed or returns invalid data, the system shall keep operating, reject and log invalid data, and show users the time of the last successful synchronization. | 9 |
+| NFR-006 | When the AI service is unavailable, the system shall fall back to manual ticket entry and alert templates so that the principal workflows continue. | 9 |
+| NFR-007 | The system shall never present AI-generated content as verified fact; AI output shall be labelled until confirmed by the user or organization. | 9 |
+| NFR-008 | Information published by an organization shall be visible to connected users within 30 seconds. | 8 |
+| NFR-009 | 95% of user requests shall receive a response within 2 seconds, excluding AI-assisted ticket extraction, which shall complete within 15 seconds. | 8 |
+| NFR-010 | The system shall deliver an operational alert to 1,000 connected users of a single event within the time defined in NFR-001. | 6 |
+| NFR-011 | The system shall provide structured application logs, relevant operational metrics, error reporting, and correlation or trace identifiers for its deployed components. | 8 |
+| NFR-012 | The system shall provide an operational health check for each deployed backend component. | 8 |
+| NFR-013 | The system shall provide an operational dashboard with service-level indicators, including notification delivery latency, synchronization lag, failed asynchronous jobs, and AI latency and error rate. | 8 |
 | NFR-014 | The system shall support unit, integration, and relevant end-to-end testing of the principal workflows. | 8 |
 | NFR-015 | The system shall be built and delivered through an automated CI/CD pipeline. | 8 |
-| NFR-020 | The system shall support evaluation of AI-assisted behavior to ensure it is functioning as intended and not causing any unintended consequences. | 5 |
-| NFR-025 | The system shall provide an operational health check for each deployed backend component. | 3 |
-| NFR-026 | The system shall provide a response to user requests within 5 seconds. | 9 |
+| NFR-016 | The AI-assisted capabilities shall be evaluated against a documented dataset, including difficult and adverse cases, with defined acceptance criteria. | 8 |
+| NFR-017 | The system shall be delivered using containers with reproducible builds and environment-specific configuration. | 8 |
+| NFR-018 | The participant interface shall be usable on mobile devices. | 7 |
+| NFR-019 | The principal user journeys shall meet WCAG 2.1 AA, and alerts and crowd levels shall not be conveyed by color alone. | 7 |
 
 ---
 
@@ -60,23 +126,34 @@ This specification translates the Crowded product vision, research, opportunity 
 
 | ID | Statement | Priority |
 |---|---|---|
-| SR-001 | The system shall require an authenticated user identity before allowing access to user-specific or organizer-only actions. | 5 |
-| SR-003 | The system shall scope user-specific profile, notification, location, and preference data to the user or authorized role permitted to access it. | 6 |
-| SR-004 | The system shall request user consent before using location or preference data for personalized event discovery. | 6 |
-| SR-005 | The system shall use approximate location and only the personal data needed to provide the selected event-discovery workflow. | 6 |
-| SR-006 | The system shall enforce visibility settings and restrict access to profile and attendance information accordingly. | 5 |
-| SR-007 | The system shall not send identifiable user data to an external AI provider as part of the AI-assisted workflow. | 5 |
-| SR-014 | The system shall provide a way for a user to submit a crowd report without making their profile or identity public alongside the report. | 5 |
-| SR-015 | The system shall use OAuth 2.0 / OpenID Connect protocols for authentication through Google and Facebook. | 5 |
-| SR-016 | The system shall store user passwords using a strong one-way hashing algorithm with salt | 5 |
-| SR-017 | The system shall have rate limiting in place in account creation and login processes to prevent abuse of the system. | 5 |
-| SR-018 | The system shall have rate limiting in non authenticated requests. | 5 |
-
+| SR-001 | The system shall restrict organization actions (event changes, on-site information, alerts, polls, incidents) to members of the organization that owns the event. | 10 |
+| SR-002 | The system shall only allow the official event sources and verified organizations to publish official event information and alerts. | 10 |
+| SR-003 | The system shall scope user-specific data (tickets, followed events, incidents, preferences, location) to the user or authorized role permitted to access it. | 8 |
+| SR-004 | The system shall not store ticket access codes (barcodes or QR codes) and shall delete uploaded ticket files after extraction. | 8 |
+| SR-005 | The system shall remove personal data (e.g., name, email, tax number) and access codes from ticket content before sending it to an external AI provider. | 8 |
+| SR-006 | The system shall treat ticket files, emails and organization input as untrusted data for the AI, validate AI output against a fixed schema, and never allow the AI to perform actions. | 8 |
+| SR-007 | The system shall keep an audit log of event changes, alerts sent and incident status changes, including who performed them and when. | 7 |
+| SR-008 | The system shall not make the reporting user's identity public in incident reports. | 7 |
+| SR-009 | The system shall manage secrets outside the source repository. | 7 |
+| SR-010 | The system shall request user consent before using location data and shall use only approximate location. | 6 |
+| SR-011 | The system shall authenticate organization API requests with credentials scoped to the organization and its events. | 6 |
+| SR-012 | The system shall apply rate limiting to unauthenticated requests and to incident reports. | 6 |
+| SR-013 | The system shall delete ticket data and incident reports after a defined retention period following the event. | 6 |
+| SR-014 | The system shall authenticate service-to-service communication between backend components. | 5 |
+| SR-015 | The system shall store user passwords using a strong one-way hashing algorithm with salt. | 8 |
+| SR-016 | The system shall use OAuth 2.0 / OpenID Connect protocols for authentication through Google and Facebook. | 2 |
+| SR-017 | The system shall apply rate limiting to account creation and login to prevent abuse. | 7 |
 
 ---
 
 ## 4. Technical Requirements
+
 | ID | Statement | Priority |
 |---|---|---|
-| TR-001 | The system shall cache user-specific data (e.g., preferences, and profile information) for a period of 24 hours in order to reduce the load on the backend and improve the user experience. Cache should be invalidated when there's a change in the user's data. | 4 |
-| TR-002 | The system shall cache AI-generated content (recommendations and alerts) for a period of 24 hours in order to reduce the response times and costs of AI services. | 1 |
+| TR-001 | The system shall include an independently deployable ticketing source simulator that publishes events and their changes, and that can be configured to be unavailable, slow, or return invalid or duplicate data. | 9 |
+| TR-002 | The system shall consist of at least two independently deployable backend components (e.g., event synchronization, notifications, core services). | 9 |
+| TR-003 | The system shall use a message broker for asynchronous communication between event synchronization and notifications. | 8 |
+| TR-004 | The system shall use a single database technology unless a requirement justifies an additional one. | 7 |
+| TR-005 | The system shall include a municipal agenda simulator that publishes public events and their changes. | 3 |
+| TR-006 | The system shall include an entrance-counter simulator that submits crowd counts through the organization API. | 5 |
+| TR-007 | The system shall cache event status and on-site information reads, invalidating the cache when the information changes. | 4 |
