@@ -108,17 +108,16 @@ This specification translates the Crowded product vision, problem and opportunit
 | NFR-006 | When the AI service is unavailable, the system shall fall back to manual ticket entry and alert templates so that the principal workflows continue. | 9 |
 | NFR-007 | The system shall never present AI-generated content as verified fact; AI output shall be labelled until confirmed by the user or organization. | 9 |
 | NFR-008 | Information published by an organization shall be visible to connected users within 30 seconds. | 8 |
-| NFR-009 | 95% of user requests shall receive a response within 2 seconds, excluding AI-assisted ticket extraction, which shall complete within 15 seconds. | 8 |
-| NFR-010 | The system shall deliver an operational alert to 1,000 connected users of a single event within the time defined in NFR-001. | 6 |
-| NFR-011 | The system shall provide structured application logs, relevant operational metrics, error reporting, and correlation or trace identifiers for its deployed components. | 8 |
-| NFR-012 | The system shall provide an operational health check for each deployed backend component. | 8 |
-| NFR-013 | The system shall provide an operational dashboard with service-level indicators, including notification delivery latency, synchronization lag, failed asynchronous jobs, and AI latency and error rate. | 8 |
-| NFR-014 | The system shall support unit, integration, and relevant end-to-end testing of the principal workflows. | 8 |
-| NFR-015 | The system shall be built and delivered through an automated CI/CD pipeline. | 8 |
-| NFR-016 | The AI-assisted capabilities shall be evaluated against a documented dataset, including difficult and adverse cases, with defined acceptance criteria. | 8 |
-| NFR-017 | The system shall be delivered using containers with reproducible builds and environment-specific configuration. | 8 |
-| NFR-018 | The participant interface shall be usable on mobile devices. | 7 |
-| NFR-019 | The principal user journeys shall meet WCAG 2.1 AA, and alerts and crowd levels shall not be conveyed by color alone. | 7 |
+| NFR-009 | 95% of user requests shall receive a response within 2 seconds, excluding AI-assisted ticket extraction, which shall complete within 30 seconds. | 8 |
+| NFR-010 | The system shall provide structured application logs, relevant operational metrics, error reporting, and correlation or trace identifiers for its deployed components. | 8 |
+| NFR-011 | The system shall provide an operational health check for each deployed backend component. | 8 |
+| NFR-012 | The system shall provide an operational dashboard with service-level indicators, including notification delivery latency, synchronization lag, failed asynchronous jobs, and AI latency and error rate. | 4 |
+| NFR-013 | The system shall support unit, integration, and relevant end-to-end testing of the principal workflows. | 8 |
+| NFR-014 | The system shall be built and delivered through an automated CI/CD pipeline. | 8 |
+| NFR-015 | The AI-assisted capabilities shall be evaluated against a documented dataset, including difficult and adverse cases, with defined acceptance criteria. | 8 |
+| NFR-016 | The system shall be delivered using containers with reproducible builds and environment-specific configuration. | 8 |
+| NFR-017 | The participant interface shall be usable on mobile devices. | 7 |
+| NFR-018 | The principal user journeys shall meet WCAG 2.1 AA, and alerts and crowd levels shall not be conveyed by color alone. | 7 |
 
 ---
 
@@ -126,23 +125,21 @@ This specification translates the Crowded product vision, problem and opportunit
 
 | ID | Statement | Priority |
 |---|---|---|
-| SR-001 | The system shall restrict organization actions (event changes, on-site information, alerts, polls, incidents) to members of the organization that owns the event. | 10 |
+| SR-001 | The system shall restrict organization actions (event changes, on-site information, alerts, polls, incidents) to members of the organization that owns the event. | 1 |
 | SR-002 | The system shall only allow the official event sources and verified organizations to publish official event information and alerts. | 10 |
 | SR-003 | The system shall scope user-specific data (tickets, followed events, incidents, preferences, location) to the user or authorized role permitted to access it. | 8 |
-| SR-004 | The system shall not store ticket access codes (barcodes or QR codes) and shall delete uploaded ticket files after extraction. | 8 |
-| SR-005 | The system shall remove personal data (e.g., name, email, tax number) and access codes from ticket content before sending it to an external AI provider. | 8 |
-| SR-006 | The system shall treat ticket files, emails and organization input as untrusted data for the AI, validate AI output against a fixed schema, and never allow the AI to perform actions. | 8 |
-| SR-007 | The system shall keep an audit log of event changes, alerts sent and incident status changes, including who performed them and when. | 7 |
-| SR-008 | The system shall not make the reporting user's identity public in incident reports. | 7 |
-| SR-009 | The system shall manage secrets outside the source repository. | 7 |
-| SR-010 | The system shall request user consent before using location data and shall use only approximate location. | 6 |
-| SR-011 | The system shall authenticate organization API requests with credentials scoped to the organization and its events. | 6 |
-| SR-012 | The system shall apply rate limiting to unauthenticated requests and to incident reports. | 6 |
-| SR-013 | The system shall delete ticket data and incident reports after a defined retention period following the event. | 6 |
-| SR-014 | The system shall authenticate service-to-service communication between backend components. | 5 |
-| SR-015 | The system shall store user passwords using a strong one-way hashing algorithm with salt. | 8 |
-| SR-016 | The system shall use OAuth 2.0 / OpenID Connect protocols for authentication through Google and Facebook. | 2 |
-| SR-017 | The system shall apply rate limiting to account creation and login to prevent abuse. | 7 |
+| SR-004 | The system shall remove personal data (e.g., name, email, tax number) and access codes from ticket content before sending it to an external AI provider. | 8 |
+| SR-005 | The system shall treat ticket files, emails and organization input as untrusted data for the AI, validate AI output against a fixed schema, and never allow the AI to perform actions. | 8 |
+| SR-006 | The system shall keep an audit log of event changes, alerts sent and incident status changes, including who performed them and when. | 7 |
+| SR-007 | The system shall not make the reporting user's identity public in incident reports. | 7 |
+| SR-008 | The system shall manage secrets outside the source repository. | 7 |
+| SR-009 | The system shall request user consent before using location data and shall use only approximate location. | 6 |
+| SR-010 | The system shall authenticate organization API requests with credentials scoped to the organization and its events. | 6 |
+| SR-011 | The system shall apply rate limiting to unauthenticated requests and to incident reports. | 6 |
+| SR-012 | The system shall authenticate service-to-service communication between backend components. | 5 |
+| SR-013 | The system shall store user passwords using a strong one-way hashing algorithm with salt. | 8 |
+| SR-014 | The system shall use OAuth 2.0 / OpenID Connect protocols for authentication through Google and Facebook. | 2 |
+| SR-015 | The system shall apply rate limiting to account creation and login to prevent abuse. | 7 |
 
 ---
 
@@ -150,10 +147,9 @@ This specification translates the Crowded product vision, problem and opportunit
 
 | ID | Statement | Priority |
 |---|---|---|
-| TR-001 | The system shall include an independently deployable ticketing source simulator that publishes events and their changes, and that can be configured to be unavailable, slow, or return invalid or duplicate data. | 9 |
+| TR-001 | The system shall include an independently deployable ticketing source simulator that publishes events and their changes. | 9 |
 | TR-002 | The system shall consist of at least two independently deployable backend components (e.g., event synchronization, notifications, core services). | 9 |
 | TR-003 | The system shall use a message broker for asynchronous communication between event synchronization and notifications. | 8 |
-| TR-004 | The system shall use a single database technology unless a requirement justifies an additional one. | 7 |
-| TR-005 | The system shall include a municipal agenda simulator that publishes public events and their changes. | 3 |
-| TR-006 | The system shall include an entrance-counter simulator that submits crowd counts through the organization API. | 5 |
-| TR-007 | The system shall cache event status and on-site information reads, invalidating the cache when the information changes. | 4 |
+| TR-004 | The system shall include a municipal agenda simulator that publishes public events and their changes. | 3 |
+| TR-005 | The system shall include an entrance-counter simulator that submits crowd counts through the organization API. | 5 |
+| TR-006 | The system shall cache event status and on-site information reads, invalidating the cache when the information changes. | 4 |
