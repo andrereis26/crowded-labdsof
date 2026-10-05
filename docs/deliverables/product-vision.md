@@ -44,8 +44,8 @@ surrounds event disruptions today.
 
 1. **Connect to an event**
    The user imports a ticket bought elsewhere (AI extracts the event details from
-   the PDF or confirmation email, with manual confirmation as a fallback), follows
-   a public event, or scans a QR code at the venue. The user can also browse
+   the PDF or confirmation email, with manual confirmation as a fallback) or
+   follows a public event. The user can also browse
    events nearby, but discovery is an entry point, not the core of the product.
 
 2. **Get notified of changes**
@@ -57,15 +57,49 @@ surrounds event disruptions today.
    On the day of the event, the user checks crowd levels, queues, organizer
    alerts, and weather, each with its source and last-update time, and reports
    incidents (lost and found, accessibility barriers, on-site problems) that are
-   routed to the organization.
+   routed to the organization. When the organization marks a report as helpful,
+   the user receives a recognition showing its impact.
 
 4. **Plan and manage an event** (organizer)
    Before the event, the organizer launches an attendance-intention poll and
    adjusts staff and entrances based on the responses (an indication, not
-   guaranteed attendance). During the event, the organizer updates crowd levels
+   guaranteed attendance). Before or during the event, the organizer can also
+   publish requests (confirmations, polls, or ideas) on the event page, marking
+   them as urgent to notify participants. During the event, the organizer updates crowd levels
    and queues through the backoffice or API, resolves incidents, and sends alerts
    (e.g., "Gate B closed, use Gate C") from an AI-generated draft that they review
-   before sending.
+   before sending. Similar incident reports are grouped by AI so that the
+   organizer handles one incident instead of many duplicates.
+
+## Principal User Workflows
+
+The diagrams below show the main workflows behind the user journeys, modelled in
+BPMN 2.0 notation (pools and lanes per actor, events, tasks, exclusive gateways
+and message flows). AI tasks are highlighted; each has a non-AI fallback path.
+The editable sources are in [`bpmn/`](bpmn/) and open in
+[bpmn.io](https://demo.bpmn.io) or Camunda Modeler.
+
+### Workflow 1 — Connect to an event
+
+![Workflow 1 — Connect to an event](images/workflow-1-connect-to-event.svg)
+
+### Workflow 2 — Official event change notification
+
+![Workflow 2 — Official event change notification](images/workflow-2-official-change-notification.svg)
+
+### Workflow 3 — Organization manages an event
+
+**Before the event**
+
+![Workflow 3a — Organization manages an event before it starts](images/workflow-3a-organization-before-event.svg)
+
+**During the event**
+
+![Workflow 3b — Organization manages an event while it runs](images/workflow-3b-organization-during-event.svg)
+
+### Workflow 4 — Incident report and recognition
+
+![Workflow 4 — Incident report and recognition](images/workflow-4-incident-report-and-recognition.svg)
 
 ## Expected Community Benefit
 Crowded reduces the impact of common event disruptions — cancellations, schedule
@@ -78,7 +112,7 @@ and a direct channel to their audience).
 ## MVP Boundary
 
 **In the MVP:**
-- Ticket wallet (ticket import), following public events, and venue QR codes
+- Ticket wallet (ticket import) and following public events
 - Minimal discovery ("near me / today")
 - Synchronization with the official event source (ticketing simulator) and change
   notifications

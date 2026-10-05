@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" id="Defs_workflow_4_incident_report_and_recognition" targetNamespace="https://crowded.example/bpmn" exporter="crowded-labdsof" exporterVersion="1.0">
+  <bpmn:collaboration id="Collab">
+    <bpmn:participant id="Pool_crowded" name="Crowded" processRef="Proc_crowded" />
+  </bpmn:collaboration>
+  <bpmn:process id="Proc_crowded" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_crowded">
+      <bpmn:lane id="Lane_P" name="Participant">
+        <bpmn:flowNodeRef>s</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>rep</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_C" name="Crowded platform">
+        <bpmn:flowNodeRef>g1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>aig</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>rule</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>rec</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>save</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>e1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>upd</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>e2</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_O" name="Organization">
+        <bpmn:flowNodeRef>inbox</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>g2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>split</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>res</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>g3</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="s" name="Incident on site">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="rep" name="Report incident: category + optional description">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="g1" name="AI service available?">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="aig" name="Group similar reports into one incident + summary">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="rule" name="Group by category, location and time window">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="inbox" name="Review incident in inbox">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="g2" name="Grouped correctly?">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="split" name="Split the group">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="res" name="Acknowledge and resolve, or send an alert">
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="g3" name="Marked as helpful?">
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+      <bpmn:outgoing>Flow_12</bpmn:outgoing>
+      <bpmn:outgoing>Flow_13</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sendTask id="rec" name="Send recognition with impact, e.g. &#x27;alert sent to 850&#x27;">
+      <bpmn:incoming>Flow_12</bpmn:incoming>
+      <bpmn:outgoing>Flow_14</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:serviceTask id="save" name="Save in private contribution history">
+      <bpmn:incoming>Flow_14</bpmn:incoming>
+      <bpmn:outgoing>Flow_15</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="e1" name="Recognised">
+      <bpmn:incoming>Flow_15</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sendTask id="upd" name="Notify reporter of resolution">
+      <bpmn:incoming>Flow_13</bpmn:incoming>
+      <bpmn:outgoing>Flow_16</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="e2" name="Resolved">
+      <bpmn:incoming>Flow_16</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="s" targetRef="rep" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="rep" targetRef="g1" />
+    <bpmn:sequenceFlow id="Flow_3" name="Yes" sourceRef="g1" targetRef="aig" />
+    <bpmn:sequenceFlow id="Flow_4" name="No" sourceRef="g1" targetRef="rule" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="aig" targetRef="inbox" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="rule" targetRef="inbox" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="inbox" targetRef="g2" />
+    <bpmn:sequenceFlow id="Flow_8" name="No" sourceRef="g2" targetRef="split" />
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="split" targetRef="inbox" />
+    <bpmn:sequenceFlow id="Flow_10" name="Yes" sourceRef="g2" targetRef="res" />
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="res" targetRef="g3" />
+    <bpmn:sequenceFlow id="Flow_12" name="Yes" sourceRef="g3" targetRef="rec" />
+    <bpmn:sequenceFlow id="Flow_13" name="No" sourceRef="g3" targetRef="upd" />
+    <bpmn:sequenceFlow id="Flow_14" sourceRef="rec" targetRef="save" />
+    <bpmn:sequenceFlow id="Flow_15" sourceRef="save" targetRef="e1" />
+    <bpmn:sequenceFlow id="Flow_16" sourceRef="upd" targetRef="e2" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram">
+    <bpmndi:BPMNPlane id="Plane" bpmnElement="Collab">
+      <bpmndi:BPMNShape id="Pool_crowded_di" bpmnElement="Pool_crowded" isHorizontal="true"><dc:Bounds x="16" y="16" width="1400" height="520" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_P_di" bpmnElement="Lane_P" isHorizontal="true"><dc:Bounds x="46" y="16" width="1370" height="104" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_C_di" bpmnElement="Lane_C" isHorizontal="true"><dc:Bounds x="46" y="120" width="1370" height="208" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_O_di" bpmnElement="Lane_O" isHorizontal="true"><dc:Bounds x="46" y="328" width="1370" height="208" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="s_di" bpmnElement="s"><dc:Bounds x="107" y="52" width="32" height="32" /><bpmndi:BPMNLabel><dc:Bounds x="86" y="89" width="74" height="26" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="rep_di" bpmnElement="rep"><dc:Bounds x="168" y="28" width="126" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="g1_di" bpmnElement="g1" isMarkerVisible="true"><dc:Bounds x="333" y="151" width="42" height="42" /><bpmndi:BPMNLabel><dc:Bounds x="214" y="132" width="130" height="26" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="aig_di" bpmnElement="aig" bioc:stroke="#c4633f" bioc:fill="#fbeee8" color:background-color="#fbeee8" color:border-color="#c4633f"><dc:Bounds x="414" y="132" width="126" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="rule_di" bpmnElement="rule"><dc:Bounds x="414" y="236" width="126" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="inbox_di" bpmnElement="inbox"><dc:Bounds x="560" y="340" width="126" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="g2_di" bpmnElement="g2" isMarkerVisible="true"><dc:Bounds x="725" y="359" width="42" height="42" /><bpmndi:BPMNLabel><dc:Bounds x="681" y="325" width="130" height="26" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="split_di" bpmnElement="split"><dc:Bounds x="683" y="444" width="126" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="res_di" bpmnElement="res"><dc:Bounds x="806" y="340" width="126" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="g3_di" bpmnElement="g3" isMarkerVisible="true"><dc:Bounds x="971" y="359" width="42" height="42" /><bpmndi:BPMNLabel><dc:Bounds x="927" y="406" width="130" height="26" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="rec_di" bpmnElement="rec"><dc:Bounds x="1052" y="132" width="126" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="save_di" bpmnElement="save"><dc:Bounds x="1198" y="132" width="126" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="e1_di" bpmnElement="e1"><dc:Bounds x="1353" y="156" width="32" height="32" /><bpmndi:BPMNLabel><dc:Bounds x="1325" y="193" width="88" height="13" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="upd_di" bpmnElement="upd"><dc:Bounds x="1052" y="236" width="126" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="e2_di" bpmnElement="e2"><dc:Bounds x="1245" y="260" width="32" height="32" /><bpmndi:BPMNLabel><dc:Bounds x="1224" y="297" width="74" height="13" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1"><di:waypoint x="139" y="68" /><di:waypoint x="168" y="68" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2"><di:waypoint x="294" y="68" /><di:waypoint x="354" y="68" /><di:waypoint x="354" y="151" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3"><di:waypoint x="375" y="172" /><di:waypoint x="414" y="172" /><bpmndi:BPMNLabel><dc:Bounds x="381" y="154" width="24" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4"><di:waypoint x="354" y="193" /><di:waypoint x="354" y="276" /><di:waypoint x="414" y="276" /><bpmndi:BPMNLabel><dc:Bounds x="360" y="215" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5"><di:waypoint x="540" y="172" /><di:waypoint x="623" y="172" /><di:waypoint x="623" y="340" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6"><di:waypoint x="540" y="276" /><di:waypoint x="623" y="276" /><di:waypoint x="623" y="340" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7"><di:waypoint x="686" y="380" /><di:waypoint x="725" y="380" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8"><di:waypoint x="746" y="401" /><di:waypoint x="746" y="444" /><bpmndi:BPMNLabel><dc:Bounds x="752" y="423" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9"><di:waypoint x="683" y="484" /><di:waypoint x="623" y="484" /><di:waypoint x="623" y="420" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10_di" bpmnElement="Flow_10"><di:waypoint x="767" y="380" /><di:waypoint x="806" y="380" /><bpmndi:BPMNLabel><dc:Bounds x="773" y="362" width="24" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11_di" bpmnElement="Flow_11"><di:waypoint x="932" y="380" /><di:waypoint x="971" y="380" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_12_di" bpmnElement="Flow_12"><di:waypoint x="992" y="359" /><di:waypoint x="992" y="172" /><di:waypoint x="1052" y="172" /><bpmndi:BPMNLabel><dc:Bounds x="997" y="339" width="24" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_13_di" bpmnElement="Flow_13"><di:waypoint x="1013" y="380" /><di:waypoint x="1115" y="380" /><di:waypoint x="1115" y="316" /><bpmndi:BPMNLabel><dc:Bounds x="1019" y="362" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_14_di" bpmnElement="Flow_14"><di:waypoint x="1178" y="172" /><di:waypoint x="1198" y="172" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_15_di" bpmnElement="Flow_15"><di:waypoint x="1324" y="172" /><di:waypoint x="1353" y="172" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_16_di" bpmnElement="Flow_16"><di:waypoint x="1178" y="276" /><di:waypoint x="1245" y="276" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

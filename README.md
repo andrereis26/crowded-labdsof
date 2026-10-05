@@ -6,9 +6,14 @@ Crowded is a platform that helps people discover, manage and attend events, prov
 
 ## Documents
 
+- [Assignment](/docs/LABDSOF-26-27-Assignment.md)
 - [Problem and Opportunity Report](/docs/deliverables/problem-and-opportunity-report.md)
-- [Product Vision](/docs/deliverables/product-vision.md)
+- [Market and Competitor Analysis Report](/docs/deliverables/market-and-competitor-analysis-report.md)
 - [User Research](/docs/deliverables/user-research.md)
+- [Product Vision](/docs/deliverables/product-vision.md)
+- [Responsible AI Opportunity Assessment](/docs/deliverables/responsible-ai-opportunity-assessment.md)
+- [Requirements Specification](/docs/deliverables/requirements.md)
+- [Definition of Ready and Definition of Done](/docs/deliverables/definition-of-ready-and-done.md)
 
 ## Team
 
