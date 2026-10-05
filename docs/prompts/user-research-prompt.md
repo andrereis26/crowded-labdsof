@@ -1,27 +1,27 @@
 ## Context
-Based on the provided Crownd project document and the assignment, me and my group reviewed some documented user experiences from existing event platforms as our research method to better understand the problems Crownd is trying to solve.
+Based on the provided Crowded project document and the assignment, me and my group reviewed some documented user experiences from existing event platforms as our research method to better understand the problems Crowded is trying to solve.
 
 ## Research
-We reviewed user experiences from Songkick, Bandsintown and Eventbrite. We looked at reviews about discovering, planning and attending events.
+We reviewed user experiences from Songkick, Bandsintown, Eventbrite and Festing. We looked at reviews about discovering, planning and attending events.
 The reviews mainly focused on:
 
 - event discovery and search
 - notifications and event information
 - ticket access and management
 - personalised recommendations
-- problems that Crownd could potentially solve
+- problems that Crowded could potentially solve
 
-The reviews showed some problems and positive experiences that are relevant to Crownd.
+The reviews showed some problems and positive experiences that are relevant to Crowded.
 
 - Event discovery: some users had problems finding available events, while another user liked being able to see upcoming shows in their area.
 - Notifications and event information: one Bandsintown user reported not receiving alerts, while another had a positive experience with reminders and personalised event updates.
-- Social features: one Songkick user had difficulty sharing an event with friends, which relates to Crownd's idea of connecting people interested in the same events.
+- Social features: one Songkick user had difficulty sharing an event with friends, which relates to Crowded's idea of connecting people interested in the same events.
 - Personalisation: one Eventbrite user liked receiving updates based on their personal preferences.
 
-The findings support some of Crownd's features, especially personalised recommendations, radius-based event discovery, centralised event information, ticket management and event notifications.
+The findings support some of Crowded's features, especially personalised recommendations, radius-based event discovery, centralised event information, ticket management and event notifications.
 The reviews about finding events in a specific area and receiving personalised updates support location-based and personalised discovery. The notification problems also show the importance of reliable event notifications.
 Other features, such as crowd reports, organiser interest polls and AI-powered recommendations, are based mainly on our assumptions and ideas. These would need further research before being considered validated solutions.
-The research was based only on user reviews from existing event platforms. We do not know much about the people who wrote the reviews, and these individual experiences cannot represent all users. We also did not have quantitative data showing how common these problems are. Further research with Crownd's target users would be needed.
+The research was based only on user reviews from existing event platforms. We do not know much about the people who wrote the reviews, and these individual experiences cannot represent all users. We also did not have quantitative data showing how common these problems are. Further research with Crowded's target users would be needed.
 
 ## Reviews
 ### Songkick
@@ -40,7 +40,7 @@ The research was based only on user reviews from existing event platforms. We do
 - "I love Eventbrite. It makes registering for events easy and shares updates about interesting events tailored to my personal preference. I highly recommend."
 
 ## Goal
-Based on the research above, create the User Research section for the Sprint 1 report. Follow the assignment requirements and use only the information provided here and in the Crownd project document.
+Based on the research above, create the User Research section for the Sprint 1 report. Follow the assignment requirements and use only the information provided here and in the Crowded project document.
 
 ## Instructions
 Carefully review the items mentioned in the PDF to ensure you follow the guidelines and you don't miss any important detail.
