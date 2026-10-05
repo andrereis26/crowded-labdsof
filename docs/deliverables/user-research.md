@@ -9,6 +9,7 @@ The platforms reviewed were:
 * **Songkick**
 * **Bandsintown**
 * **Eventbrite**
+* **Festing**
 
 The team analysed user reviews related to **discovering, planning and attending events**. The research focused mainly on the following areas:
 
@@ -29,6 +30,8 @@ The reviewed experiences showed both **problems and positive experiences** that 
 One Eventbrite user reported difficulties seeing all available results because the search stopped loading after a few scrolls. The user explained that this made it difficult to explore what was available without narrowing the search using keywords.
 
 In contrast, a Bandsintown user described being able to see upcoming shows in their area as a positive experience.
+
+The review of Festing also showed an existing approach focused on discovering events based on users' interests and location. This is relevant to Crowded because it demonstrates the importance of making relevant events easier to discover rather than requiring users to search across multiple sources.
 
 These findings show that seeing local events is valued by users. In Crowded, discovery is kept as a **secondary entry point** (a simple "near me / today" list), since existing platforms already address it and it is not the core of the product.
 
@@ -68,6 +71,8 @@ These experiences suggest that **event notifications can be useful but reliabili
 
 A Songkick user reported difficulty finding a way to share an event with friends who might be interested in attending.
 
+The review of Festing also showed that social interaction can be incorporated directly into the event-discovery experience, with users able to interact around events and see other participants.
+
 This finding is based on **one individual review**, so it should not be considered sufficient evidence that social sharing is a widespread problem. Social features are out of scope for Crowded's MVP.
 
 ### Review evidence
@@ -81,6 +86,8 @@ This finding is based on **one individual review**, so it should not be consider
 ### Personalisation
 
 A positive Eventbrite review described receiving updates about interesting events that were tailored to the user's personal preferences.
+
+The review of Festing also showed a focus on discovering events according to users' interests and location.
 
 This shows that personalised updates can be valued, but personalised recommendations are related to event discovery and are therefore out of scope for Crowded's MVP.
 
@@ -96,15 +103,17 @@ This shows that personalised updates can be valued, but personalised recommendat
 
 The main findings can be summarised as follows:
 
-| Finding                              | Evidence from reviews                                                       | Relevance to Crowded                                       |
-| ------------------------------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Event discovery can be difficult     | Eventbrite user had problems loading and exploring all search results       | Discovery is kept only as a secondary entry point          |
-| Local discovery can be useful        | Bandsintown user valued seeing upcoming shows in their area                 | Supports a simple "near me / today" list                   |
-| Event notifications can fail         | Bandsintown user did not receive alerts despite having them enabled         | Supports reliable event change notifications (core)        |
-| Event reminders can be useful        | Bandsintown user had a positive experience with reminders                   | Supports notifications about the user's events             |
-| Ticket access can be problematic     | Bandsintown user had difficulty accessing tickets while travelling          | Supports the ticket wallet                                 |
-| Event sharing can be difficult       | Songkick user had difficulty sharing an event with friends                  | Out of scope for the MVP                                   |
-| Personalised updates can be valuable | Eventbrite user liked updates based on personal preferences                 | Out of scope for the MVP (related to discovery)            |
+| Finding                                                     | Evidence from reviews                                                                | Relevance to Crowded                                                           |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Event discovery can be difficult                            | Eventbrite user had problems loading and exploring all search results                | Discovery is kept only as a secondary entry point                              |
+| Local discovery can be useful                               | Bandsintown user valued seeing upcoming shows in their area                          | Supports a simple "near me / today" list                                       |
+| Existing platforms use location and interests for discovery | Festing provides event discovery based on user interests and location                | Supports the relevance of personalised and location-based discovery            |
+| Event notifications can fail                                | Bandsintown user did not receive alerts despite having them enabled                  | Supports reliable event change notifications (core)                            |
+| Event reminders can be useful                               | Bandsintown user had a positive experience with reminders                            | Supports notifications about the user's events                                 |
+| Ticket access can be problematic                            | Bandsintown user had difficulty accessing tickets while travelling                   | Supports the ticket wallet                                                     |
+| Event sharing can be difficult                              | Songkick user had difficulty sharing an event with friends                           | Out of scope for the MVP                                                       |
+| Social interaction can be part of event discovery           | Festing incorporates social interaction around events                                | Provides a reference for potential community features                          |
+| Personalised updates can be valuable                        | Eventbrite user liked updates based on personal preferences                          | Out of scope for the MVP (related to discovery)                                |
 
 ---
 
@@ -161,4 +170,4 @@ These decisions are consistent with Crowded's current MVP, which includes:
 * Provenance labels
 * Weather alerts
 
-The research therefore provides **initial evidence for several parts of Crowded's product direction**, particularly event change notifications and ticket management. At the same time, the research makes clear that the organizer-side and on-site capabilities remain assumptions that need further validation.
+The research therefore provides **initial evidence for several parts of Crowded's product direction**, particularly event change notifications and ticket management. The review of Festing also provides a useful reference for existing approaches to combining event discovery with social interaction.
