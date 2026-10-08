@@ -18,7 +18,8 @@ organizations can make decisions based on current and reliable information.
   and has faced overcrowded venues and long queues she could have avoided
 - **How Crowded helps:** she imports her tickets or follows public events, receives
   notifications when an event changes, and checks crowd levels, queues, and
-  organizer alerts before leaving home
+  organizer alerts before leaving home — including estimates reported and
+  confirmed by other participants when the organizer has published none
 
 ### Persona 2 — Miguel, the Organizer
 - **Age/context:** 35 years old, event manager at a local cultural association
@@ -36,7 +37,8 @@ Unlike ticketing platforms and event-discovery apps, which stop being useful onc
 the ticket is bought, Crowded follows the event until it ends. It combines three
 sources of information in one product — official changes synchronized from the
 ticketing source, on-site conditions and alerts published by the organization, and
-incidents reported by participants — and always shows where each piece of
+reports from participants, confirmed by other participants with a single tap — and
+always shows where each piece of
 information comes from and when it was last updated, reducing the uncertainty that
 surrounds event disruptions today.
 
@@ -55,10 +57,21 @@ surrounds event disruptions today.
 
 3. **Check conditions and decide**
    On the day of the event, the user checks crowd levels, queues, organizer
-   alerts, and weather, each with its source and last-update time, and reports
-   incidents (lost and found, accessibility barriers, on-site problems) that are
-   routed to the organization. When the organization marks a report as helpful,
-   the user receives a recognition showing its impact.
+   alerts, and weather, each with its source and last-update time. The user reports
+   what they see by choosing a predefined category (crowd level, queue length,
+   lost and found, accessibility barrier, on-site problem) and the report is routed
+   to the organization. For categories the organization has enabled, other
+   participants connected to the event are asked to confirm it with a single
+   "Yes" or "No"; their answers raise or lower the report's confidence (Low,
+   Medium, High). Reports with Medium or High confidence appear on the event page
+   as participant estimates, always marked as estimates that may not reflect
+   reality — for crowd level and queues, only when the organization has no current
+   value. Personal reports such as lost and found are never shown publicly or sent
+   for confirmation. To report (other than personal categories) or to answer a
+   confirmation, the user must allow location and be near the venue; Crowded
+   explains that location is only used to ensure better report quality, checks it
+   once at that moment and does not store it. When the organization marks a report as helpful, the user
+   receives a recognition showing its impact.
 
 4. **Plan and manage an event** (organizer)
    Before the event, the organizer launches an attendance-intention poll and
@@ -97,9 +110,9 @@ The editable sources are in [`bpmn/`](bpmn/) and open in
 
 ![Workflow 3b — Organization manages an event while it runs](images/workflow-3b-organization-during-event.svg)
 
-### Workflow 4 — Incident report and recognition
+### Workflow 4 — Report, confirmation and recognition
 
-![Workflow 4 — Incident report and recognition](images/workflow-4-incident-report-and-recognition.svg)
+![Workflow 4 — Report, confirmation and recognition](images/workflow-4-incident-report-and-recognition.svg)
 
 ## Expected Community Benefit
 Crowded reduces the impact of common event disruptions — cancellations, schedule
@@ -119,7 +132,12 @@ and a direct channel to their audience).
 - Organizer backoffice: crowd levels, queues, incidents, alerts, and
   attendance-intention polls
 - Organizer API for crowd levels and queues (with an entrance-counter simulator)
-- Incident reporting by participants
+- Participant reports with predefined categories (including crowd level and
+  queues), "Yes"/"No" confirmations by other participants, and a rule-based
+  confidence level shown with every participant estimate
+- Per-event choice, by the organization, of which categories trigger confirmations
+- Reporting and confirming limited to users near the venue (one-time approximate
+  location check, not stored)
 - Provenance labels on all information
 - Threshold-based weather alerts
 
@@ -129,15 +147,32 @@ and a direct channel to their audience).
 - Social features and gamification
 - Zone-level crowd information
 - Real integrations with ticketing platforms and access-control systems
+- Custom report categories defined by organizations
+- Automatic warnings, temporary restrictions and bans from reporting for users whose
+  reports are repeatedly unhelpful
+- Automatic detection that a user has left the event (to be investigated first)
 
 ## Product Risks
 
 - **Organizer adoption** — crowd levels, queues, and alerts depend on organizations
-  using the backoffice or API; without them, only official changes and weather
-  are available.
+  using the backoffice or API; without them, only official changes, weather and
+  participant estimates are available.
 - **Stale information** — if organizations do not keep data updated, it loses
   value; last-update times must always be visible and outdated data hidden.
 - **False alerts** — only the official source and verified organizations may
   publish official information.
 - **Privacy** — tickets contain personal data and access codes; only the minimum
-  data is stored, and participant incident reports do not expose user identity.
+  data is stored, and participant reports and confirmations do not expose user
+  identity.
+- **Unreliable or abusive reports** — participant reports can be wrong, outdated or
+  deliberately false; they are only shown once other participants confirm them,
+  their confidence decays over time, they are always labelled as estimates, only
+  users near the venue can report or confirm, and reports and confirmations are
+  rate-limited. Automatic restriction of users with
+  repeatedly unhelpful reports is planned after the MVP.
+- **Location refusal** — users who do not allow location cannot report (except
+  personal categories) or confirm, which may reduce the number of reports; the app
+  explains why location is requested and uses it only once, without storing it.
+- **Prompt fatigue** — asking every participant to confirm every report would be
+  intrusive; only a small sample is asked, each user is asked at most once in a
+  given period, and users can turn confirmation prompts off per event.
