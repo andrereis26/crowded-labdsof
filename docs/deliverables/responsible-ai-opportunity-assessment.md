@@ -54,7 +54,7 @@ Grouping distinct problems together could hide an incident, while failing to gro
 
 **Ticket extraction:** Build a synthetic dataset of tickets and confirmation emails based on the formats of common ticketing platforms, without real personal data. Include difficult cases such as scanned or low-quality files, multiple tickets in one file, missing fields, other languages and embedded instructions. Measure field-level accuracy, correct event-match rate, the percentage of tickets requiring manual correction, latency and cost per ticket, and compare the time to add a ticket against manual entry.
 
-**Alert drafting:** Build a set of scenarios (entrance closures, capacity reached, weather warnings, schedule changes) with the expected key facts. Measure whether every key fact is present and no fact is invented, how often organizers edit the draft, and the time to send an alert compared with using templates. Include adverse cases such as contradictory input and injected instructions in incident descriptions. A draft with an invented fact is a failure.
+**Alert drafting:** Build a set of scenarios (entrance closures, capacity reached, weather warnings, schedule changes) with the expected key facts. Measure whether every key fact is present and no fact is invented, how often organizers edit the draft, and the time to send an alert compared with writing it manually. Include adverse cases such as contradictory input and injected instructions in incident descriptions. A draft with an invented fact is a failure.
 
 **Incident report grouping:** Build a synthetic dataset of incident reports for simulated events, labelled with the incident each report belongs to. Include difficult cases such as different wording for the same problem, the same wording for problems in different locations, reports in other languages, very short or vague reports and embedded instructions. Measure grouping precision (reports wrongly merged) and recall (duplicates left separate), how often organizations split groups, and latency. Compare against the non-AI baseline of grouping by category, location and time window. Wrongly merging two distinct incidents is treated as more serious than leaving duplicates separate.
 
@@ -62,6 +62,6 @@ Grouping distinct problems together could hide an incident, while failing to gro
 
 For ticket extraction, the fallback is a manual entry form with non-AI event matching by name, date and venue. If the AI service is unavailable, the user is shown the form directly.
 
-For alert drafting, the baseline is a set of predefined alert templates with fields the organizer fills in. If the AI service is unavailable, the organizer uses the templates or writes the alert manually.
+For alert drafting, the baseline is writing the alert manually: the organizer chooses the alert type and writes the message without AI assistance. If the AI service is unavailable, the organizer is taken directly to this manual editor. No predefined templates are provided.
 
 For incident report grouping, the baseline is rule-based grouping by category, location and time window. If the AI service is unavailable, reports are grouped with these rules, or shown individually in chronological order.
