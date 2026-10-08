@@ -41,9 +41,8 @@ This specification translates the Crowded product vision, problem and opportunit
 | FR-017 | The system shall allow an organization to request ownership of an existing synchronized event, subject to administrator approval. | 7 |
 | FR-018 | The system shall allow an organization to publish the current crowd level of its event (low, moderate, high, full) through the backoffice. | 10 |
 | FR-019 | The system shall allow an organization to publish queue waiting times for points of its event (e.g., entrances, ticket office, bars, toilets). | 8 |
-| FR-020 | The system shall allow an organization to send an operational alert (e.g., entrance closure, capacity reached, schedule delay) to every user connected to its event. | 10 |
+| FR-020 | The system shall allow an organization to send an operational alert to every user connected to its event, choosing an alert type (e.g., entrance closure, capacity reached, schedule delay) and writing its message, with or without an AI-assisted draft. | 10 |
 | FR-021 | The system shall generate an AI-assisted alert draft from the organization's brief input and the event's current state, which the organization must review, edit and approve before it is sent. | 8 |
-| FR-022 | The system shall provide predefined alert templates that the organization can fill in and send without AI assistance. | 9 |
 | FR-023 | The system shall present the organization with a live dashboard showing the event's crowd level, queues, open incidents and alerts sent. | 9 |
 | FR-024 | The system shall allow an organization to define its event's capacity and show the current crowd level relative to it. | 7 |
 | FR-025 | The system shall provide an API through which an organization's systems (e.g., entrance counters) can submit crowd counts and queue times automatically. | 6 |
@@ -113,7 +112,7 @@ This specification translates the Crowded product vision, problem and opportunit
 | NFR-003 | Notifications shall be delivered at least once and processed idempotently, so that a user never receives the same notification twice for the same event change. | 9 |
 | NFR-004 | Asynchronous workflows shall retry failed processing with backoff and move repeatedly failing messages to a dead-letter queue for inspection. | 8 |
 | NFR-005 | When an external event source is unavailable, delayed or returns invalid data, the system shall keep operating, reject and log invalid data, and show users the time of the last successful synchronization. | 9 |
-| NFR-006 | When the AI service is unavailable, the system shall fall back to manual ticket entry and alert templates so that the principal workflows continue. | 9 |
+| NFR-006 | When the AI service is unavailable, the system shall fall back to manual ticket entry and manually written alerts so that the principal workflows continue. | 9 |
 | NFR-007 | The system shall never present AI-generated content as verified fact; AI output shall be labelled until confirmed by the user or organization. | 9 |
 | NFR-008 | Information published by an organization shall be visible to connected users within 30 seconds. | 8 |
 | NFR-009 | 95% of user requests shall receive a response within 2 seconds, excluding AI-assisted ticket extraction, which shall complete within 30 seconds. | 8 |
