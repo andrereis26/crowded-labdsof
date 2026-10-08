@@ -1,0 +1,585 @@
+@startuml domain-model
+' Crowded — Domain Model (MVP)
+' Sources: product-vision.md, requirements.md, responsible-ai-opportunity-assessment.md
+
+title Crowded — Domain Model
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype polyline
+skinparam nodesep 40
+skinparam ranksep 60
+hide empty members
+hide circle
+
+skinparam class {
+  BackgroundColor<<Aggregate Root>> #FFF2CC
+  BorderColor<<Aggregate Root>> #B8860B
+  BackgroundColor<<Entity>> #DAE8FC
+  BackgroundColor<<Value Object>> #E1F5E1
+  BackgroundColor<<External>> #EEEEEE
+}
+
+' =====================================================================
+' Identity & Access
+' =====================================================================
+package "Identity & Access" {
+  class User <<Aggregate Root>> {
+    id
+    email
+    passwordHash
+    role : Role
+    createdAt
+  }
+
+  class LocationConsent <<Value Object>> {
+    granted : boolean
+    approximateLocation : GeoLocation [0..1]
+    manualLocation : String [0..1]
+  }
+
+  class Organization <<Aggregate Root>> {
+    id
+    name
+    verificationStatus : VerificationStatus
+    verifiedAt [0..1]
+  }
+
+  class ApiCredential <<Entity>> {
+    keyId
+    secretHash
+    scope : events
+    createdAt
+    revokedAt [0..1]
+  }
+
+  enum Role {
+    PARTICIPANT
+    ORGANIZATION_MEMBER
+    ADMINISTRATOR
+  }
+
+  enum VerificationStatus {
+    PENDING
+    VERIFIED
+    REJECTED
+  }
+}
+
+' =====================================================================
+' Event Catalog & Official Changes
+' =====================================================================
+package "Event Catalog" {
+  class Event <<Aggregate Root>> {
+    id
+    name
+    description
+    startDateTime
+    endDateTime
+    status : EventStatus
+    capacity : int [0..1]
+    visibility : PUBLIC | TICKETED
+  }
+
+  class EventLocation <<Value Object>> {
+    venueName
+    address
+    coordinates : GeoLocation
+  }
+
+  class EventChange <<Entity>> {
+    id
+    type : ChangeType
+    previousValue
+    newValue
+    provenance : Provenance
+  }
+
+  class ExternalEventSource <<Aggregate Root>> {
+    id
+    type : SourceKind
+    lastSuccessfulSyncAt
+  }
+
+  class ExternalEventReference <<Value Object>> {
+    externalId
+    lastSeenHash
+  }
+
+  class OwnershipRequest <<Entity>> {
+    id
+    status : RequestDecision
+    requestedAt
+    decidedAt [0..1]
+  }
+
+  enum EventStatus {
+    SCHEDULED
+    POSTPONED
+    RELOCATED
+    CANCELLED
+    ONGOING
+    ENDED
+  }
+
+  enum ChangeType {
+    CANCELLATION
+    POSTPONEMENT
+    TIME_CHANGE
+    VENUE_CHANGE
+    DETAILS_UPDATE
+  }
+
+  enum SourceKind {
+    TICKETING_SOURCE
+    MUNICIPAL_AGENDA
+  }
+
+  enum RequestDecision {
+    PENDING
+    APPROVED
+    REJECTED
+  }
+}
+
+' =====================================================================
+' Participation (ticket wallet & following)
+' =====================================================================
+package "Participation" {
+  abstract class EventConnection <<Aggregate Root>> {
+    id
+    connectedAt
+    notificationPreference : NotificationPreference
+    confirmationPromptsEnabled : boolean
+    lastPromptedAt [0..1]
+  }
+
+  class Ticket <<Entity>> {
+    gate [0..1]
+    sector [0..1]
+    seat [0..1]
+    importMethod : ImportMethod
+    status : TicketStatus
+  }
+
+  class Follow <<Entity>> {
+    going : boolean
+  }
+
+  class TicketExtraction <<Entity>> {
+    id
+    extractedFields
+    fieldConfidence
+    aiGenerated : boolean
+    createdAt
+  }
+
+  class EventMatchCandidate <<Value Object>> {
+    confidence : float
+  }
+
+  enum ImportMethod {
+    PDF_UPLOAD
+    EMAIL_PASTE
+    MANUAL_ENTRY
+  }
+
+  enum TicketStatus {
+    PENDING_CONFIRMATION
+    CONFIRMED
+  }
+
+  enum NotificationPreference {
+    ALL_REQUESTS
+    URGENT_ONLY
+    NONE
+  }
+}
+
+' =====================================================================
+' On-Site Information
+' =====================================================================
+package "On-Site Information" {
+  class CrowdStatus <<Value Object>> {
+    level : CrowdLevel
+    headCount : int [0..1]
+    provenance : Provenance
+  }
+
+  class QueueTime <<Value Object>> {
+    pointName
+    kind : QueuePointKind
+    waitMinutes : int
+    provenance : Provenance
+  }
+
+  class WeatherForecast <<Value Object>> {
+    date
+    conditions
+    temperature
+    severeWeather : boolean
+    provenance : Provenance
+  }
+
+  class WeatherThreshold <<Value Object>> {
+    metric
+    limit
+  }
+
+  class Provenance <<Value Object>> {
+    sourceType : SourceType
+    sourceName
+    lastUpdatedAt
+    confirmed : boolean
+  }
+
+  enum CrowdLevel {
+    LOW
+    MODERATE
+    HIGH
+    FULL
+  }
+
+  enum QueuePointKind {
+    ENTRANCE
+    TICKET_OFFICE
+    BAR
+    TOILET
+    OTHER
+  }
+
+  enum SourceType {
+    OFFICIAL_SOURCE
+    ORGANIZATION
+    PARTICIPANT_ESTIMATE
+    AI_GENERATED
+    EXTERNAL_SERVICE
+  }
+}
+
+' =====================================================================
+' Organizer Communication
+' =====================================================================
+package "Organizer Communication" {
+  class Alert <<Aggregate Root>> {
+    id
+    type : AlertType
+    message
+    status : AlertStatus
+    sentAt [0..1]
+    recipientsCount [0..1]
+  }
+
+  class AlertDraft <<Entity>> {
+    organizerInput
+    draftText
+    factsUsed
+    aiGenerated : boolean
+  }
+
+  class EventRequest <<Aggregate Root>> {
+    id
+    type : RequestType
+    text
+    urgent : boolean
+    publishedAt
+    closesAt [0..1]
+  }
+
+  class RequestOption <<Value Object>> {
+    label
+  }
+
+  class RequestResponse <<Entity>> {
+    answer
+    respondedAt
+  }
+
+  class AttendancePoll <<Aggregate Root>> {
+    id
+    question
+    proposedEventDescription [0..1]
+    opensAt
+    closesAt
+  }
+
+  class PollResponse <<Entity>> {
+    intention : AttendanceIntention
+    respondedAt
+  }
+
+  enum AlertType {
+    ENTRANCE_CLOSURE
+    CAPACITY_REACHED
+    SCHEDULE_DELAY
+    WEATHER_WARNING
+    OTHER
+  }
+
+  enum AlertStatus {
+    DRAFT
+    APPROVED
+    SENT
+  }
+
+  enum RequestType {
+    CONFIRMATION
+    POLL
+    IDEA
+  }
+
+  enum AttendanceIntention {
+    WILL_ATTEND
+    MAYBE
+    WILL_NOT_ATTEND
+  }
+}
+
+' =====================================================================
+' Reports, Confirmations & Incidents
+' =====================================================================
+package "Reports & Incidents" {
+  class Report <<Aggregate Root>> {
+    id
+    description [0..1]
+    reportedCrowdLevel : CrowdLevel [0..1]
+    reportedQueuePoint [0..1]
+    reportedWaitMinutes : int [0..1]
+    reportedAt
+    locationVerified : boolean
+    confidence : Confidence
+  }
+
+  class ReportCategory <<Entity>> {
+    code
+    name
+    personal : boolean
+    promptsEnabledByDefault : boolean
+  }
+
+  class EventCategorySetting <<Entity>> {
+    promptsEnabled : boolean
+  }
+
+  class Confirmation <<Entity>> {
+    answer : ConfirmationAnswer
+    answeredAt
+    locationVerified : boolean
+  }
+
+  class Confidence <<Value Object>> {
+    score : float
+    level : ConfidenceLevel
+    computedAt
+  }
+
+  class Incident <<Aggregate Root>> {
+    id
+    summary
+    status : IncidentStatus
+    groupingMethod : GroupingMethod
+    createdAt
+  }
+
+  class Recognition <<Entity>> {
+    id
+    impact
+    reachedUsers : int [0..1]
+    grantedAt
+  }
+
+  enum ConfirmationAnswer {
+    YES
+    NO
+  }
+
+  enum ConfidenceLevel {
+    LOW
+    MEDIUM
+    HIGH
+  }
+
+  enum IncidentStatus {
+    OPEN
+    ACKNOWLEDGED
+    RESOLVED
+  }
+
+  enum GroupingMethod {
+    AI_SIMILARITY
+    CATEGORY_TIME_WINDOW
+    MANUAL_SPLIT
+  }
+}
+
+' =====================================================================
+' Notifications & Audit
+' =====================================================================
+package "Notifications & Audit" {
+  class Notification <<Aggregate Root>> {
+    id
+    type : NotificationType
+    title
+    body
+    deduplicationKey
+    createdAt
+    deliveredAt [0..1]
+    readAt [0..1]
+  }
+
+  class AuditLogEntry <<Entity>> {
+    id
+    action
+    targetType
+    targetId
+    occurredAt
+  }
+
+  enum NotificationType {
+    OFFICIAL_CHANGE
+    OPERATIONAL_ALERT
+    URGENT_REQUEST
+    SEVERE_WEATHER
+    INCIDENT_STATUS
+    RECOGNITION
+    CONFIRMATION_REQUEST
+  }
+}
+
+' =====================================================================
+' Relationships
+' =====================================================================
+
+' --- Identity & Access
+User "1" *-- "0..1" LocationConsent
+Organization "0..1" --> "1..*" User : has members
+Organization "1" *-- "0..*" ApiCredential
+User "0..1" --> "0..*" Organization : verifies\n(administrator)
+
+' --- Event Catalog
+Organization "0..1" --> "0..*" Event : owns
+Event "1" *-- "1" EventLocation : held at
+Event "1" *-- "0..*" EventChange : change history
+ExternalEventSource "1" *-- "0..*" ExternalEventReference
+ExternalEventReference "0..1" --> "1" Event : synchronizes
+Organization "1" --> "0..*" OwnershipRequest : submits
+OwnershipRequest "0..*" --> "1" Event : for
+User "0..1" --> "0..*" OwnershipRequest : decides\n(administrator)
+
+' --- Participation
+EventConnection <|-- Ticket
+EventConnection <|-- Follow
+User "1" *-- "0..*" EventConnection : wallet / follows
+EventConnection "0..*" --> "1" Event : connects to
+Ticket "1" *-- "0..1" TicketExtraction
+TicketExtraction "1" *-- "0..*" EventMatchCandidate
+EventMatchCandidate "0..*" --> "1" Event
+
+' --- On-Site Information
+Event "1" *-- "0..1" CrowdStatus : current crowd
+Event "1" *-- "0..*" QueueTime : current queues
+Event "1" -- "0..*" WeatherForecast
+WeatherForecast ..> WeatherThreshold : evaluated against
+CrowdStatus ..> Provenance
+QueueTime ..> Provenance
+EventChange ..> Provenance
+Provenance ..> SourceType
+
+' --- Organizer Communication
+Event "1" -- "0..*" Alert
+Alert "1" *-- "0..1" AlertDraft
+Organization "1" --> "0..*" Alert : approves & sends
+
+Event "1" -- "0..*" EventRequest : event page
+EventRequest "1" *-- "0..*" RequestOption
+EventRequest "1" *-- "0..*" RequestResponse
+User "1" -- "0..*" RequestResponse
+
+Organization "1" --> "0..*" AttendancePoll : launches
+AttendancePoll "0..*" --> "0..1" Event : for
+AttendancePoll "1" *-- "0..*" PollResponse
+User "1" -- "0..*" PollResponse
+
+' --- Reports, confirmations & incidents
+Event "1" -- "0..*" Report
+User "1" --> "0..*" Report : reports\n(identity not public)
+Report "0..*" --> "1" ReportCategory : classified as
+Event "1" *-- "0..*" EventCategorySetting : set by organization
+EventCategorySetting "0..*" --> "1" ReportCategory
+Report "1" *-- "0..*" Confirmation
+User "1" --> "0..*" Confirmation : answers\n(anonymous)
+Report *-- Confidence
+Confidence ..> ConfidenceLevel
+Incident "1" o-- "1..*" Report : groups
+Event "1" -- "0..*" Incident
+Incident "0..1" -- "0..*" Alert : may trigger
+Report "1" --> "0..1" Recognition : earns\n(when marked helpful)
+
+' --- Notifications & Audit
+User "1" --> "0..*" Notification : receives
+Notification "0..*" ..> "1" Event : about
+AuditLogEntry "0..*" --> "0..1" User : actor
+AuditLogEntry ..> Event : records changes,\nalerts, incident status
+
+note right of Provenance
+  Every piece of event information carries
+  its source and last-update time (FR-032).
+  Stale on-site info is flagged/hidden (FR-033).
+  AI output stays labelled until confirmed (NFR-007).
+end note
+
+note bottom of Notification
+  Triggered by: EventChange, Alert, urgent EventRequest,
+  severe WeatherForecast, Incident status change, Recognition,
+  Report needing confirmation (sampled connected users,
+  capped per user via EventConnection.lastPromptedAt).
+  Delivered at-least-once, processed idempotently
+  (NFR-003): deduplicationKey = recipient + trigger
+  (e.g. userId + EventChange.id) and is unique, so a
+  redelivered message never creates a second notification.
+  Official changes and operational alerts ignore
+  NotificationPreference (FR-041).
+end note
+
+note bottom of Incident
+  AI groups similar reports; fallback groups by
+  category and time window (FR-053). Grouping never
+  discards or resolves reports.
+end note
+
+note right of Confidence
+  Rule-based (FR-058): starts LOW, YES raises it,
+  NO lowers it, decays over time. MEDIUM or HIGH
+  reports appear on the event page as participant
+  estimates (FR-059); crowd and queue estimates only
+  when the organization has no current value.
+  One answer per user per report; reporters cannot
+  confirm their own reports (SR-016).
+  Reporting (non-personal categories) and answering
+  require location consent and an approximate location
+  within the venue radius (FR-064). The location is
+  checked once and not stored: only locationVerified
+  is kept (SR-017).
+end note
+
+note bottom of ReportCategory
+  Predefined: CROWD_LEVEL, QUEUE_LENGTH,
+  LOST_AND_FOUND (personal), ACCESSIBILITY_BARRIER,
+  ON_SITE_PROBLEM. Personal categories never trigger
+  prompts or public display. The owning organization
+  overrides promptsEnabled per event (FR-060);
+  events without an owner use the defaults.
+end note
+
+legend top left
+  **Notation**
+  A --> B : label   association, read as "A label B"
+  A -- B            association without a reading direction
+  A *-- B           composition (B cannot exist without A)
+  A o-- B           aggregation (A groups existing B)
+  A <|-- B          B is a kind of A
+  A ..> B           dependency (A uses / is based on B)
+endlegend
+
+@enduml
