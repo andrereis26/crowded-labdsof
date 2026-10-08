@@ -111,7 +111,8 @@ Participants who are on their way, or in another area of the venue, may not rece
 - Event change notifications
 - Ticket wallet and followed public events
 - Crowd and queue information with its source and last-update time
-- Incident reporting routed to the organization
+- Reporting what they see (crowd level, queues, incidents), routed to the organization
+- Participant estimates confirmed by other participants, with a confidence level, when the organization publishes nothing
 
 ### 4.2 Event Organizers
 
@@ -167,7 +168,9 @@ Participants who are on their way, or in another area of the venue, may not rece
 | **A4** | **Users Are Willing to Import Tickets** | We assume users are willing to import tickets bought elsewhere if the process is fast and gives them access to change notifications and on-site information. |
 | **A5** | **Event Disruptions Are Common Enough to Justify the Product** | We assume changes, overcrowding and on-site incidents occur frequently enough to justify a dedicated communication service. |
 | **A6** | **Official Event Data Can Be Obtained** | We assume official event changes can be obtained from ticketing platforms or public agendas. In the MVP, this source is simulated. |
-| **A7** | **Participants Will Report On-Site Incidents** | We assume participants will report incidents (e.g., lost and found, accessibility barriers) if reporting is fast and the organization responds. |
+| **A7** | **Participants Will Report What They See On Site** | We assume participants will report incidents (e.g., lost and found, accessibility barriers) if reporting is fast and the organization responds. |
+| **A8** | **Participants Will Confirm Other Participants' Reports** | We assume participants connected to an event will answer a single-tap "Yes" or "No" confirmation about a report (e.g., "Is it very crowded?") if they are asked rarely, and that these answers are reliable enough to estimate on-site conditions when the organization publishes none. |
+| **A9** | **Participants Will Allow Location to Report** | We assume participants are willing to allow a one-time approximate location check when reporting or confirming, if Crowded explains that it is only used to ensure better report quality and does not store it. |
 
 ---
 
@@ -183,6 +186,7 @@ Crowd levels, queues and alerts depend on organizations using the backoffice or 
     - Keep the backoffice extremely simple
     - Offer an API so data can be sent automatically (e.g., entrance counters)
     - Official changes and weather alerts work without the organization
+    - Participant reports confirmed by other participants provide estimates of crowd levels and queues when the organization publishes none
 
 ---
 
@@ -233,8 +237,9 @@ Tickets contain personal data and access codes, and users may be hesitant to sha
 >
     - Store only the minimum ticket data needed
     - Never store access codes in plain text
-    - Do not make participant identity public in incident reports
+    - Do not make participant identity public in reports or confirmations
     - Use approximate location, only with consent
+    - For reporting and confirmations, check location once at the moment of the action and store only the result, never the location
 
 ---
 
@@ -247,3 +252,19 @@ Without participants connected to an event, organizer alerts have little reach.
 >
     - Allow public events to be followed with minimal friction
     - Let organizers promote the event through QR codes at the venue and on tickets
+
+---
+
+### R7 — Unreliable or Abusive Participant Reports
+
+Participant reports may be wrong, outdated or deliberately false (e.g., trolling), and confirmation prompts may annoy users if they are too frequent.
+
+**Mitigation**
+
+>
+    - Show a report on the event page only after other participants confirm it (Medium or High confidence)
+    - Let confidence decay over time and always label participant information as an estimate that may not reflect reality
+    - Show crowd and queue estimates only when the organization has no current value
+    - Allow reporting (except personal categories) and confirmations only from users whose approximate location is near the venue
+    - Ask only a small sample of connected users, cap how often each user is asked, and let users turn prompts off per event
+    - Rate-limit reports and confirmation answers; after the MVP, automatically warn, temporarily restrict and ban from reporting users whose reports are repeatedly unhelpful
