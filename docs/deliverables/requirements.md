@@ -29,7 +29,7 @@ This specification translates the Crowded product vision, problem and opportunit
 |---|---|---|
 | FR-011 | The system shall periodically synchronize events from the external ticketing source and detect changes to their status, date, time or venue (e.g., cancellation, postponement, relocation). | 10 |
 | FR-012 | The system shall periodically synchronize public events from the external municipal agenda source and detect changes to them. | 3 |
-| FR-013 | The system shall notify every user connected to an event (ticket holders and followers) when a change to that event is detected or published. | 10 |
+| FR-013 | The system shall notify the users connected to an event (ticket holders and followers) when a change to that event is detected or published, according to their notification preferences. | 10 |
 | FR-014 | The system shall display an event's current status and its change history, each change with its source and time. | 8 |
 
 ### 1.3 Organization Backoffice
@@ -41,7 +41,7 @@ This specification translates the Crowded product vision, problem and opportunit
 | FR-017 | The system shall allow an organization to request ownership of an existing synchronized event, subject to administrator approval. | 7 |
 | FR-018 | The system shall allow an organization to publish the current crowd level of its event (low, moderate, high, full) through the backoffice. | 10 |
 | FR-019 | The system shall allow an organization to publish queue waiting times for points of its event (e.g., entrances, ticket office, bars, toilets). | 8 |
-| FR-020 | The system shall allow an organization to send an operational alert to every user connected to its event, choosing an alert type (e.g., entrance closure, capacity reached, schedule delay) and writing its message, with or without an AI-assisted draft. | 10 |
+| FR-020 | The system shall allow an organization to send an operational alert to the users connected to its event, according to their notification preferences, choosing an alert type (e.g., entrance closure, capacity reached, schedule delay) and writing its message, with or without an AI-assisted draft. | 10 |
 | FR-021 | The system shall generate an AI-assisted alert draft from the organization's brief input and the event's current state, which the organization must review, edit and approve before it is sent. | 8 |
 | FR-023 | The system shall present the organization with a live dashboard showing the event's crowd level, queues, open incidents and alerts sent. | 9 |
 | FR-024 | The system shall allow an organization to define its event's capacity and show the current crowd level relative to it. | 7 |
@@ -50,7 +50,7 @@ This specification translates the Crowded product vision, problem and opportunit
 | FR-027 | The system shall allow a user to respond to an available attendance-intention poll. | 7 |
 | FR-028 | The system shall present poll responses to the organization as indications of potential attendance and shall not represent them as guaranteed attendance. | 7 |
 | FR-051 | The system shall allow an organization to publish requests on the event page — confirmations (e.g., "Is Gate B still closed?"), polls or requests for ideas — and mark each request as urgent or non-urgent. | 8 |
-| FR-052 | The system shall notify connected users only of urgent requests; opening the notification shall take the user to the request on the event page. Non-urgent requests shall remain available on the event page without a notification. | 8 |
+| FR-052 | The system shall notify connected users who have organization requests turned on only of urgent requests; opening the notification shall take the user to the request on the event page. Non-urgent requests shall remain available on the event page without a notification. | 8 |
 | FR-029 | The system shall allow an organization to view reported incidents and mark them as acknowledged or resolved, notifying the reporting user. | 8 |
 | FR-053 | The system shall use AI to group similar incident reports into a single incident with a short summary, allow the organization to split incorrectly grouped reports, and fall back to grouping by category and time window when the AI service is unavailable. | 8 |
 | FR-060 | The system shall allow an organization to choose, per event, which predefined report categories trigger confirmation prompts; events without an owning organization shall use the default settings. | 8 |
@@ -82,7 +82,9 @@ This specification translates the Crowded product vision, problem and opportunit
 |---|---|---|
 | FR-039 | The system shall identify users and assign them a role (participant, organization member, administrator). | 10 |
 | FR-040 | The system shall allow an administrator to verify organizations before they can publish official information. | 6 |
-| FR-041 | The system shall allow a user to choose, per event, whether to receive notifications for all organization requests, only urgent requests, or none, and whether to receive confirmation prompts for participant reports; official event changes and operational alerts shall always be delivered. | 8 |
+| FR-041 | The system shall allow a user to turn each notification type on or off for a specific event: official event changes, operational alerts, organization requests (urgent requests, see FR-052), confirmation prompts, severe-weather alerts, recognitions and incident updates. These per-event choices shall override the user's overall preferences (FR-065) for that event. | 8 |
+| FR-065 | The system shall allow a user to set overall notification preferences, turning each notification type (official event changes, operational alerts, organization requests, confirmation prompts, severe-weather alerts, recognitions and incident updates) on or off. These preferences shall apply by default to every event the user is connected to, including events connected later, and every type shall be on by default. | 8 |
+| FR-066 | When a user turns off official event changes or operational alerts, overall or for an event, the system shall warn them that they may miss cancellations or safety instructions and ask for confirmation. This information shall remain visible in the app (ticket wallet and event page) while its notifications are off. | 8 |
 | FR-042 | The system shall allow authenticated users to permanently delete their account and all associated personal data. | 8 |
 | FR-043 | The system shall support registration and authentication with email and password credentials. | 9 |
 | FR-044 | The system shall support registration and authentication through federated identity providers (Google and Facebook). | 2 |
