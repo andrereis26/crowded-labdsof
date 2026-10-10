@@ -58,7 +58,7 @@
       <bpmn:incoming>Flow_8</bpmn:incoming>
       <bpmn:outgoing>Flow_11</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:sendTask id="send" name="Send alert to every participant, labelled &#x27;Organization&#x27;">
+    <bpmn:sendTask id="send" name="Send alert to connected participants (per their preferences), labelled &#x27;Organization&#x27;">
       <bpmn:incoming>Flow_11</bpmn:incoming>
       <bpmn:outgoing>Flow_12</bpmn:outgoing>
     </bpmn:sendTask>

@@ -66,7 +66,7 @@
     <bpmn:endEvent id="e3" name="Ignore duplicate">
       <bpmn:incoming>Flow_10</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:sendTask id="notify" name="Notify holders and followers, labelled &#x27;Official source&#x27;">
+    <bpmn:sendTask id="notify" name="Notify holders and followers (per their preferences), labelled &#x27;Official source&#x27;">
       <bpmn:incoming>Flow_9</bpmn:incoming>
       <bpmn:outgoing>Flow_11</bpmn:outgoing>
     </bpmn:sendTask>

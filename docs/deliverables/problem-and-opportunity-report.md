@@ -268,3 +268,16 @@ Participant reports may be wrong, outdated or deliberately false (e.g., trolling
     - Allow reporting (except personal categories) and confirmations only from users whose approximate location is near the venue
     - Ask only a small sample of connected users, cap how often each user is asked, and let users turn prompts off per event
     - Rate-limit reports and confirmation answers; after the MVP, automatically warn, temporarily restrict and ban from reporting users whose reports are repeatedly unhelpful
+
+---
+
+### R8 — Missed Critical Notifications
+
+Users can turn off every notification type, including official event changes and operational alerts, and may then miss a cancellation or a safety instruction.
+
+**Mitigation**
+
+>
+    - Turn every notification type on by default, both overall and for each event
+    - Ask for confirmation, with a warning, before official changes or operational alerts are turned off
+    - Keep official changes and alerts visible in the ticket wallet and on the event page even when their notifications are off
