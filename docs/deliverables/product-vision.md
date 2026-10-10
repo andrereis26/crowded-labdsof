@@ -173,6 +173,10 @@ and a direct channel to their audience).
 - **Location refusal** — users who do not allow location cannot report (except
   personal categories) or confirm, which may reduce the number of reports; the app
   explains why location is requested and uses it only once, without storing it.
+- **Missed critical notifications** — users can turn off any notification type,
+  including official changes and operational alerts; every type is on by
+  default, turning these two off requires confirming a warning, and the
+  information stays visible in the wallet and on the event page.
 - **Prompt fatigue** — asking every participant to confirm every report would be
   intrusive; only a small sample is asked, each user is asked at most once in a
   given period, and users can turn confirmation prompts off per event.
