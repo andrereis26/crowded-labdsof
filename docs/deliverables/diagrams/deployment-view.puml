@@ -1,0 +1,108 @@
+@startuml deployment-view
+' Crowded - Deployment View
+' One EC2 instance running a single-node Docker Swarm, provisioned with Terraform.
+' Shows only Crowded's own runtime; external systems are in the logical view.
+' Sources: logical-view-level-2.puml, requirements.md (NFR-010..NFR-016, SR-008)
+
+title Crowded - Deployment View
+
+skinparam shadowing false
+skinparam linetype polyline
+skinparam nodesep 50
+skinparam ranksep 70
+skinparam defaultTextAlignment center
+
+skinparam node {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+  BackgroundColor<<cloud provider>> #FFF6E5
+  BackgroundColor<<EC2 instance>> #FFFFC0
+  BackgroundColor<<Docker Swarm>> #EAF4FF
+  BackgroundColor<<container>> #BFEFFF
+}
+skinparam database {
+  BackgroundColor<<container>> #BFEFFF
+}
+skinparam queue {
+  BackgroundColor<<container>> #BFEFFF
+}
+
+' ---------------------------------------------------------------------
+' AWS
+' ---------------------------------------------------------------------
+node "AWS" <<cloud provider>> as AWS {
+
+  node "VPC - public subnet" as VPC {
+
+    node "Elastic IP\n+ Security Group" as EIP
+
+    node "EC2 t3.micro - Ubuntu" <<EC2 instance>> as EC2 {
+
+      node "Docker Engine - Swarm (single manager node)" <<Docker Swarm>> as Swarm {
+
+        node "Edge" as EdgeGroup {
+          node "router\n(NGINX)" <<container>> as Nginx
+        }
+
+        node "Application services" as AppGroup {
+          node "core" <<container>> as Core
+          node "notifications" <<container>> as Notifications
+          node "jobs" <<container>> as Jobs
+          node "web-app" <<container>> as WebApp
+        }
+
+        node "Simulators" as SimGroup {
+          node "ticketing-simulator" <<container>> as TicketingSim
+          node "entrance-counter-simulator" <<container>> as CounterSim
+        }
+
+        node "Data" as DataGroup {
+          database "postgres" <<container>> as Postgres
+          queue "rabbitmq" <<container>> as RabbitMQ
+          database "redis" <<container>> as Redis
+        }
+
+        node "Observability" as ObsGroup {
+          node "prometheus" <<container>> as Prometheus
+          node "loki" <<container>> as Loki
+          node "alloy" <<container>> as Alloy
+          node "grafana" <<container>> as Grafana
+        }
+      }
+
+      database "EBS volume\n(postgres, rabbitmq, redis,\nprometheus, loki, grafana data;)" as EBS
+    }
+  }
+}
+
+' ---------------------------------------------------------------------
+' Runtime communication
+' Group-level links keep the view readable; which service uses which
+' store is shown in the logical view.
+' ---------------------------------------------------------------------
+EIP -down- Nginx : HTTPS 443
+
+Nginx -down- Core : HTTP / SSE
+Nginx -down- Notifications : HTTP
+Nginx -down- WebApp : HTTP
+Nginx -down- Grafana : HTTP (/grafana)
+
+AppGroup -down- DataGroup : SQL 5432\nAMQP 5672\nRedis 6379
+Jobs -down- TicketingSim : HTTP (poll)
+Nginx -down-- CounterSim : HTTPS (Organization API)
+
+' --- Observability
+Grafana -down- Prometheus : PromQL
+Grafana -down- Loki : LogQL
+Alloy -down- Loki : container logs
+Alloy -down- Prometheus : remote write
+
+' --- Layout: data stores side by side
+Postgres -[hidden]right- RabbitMQ
+RabbitMQ -[hidden]right- Redis
+
+' --- Storage
+DataGroup -down- EBS : Docker volumes
+ObsGroup -down- EBS : Docker volumes
+
+@enduml
