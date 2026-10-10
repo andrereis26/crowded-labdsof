@@ -78,6 +78,9 @@ component "Crowded" <<C4 Container>> as Crowded {
   component "Database" as Database
   () "SQL" as ISql
 
+  component "Cache" as Cache
+  () "Key-Value API" as IKeyValue
+
   ' --- Clients and entry point
   pMobileUI -down- Mobile
   pBackofficeUI -down- Backoffice
@@ -106,6 +109,11 @@ component "Crowded" <<C4 Container>> as Crowded {
   Jobs -down-( ISql
   Notifications -down-( ISql
 
+  ' --- Cache: token revocation, rate limiting, read cache
+  Cache -up- IKeyValue
+  Core -down-( IKeyValue
+  Notifications -down-( IKeyValue
+
   ' --- Outbound integrations
   Jobs -down---- pTicketing
   Jobs -down---- pWeather
@@ -119,6 +127,7 @@ component "Crowded" <<C4 Container>> as Crowded {
   Jobs -[hidden]right- Core
   Core -[hidden]right- Notifications
   Broker -[hidden]right- Database
+  Database -[hidden]right- Cache
 }
 
 ' --- Boundary wiring
