@@ -136,6 +136,9 @@ and a direct channel to their audience).
   queues), "Yes"/"No" confirmations by other participants, and a rule-based
   confidence level shown with every participant estimate
 - Per-event choice, by the organization, of which categories trigger confirmations
+- Participant app on mobile and on the web (desktop and mobile browsers), with an
+  in-app notification center, live banners and an unread badge on every client,
+  and push notifications on the mobile app
 - Reporting and confirming limited to users near the venue (one-time approximate
   location check, not stored)
 - Provenance labels on all information
@@ -177,6 +180,10 @@ and a direct channel to their audience).
   including official changes and operational alerts; every type is on by
   default, turning these two off requires confirming a warning, and the
   information stays visible in the wallet and on the event page.
+- **Browser users without push** — browsers get no push notifications in the MVP,
+  so browser users only see notifications while the website is open; everything
+  sent while they were away waits in the notification center, and the mobile app
+  remains the recommended way to receive alerts in time.
 - **Prompt fatigue** — asking every participant to confirm every report would be
   intrusive; only a small sample is asked, each user is asked at most once in a
   given period, and users can turn confirmation prompts off per event.
