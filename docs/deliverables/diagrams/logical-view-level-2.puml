@@ -55,8 +55,8 @@ component "Crowded" <<C4 Container>> as Crowded {
   portout "Push" as pPush
   portout "Maps & Transport" as pMaps
 
-  component "Mobile App\n(participants)" as Mobile
-  component "Backoffice Web App\n(organizers, administrators)" as Backoffice
+  component "Mobile App" as Mobile
+  component "Backoffice Web App" as Backoffice
 
   component "Router\n(NGINX)" as Router
   () "Gateway" as IGateway
@@ -68,12 +68,12 @@ component "Crowded" <<C4 Container>> as Crowded {
   component "Notifications" as Notifications
   () "REST API Notifications" as INotifApi
 
-  component "Jobs\n(background jobs)" as Jobs
+  component "Jobs" as Jobs
 
-  component "Message Broker\n(RabbitMQ)" as Broker
+  component "Message Broker" as Broker
   () "Messaging API" as IMessaging
 
-  component "Database\n(PostgreSQL)" as Database
+  component "Database" as Database
   () "SQL" as ISql
 
   ' --- Clients and entry point
