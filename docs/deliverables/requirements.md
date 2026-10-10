@@ -83,8 +83,11 @@ This specification translates the Crowded product vision, problem and opportunit
 | FR-039 | The system shall identify users and assign them a role (participant, organization member, administrator). | 10 |
 | FR-040 | The system shall allow an administrator to verify organizations before they can publish official information. | 6 |
 | FR-041 | The system shall allow a user to turn each notification type on or off for a specific event: official event changes, operational alerts, organization surveys (urgent surveys, see FR-052), confirmation prompts, severe-weather alerts, recognitions and incident updates. These per-event choices shall override the user's overall preferences (FR-065) for that event. | 8 |
-| FR-065 | The system shall allow a user to set overall notification preferences, turning each notification type (official event changes, operational alerts, organization surveys, confirmation prompts, severe-weather alerts, recognitions and incident updates) on or off. These preferences shall apply by default to every event the user is connected to, including events connected later, and every type shall be on by default. | 8 |
+| FR-065 | The system shall allow a user to set overall notification preferences, turning each notification type (official event changes, operational alerts, organization surveys, confirmation prompts, severe-weather alerts, recognitions and incident updates) on or off. These preferences shall apply by default to every event the user is connected to, including events connected later, and every type shall be on by default. A type that is turned off shall not be pushed, shown as a banner or added to the notification center. | 8 |
 | FR-066 | When a user turns off official event changes or operational alerts, overall or for an event, the system shall warn them that they may miss cancellations or safety instructions and ask for confirmation. This information shall remain visible in the app (ticket wallet and event page) while its notifications are off. | 8 |
+| FR-067 | The system shall provide an in-app notification center on every participant client (mobile app and desktop and mobile browsers), listing the user's notifications newest first with an unread badge, letting the user mark them as read, and taking the user to the related event, alert or report when a notification is opened. | 9 |
+| FR-068 | While the app or website is open, the system shall show new notifications as a live banner and update the unread badge within seconds, without the user reloading the page. | 8 |
+| FR-069 | The system shall send push notifications to the mobile app when it is closed or in the background. Browsers shall not receive push notifications in the MVP; browser users receive notifications in the notification center and as live banners while the website is open. | 8 |
 | FR-042 | The system shall allow authenticated users to permanently delete their account and all associated personal data. | 8 |
 | FR-043 | The system shall support registration and authentication with email and password credentials. | 9 |
 | FR-044 | The system shall support registration and authentication through federated identity providers (Google and Facebook). | 2 |
@@ -109,7 +112,7 @@ This specification translates the Crowded product vision, problem and opportunit
 
 | ID | Statement | Priority |
 |---|---|---|
-| NFR-001 | Critical notifications (cancellation, rescheduling, venue change, operational alert) shall be delivered within 1 minute of the change being detected or published. | 9 |
+| NFR-001 | Critical notifications (cancellation, rescheduling, venue change, operational alert) shall be delivered within 1 minute (as a push to the mobile app, or as a live banner when the app or website is open) of the change being detected or published. | 9 |
 | NFR-002 | Changes in the external event sources shall be detected within 5 minutes of occurring. | 8 |
 | NFR-003 | Notifications shall be delivered at least once and processed idempotently, so that a user never receives the same notification twice for the same event change. | 9 |
 | NFR-004 | Asynchronous workflows shall retry failed processing with backoff and move repeatedly failing messages to a dead-letter queue for inspection. | 8 |
@@ -165,3 +168,4 @@ This specification translates the Crowded product vision, problem and opportunit
 | TR-004 | The system shall include a municipal agenda simulator that publishes public events and their changes. | 3 |
 | TR-005 | The system shall include an entrance-counter simulator that submits crowd counts through the organization API. | 5 |
 | TR-006 | The system shall cache event status and on-site information reads, invalidating the cache when the information changes. | 4 |
+| TR-007 | The participant client shall be available as a mobile app and as a web app usable in desktop and mobile browsers. | 8 |
