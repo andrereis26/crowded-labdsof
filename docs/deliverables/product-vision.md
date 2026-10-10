@@ -77,7 +77,7 @@ surrounds event disruptions today.
    Before the event, the organizer launches an attendance-intention poll and
    adjusts staff and entrances based on the responses (an indication, not
    guaranteed attendance). Before or during the event, the organizer can also
-   publish requests (confirmations, polls, or ideas) on the event page, marking
+   publish surveys (confirmations, polls, or calls for ideas) on the event page, marking
    them as urgent to notify participants. During the event, the organizer updates crowd levels
    and queues through the backoffice or API, resolves incidents, and sends alerts
    (e.g., "Gate B closed, use Gate C") from an AI-generated draft that they review

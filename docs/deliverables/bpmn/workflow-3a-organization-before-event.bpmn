@@ -23,7 +23,7 @@
     <bpmn:startEvent id="s" name="Event scheduled">
       <bpmn:outgoing>Flow_1</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:userTask id="req" name="Create request: poll, confirmation or idea">
+    <bpmn:userTask id="req" name="Create survey: poll, confirmation or call for ideas">
       <bpmn:incoming>Flow_1</bpmn:incoming>
       <bpmn:outgoing>Flow_2</bpmn:outgoing>
     </bpmn:userTask>
@@ -36,7 +36,7 @@
       <bpmn:incoming>Flow_3</bpmn:incoming>
       <bpmn:outgoing>Flow_5</bpmn:outgoing>
     </bpmn:sendTask>
-    <bpmn:userTask id="resp" name="Open request on event page and respond">
+    <bpmn:userTask id="resp" name="Open survey on event page and respond">
       <bpmn:incoming>Flow_4</bpmn:incoming>
       <bpmn:incoming>Flow_5</bpmn:incoming>
       <bpmn:outgoing>Flow_6</bpmn:outgoing>
