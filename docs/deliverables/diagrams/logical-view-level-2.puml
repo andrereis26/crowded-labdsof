@@ -33,6 +33,7 @@ skinparam port {
 
 () "Ticketing Source API" as ITicketing
 () "Maps & Transport API" as IMaps
+() "Weather API" as IWeatherMobile
 () "Weather API" as IWeather
 () "AI API" as IAI
 () "Push API" as IPush
@@ -48,12 +49,13 @@ component "Crowded" <<C4 Container>> as Crowded {
   portin "Mobile UI" as pMobileUI
   portin "Backoffice UI" as pBackofficeUI
   portin "Organization API" as pOrgApi
+  portin "Maps & Transport" as pMaps
+  portin "Weather" as pMobileWeather
 
   portout "Ticketing" as pTicketing
   portout "Weather" as pWeather
   portout "AI" as pAI
   portout "Push" as pPush
-  portout "Maps & Transport" as pMaps
 
   component "Mobile App" as Mobile
   component "Backoffice Web App" as Backoffice
@@ -110,8 +112,8 @@ component "Crowded" <<C4 Container>> as Crowded {
   Core -down---- pAI
   Jobs -down---- pAI
   Notifications -down---- pPush
-  Mobile -left- pMaps
-  Mobile -left- pWeather
+  Mobile -up- pMaps
+  Mobile -up- pMobileWeather
 
   ' --- Layout hints
   Jobs -[hidden]right- Core
@@ -127,7 +129,8 @@ pTicketing -down-( ITicketing
 pWeather -down-( IWeather
 pAI -down-( IAI
 pPush -down-( IPush
-pMaps -down-( IMaps
+pMaps -up-( IMaps
+pMobileWeather -up-( IWeatherMobile
 
 
 @enduml
