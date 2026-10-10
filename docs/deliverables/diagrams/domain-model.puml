@@ -1,6 +1,4 @@
 @startuml domain-model
-' Crowded — Domain Model (MVP)
-' Sources: product-vision.md, requirements.md, responsible-ai-opportunity-assessment.md
 
 title Crowded — Domain Model
 
@@ -18,7 +16,6 @@ skinparam class {
   BorderColor<<Aggregate Root>> #B8860B
   BackgroundColor<<Entity>> #DAE8FC
   BackgroundColor<<Value Object>> #E1F5E1
-  BackgroundColor<<External>> #EEEEEE
 }
 
 ' =====================================================================
@@ -80,6 +77,8 @@ package "Event Catalog" {
     status : EventStatus
     capacity : int [0..1]
     visibility : PUBLIC | TICKETED
+    origin : EventOrigin
+    lastSyncedAt [0..1]
   }
 
   class EventLocation <<Value Object>> {
@@ -94,17 +93,6 @@ package "Event Catalog" {
     previousValue
     newValue
     provenance : Provenance
-  }
-
-  class ExternalEventSource <<Aggregate Root>> {
-    id
-    type : SourceKind
-    lastSuccessfulSyncAt
-  }
-
-  class ExternalEventReference <<Value Object>> {
-    externalId
-    lastSeenHash
   }
 
   class OwnershipRequest <<Entity>> {
@@ -131,8 +119,9 @@ package "Event Catalog" {
     DETAILS_UPDATE
   }
 
-  enum SourceKind {
-    TICKETING_SOURCE
+  enum EventOrigin {
+    ORGANIZATION
+    TICKETING_PLATFORM
     MUNICIPAL_AGENDA
   }
 
@@ -150,8 +139,6 @@ package "Participation" {
   abstract class EventConnection <<Aggregate Root>> {
     id
     connectedAt
-    notificationPreference : NotificationPreference
-    confirmationPromptsEnabled : boolean
     lastPromptedAt [0..1]
   }
 
@@ -189,12 +176,6 @@ package "Participation" {
     PENDING_CONFIRMATION
     CONFIRMED
   }
-
-  enum NotificationPreference {
-    ALL_REQUESTS
-    URGENT_ONLY
-    NONE
-  }
 }
 
 ' =====================================================================
@@ -220,11 +201,6 @@ package "On-Site Information" {
     temperature
     severeWeather : boolean
     provenance : Provenance
-  }
-
-  class WeatherThreshold <<Value Object>> {
-    metric
-    limit
   }
 
   class Provenance <<Value Object>> {
@@ -278,20 +254,20 @@ package "Organizer Communication" {
     aiGenerated : boolean
   }
 
-  class EventRequest <<Aggregate Root>> {
+  class EventSurvey <<Aggregate Root>> {
     id
-    type : RequestType
+    type : SurveyType
     text
     urgent : boolean
     publishedAt
     closesAt [0..1]
   }
 
-  class RequestOption <<Value Object>> {
+  class SurveyOption <<Value Object>> {
     label
   }
 
-  class RequestResponse <<Entity>> {
+  class SurveyResponse <<Entity>> {
     answer
     respondedAt
   }
@@ -319,11 +295,10 @@ package "Organizer Communication" {
 
   enum AlertStatus {
     DRAFT
-    APPROVED
     SENT
   }
 
-  enum RequestType {
+  enum SurveyType {
     CONFIRMATION
     POLL
     IDEA
@@ -428,18 +403,25 @@ package "Notifications & Audit" {
     readAt [0..1]
   }
 
+  class NotificationSetting <<Value Object>> {
+    type : NotificationType
+    enabled : boolean
+  }
+
   class AuditLogEntry <<Entity>> {
     id
     action
-    targetType
-    targetId
+    entityType
+    entityId
+    actorId [0..1]
+    details
     occurredAt
   }
 
   enum NotificationType {
     OFFICIAL_CHANGE
     OPERATIONAL_ALERT
-    URGENT_REQUEST
+    ORGANIZATION_SURVEY
     SEVERE_WEATHER
     INCIDENT_STATUS
     RECOGNITION
@@ -449,127 +431,109 @@ package "Notifications & Audit" {
 
 ' =====================================================================
 ' Relationships
+' Direction hints (-up-, -down-, -left-, -right-) place the packages around
+' Event; [norank] keeps long "who did it" links from distorting the layout.
 ' =====================================================================
 
-' --- Identity & Access
-User "1" *-- "0..1" LocationConsent
-Organization "0..1" --> "1..*" User : has members
-Organization "1" *-- "0..*" ApiCredential
-User "0..1" --> "0..*" Organization : verifies\n(administrator)
+' --- Identity & Access (above Event)
+User "1" *-down- "0..1" LocationConsent
+Organization "0..1" -up-> "1..*" User : has members
+Organization "1" *-right- "0..*" ApiCredential
+User "0..1" -[norank]-> "0..*" Organization : verifies\n(administrator)
 
-' --- Event Catalog
-Organization "0..1" --> "0..*" Event : owns
-Event "1" *-- "1" EventLocation : held at
-Event "1" *-- "0..*" EventChange : change history
-ExternalEventSource "1" *-- "0..*" ExternalEventReference
-ExternalEventReference "0..1" --> "1" Event : synchronizes
-Organization "1" --> "0..*" OwnershipRequest : submits
-OwnershipRequest "0..*" --> "1" Event : for
-User "0..1" --> "0..*" OwnershipRequest : decides\n(administrator)
+' --- Event Catalog (centre)
+Organization "0..1" -down-> "0..*" Event : owns
+Event "1" *-left- "1" EventLocation : held at
+Event "1" *-left- "0..*" EventChange : change history
+Organization "1" -down-> "0..*" OwnershipRequest : submits
+OwnershipRequest "0..*" -down-> "1" Event : for
+User "0..1" -[norank]-> "0..*" OwnershipRequest : decides\n(administrator)
 
-' --- Participation
-EventConnection <|-- Ticket
-EventConnection <|-- Follow
-User "1" *-- "0..*" EventConnection : wallet / follows
-EventConnection "0..*" --> "1" Event : connects to
-Ticket "1" *-- "0..1" TicketExtraction
-TicketExtraction "1" *-- "0..*" EventMatchCandidate
-EventMatchCandidate "0..*" --> "1" Event
+' --- Participation (right of Event)
+EventConnection <|-down- Ticket
+EventConnection <|-down- Follow
+User "1" *-right- "0..*" EventConnection : wallet / follows
+EventConnection "0..*" -left-> "1" Event : connects to
+Ticket "1" *-down- "0..1" TicketExtraction
+TicketExtraction "1" *-down- "0..*" EventMatchCandidate
+EventMatchCandidate "0..*" -[norank]-> "1" Event
 
-' --- On-Site Information
-Event "1" *-- "0..1" CrowdStatus : current crowd
-Event "1" *-- "0..*" QueueTime : current queues
-Event "1" -- "0..*" WeatherForecast
-WeatherForecast ..> WeatherThreshold : evaluated against
-CrowdStatus ..> Provenance
-QueueTime ..> Provenance
-EventChange ..> Provenance
-Provenance ..> SourceType
+' --- On-Site Information (below Event)
+Event "1" *-down- "0..1" CrowdStatus : current crowd
+Event "1" *-down- "0..*" QueueTime : current queues
+Event "1" -down- "0..*" WeatherForecast
+CrowdStatus .down.> Provenance
+QueueTime .down.> Provenance
+EventChange .[norank].> Provenance
+Provenance .down.> SourceType
 
-' --- Organizer Communication
-Event "1" -- "0..*" Alert
-Alert "1" *-- "0..1" AlertDraft
-Organization "1" --> "0..*" Alert : approves & sends
+' --- Organizer Communication (below right)
+Event "1" -down- "0..*" Alert
+Alert "1" *-down- "0..1" AlertDraft
+Organization "1" -[norank]-> "0..*" Alert : approves & sends
 
-Event "1" -- "0..*" EventRequest : event page
-EventRequest "1" *-- "0..*" RequestOption
-EventRequest "1" *-- "0..*" RequestResponse
-User "1" -- "0..*" RequestResponse
+Event "1" -down- "0..*" EventSurvey : event page
+EventSurvey "1" *-down- "0..*" SurveyOption
+EventSurvey "1" *-down- "0..*" SurveyResponse
+User "1" -[norank]- "0..*" SurveyResponse
 
-Organization "1" --> "0..*" AttendancePoll : launches
-AttendancePoll "0..*" --> "0..1" Event : for
-AttendancePoll "1" *-- "0..*" PollResponse
-User "1" -- "0..*" PollResponse
+Organization "1" -[norank]-> "0..*" AttendancePoll : launches
+AttendancePoll "0..*" -up-> "0..1" Event : for
+AttendancePoll "1" *-down- "0..*" PollResponse
+User "1" -[norank]- "0..*" PollResponse
 
-' --- Reports, confirmations & incidents
-Event "1" -- "0..*" Report
-User "1" --> "0..*" Report : reports\n(identity not public)
-Report "0..*" --> "1" ReportCategory : classified as
-Event "1" *-- "0..*" EventCategorySetting : set by organization
-EventCategorySetting "0..*" --> "1" ReportCategory
-Report "1" *-- "0..*" Confirmation
-User "1" --> "0..*" Confirmation : answers\n(anonymous)
-Report *-- Confidence
-Confidence ..> ConfidenceLevel
-Incident "1" o-- "1..*" Report : groups
-Event "1" -- "0..*" Incident
-Incident "0..1" -- "0..*" Alert : may trigger
-Report "1" --> "0..1" Recognition : earns\n(when marked helpful)
+' --- Reports, confirmations & incidents (left of Event)
+Event "1" -left- "0..*" Report
+User "1" -[norank]-> "0..*" Report : reports\n(identity not public)
+Report "0..*" -down-> "1" ReportCategory : classified as
+Event "1" *-[norank]- "0..*" EventCategorySetting : set by organization
+EventCategorySetting "0..*" -down-> "1" ReportCategory
+Report "1" *-down- "0..*" Confirmation
+User "1" -[norank]-> "0..*" Confirmation : answers\n(anonymous)
+Report *-down- Confidence
+Confidence .down.> ConfidenceLevel
+Incident "1" o-down- "1..*" Report : groups
+Event "1" -left- "0..*" Incident
+Incident "0..1" -[norank]- "0..*" Alert : may trigger
+Report "1" -down-> "0..1" Recognition : earns\n(when marked helpful)
 
-' --- Notifications & Audit
-User "1" --> "0..*" Notification : receives
-Notification "0..*" ..> "1" Event : about
-AuditLogEntry "0..*" --> "0..1" User : actor
-AuditLogEntry ..> Event : records changes,\nalerts, incident status
+' --- Notifications & Audit (above left)
+User "1" *-left- "0..*" NotificationSetting : overall defaults
+EventConnection "1" *-[norank]- "0..*" NotificationSetting : per-event overrides
+User "1" -left-> "0..*" Notification : receives
+Notification "0..*" .[norank].> "1" Event : about
+AuditLogEntry "0..*" -right-> "0..1" User : actor
+AuditLogEntry .[norank].> Event : records changes,\nalerts, incident status
 
+' =====================================================================
+' Notes (details in the technical design document)
+' =====================================================================
 note right of Provenance
-  Every piece of event information carries
-  its source and last-update time (FR-032).
-  Stale on-site info is flagged/hidden (FR-033).
-  AI output stays labelled until confirmed (NFR-007).
+  Source + last-update time on every piece of
+  event information (FR-032); stale data flagged
+  (FR-033); AI output labelled until confirmed (NFR-007).
 end note
 
 note bottom of Notification
-  Triggered by: EventChange, Alert, urgent EventRequest,
-  severe WeatherForecast, Incident status change, Recognition,
-  Report needing confirmation (sampled connected users,
-  capped per user via EventConnection.lastPromptedAt).
-  Delivered at-least-once, processed idempotently
-  (NFR-003): deduplicationKey = recipient + trigger
-  (e.g. userId + EventChange.id) and is unique, so a
-  redelivered message never creates a second notification.
-  Official changes and operational alerts ignore
-  NotificationPreference (FR-041).
+  Sent only if the recipient's setting for its type is on
+  (FR-041, FR-065). deduplicationKey = recipient + trigger,
+  unique, so redelivered messages never notify twice (NFR-003).
 end note
 
 note bottom of Incident
-  AI groups similar reports; fallback groups by
-  category and time window (FR-053). Grouping never
-  discards or resolves reports.
+  Groups similar reports with AI, or by category
+  and time window as fallback (FR-053).
 end note
 
 note right of Confidence
-  Rule-based (FR-058): starts LOW, YES raises it,
-  NO lowers it, decays over time. MEDIUM or HIGH
-  reports appear on the event page as participant
-  estimates (FR-059); crowd and queue estimates only
-  when the organization has no current value.
-  One answer per user per report; reporters cannot
-  confirm their own reports (SR-016).
-  Reporting (non-personal categories) and answering
-  require location consent and an approximate location
-  within the venue radius (FR-064). The location is
-  checked once and not stored: only locationVerified
-  is kept (SR-017).
+  Rule-based (FR-058): YES raises, NO lowers,
+  decays over time. MEDIUM/HIGH shown as
+  participant estimates (FR-059).
 end note
 
 note bottom of ReportCategory
-  Predefined: CROWD_LEVEL, QUEUE_LENGTH,
-  LOST_AND_FOUND (personal), ACCESSIBILITY_BARRIER,
-  ON_SITE_PROBLEM. Personal categories never trigger
-  prompts or public display. The owning organization
-  overrides promptsEnabled per event (FR-060);
-  events without an owner use the defaults.
+  Predefined categories; personal ones (lost and found)
+  never prompt or show publicly (FR-059, FR-060).
 end note
 
 legend top left
