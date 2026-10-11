@@ -14,10 +14,12 @@ This specification translates the Crowded product vision, problem and opportunit
 | ID | Statement | Priority |
 |---|---|---|
 | FR-001 | The system shall allow a user to import a ticket bought on an external platform by uploading its PDF, extracting the event information (event name, date and time, venue, gate or sector, seat) with AI assistance. | 9 |
-| FR-002 | The system shall allow a user to import a ticket by pasting its confirmation email, extracting the event information with AI assistance. | 9 |
+| FR-002 | The system shall allow a user to import a ticket by uploading its confirmation email as an email file (.eml), extracting the event information with AI assistance. | 9 |
 | FR-003 | The system shall allow a user to review, correct and confirm the extracted ticket information before saving it, and to enter ticket information manually when extraction is unavailable or fails. | 10 |
 | FR-004 | The system shall match an imported ticket to an event in the synchronized event catalog and, when the match is ambiguous or has low confidence, ask the user to choose the correct event. | 9 |
 | FR-005 | The system shall present the user's ticket wallet, listing their tickets and upcoming events with the essential event information. | 9 |
+| FR-065 | The system shall decode a QR, Aztec or PDF417 entry code found in an imported ticket PDF, confirmation email or uploaded screenshot, without AI, and store it with the ticket. | 8 |
+| FR-066 | The system shall display a ticket's entry code full screen, also without a network connection, labelled with its origin and without stating that the ticket is valid. | 8 |
 | FR-006 | The system shall allow a user to follow a public event (or mark it as "going") to receive its changes and alerts. | 9 |
 | FR-008 | The system shall allow a user to remove a ticket or stop following an event. | 6 |
 | FR-009 | The system shall present a simple list of events near the user or happening today, allowing the user to follow them. | 6 |
@@ -155,6 +157,7 @@ This specification translates the Crowded product vision, problem and opportunit
 | SR-015 | The system shall apply rate limiting to account creation and login to prevent abuse. | 7 |
 | SR-016 | The system shall accept at most one confirmation answer per user per report, shall not let reporters confirm their own reports, and shall not reveal who confirmed or denied a report. | 8 |
 | SR-017 | The system shall check location for reporting and confirmation only once, at the moment of the action, store only the result of the check (not the location itself), and never track location continuously. | 8 |
+| SR-018 | The system shall treat ticket entry codes as credentials: store them encrypted, show them only to the ticket owner, never send them to the AI provider or write them to logs, and delete them with the ticket or account. | 8 |
 
 ---
 
