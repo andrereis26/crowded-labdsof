@@ -18,8 +18,8 @@ This specification translates the Crowded product vision, problem and opportunit
 | FR-003 | The system shall allow a user to review, correct and confirm the extracted ticket information before saving it, and to enter ticket information manually when extraction is unavailable or fails. | 10 |
 | FR-004 | The system shall match an imported ticket to an event in the synchronized event catalog and, when the match is ambiguous or has low confidence, ask the user to choose the correct event. | 9 |
 | FR-005 | The system shall present the user's ticket wallet, listing their tickets and upcoming events with the essential event information. | 9 |
-| FR-065 | The system shall decode a QR, Aztec or PDF417 entry code found in an imported ticket PDF, confirmation email or uploaded screenshot, without AI, and store it with the ticket. | 8 |
-| FR-066 | The system shall display a ticket's entry code full screen, also without a network connection, labelled with its origin and without stating that the ticket is valid. | 8 |
+| FR-070 | The system shall decode a QR, Aztec or PDF417 entry code found in an imported ticket PDF, confirmation email or uploaded screenshot, without AI, and store it with the ticket. | 8 |
+| FR-071 | The system shall display a ticket's entry code full screen, also without a network connection, labelled with its origin and without stating that the ticket is valid. | 8 |
 | FR-006 | The system shall allow a user to follow a public event (or mark it as "going") to receive its changes and alerts. | 9 |
 | FR-008 | The system shall allow a user to remove a ticket or stop following an event. | 6 |
 | FR-009 | The system shall present a simple list of events near the user or happening today, allowing the user to follow them. | 6 |
@@ -120,7 +120,7 @@ This specification translates the Crowded product vision, problem and opportunit
 | NFR-004 | Asynchronous workflows shall retry failed processing with backoff and move repeatedly failing messages to a dead-letter queue for inspection. | 8 |
 | NFR-005 | When an external event source is unavailable, delayed or returns invalid data, the system shall keep operating, reject and log invalid data, and show users the time of the last successful synchronization. | 9 |
 | NFR-006 | When the AI service is unavailable, the system shall fall back to manual ticket entry and manually written alerts so that the principal workflows continue. | 9 |
-| NFR-007 | The system shall never present AI-generated content as verified fact; AI output shall be labelled until confirmed by the user or organization. | 9 |
+| NFR-007 | The system shall never present AI-generated content as verified fact: data filled in by AI shall be marked as pending until the user confirms it, and AI-generated content shown to other people (e.g., alert drafts, incident summaries) shall be labelled as AI-generated until approved. | 9 |
 | NFR-008 | Information published by an organization shall be visible to connected users within 30 seconds. | 8 |
 | NFR-009 | 95% of user requests shall receive a response within 2 seconds, excluding AI-assisted ticket extraction, which shall complete within 30 seconds. | 8 |
 | NFR-010 | The system shall provide structured application logs, relevant operational metrics, error reporting, and correlation or trace identifiers for its deployed components. | 8 |
