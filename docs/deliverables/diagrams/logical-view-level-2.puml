@@ -38,7 +38,7 @@ skinparam port {
 () "AI API" as IAI
 () "Push API" as IPush
 () "Organization Integration API" as IOrgIntegration
-() "Mobile UI" as MobileUI
+() "Participant UI" as MobileUI
 () "Backoffice UI" as BackofficeUI
 
 ' ---------------------------------------------------------------------
@@ -46,7 +46,7 @@ skinparam port {
 ' ---------------------------------------------------------------------
 component "Crowded" <<C4 Container>> as Crowded {
 
-  portin "Mobile UI" as pMobileUI
+  portin "Participant UI" as pMobileUI
   portin "Backoffice UI" as pBackofficeUI
   portin "Organization API" as pOrgApi
   portin "Maps & Transport" as pMaps
@@ -57,7 +57,7 @@ component "Crowded" <<C4 Container>> as Crowded {
   portout "AI" as pAI
   portout "Push" as pPush
 
-  component "Mobile App" as Mobile
+  component "Participant App\n(mobile + web)" as Mobile
   component "Backoffice Web App" as Backoffice
 
   component "Router\n(NGINX)" as Router
@@ -65,10 +65,11 @@ component "Crowded" <<C4 Container>> as Crowded {
 
   component "Core" as Core
   () "REST API Core" as ICoreApi
-  () "Live Updates\n(SSE / WebSocket)" as ICoreLive
+  () "Live Updates\n(SSE)" as ICoreLive
 
   component "Notifications" as Notifications
   () "REST API Notifications" as INotifApi
+  () "Live Notifications\n(SSE)" as INotifLive
 
   component "Jobs" as Jobs
 
@@ -93,9 +94,11 @@ component "Crowded" <<C4 Container>> as Crowded {
   Core -up- ICoreApi
   Core -up- ICoreLive
   Notifications -up- INotifApi
+  Notifications -up- INotifLive
   Router -down-( ICoreApi
   Router -down-( ICoreLive
   Router -down-( INotifApi
+  Router -down-( INotifLive
 
   ' --- Asynchronous messaging
   Broker -up- IMessaging
