@@ -14,6 +14,19 @@ Crowded is a platform that helps people discover, manage and attend events, prov
 - [Responsible AI Opportunity Assessment](/docs/deliverables/responsible-ai-opportunity-assessment.md)
 - [Requirements Specification](/docs/deliverables/requirements.md)
 - [Definition of Ready and Definition of Done](/docs/deliverables/definition-of-ready-and-done.md)
+- [Technical Design](/docs/deliverables/technical-design.md)
+- [Architecture Decision Records](/docs/deliverables/adr/)
+
+## Domain Model
+
+![Crowded — Domain Model](/docs/deliverables/diagrams/domain-model.svg)
+
+The domain model shows the main concepts of Crowded and how they relate, independently of how they are stored or deployed.
+
+- **Event** is the centre of the model. Participants connect to it through a **Ticket** or a **Follow**, organizations own it and publish on-site information, alerts, surveys and polls about it, and participants report what they see.
+- **Aggregate roots** (yellow) mark consistency boundaries: each one is created and changed as a unit, and other parts of the model refer to it rather than changing it directly.
+- **Provenance** is attached to every piece of event information, so the product can always show where it came from and when it was last updated.
+- Integration details (ticketing sync state, external providers) are kept out of the model; they belong to the services described in the [Technical Design](/docs/deliverables/technical-design.md).
 
 ## Team
 
