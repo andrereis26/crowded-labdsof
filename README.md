@@ -13,6 +13,7 @@ Crowded is a platform that helps people discover, manage and attend events, prov
 - [Product Vision](/docs/deliverables/product-vision.md)
 - [Responsible AI Opportunity Assessment](/docs/deliverables/responsible-ai-opportunity-assessment.md)
 - [Requirements Specification](/docs/deliverables/requirements.md)
+- [Security and Privacy Assessment](/docs/deliverables/security-and-privacy-assessment.md)
 - [Definition of Ready and Definition of Done](/docs/deliverables/definition-of-ready-and-done.md)
 - [Technical Design](/docs/deliverables/technical-design.md)
 - [Architecture Decision Records](/docs/deliverables/adr/)
