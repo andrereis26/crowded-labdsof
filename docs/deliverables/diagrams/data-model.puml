@@ -1,0 +1,554 @@
+@startuml data-model-erd
+
+title Crowded - Logical Data Model (ERD)
+
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam entity {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+  FontSize 11
+}
+skinparam nodesep 35
+skinparam ranksep 45
+
+' Core-owned domain data
+package "Core" {
+
+' Identity and access
+entity "User" as User {
+  * id : UUID <<PK>>
+  organizationId : UUID [0..1] <<FK>>
+  --
+  email : TEXT [PERSONAL]
+  passwordHash : TEXT [CREDENTIAL]
+  role : role
+  createdAt : TIMESTAMPTZ
+  locationConsentGranted : BOOLEAN [0..1] [PERSONAL]
+}
+
+entity "Organization" as Organization {
+  * id : UUID <<PK>>
+  verifiedByUserId : UUID [0..1] <<FK>>
+  --
+  name : TEXT
+  verificationStatus : verification_status
+  verifiedAt : TIMESTAMPTZ [0..1]
+}
+
+entity "ApiCredential" as ApiCredential {
+  * keyId : UUID <<PK>>
+  organizationId : UUID <<FK>>
+  --
+  secretHash : TEXT [CREDENTIAL]
+  scope : TEXT
+  createdAt : TIMESTAMPTZ
+  revokedAt : TIMESTAMPTZ [0..1]
+}
+
+' Event catalog
+entity "Event" as Event {
+  * id : UUID <<PK>>
+  organizationId : UUID [0..1] <<FK>>
+  --
+  name : TEXT
+  description : TEXT
+  startDateTime : TIMESTAMPTZ
+  endDateTime : TIMESTAMPTZ
+  status : event_status
+  capacity : INTEGER [0..1]
+  visibility : event_visibility
+  origin : event_origin
+  lastSyncedAt : TIMESTAMPTZ [0..1]
+  venueName : TEXT
+  address : TEXT
+  latitude : DOUBLE PRECISION
+  longitude : DOUBLE PRECISION
+  crowdLevel : crowd_level [0..1]
+  headCount : INTEGER [0..1]
+  crowdProvenanceSourceType : source_type [0..1]
+  crowdProvenanceSourceName : TEXT [0..1]
+  crowdProvenanceLastUpdatedAt : TIMESTAMPTZ [0..1]
+  crowdProvenanceConfirmed : BOOLEAN [0..1]
+}
+
+entity "EventChange" as EventChange {
+  * id : UUID <<PK>>
+  eventId : UUID <<FK>>
+  --
+  type : change_type
+  previousValue : JSONB
+  newValue : JSONB
+  provenanceSourceType : source_type
+  provenanceSourceName : TEXT
+  provenanceLastUpdatedAt : TIMESTAMPTZ
+  provenanceConfirmed : BOOLEAN
+}
+
+entity "OwnershipRequest" as OwnershipRequest {
+  * id : UUID <<PK>>
+  organizationId : UUID <<FK>>
+  eventId : UUID <<FK>>
+  decidedByUserId : UUID [0..1] <<FK>>
+  --
+  status : request_decision
+  requestedAt : TIMESTAMPTZ
+  decidedAt : TIMESTAMPTZ [0..1]
+}
+
+' Participation
+entity "EventConnection\n<<Abstract>>" as EventConnection {
+  * id : UUID <<PK>>
+  userId : UUID <<FK, PERSONAL>>
+  eventId : UUID <<FK>>
+  --
+  connectedAt : TIMESTAMPTZ
+  lastPromptedAt : TIMESTAMPTZ [0..1]
+}
+
+entity "Ticket" as Ticket {
+  * id : UUID <<PK, FK>>
+  --
+  gate : TEXT [0..1]
+  sector : TEXT [0..1]
+  seat : TEXT [0..1]
+  entryCode : BYTEA [0..1] [CREDENTIAL, ENCRYPTED]
+  importMethod : import_method
+  status : ticket_status
+}
+
+entity "Follow" as Follow {
+  * id : UUID <<PK, FK>>
+  --
+  going : BOOLEAN
+}
+
+entity "TicketExtraction" as TicketExtraction {
+  * id : UUID <<PK>>
+  ticketId : UUID <<FK, PERSONAL>>
+  --
+  extractedFields : JSONB
+  fieldConfidence : JSONB
+  aiGenerated : BOOLEAN
+  createdAt : TIMESTAMPTZ
+}
+
+entity "EventMatchCandidate\n<<Dependent Value Object>>" as EventMatchCandidate {
+  * ticketExtractionId : UUID <<PK, FK, PERSONAL>>
+  * eventId : UUID <<PK, FK>>
+  --
+  confidence : DOUBLE PRECISION
+}
+
+' On-site information
+entity "QueueTime\n<<Dependent Value Object>>" as QueueTime {
+  * eventId : UUID <<PK, FK>>
+  * kind : queue_point_kind <<PK>>
+  * pointName : TEXT <<PK>>
+  --
+  waitMinutes : INTEGER
+  provenanceSourceType : source_type
+  provenanceSourceName : TEXT
+  provenanceLastUpdatedAt : TIMESTAMPTZ
+  provenanceConfirmed : BOOLEAN
+}
+
+entity "WeatherForecast\n<<Dependent Value Object>>" as WeatherForecast {
+  * eventId : UUID <<PK, FK>>
+  * date : DATE <<PK>>
+  --
+  conditions : TEXT
+  temperature : DOUBLE PRECISION
+  severeWeather : BOOLEAN
+  provenanceSourceType : source_type
+  provenanceSourceName : TEXT
+  provenanceLastUpdatedAt : TIMESTAMPTZ
+  provenanceConfirmed : BOOLEAN
+}
+
+' Organizer communication
+entity "Alert" as Alert {
+  * id : UUID <<PK>>
+  eventId : UUID <<FK>>
+  organizationId : UUID <<FK>>
+  incidentId : UUID [0..1] <<FK>>
+  --
+  type : alert_type
+  message : TEXT
+  status : alert_status
+  sentAt : TIMESTAMPTZ [0..1]
+  recipientsCount : INTEGER [0..1]
+}
+
+entity "AlertDraft" as AlertDraft {
+  * id : UUID <<PK>>
+  alertId : UUID <<FK, UK>>
+  --
+  organizerInput : TEXT
+  draftText : TEXT
+  factsUsed : JSONB
+  aiGenerated : BOOLEAN
+}
+
+entity "EventSurvey" as EventSurvey {
+  * id : UUID <<PK>>
+  eventId : UUID <<FK>>
+  --
+  type : survey_type
+  text : TEXT
+  urgent : BOOLEAN
+  publishedAt : TIMESTAMPTZ
+  closesAt : TIMESTAMPTZ [0..1]
+}
+
+entity "SurveyOption\n<<Dependent Value Object>>" as SurveyOption {
+  * eventSurveyId : UUID <<PK, FK>>
+  * label : TEXT <<PK>>
+}
+
+entity "SurveyResponse" as SurveyResponse {
+  * id : UUID <<PK>>
+  eventSurveyId : UUID <<FK, UK>>
+  userId : UUID <<FK, UK, PERSONAL>>
+  --
+  answer : TEXT
+  respondedAt : TIMESTAMPTZ
+}
+
+entity "AttendancePoll" as AttendancePoll {
+  * id : UUID <<PK>>
+  organizationId : UUID <<FK>>
+  eventId : UUID [0..1] <<FK>>
+  --
+  question : TEXT
+  proposedEventDescription : TEXT [0..1]
+  opensAt : TIMESTAMPTZ
+  closesAt : TIMESTAMPTZ
+}
+
+entity "PollResponse" as PollResponse {
+  * id : UUID <<PK>>
+  attendancePollId : UUID <<FK, UK>>
+  userId : UUID <<FK, UK, PERSONAL>>
+  --
+  intention : attendance_intention
+  respondedAt : TIMESTAMPTZ
+}
+
+' Reports, confirmations and incidents
+entity "Report" as Report {
+  * id : UUID <<PK>>
+  eventId : UUID <<FK>>
+  userId : UUID <<FK, PRIVACY-SENSITIVE>>
+  reportCategoryCode : TEXT <<FK>>
+  incidentId : UUID [0..1] <<FK>>
+  --
+  description : TEXT [0..1] [MAY CONTAIN PERSONAL DATA]
+  reportedCrowdLevel : crowd_level [0..1]
+  reportedQueuePoint : TEXT [0..1]
+  reportedWaitMinutes : INTEGER [0..1]
+  reportedAt : TIMESTAMPTZ
+  locationVerified : BOOLEAN [PERSONAL]
+  confidenceScore : DOUBLE PRECISION
+  confidenceLevel : confidence_level
+  confidenceComputedAt : TIMESTAMPTZ
+}
+
+note right of Report
+  The text description may contain personal data,
+  for example when a lost and found report describes
+  a personal belonging.
+end note
+
+entity "ReportCategory" as ReportCategory {
+  * code : TEXT <<PK>>
+  --
+  name : TEXT
+  personal : BOOLEAN
+  promptsEnabledByDefault : BOOLEAN
+}
+
+entity "EventCategorySetting" as EventCategorySetting {
+  * eventId : UUID <<PK, FK>>
+  * reportCategoryCode : TEXT <<PK, FK>>
+  --
+  promptsEnabled : BOOLEAN
+}
+
+entity "Confirmation" as Confirmation {
+  * id : UUID <<PK>>
+  reportId : UUID <<FK, UK>>
+  userId : UUID <<FK, UK, PRIVACY-SENSITIVE>>
+  --
+  answer : confirmation_answer
+  answeredAt : TIMESTAMPTZ
+  locationVerified : BOOLEAN [PERSONAL]
+}
+
+entity "Incident" as Incident {
+  * id : UUID <<PK>>
+  eventId : UUID <<FK>>
+  --
+  summary : TEXT
+  status : incident_status
+  groupingMethod : grouping_method
+  createdAt : TIMESTAMPTZ
+}
+
+entity "Recognition" as Recognition {
+  * id : UUID <<PK>>
+  reportId : UUID <<FK, UK>>
+  --
+  impact : TEXT
+  reachedUsers : INTEGER [0..1]
+  grantedAt : TIMESTAMPTZ
+}
+
+entity "AuditLogEntry" as AuditLogEntry {
+  * id : UUID <<PK>>
+  actorId : UUID [0..1] <<FK, PERSONAL>>
+  eventId : UUID [0..1] <<FK>>
+  --
+  action : TEXT
+  entityType : TEXT
+  entityId : UUID
+  details : JSONB
+  occurredAt : TIMESTAMPTZ
+}
+
+}
+
+' Notifications-owned data
+package "Notifications" {
+entity "Notification" as Notification {
+  * id : UUID <<PK>>
+  userId : UUID <<FK, PERSONAL>>
+  eventId : UUID <<FK>>
+  --
+  type : notification_type
+  title : TEXT
+  body : TEXT
+  deduplicationKey : TEXT <<UK, PERSONAL>>
+  createdAt : TIMESTAMPTZ
+  deliveredAt : TIMESTAMPTZ [0..1]
+  readAt : TIMESTAMPTZ [0..1]
+}
+
+entity "UserNotificationSetting" as UserNotificationSetting {
+  * userId : UUID <<PK, FK, PERSONAL>>
+  * type : notification_type <<PK>>
+  --
+  enabled : BOOLEAN
+}
+
+entity "EventNotificationSetting" as EventNotificationSetting {
+  * eventConnectionId : UUID <<PK, FK, PERSONAL>>
+  * type : notification_type <<PK>>
+  --
+  enabled : BOOLEAN
+}
+
+}
+
+' PostgreSQL enum types and domain values
+package "ENUM types" {
+enum "role" as role {
+  PARTICIPANT
+  ORGANIZATION_MEMBER
+  ADMINISTRATOR
+}
+
+enum "verification_status" as verification_status {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum "event_status" as event_status {
+  SCHEDULED
+  POSTPONED
+  RELOCATED
+  CANCELLED
+  ONGOING
+  ENDED
+}
+
+enum "event_visibility" as event_visibility {
+  PUBLIC
+  TICKETED
+}
+
+enum "event_origin" as event_origin {
+  ORGANIZATION
+  TICKETING_PLATFORM
+  MUNICIPAL_AGENDA
+}
+
+enum "change_type" as change_type {
+  CANCELLATION
+  POSTPONEMENT
+  TIME_CHANGE
+  VENUE_CHANGE
+  DETAILS_UPDATE
+}
+
+enum "request_decision" as request_decision {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum "import_method" as import_method {
+  PDF_UPLOAD
+  EMAIL_PASTE
+  MANUAL_ENTRY
+}
+
+enum "ticket_status" as ticket_status {
+  PENDING_CONFIRMATION
+  CONFIRMED
+}
+
+enum "crowd_level" as crowd_level {
+  LOW
+  MODERATE
+  HIGH
+  FULL
+}
+
+enum "queue_point_kind" as queue_point_kind {
+  ENTRANCE
+  TICKET_OFFICE
+  BAR
+  TOILET
+  OTHER
+}
+
+enum "source_type" as source_type {
+  OFFICIAL_SOURCE
+  ORGANIZATION
+  PARTICIPANT_ESTIMATE
+  AI_GENERATED
+  EXTERNAL_SERVICE
+}
+
+enum "alert_type" as alert_type {
+  ENTRANCE_CLOSURE
+  CAPACITY_REACHED
+  SCHEDULE_DELAY
+  WEATHER_WARNING
+  OTHER
+}
+
+enum "alert_status" as alert_status {
+  DRAFT
+  SENT
+}
+
+enum "survey_type" as survey_type {
+  CONFIRMATION
+  POLL
+  IDEA
+}
+
+enum "attendance_intention" as attendance_intention {
+  WILL_ATTEND
+  MAYBE
+  WILL_NOT_ATTEND
+}
+
+enum "confirmation_answer" as confirmation_answer {
+  YES
+  NO
+}
+
+enum "confidence_level" as confidence_level {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum "incident_status" as incident_status {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum "grouping_method" as grouping_method {
+  AI_SIMILARITY
+  CATEGORY_TIME_WINDOW
+  MANUAL_SPLIT
+}
+
+enum "notification_type" as notification_type {
+  OFFICIAL_CHANGE
+  OPERATIONAL_ALERT
+  ORGANIZATION_SURVEY
+  SEVERE_WEATHER
+  INCIDENT_STATUS
+  RECOGNITION
+  CONFIRMATION_REQUEST
+}
+}
+
+' Identity and access relationships
+Organization |o--|{ User : members
+Organization ||--o{ ApiCredential : credentials
+User |o--o{ Organization : verifies
+
+' Event catalog relationships
+Organization |o--o{ Event : owns
+Event ||--o{ EventChange : change history
+Organization ||--o{ OwnershipRequest : submits
+Event ||--o{ OwnershipRequest : requested for
+User |o--o{ OwnershipRequest : decides
+
+' Participation relationships
+User ||--o{ EventConnection : connects
+Event ||--o{ EventConnection : has participants
+EventConnection ||--o| Ticket : subtype
+EventConnection ||--o| Follow : subtype
+Ticket ||--o| TicketExtraction : extraction
+TicketExtraction ||--o{ EventMatchCandidate : candidates
+Event ||--o{ EventMatchCandidate : candidate event
+
+' On-site information relationships
+Event ||--o{ QueueTime : queues
+Event ||--o{ WeatherForecast : forecasts
+
+' Organizer communication relationships
+Event ||--o{ Alert : alerts
+Alert ||--o| AlertDraft : draft
+Organization ||--o{ Alert : approves and sends
+Event ||--o{ EventSurvey : surveys
+EventSurvey ||--o{ SurveyOption : options
+EventSurvey ||--o{ SurveyResponse : responses
+User ||--o{ SurveyResponse : responds
+Organization ||--o{ AttendancePoll : launches
+Event |o--o{ AttendancePoll : for
+AttendancePoll ||--o{ PollResponse : responses
+User ||--o{ PollResponse : responds
+
+' Reports, confirmations and incidents relationships
+Event ||--o{ Report : reports
+User ||--o{ Report : reports (identity not public)
+ReportCategory ||--o{ Report : classifies
+Event ||--o{ EventCategorySetting : category settings
+ReportCategory ||--o{ EventCategorySetting : configured category
+Report ||--o{ Confirmation : confirmations
+User ||--o{ Confirmation : answers (anonymous)
+Event ||--o{ Incident : incidents
+Incident |o--|{ Report : groups
+Incident |o--o{ Alert : may trigger
+Report ||--o| Recognition : recognition
+
+' Notifications and audit relationships
+User ||--o{ UserNotificationSetting : overall defaults
+EventConnection ||--o{ EventNotificationSetting : per-event overrides
+User ||--o{ Notification : receives
+Event ||--o{ Notification : concerns
+User |o--o{ AuditLogEntry : actor
+Event ||--o{ AuditLogEntry : records changes
+
+@enduml
