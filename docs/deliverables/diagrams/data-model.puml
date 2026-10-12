@@ -1,6 +1,6 @@
 @startuml data-model-erd
 
-title Crowded - Logical Data Model (ERD)
+title Crowded - Data Model (ERD)
 
 left to right direction
 skinparam shadowing false
@@ -19,22 +19,26 @@ package "Core" {
 ' Identity and access
 entity "User" as User {
   * id : UUID <<PK>>
-  organizationId : UUID [0..1] <<FK>>
+  organizationId : UUID [NULL] <<FK>>
   --
   email : TEXT [PERSONAL]
   passwordHash : TEXT [CREDENTIAL]
   role : role
   createdAt : TIMESTAMPTZ
-  locationConsentGranted : BOOLEAN [0..1] [PERSONAL]
+  locationConsentGranted : BOOLEAN [NULL] [PERSONAL]
 }
+
+note right of User
+  [NULL] marks an optional (nullable) database column.
+end note
 
 entity "Organization" as Organization {
   * id : UUID <<PK>>
-  verifiedByUserId : UUID [0..1] <<FK>>
+  verifiedByUserId : UUID [NULL] <<FK>> [PERSONAL]
   --
   name : TEXT
   verificationStatus : verification_status
-  verifiedAt : TIMESTAMPTZ [0..1]
+  verifiedAt : TIMESTAMPTZ [NULL]
 }
 
 entity "ApiCredential" as ApiCredential {
@@ -44,34 +48,40 @@ entity "ApiCredential" as ApiCredential {
   secretHash : TEXT [CREDENTIAL]
   scope : TEXT
   createdAt : TIMESTAMPTZ
-  revokedAt : TIMESTAMPTZ [0..1]
+  revokedAt : TIMESTAMPTZ [NULL]
 }
 
 ' Event catalog
 entity "Event" as Event {
   * id : UUID <<PK>>
-  organizationId : UUID [0..1] <<FK>>
+  organizationId : UUID [NULL] <<FK>>
   --
   name : TEXT
   description : TEXT
   startDateTime : TIMESTAMPTZ
   endDateTime : TIMESTAMPTZ
   status : event_status
-  capacity : INTEGER [0..1]
+  capacity : INTEGER [NULL]
   visibility : event_visibility
   origin : event_origin
-  lastSyncedAt : TIMESTAMPTZ [0..1]
+  lastSyncedAt : TIMESTAMPTZ [NULL]
   venueName : TEXT
   address : TEXT
   latitude : DOUBLE PRECISION
   longitude : DOUBLE PRECISION
-  crowdLevel : crowd_level [0..1]
-  headCount : INTEGER [0..1]
-  crowdProvenanceSourceType : source_type [0..1]
-  crowdProvenanceSourceName : TEXT [0..1]
-  crowdProvenanceLastUpdatedAt : TIMESTAMPTZ [0..1]
-  crowdProvenanceConfirmed : BOOLEAN [0..1]
+  crowdLevel : crowd_level [NULL]
+  headCount : INTEGER [NULL]
+  crowdProvenanceSourceType : source_type [NULL]
+  crowdProvenanceSourceName : TEXT [NULL]
+  crowdProvenanceLastUpdatedAt : TIMESTAMPTZ [NULL]
+  crowdProvenanceConfirmed : BOOLEAN [NULL]
 }
+
+note right of Event
+  The composed EventLocation and optional CrowdStatus
+  are flattened into Event columns. Provenance is
+  flattened within CrowdStatus.
+end note
 
 entity "EventChange" as EventChange {
   * id : UUID <<PK>>
@@ -86,37 +96,49 @@ entity "EventChange" as EventChange {
   provenanceConfirmed : BOOLEAN
 }
 
+note right of EventChange
+  Each JSONB value stores the changed attribute and
+  its old or new value (for example,
+  {"status":"SCHEDULED"} to {"status":"POSTPONED"}).
+  This supports changed attributes with different types.
+end note
+
 entity "OwnershipRequest" as OwnershipRequest {
   * id : UUID <<PK>>
   organizationId : UUID <<FK>>
   eventId : UUID <<FK>>
-  decidedByUserId : UUID [0..1] <<FK>>
+  decidedByUserId : UUID [NULL] <<FK>> [PERSONAL]
   --
   status : request_decision
   requestedAt : TIMESTAMPTZ
-  decidedAt : TIMESTAMPTZ [0..1]
+  decidedAt : TIMESTAMPTZ [NULL]
 }
 
 ' Participation
 entity "EventConnection\n<<Abstract>>" as EventConnection {
   * id : UUID <<PK>>
-  userId : UUID <<FK, PERSONAL>>
+  userId : UUID <<FK>> [PERSONAL]
   eventId : UUID <<FK>>
   --
   connectedAt : TIMESTAMPTZ
-  lastPromptedAt : TIMESTAMPTZ [0..1]
+  lastPromptedAt : TIMESTAMPTZ [NULL]
 }
 
 entity "Ticket" as Ticket {
   * id : UUID <<PK, FK>>
   --
-  gate : TEXT [0..1]
-  sector : TEXT [0..1]
-  seat : TEXT [0..1]
-  entryCode : BYTEA [0..1] [CREDENTIAL, ENCRYPTED]
+  gate : TEXT [NULL]
+  sector : TEXT [NULL]
+  seat : TEXT [NULL]
+  entryCode : BYTEA [NULL] [CREDENTIAL, ENCRYPTED]
   importMethod : import_method
   status : ticket_status
 }
+
+note right of Ticket
+  entryCode is included to meet FR-070 and is
+  encrypted and treated as a credential per SR-018.
+end note
 
 entity "Follow" as Follow {
   * id : UUID <<PK, FK>>
@@ -126,7 +148,7 @@ entity "Follow" as Follow {
 
 entity "TicketExtraction" as TicketExtraction {
   * id : UUID <<PK>>
-  ticketId : UUID <<FK, PERSONAL>>
+  ticketId : UUID <<FK, UK>> [PERSONAL]
   --
   extractedFields : JSONB
   fieldConfidence : JSONB
@@ -134,18 +156,28 @@ entity "TicketExtraction" as TicketExtraction {
   createdAt : TIMESTAMPTZ
 }
 
+note right of TicketExtraction
+  JSONB keeps the named extracted fields grouped
+  together, with corresponding per-field confidence
+  scores in a second object. The stored data follows
+  the validated extraction schema where personal data and
+  entry codes are excluded (SR-004, SR-018).
+end note
+
 entity "EventMatchCandidate\n<<Dependent Value Object>>" as EventMatchCandidate {
-  * ticketExtractionId : UUID <<PK, FK, PERSONAL>>
-  * eventId : UUID <<PK, FK>>
+  * id : UUID <<PK>>
+  ticketExtractionId : UUID <<FK, UK>> [PERSONAL]
+  eventId : UUID <<FK, UK>>
   --
   confidence : DOUBLE PRECISION
 }
 
 ' On-site information
 entity "QueueTime\n<<Dependent Value Object>>" as QueueTime {
-  * eventId : UUID <<PK, FK>>
-  * kind : queue_point_kind <<PK>>
-  * pointName : TEXT <<PK>>
+  * id : UUID <<PK>>
+  eventId : UUID <<FK, UK>>
+  kind : queue_point_kind <<UK>>
+  pointName : TEXT <<UK>>
   --
   waitMinutes : INTEGER
   provenanceSourceType : source_type
@@ -155,8 +187,9 @@ entity "QueueTime\n<<Dependent Value Object>>" as QueueTime {
 }
 
 entity "WeatherForecast\n<<Dependent Value Object>>" as WeatherForecast {
-  * eventId : UUID <<PK, FK>>
-  * date : DATE <<PK>>
+  * id : UUID <<PK>>
+  eventId : UUID <<FK, UK>>
+  date : DATE <<UK>>
   --
   conditions : TEXT
   temperature : DOUBLE PRECISION
@@ -172,13 +205,13 @@ entity "Alert" as Alert {
   * id : UUID <<PK>>
   eventId : UUID <<FK>>
   organizationId : UUID <<FK>>
-  incidentId : UUID [0..1] <<FK>>
+  incidentId : UUID [NULL] <<FK>>
   --
   type : alert_type
   message : TEXT
   status : alert_status
-  sentAt : TIMESTAMPTZ [0..1]
-  recipientsCount : INTEGER [0..1]
+  sentAt : TIMESTAMPTZ [NULL]
+  recipientsCount : INTEGER [NULL]
 }
 
 entity "AlertDraft" as AlertDraft {
@@ -191,6 +224,12 @@ entity "AlertDraft" as AlertDraft {
   aiGenerated : BOOLEAN
 }
 
+note right of AlertDraft
+  JSONB keeps the structured facts used by the draft
+  so the UI can highlight them and show their source
+  alongside the draft (FR-021, AI assessment).
+end note
+
 entity "EventSurvey" as EventSurvey {
   * id : UUID <<PK>>
   eventId : UUID <<FK>>
@@ -199,18 +238,19 @@ entity "EventSurvey" as EventSurvey {
   text : TEXT
   urgent : BOOLEAN
   publishedAt : TIMESTAMPTZ
-  closesAt : TIMESTAMPTZ [0..1]
+  closesAt : TIMESTAMPTZ [NULL]
 }
 
 entity "SurveyOption\n<<Dependent Value Object>>" as SurveyOption {
-  * eventSurveyId : UUID <<PK, FK>>
-  * label : TEXT <<PK>>
+  * id : UUID <<PK>>
+  eventSurveyId : UUID <<FK, UK>>
+  label : TEXT <<UK>>
 }
 
 entity "SurveyResponse" as SurveyResponse {
   * id : UUID <<PK>>
   eventSurveyId : UUID <<FK, UK>>
-  userId : UUID <<FK, UK, PERSONAL>>
+  userId : UUID <<FK, UK>> [PERSONAL]
   --
   answer : TEXT
   respondedAt : TIMESTAMPTZ
@@ -219,10 +259,10 @@ entity "SurveyResponse" as SurveyResponse {
 entity "AttendancePoll" as AttendancePoll {
   * id : UUID <<PK>>
   organizationId : UUID <<FK>>
-  eventId : UUID [0..1] <<FK>>
+  eventId : UUID [NULL] <<FK>>
   --
   question : TEXT
-  proposedEventDescription : TEXT [0..1]
+  proposedEventDescription : TEXT [NULL]
   opensAt : TIMESTAMPTZ
   closesAt : TIMESTAMPTZ
 }
@@ -230,7 +270,7 @@ entity "AttendancePoll" as AttendancePoll {
 entity "PollResponse" as PollResponse {
   * id : UUID <<PK>>
   attendancePollId : UUID <<FK, UK>>
-  userId : UUID <<FK, UK, PERSONAL>>
+  userId : UUID <<FK, UK>> [PERSONAL]
   --
   intention : attendance_intention
   respondedAt : TIMESTAMPTZ
@@ -240,14 +280,14 @@ entity "PollResponse" as PollResponse {
 entity "Report" as Report {
   * id : UUID <<PK>>
   eventId : UUID <<FK>>
-  userId : UUID <<FK, PRIVACY-SENSITIVE>>
+  userId : UUID <<FK>> [PERSONAL, PRIVACY-SENSITIVE]
   reportCategoryCode : TEXT <<FK>>
-  incidentId : UUID [0..1] <<FK>>
+  incidentId : UUID [NULL] <<FK>>
   --
-  description : TEXT [0..1] [MAY CONTAIN PERSONAL DATA]
-  reportedCrowdLevel : crowd_level [0..1]
-  reportedQueuePoint : TEXT [0..1]
-  reportedWaitMinutes : INTEGER [0..1]
+  description : TEXT [NULL] [MAY CONTAIN PERSONAL DATA]
+  reportedCrowdLevel : crowd_level [NULL]
+  reportedQueuePoint : TEXT [NULL]
+  reportedWaitMinutes : INTEGER [NULL]
   reportedAt : TIMESTAMPTZ
   locationVerified : BOOLEAN [PERSONAL]
   confidenceScore : DOUBLE PRECISION
@@ -259,6 +299,8 @@ note right of Report
   The text description may contain personal data,
   for example when a lost and found report describes
   a personal belonging.
+  The reporter link is additionally privacy-sensitive
+  because SR-007 says the identity must not be public.
 end note
 
 entity "ReportCategory" as ReportCategory {
@@ -270,21 +312,33 @@ entity "ReportCategory" as ReportCategory {
 }
 
 entity "EventCategorySetting" as EventCategorySetting {
-  * eventId : UUID <<PK, FK>>
-  * reportCategoryCode : TEXT <<PK, FK>>
+  * id : UUID <<PK>>
+  eventId : UUID <<FK, UK>>
+  reportCategoryCode : TEXT <<FK, UK>>
   --
   promptsEnabled : BOOLEAN
 }
 
+note right of EventCategorySetting
+  A UK on multiple attributes of one entity denotes
+  one composite unique constraint across those fields.
+end note
+
 entity "Confirmation" as Confirmation {
   * id : UUID <<PK>>
   reportId : UUID <<FK, UK>>
-  userId : UUID <<FK, UK, PRIVACY-SENSITIVE>>
+  userId : UUID <<FK, UK>> [PERSONAL, PRIVACY-SENSITIVE]
   --
   answer : confirmation_answer
   answeredAt : TIMESTAMPTZ
   locationVerified : BOOLEAN [PERSONAL]
 }
+
+note right of Confirmation
+  userId links the response internally for the
+  one-answer-per-user rule; the domain describes
+  the answer as anonymous.
+end note
 
 entity "Incident" as Incident {
   * id : UUID <<PK>>
@@ -301,14 +355,14 @@ entity "Recognition" as Recognition {
   reportId : UUID <<FK, UK>>
   --
   impact : TEXT
-  reachedUsers : INTEGER [0..1]
+  reachedUsers : INTEGER [NULL]
   grantedAt : TIMESTAMPTZ
 }
 
 entity "AuditLogEntry" as AuditLogEntry {
   * id : UUID <<PK>>
-  actorId : UUID [0..1] <<FK, PERSONAL>>
-  eventId : UUID [0..1] <<FK>>
+  actorId : UUID [NULL] <<FK>> [PERSONAL]
+  eventId : UUID [NULL] <<FK>>
   --
   action : TEXT
   entityType : TEXT
@@ -317,34 +371,42 @@ entity "AuditLogEntry" as AuditLogEntry {
   occurredAt : TIMESTAMPTZ
 }
 
+note right of AuditLogEntry
+  JSONB stores structured details that vary by audit
+  event type (event change, alert sent, incident status
+  change), as covered by SR-006.
+end note
+
 }
 
 ' Notifications-owned data
 package "Notifications" {
 entity "Notification" as Notification {
   * id : UUID <<PK>>
-  userId : UUID <<FK, PERSONAL>>
+  userId : UUID <<FK>> [PERSONAL]
   eventId : UUID <<FK>>
   --
   type : notification_type
   title : TEXT
   body : TEXT
-  deduplicationKey : TEXT <<UK, PERSONAL>>
+  deduplicationKey : TEXT <<UK>> [PERSONAL]
   createdAt : TIMESTAMPTZ
-  deliveredAt : TIMESTAMPTZ [0..1]
-  readAt : TIMESTAMPTZ [0..1]
+  deliveredAt : TIMESTAMPTZ [NULL]
+  readAt : TIMESTAMPTZ [NULL]
 }
 
 entity "UserNotificationSetting" as UserNotificationSetting {
-  * userId : UUID <<PK, FK, PERSONAL>>
-  * type : notification_type <<PK>>
+  * id : UUID <<PK>>
+  userId : UUID <<FK, UK>> [PERSONAL]
+  type : notification_type <<UK>>
   --
   enabled : BOOLEAN
 }
 
 entity "EventNotificationSetting" as EventNotificationSetting {
-  * eventConnectionId : UUID <<PK, FK, PERSONAL>>
-  * type : notification_type <<PK>>
+  * id : UUID <<PK>>
+  eventConnectionId : UUID <<FK, UK>> [PERSONAL]
+  type : notification_type <<UK>>
   --
   enabled : BOOLEAN
 }
