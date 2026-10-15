@@ -4,6 +4,15 @@ Project developed for the LABDSOF (Software Development Laboratory) course, part
 
 Crowded is a platform that helps people discover, manage and attend events, providing real-time information about event changes and venue conditions, and connecting attendees with similar interests.
 
+## Team
+
+| Student Number | Name               | Role                              |
+|-----------------|-------------------|-----------------------------------|
+| 1191256         | André Reis        | Scrum Master / Product Owner      |
+| 1201506         | Guilherme Cunha   | Project Manager                   |
+| 1211105         | Margarida Pereira | QA                                |
+| 1250491         | Acácio Coutinho   | UI/UX                             |
+
 ## Documents
 
 - [Assignment](/docs/LABDSOF-26-27-Assignment.md)
@@ -31,14 +40,6 @@ The domain model shows the main concepts of Crowded and how they relate, indepen
 - **Disruptions** take three forms: official changes (**EventChange**), organizer alerts (**Alert**) and incidents reported by participants (**Incident**). Changes and alerts share a **Severity** (critical, warning, information), alerts stay active until the organization resolves them, and every **Notification** points to the disruption that caused it.
 - Integration details (ticketing sync state, external providers) are kept out of the model; they belong to the services described in the [Technical Design](/docs/deliverables/technical-design.md).
 
-## Team
-
-| Student Number | Name               | Role                              |
-|-----------------|-------------------|-----------------------------------|
-| 1191256         | André Reis        | Scrum Master / Product Owner      |
-| 1201506         | Guilherme Cunha   | Project Manager                   |
-| 1211105         | Margarida Pereira | QA                                |
-| 1250491         | Acácio Coutinho   | UI/UX                             |
 
 Note: everyone's role is flexible and can change according to the needs of the project and everyone's assumed as developer as well.
 
