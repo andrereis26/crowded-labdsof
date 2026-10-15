@@ -31,7 +31,7 @@
       <bpmn:outgoing>Flow_2</bpmn:outgoing>
       <bpmn:outgoing>Flow_3</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:userTask id="find" name="Find event in &#x27;near me / today&#x27; and follow it">
+    <bpmn:userTask id="find" name="Find event (&#x27;near me / today&#x27; or a poll link) and tap Follow">
       <bpmn:incoming>Flow_3</bpmn:incoming>
       <bpmn:outgoing>Flow_14</bpmn:outgoing>
     </bpmn:userTask>
@@ -81,7 +81,7 @@
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="Flow_1" sourceRef="s" targetRef="g1" />
     <bpmn:sequenceFlow id="Flow_2" name="Paid" sourceRef="g1" targetRef="up" />
-    <bpmn:sequenceFlow id="Flow_3" name="Public" sourceRef="g1" targetRef="find" />
+    <bpmn:sequenceFlow id="Flow_3" name="Public or proposed" sourceRef="g1" targetRef="find" />
     <bpmn:sequenceFlow id="Flow_4" sourceRef="up" targetRef="g2" />
     <bpmn:sequenceFlow id="Flow_5" name="Yes" sourceRef="g2" targetRef="ai" />
     <bpmn:sequenceFlow id="Flow_6" name="No" sourceRef="g2" targetRef="man" />
@@ -115,7 +115,7 @@
       <bpmndi:BPMNShape id="e_di" bpmnElement="e"><dc:Bounds x="1353" y="260" width="32" height="32" /><bpmndi:BPMNLabel><dc:Bounds x="1332" y="297" width="74" height="26" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1"><di:waypoint x="139" y="172" /><di:waypoint x="187" y="172" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2"><di:waypoint x="229" y="172" /><di:waypoint x="268" y="172" /><bpmndi:BPMNLabel><dc:Bounds x="235" y="154" width="30" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3"><di:waypoint x="208" y="151" /><di:waypoint x="208" y="68" /><di:waypoint x="268" y="68" /><bpmndi:BPMNLabel><dc:Bounds x="213" y="131" width="42" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3"><di:waypoint x="208" y="151" /><di:waypoint x="208" y="68" /><di:waypoint x="268" y="68" /><bpmndi:BPMNLabel><dc:Bounds x="213" y="118" width="56" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4"><di:waypoint x="331" y="212" /><di:waypoint x="331" y="276" /><di:waypoint x="433" y="276" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5"><di:waypoint x="475" y="276" /><di:waypoint x="514" y="276" /><bpmndi:BPMNLabel><dc:Bounds x="481" y="258" width="24" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6"><di:waypoint x="454" y="255" /><di:waypoint x="454" y="172" /><di:waypoint x="514" y="172" /><bpmndi:BPMNLabel><dc:Bounds x="459" y="235" width="18" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
