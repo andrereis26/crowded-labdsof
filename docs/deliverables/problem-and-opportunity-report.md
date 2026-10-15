@@ -19,6 +19,7 @@ For paid events, attendees usually buy their tickets on external ticketing platf
 
 Promoters, venues, cultural associations and public entities (e.g., municipalities, parish councils) that need better tools to:
 
+- Test interest in an event before booking it (whether to bring an artist, for how many nights, in which room)
 - Plan capacity based on expected attendance
 - Communicate event changes to their audience
 - Publish on-site conditions such as crowd levels and queues
@@ -45,7 +46,7 @@ During the event, participants have little or no visibility into:
 - Closed entrances or access changes
 - On-site incidents
 
-Event organizers also face significant uncertainty when planning capacity, and lack a direct and fast channel to reach the people who are on their way to, or already at, the event.
+Event organizers also face significant uncertainty when deciding whether and how big to book an event and when planning capacity, and lack a direct and fast channel to reach the people who are on their way to, or already at, the event.
 
 > **As a result, both participants and organizers react to disruptions based on incomplete or outdated information, leading to wasted trips, overcrowding, avoidable queues and slow incident response.**
 
@@ -92,7 +93,7 @@ Users often discover these conditions only after arriving at the venue.
 
 ### 3.4 Limited Capacity Planning
 
-Event organizers frequently have difficulty estimating how many people will actually attend.
+Event organizers frequently have difficulty estimating how many people will actually attend. The uncertainty starts before the event exists: a venue programmer deciding whether to bring an artist, whether to book one night or two, or a small or large room, often relies on intuition and on social media reactions, which do not say how many people would actually come.
 
 This uncertainty may result in:
 
@@ -100,6 +101,7 @@ This uncertainty may result in:
 - Oversized venues
 - Excess operational costs
 - Overcrowding and poor attendee experience
+- Events moved to another room or date after tickets are sold, which is itself a disruption for participants
 
 ### 3.5 No Direct Organizer-to-Audience Channel During Events
 
@@ -149,6 +151,7 @@ These cases come from news reports and complaint platforms, so they show the mos
 
 #### Interests
 
+- Testing interest before booking an event
 - Planning capacity
 - Communicating changes and alerts quickly
 - Managing crowds and queues
@@ -156,7 +159,7 @@ These cases come from news reports and complaint platforms, so they show the mos
 
 #### Benefits
 
-- Attendance-intention polls
+- Proposed events and interest polls, shareable through a public link
 - Backoffice and API to publish on-site conditions
 - Direct alerts to every participant connected to the event
 - Incident inbox
@@ -186,6 +189,7 @@ These cases come from news reports and complaint platforms, so they show the mos
 #### Benefits
 
 - An additional channel that delivers their official event changes to ticket holders
+- No competition for ticket sales: Crowded does not sell, resell or link to tickets, and only knows about a ticket when the participant imports it
 
 ---
 
@@ -195,7 +199,7 @@ These cases come from news reports and complaint platforms, so they show the mos
 |---|---|---|
 | **A1** | **Users Want Event Changes in a Single Place** | We assume users value receiving changes for all the events they attend in one place, regardless of where the ticket was bought. |
 | **A2** | **Organizations Are Willing to Publish On-Site Conditions** | We assume organizations will publish crowd levels, queues and alerts if the backoffice is simple, or if the data can be sent automatically through an API. |
-| **A3** | **Organizers Need Attendance-Intention Data** | We assume organizers are interested in knowing intended attendance before finalizing staff, entrances and other capacity decisions. |
+| **A3** | **Organizers Need Interest Data Before Booking** | We assume organizers are interested in knowing how many people would attend before deciding whether to book an event, for how many nights and in which room, and before finalizing staff and entrances, and that participants will answer a short poll about an event they are interested in. |
 | **A4** | **Users Are Willing to Import Tickets** | We assume users are willing to import tickets bought elsewhere if the process is fast and gives them access to change notifications and on-site information. |
 | **A5** | **Event Disruptions Are Common Enough to Justify the Product** | We assume changes, overcrowding and on-site incidents occur frequently enough to justify a dedicated communication service. |
 | **A6** | **Official Event Data Can Be Obtained** | We assume official event changes can be obtained from ticketing platforms or public agendas. In the MVP, this source is simulated. |
@@ -283,6 +287,7 @@ Without participants connected to an event, organizer alerts have little reach.
 >
     - Allow public events to be followed with minimal friction
     - Let organizers promote the event through QR codes at the venue and on tickets
+    - Let organizers share interest polls through a public link, so their existing audience (e.g., on Instagram) joins Crowded before the event is even confirmed
 
 ---
 
