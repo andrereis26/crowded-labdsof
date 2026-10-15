@@ -133,11 +133,11 @@ Finally, some of Crowded's proposed features are based mainly on the team's assu
 
 * Organizer-published crowd levels and queues
 * Organizer alerts and the organizer backoffice
-* Attendance-intention polls
+* Proposed events and interest polls
 * Participant incident reporting
 * AI-assisted ticket extraction and alert drafting
 
-Future research should address these gaps, for example through a survey of event attendees about missed event changes and on-site problems, and interviews with local event organizers.
+Future research should address these gaps, for example through a survey of event attendees about missed event changes and on-site problems, and interviews with local event organizers (e.g., venue programmers and front-of-house managers) about how they decide what to book and how they communicate on the night.
 
 ---
 
@@ -155,7 +155,7 @@ Based on the research findings, the team identified which Crowded features have 
 | Event sharing may be difficult                                       | Leave social features out of the MVP                                | Initial indication only |
 | No reviewed experience validates organizer-published on-site data    | Keep as an assumption requiring further research                    | Not validated           |
 | No reviewed experience validates organizer alerts                    | Keep as an assumption requiring further research                    | Not validated           |
-| No reviewed experience validates attendance-intention polls          | Keep as an assumption requiring further research                    | Not validated           |
+| No reviewed experience validates interest polls on proposed events   | Keep as an assumption requiring further research                    | Not validated           |
 | No reviewed experience validates participant incident reporting      | Keep as an assumption requiring further research                    | Not validated           |
 
 These decisions are consistent with Crowded's current MVP, which includes:
@@ -165,7 +165,7 @@ These decisions are consistent with Crowded's current MVP, which includes:
 * Minimal event discovery ("near me / today")
 * Event change notifications
 * Organizer backoffice and API (crowd levels, queues, incidents, alerts)
-* Attendance-intention polls
+* Proposed events and interest polls
 * Participant incident reporting
 * Provenance labels
 * Weather alerts
