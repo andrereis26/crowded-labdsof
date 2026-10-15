@@ -18,7 +18,7 @@ We need a backend stack for three services, a participant app that runs on mobil
 
 - **Backend: Java + Spring Boot.** It covers everything we need with mature libraries: Spring AMQP (RabbitMQ), Spring Data JPA (PostgreSQL), Spring Security (JWT), Micrometer (Prometheus metrics) and scheduling for Jobs. Team has experience with it.
 - **Participant app: Flutter.** One codebase builds the Android, iOS and web versions, so screens, models and the API client are written once. Push on mobile uses `firebase_messaging` ([ADR 0010](0010-external-integrations.md)).
-- **Backoffice: React + Vite.** Built as a static bundle served by the `web-app` container; many dashboard and chart libraries.
+- **Backoffice: React + Vite + TailwindCSS.** Built as a static bundle served by the `web-app` container; many dashboard and chart libraries.
 
 ## Consequences
 
