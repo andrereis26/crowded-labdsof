@@ -2,7 +2,7 @@
 
 Project developed for the LABDSOF (Software Development Laboratory) course, part of the Master's Degree in Informatics Engineering – Software Engineering, during the first semester of the 2026/2027 academic year.
 
-Crowded is a platform that helps people discover, manage and attend events, providing real-time information about event changes and venue conditions, and connecting attendees with similar interests.
+Crowded keeps people informed when something changes or goes wrong at the events they attend, and gives organizations a direct channel to their audience: from testing interest in a proposed event, to announcing changes, to redirecting people on site. Crowded does not sell tickets; it works with tickets bought on any platform and with free public events.
 
 ## Team
 
@@ -34,10 +34,10 @@ Crowded is a platform that helps people discover, manage and attend events, prov
 
 The domain model shows the main concepts of Crowded and how they relate, independently of how they are stored or deployed.
 
-- **Event** is the centre of the model. Participants connect to it through a **Ticket** or a **Follow**, organizations own it and publish on-site information, alerts, surveys and polls about it, and participants report what they see.
+- **Event** is the centre of the model. It can start as a **proposed** event (no date or venue yet) whose **InterestPoll** tests demand before it is confirmed. Participants connect to it through a **Ticket** or a **Follow**, organizations own it and publish changes, on-site information, alerts and surveys about it, and participants report what they see.
 - **Aggregate roots** (yellow) mark consistency boundaries: each one is created and changed as a unit, and other parts of the model refer to it rather than changing it directly.
 - **Provenance** is attached to every piece of event information, so the product can always show where it came from and when it was last updated.
-- **Disruptions** take three forms: official changes (**EventChange**), organizer alerts (**Alert**) and incidents reported by participants (**Incident**). Changes and alerts share a **Severity** (critical, warning, information), alerts stay active until the organization resolves them, and every **Notification** points to the disruption that caused it.
+- **Disruptions** take three forms: official changes (**EventChange**, published by the organization or detected in the ticketing source, and recorded once when both report it), organizer alerts (**Alert**) and incidents reported by participants (**Incident**). Changes and alerts share a **Severity** (critical, warning, information), alerts stay active until the organization resolves them, and every **Notification** points to the disruption that caused it.
 - Integration details (ticketing sync state, external providers) are kept out of the model; they belong to the services described in the [Technical Design](/docs/deliverables/technical-design.md).
 
 

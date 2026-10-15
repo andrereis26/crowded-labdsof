@@ -72,13 +72,15 @@ package "Event Catalog" {
     id
     name
     description
-    startDateTime
+    tentativePeriod [0..1]
+    startDateTime [0..1]
     doorsOpenAt [0..1]
-    endDateTime
+    endDateTime [0..1]
     status : EventStatus
     capacity : int [0..1]
     visibility : PUBLIC | TICKETED
     origin : EventOrigin
+    ticketingSourceEventId [0..1]
     lastSyncedAt [0..1]
   }
 
@@ -97,6 +99,8 @@ package "Event Catalog" {
     ticketStillValid : boolean [0..1]
     refundInfoUrl [0..1]
     provenance : Provenance
+    corroboratingSource : SourceType [0..1]
+    corroboratedAt [0..1]
   }
 
   class OwnershipRequest <<Entity>> {
@@ -107,6 +111,7 @@ package "Event Catalog" {
   }
 
   enum EventStatus {
+    PROPOSED
     SCHEDULED
     POSTPONED
     RELOCATED
@@ -116,6 +121,7 @@ package "Event Catalog" {
   }
 
   enum ChangeType {
+    CONFIRMATION
     CANCELLATION
     POSTPONEMENT
     TIME_CHANGE
@@ -284,16 +290,19 @@ package "Organizer Communication" {
     respondedAt
   }
 
-  class AttendancePoll <<Aggregate Root>> {
+  class InterestPoll <<Aggregate Root>> {
     id
     question
-    proposedEventDescription [0..1]
+    publicLink
     opensAt
     closesAt
   }
 
+  class PollOption <<Value Object>> {
+    label
+  }
+
   class PollResponse <<Entity>> {
-    intention : AttendanceIntention
     respondedAt
   }
 
@@ -312,14 +321,8 @@ package "Organizer Communication" {
 
   enum SurveyType {
     CONFIRMATION
-    POLL
+    CHOICE
     IDEA
-  }
-
-  enum AttendanceIntention {
-    WILL_ATTEND
-    MAYBE
-    WILL_NOT_ATTEND
   }
 }
 
@@ -455,7 +458,7 @@ User "0..1" -[norank]-> "0..*" Organization : verifies\n(administrator)
 
 ' --- Event Catalog (centre)
 Organization "0..1" -down-> "0..*" Event : owns
-Event "1" *-left- "1" EventLocation : held at
+Event "1" *-left- "0..1" EventLocation : held at
 Event "1" *-left- "0..*" EventChange : change history
 Organization "1" -down-> "0..*" OwnershipRequest : submits
 OwnershipRequest "0..*" -down-> "1" Event : for
@@ -489,10 +492,12 @@ EventSurvey "1" *-down- "0..*" SurveyOption
 EventSurvey "1" *-down- "0..*" SurveyResponse
 User "1" -[norank]- "0..*" SurveyResponse
 
-Organization "1" -[norank]-> "0..*" AttendancePoll : launches
-AttendancePoll "0..*" -up-> "0..1" Event : for
-AttendancePoll "1" *-down- "0..*" PollResponse
-User "1" -[norank]- "0..*" PollResponse
+Organization "1" -[norank]-> "0..*" InterestPoll : launches
+InterestPoll "0..*" -up-> "1" Event : tests interest in
+InterestPoll "1" *-down- "2..*" PollOption
+InterestPoll "1" *-down- "0..*" PollResponse
+PollResponse "0..*" -right-> "1" PollOption : chooses
+User "1" -[norank]- "0..*" PollResponse : answers\n(totals only)
 
 ' --- Reports, confirmations & incidents (left of Event)
 Event "1" -left- "0..*" Report
@@ -547,6 +552,29 @@ note bottom of Severity
   venue or start-time change, entrance closure
   (NFR-001); a doors-opening change is a WARNING
   (FR-072, FR-074).
+end note
+
+note top of Event
+  PROPOSED: name and tentativePeriod only, no date
+  or venue; labelled "Proposed — not confirmed" and
+  never matched to tickets. Confirming it (CONFIRMATION
+  change) or withdrawing it (CANCELLATION) notifies
+  followers (FR-076, FR-013).
+end note
+
+note bottom of InterestPoll
+  Public link, options written by the organization
+  (FR-026, FR-080). One answer per user; organization
+  and voters see totals only (FR-028, SR-019).
+  Answering never creates a Follow (FR-027).
+end note
+
+note bottom of EventChange
+  Published by the organization or detected in the
+  ticketing source. When both report the same change
+  for a linked event, it is stored once and the second
+  source is the corroboratingSource; users are
+  notified once (FR-078, FR-079).
 end note
 
 note right of Alert
