@@ -16,13 +16,13 @@ This specification translates the Crowded product vision, problem and opportunit
 | FR-001 | The system shall allow a user to import a ticket bought on an external platform by uploading its PDF, extracting the event information (event name, date and time, venue, gate or sector, seat) with AI assistance. | 9 |
 | FR-002 | The system shall allow a user to import a ticket by uploading its confirmation email as an email file (.eml), extracting the event information with AI assistance. | 9 |
 | FR-003 | The system shall allow a user to review, correct and confirm the extracted ticket information before saving it, and to enter ticket information manually when extraction is unavailable or fails. | 10 |
-| FR-004 | The system shall match an imported ticket to an event in the synchronized event catalog and, when the match is ambiguous or has low confidence, ask the user to choose the correct event. | 9 |
+| FR-004 | The system shall match an imported ticket to an event in the synchronized event catalog, including organization events linked to the ticketing source (FR-079) and excluding proposed events, and, when the match is ambiguous or has low confidence, ask the user to choose the correct event. | 9 |
 | FR-005 | The system shall present the user's ticket wallet, listing their tickets and upcoming events with the essential event information. | 9 |
 | FR-070 | The system shall decode a QR, Aztec or PDF417 entry code found in an imported ticket PDF, confirmation email or uploaded screenshot, without AI, and store it with the ticket. | 8 |
 | FR-071 | The system shall display a ticket's entry code full screen, also without a network connection, labelled with its origin and without stating that the ticket is valid. | 8 |
-| FR-006 | The system shall allow a user to follow a public event (or mark it as "going") to receive its changes and alerts. | 9 |
+| FR-006 | The system shall allow a user to follow a public or proposed event (or mark it as "going") to receive its changes and alerts, from the event page or from the page of its interest poll. | 9 |
 | FR-008 | The system shall allow a user to remove a ticket or stop following an event. | 6 |
-| FR-009 | The system shall present a simple list of events near the user or happening today, allowing the user to follow them. | 6 |
+| FR-009 | The system shall present a simple list of events near the user or happening today, allowing the user to follow them. Proposed events with an open interest poll shall be included, labelled as proposed. | 6 |
 | FR-010 | The system shall allow a user to provide an approximate or manually selected location for the nearby events list. | 5 |
 
 ### 1.2 Official Event Changes
@@ -31,19 +31,22 @@ This specification translates the Crowded product vision, problem and opportunit
 |---|---|---|
 | FR-011 | The system shall periodically synchronize events from the external ticketing source and detect changes to their status, date, time or venue (e.g., cancellation, postponement, relocation). | 10 |
 | FR-012 | The system shall periodically synchronize public events from the external municipal agenda source and detect changes to them. | 3 |
-| FR-013 | The system shall notify the users connected to an event (ticket holders and followers) when a change to that event is detected or published, according to their notification preferences. | 10 |
+| FR-013 | The system shall notify the users connected to an event (ticket holders and followers) when a change to that event is detected or published, including the confirmation or withdrawal of a proposed event, according to their notification preferences. | 10 |
 | FR-014 | The system shall display an event's current status and its change history, each change with its source and time. | 8 |
 | FR-075 | When an event is cancelled, postponed or moved, the notification and the change detail shall tell the participant what changes for them: the new date, time or venue, whether their ticket is still valid and, when the source provides it, where to ask for a refund. | 8 |
 | FR-072 | The system shall display an event's doors opening time when the official source or the organization provides it, and shall treat a change to it as an event change (FR-011, FR-013). | 6 |
-| FR-074 | The system shall classify every official event change and operational alert as critical, warning or information (critical: cancellation, postponement, venue or start-time change, entrance closure), and shall present critical ones first and highlighted, not by color alone. | 7 |
+| FR-074 | The system shall classify every official event change and operational alert as critical, warning or information (critical: cancellation, postponement, venue or start-time change, withdrawal of a proposed event, entrance closure; information: confirmation of a proposed event), and shall present critical ones first and highlighted, not by color alone. | 7 |
+| FR-078 | When the organization publishes a change to an event linked to the ticketing source (FR-079) and the ticketing source reports the same change, or the other way round, the system shall record it as a single change listing both sources and notify each connected user only once. When the two sources disagree, the system shall show both values with their sources and notify the organization. | 8 |
 
 ### 1.3 Organization Backoffice
 
 | ID | Statement | Priority |
 |---|---|---|
 | FR-015 | The system shall allow an organization to create and publish an event with its details, including location and schedule. | 8 |
-| FR-016 | The system shall allow an organization to update or cancel its own events, triggering notifications to connected users. | 9 |
+| FR-076 | The system shall allow a verified organization to publish a proposed event — with its name, description and a tentative period, without a confirmed date, time or venue — always labelled as "Proposed — not confirmed", and later confirm it by setting its date, time and venue, or withdraw it. Tickets cannot be imported into a proposed event. | 7 |
+| FR-016 | The system shall allow an organization to update, postpone, move or cancel its own events, triggering notifications to connected users labelled with the organization as their source. | 9 |
 | FR-017 | The system shall allow an organization to request ownership of an existing synchronized event, subject to administrator approval. | 7 |
+| FR-079 | The system shall allow an organization to link its own event to the corresponding event in the ticketing source, so that changes detected there apply to the same event (FR-078) and imported tickets match it (FR-004) instead of a duplicate event being created. | 7 |
 | FR-018 | The system shall allow an organization to publish the current crowd level of its event (low, moderate, high, full) through the backoffice. | 10 |
 | FR-019 | The system shall allow an organization to publish queue waiting times for points of its event (e.g., entrances, ticket office, bars, toilets). | 8 |
 | FR-020 | The system shall allow an organization to send an operational alert to the users connected to its event, according to their notification preferences, choosing an alert type (e.g., entrance closure, capacity reached, schedule delay) and writing its message, with or without an AI-assisted draft. | 10 |
@@ -52,10 +55,11 @@ This specification translates the Crowded product vision, problem and opportunit
 | FR-023 | The system shall present the organization with a live dashboard showing the event's crowd level, queues, open incidents and alerts sent. | 9 |
 | FR-024 | The system shall allow an organization to define its event's capacity and show the current crowd level relative to it. | 7 |
 | FR-025 | The system shall provide an API through which an organization's systems (e.g., entrance counters) can submit crowd counts and queue times automatically. | 6 |
-| FR-026 | The system shall allow an organization to create an attendance-intention poll for an event or proposed event. | 7 |
-| FR-027 | The system shall allow a user to respond to an available attendance-intention poll. | 7 |
-| FR-028 | The system shall present poll responses to the organization as indications of potential attendance and shall not represent them as guaranteed attendance. | 7 |
-| FR-051 | The system shall allow an organization to publish surveys on the event page — confirmations (e.g., "Is Gate B still closed?"), polls or calls for ideas — and mark each survey as urgent or non-urgent. | 8 |
+| FR-026 | The system shall allow an organization to create an interest poll for a proposed or confirmed event, with its own question, two or more answer options written by the organization and a closing date, and to close it early. | 7 |
+| FR-080 | The system shall give every interest poll a public link that anyone can open and share without an account, showing the event (labelled as proposed when applicable), the question and its options; answering the poll or following the event requires signing in. | 7 |
+| FR-027 | The system shall allow a signed-in user to answer an open interest poll by choosing one option, and to change the answer until the poll closes. Answering shall not follow the event; the poll page shall offer a separate Follow button (FR-006). | 7 |
+| FR-028 | The system shall show the totals per option of an interest poll to each user after they answer, and to the organization at any time together with the number of followers of the event, presented as an indication of interest and not as guaranteed attendance. | 7 |
+| FR-051 | The system shall allow an organization to publish surveys on the page of a confirmed event for the users connected to it — confirmations (e.g., "Is Gate B still closed?"), multiple-choice questions or calls for ideas — and mark each survey as urgent or non-urgent. Unlike interest polls, surveys are not public. | 8 |
 | FR-052 | The system shall notify connected users who have organization surveys turned on only of urgent surveys; opening the notification shall take the user to the survey on the event page. Non-urgent surveys shall remain available on the event page without a notification. | 8 |
 | FR-029 | The system shall allow an organization to view reported incidents and mark them as acknowledged or resolved, notifying the reporting user. | 8 |
 | FR-053 | The system shall use AI to group similar incident reports into a single incident with a short summary, allow the organization to split incorrectly grouped reports, and fall back to grouping by category and time window when the AI service is unavailable. | 8 |
@@ -106,11 +110,13 @@ This specification translates the Crowded product vision, problem and opportunit
 | FR-046 | The system shall display events on a map. | 2 |
 | FR-047 | The system shall offer personalized event recommendations. | 1 |
 | FR-048 | The system shall display crowd levels per zone of the event venue. | 3 |
-| FR-049 | The system shall allow users to buy tickets within the app. | 1 |
 | FR-050 | The system shall allow users to connect with other participants of the same event. | 1 |
 | FR-061 | The system shall allow an organization to define custom report categories for its events and choose whether they trigger confirmation prompts; events without an owning organization shall only offer the predefined categories. | 3 |
 | FR-062 | The system shall automatically restrict users whose reports repeatedly end with Low confidence: first a warning, then a temporary restriction from reporting, and finally a ban from reporting, while every other feature remains available, informing the user of the reason and duration at each step. | 3 |
 | FR-063 | The system shall detect that a connected user has left the event — using approximate location when the user has consented, or otherwise by asking the user — and stop sending them on-site confirmation prompts. To be investigated in a timeboxed spike before any implementation. | 2 |
+| FR-081 | The system shall allow a user to follow an organization and be notified when it publishes a proposed event or an interest poll. | 3 |
+
+FR-049 (buying tickets within the app) was removed: Crowded does not sell tickets, link to ticket sellers or announce ticket sales (see the [Product Vision](product-vision.md#positioning)).
 
 ---
 
@@ -145,7 +151,7 @@ This specification translates the Crowded product vision, problem and opportunit
 
 | ID | Statement | Priority |
 |---|---|---|
-| SR-001 | The system shall restrict organization actions (event changes, on-site information, alerts, polls, incidents) to members of the organization that owns the event. | 10 |
+| SR-001 | The system shall restrict organization actions (proposed events, event changes, links to the ticketing source, on-site information, alerts, polls, surveys, incidents) to members of the organization that owns the event. | 10 |
 | SR-002 | The system shall only allow the official event sources and verified organizations to publish official event information and alerts. | 10 |
 | SR-003 | The system shall scope user-specific data (tickets, followed events, incidents, preferences, location) to the user or authorized role permitted to access it. | 8 |
 | SR-004 | The system shall remove personal data (e.g., name, email, tax number) and access codes from ticket content before sending it to an external AI provider. | 8 |
@@ -155,7 +161,7 @@ This specification translates the Crowded product vision, problem and opportunit
 | SR-008 | The system shall manage secrets outside the source repository. | 7 |
 | SR-009 | The system shall request user consent before using location data and shall use only approximate location. | 6 |
 | SR-010 | The system shall authenticate organization API requests with credentials scoped to the organization and its events. | 6 |
-| SR-011 | The system shall apply rate limiting to unauthenticated requests, to reports and to confirmation answers. | 6 |
+| SR-011 | The system shall apply rate limiting to unauthenticated requests (including public poll pages), to reports, to confirmation answers and to poll answers. | 6 |
 | SR-012 | The system shall authenticate service-to-service communication between backend components. | 5 |
 | SR-013 | The system shall store user passwords using a strong one-way hashing algorithm with salt. | 8 |
 | SR-014 | The system shall use OAuth 2.0 / OpenID Connect protocols for authentication through Google and Facebook. | 2 |
@@ -163,6 +169,7 @@ This specification translates the Crowded product vision, problem and opportunit
 | SR-016 | The system shall accept at most one confirmation answer per user per report, shall not let reporters confirm their own reports, and shall not reveal who confirmed or denied a report. | 8 |
 | SR-017 | The system shall check location for reporting and confirmation only once, at the moment of the action, store only the result of the check (not the location itself), and never track location continuously. | 8 |
 | SR-018 | The system shall treat ticket entry codes as credentials: store them encrypted, show them only to the ticket owner, never send them to the AI provider or write them to logs, and delete them with the ticket or account. | 8 |
+| SR-019 | The system shall accept at most one answer per user per interest poll and shall never reveal who answered or what an individual user answered, to the organization or to other users; only totals per option are shown. | 8 |
 
 ---
 
