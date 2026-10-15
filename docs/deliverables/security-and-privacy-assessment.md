@@ -15,6 +15,7 @@ The main assets to protect are:
 - Tickets, imported ticket content and entry codes
 - Location-check results
 - Reports, confirmation answers and reporter identities
+- Interest-poll answers and the identity of who answered
 - Event information, on-site updates, alerts and incidents
 - Notifications, preferences and audit records
 
@@ -33,8 +34,9 @@ These boundaries show where information passes between different parts of the sy
 |---|---|---|
 | **Spoofing** | Someone impersonates a user, organization or backend service. | Organization-scoped credentials (SR-010), authenticated service communication (SR-012), password hashing (SR-013), JWTs and revocation ([ADR 0005](./adr/0005-authentication-in-core-with-jwt.md)). |
 | **Tampering** | Unauthorized changes to event information, or untrusted content influencing AI output. | Organization and publishing restrictions (SR-001, SR-002). Validated AI output and untrusted-input handling (SR-005). Organizer review of alert drafts (FR-021). |
+| **Tampering** | Poll results inflated through the public poll link, or a fake proposed event published to collect followers. | Answering requires an account, one answer per user per poll (SR-019), rate limits on public pages, poll answers and account creation (SR-011, SR-015). Only verified organizations publish proposed events (FR-076, SR-002). |
 | **Repudiation** | An actor denies making an event change, sending an alert or changing incident status. | Audit records of actions, actors and times (SR-006). |
-| **Information Disclosure** | Personal data, report identities, confirmation answers or ticket entry codes are exposed. | User-data access limits (SR-003). AI data removal (SR-004). Identity protections (SR-007, SR-016). Entry-code protections (SR-018). |
+| **Information Disclosure** | Personal data, report identities, confirmation answers, poll answers or ticket entry codes are exposed. | User-data access limits (SR-003). AI data removal (SR-004). Identity protections (SR-007, SR-016, SR-019). Entry-code protections (SR-018). |
 | **Information Disclosure** | Location is collected or retained beyond the documented one-time check. | Consent and approximate location (SR-009). Store only the check result and do not track continuously (SR-017). |
 | **Denial of Service** | Excessive requests affect account, report or confirmation workflows. AI unavailability blocks a workflow. | Rate limits (SR-011, SR-015). Non-AI fallbacks (NFR-006). |
 | **Elevation of Privilege** | A user acts outside their role, an organization changes another organization's event, or a service writes another service's tables. | Role and organization restrictions (SR-001, SR-002, SR-010). One owning service per table ([ADR 0002](./adr/0002-shared-database-with-table-ownership.md)). |
@@ -47,6 +49,7 @@ The table below summarizes personal, privacy-sensitive and credential data ident
 |---|---|---|
 | Account and user-linked data | User email, user IDs linked to tickets, reports, responses, notifications and preferences, and location consent. | These fields identify a user or connect their account to activity and preferences. |
 | Reports and confirmation responses | Report description, reporter and responder links, confirmation answer and `locationVerified`. | A report description may contain personal details, such as information about a lost item. Answers and reporter links associate people with reports. `locationVerified` can reveal that a user passed a proximity check when linked to an action. |
+| Interest-poll answers | `PollResponse.userId` and the chosen option. | They reveal which events and options a user is interested in. They are kept only to enforce one answer per user and let the user change it; the organization sees only totals (SR-019). |
 | Credentials | User `passwordHash`, API credential `secretHash`, and ticket `entryCode`. | These values are used to authenticate users or organizations, or to access a ticket. |
 | Imported ticket content | Uploaded ticket PDFs, screenshots and confirmation emails. | These may contain names, email addresses, tax numbers and access codes. The structured extraction fields exclude personal data and entry codes ([Responsible AI Opportunity Assessment](./responsible-ai-opportunity-assessment.md)). |
 
@@ -61,6 +64,7 @@ These access requirements cover user data, organization actions and communicatio
 | Organization API | Authenticate API requests with credentials that grant access only to the relevant organization and its events (SR-010). |
 | Ticket entry codes | Show entry codes only to the ticket owner (SR-018). |
 | Confirmation responses | Allow at most one answer per user per report. Do not allow the reporter to confirm their own report. Do not reveal who answered (SR-016). |
+| Interest-poll answers | Allow at most one answer per user per poll. Show only totals per option to the organization, and to a user only after they answer. Never reveal who answered or what they chose (SR-019). |
 | Backend services | Authenticate communication between backend components (SR-012). Each database table has one owning service. Only that service may write to it ([ADR 0002](./adr/0002-shared-database-with-table-ownership.md)). |
 
 The account roles are participant, organization member and administrator (FR-039). Organization verification is performed by an administrator before an organization can publish official information (FR-040).
@@ -84,3 +88,4 @@ The deletion points for uploaded ticket files, entry codes and account data are 
 | Uploaded ticket file | Delete the uploaded file after extraction ([Responsible AI Opportunity Assessment](./responsible-ai-opportunity-assessment.md)). |
 | Ticket entry code | Delete it when its ticket or account is deleted (SR-018). |
 | Account and associated personal data | Permanently delete when the user requests account deletion (FR-042). |
+| Interest-poll answers | Delete with the account (FR-042); the poll totals keep the answer count without the link to the user. |
