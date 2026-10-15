@@ -36,6 +36,9 @@ Based on the [Domain Model](../../README.md#domain-model), the diagram specifies
 - **Data labels:** `[PERSONAL]`, `[PRIVACY-SENSITIVE]` and `[CREDENTIAL]` label personal, sensitive or credential data. `[MAY CONTAIN PERSONAL DATA]` marks free-text fields that may include personal data. `[ENCRYPTED]` marks data specified to be stored encrypted.
 - **Ownership:** entities are grouped by their owning component. As specified in [ADR 0002](adr/0002-shared-database-with-table-ownership.md), each table has one owning service that may write to it, while other services may read it.
 - **Enumerated values:** enum types represent fields that can take one of a defined set of values.
+- **Disruptions:** `EventChange` and `Alert` carry a `severity` (`CRITICAL`, `WARNING`, `INFO`) that decides how prominently they are shown (FR-074). It is stored rather than derived from the type, because the same type can have different severities: a start-time change is critical, while a doors-opening change (`Event.doorsOpenAt`, FR-072) is a warning. A sent alert is active until `resolvedAt` is set, when the organization resolves it (FR-073); its status stays `SENT`.
+- **Recovery after a change:** `EventChange.ticketStillValid` and `EventChange.refundInfoUrl` tell participants what a cancellation, postponement or relocation means for them (FR-075). Both are nullable, because the source does not always provide them, and the app then says that the information is not available instead of guessing.
+- **Notification cause:** `Notification.causeId` points to the `EventChange`, `Alert` or `Incident` that triggered it, and the notification type says which. It has no foreign key because those tables belong to Core and the id arrives in the message ([ADR 0002](adr/0002-shared-database-with-table-ownership.md), [ADR 0003](adr/0003-rabbitmq-for-asynchronous-messaging.md)). It makes each notification traceable to its disruption and lets us measure delivery time against NFR-001.
 
 ## Deployment View
 
@@ -49,3 +52,16 @@ Based on the [Domain Model](../../README.md#domain-model), the diagram specifies
 - **Observability:** Prometheus scrapes the services and RabbitMQ; Alloy collects container logs (to Loki) and Postgres, Redis and host metrics (to Prometheus); Grafana shows both, behind the router at `/grafana`.
 - Stateful containers keep their data in Docker volumes on an **EBS volume**.
 - Images are built by GitHub Actions and pushed to Docker Hub; secrets come from Doppler and are mounted as Docker Swarm secrets.
+
+## Degraded Operation
+
+A disruption can also affect Crowded itself. Each scenario below keeps the principal workflows running and tells users what is limited:
+
+| Unavailable | What keeps working | What users see | Requirement |
+|---|---|---|---|
+| Push notification provider | Notifications are stored in the notification center and shown as live banners on open clients; Notifications retries the push with backoff and never sends twice | Every notification in the app, even without a push | NFR-020 |
+| Network at the venue | Ticket, entry code, doors opening time, latest change and active alerts are cached on the device | The cached information, with the time of the last synchronization | FR-037 |
+| Ticketing source | Jobs keeps the last valid data and rejects invalid data | The time of the last successful synchronization | NFR-005 |
+| AI service | Manual ticket entry, manually written alerts, rule-based grouping of reports | The manual form or editor instead of the AI suggestion | NFR-006, FR-053 |
+
+The final presentation demonstrates the **push provider failure**: with the provider switched off in the deployed environment, a change published by the ticketing simulator still reaches participants through the notification center and the live banner, and the failed push attempts appear in the logs and in the operational dashboard.

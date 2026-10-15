@@ -49,6 +49,20 @@ Event organizers also face significant uncertainty when planning capacity, and l
 
 > **As a result, both participants and organizers react to disruptions based on incomplete or outdated information, leading to wasted trips, overcrowding, avoidable queues and slow incident response.**
 
+### 2.1 The Disruption Lifecycle
+
+Crowded addresses four of the disruption types listed in the assignment: **changes to scheduled activities** (cancellations, postponements, venue, time and doors opening changes), **community events and crowd-management situations** (overcrowding, queues, closed entrances), **accessibility barriers** reported on site, and **extreme weather events** that affect an event.
+
+Every disruption goes through three phases. Today, each phase fails for a different reason:
+
+| Phase | Typical disruptions | Who knows first | How people find out today | What is missing |
+|---|---|---|---|---|
+| **Anticipate** (before leaving home) | Cancellation, postponement, venue or time change, doors opening later, severe weather | Ticketing source, organizer, weather service | Ticketing email, social media, organizer website, or not at all | One place that collects every change for the events a person attends, in time to change plans |
+| **Respond** (on the way and on site) | Overcrowding, long queues, closed entrance, capacity reached, on-site incident | Organizer and the people already at the venue | On-site staff, word of mouth, social media posts | A direct channel from the organizer to everyone on the way or on site, and a way for participants to report what they see |
+| **Recover** (after the disruption) | Rescheduled date, refund, entrance reopened, incident resolved | Ticketing source and organizer | Separate emails or nothing; users must search for what changes for them | A clear message on what changes for the participant (new date, ticket validity, refund) and confirmation that the situation is over |
+
+In Portugal, a cancelled concert, or one moved to another date, time or venue, gives the right to a refund, which must be paid within 30 days (see 3.6). Participants still have to find out that the event changed before they can act on it.
+
 ---
 
 ## 3. Problem Evidence
@@ -93,6 +107,23 @@ When something goes wrong on site (e.g., an entrance closes, capacity is reached
 
 Participants who are on their way, or in another area of the venue, may not receive this information in time.
 
+### 3.6 Documented Disruptions in Portugal and Europe
+
+Recent cases show that disruptions at events are frequent and that the main failure is often how and when people are informed:
+
+| Case | Disruption | What it shows | Source |
+|---|---|---|---|
+| Megadeth at the Evil Live festival, MEO Arena, Lisbon (July 2026) | Concert cancelled shortly after its scheduled start time, citing technical problems | The audience was already at the venue when the show was called off; the explanation came through the band's social media | [Correio da Manhã, 6 July 2026](https://www.cmjornal.pt/cultura/detalhe/megadeth-cancelam-concerto-no-meo-arena-apos-hora-prevista-para-comecar) |
+| North Festival, Maia (June 2026) | Overcrowding, queues of over an hour for food and around 40 minutes for drinks | Nearly a hundred complaints on Portal da Queixa; the mandatory prepaid card was only made clear on site, after the queues | [Echo Boomer, 14 June 2026](https://echoboomer.pt/north-festival-dezenas-reclamacoes-portal-da-queixa/) |
+| Rock in Rio Lisboa (June 2024) | Access problems, overcrowding and queues | Complaints rose 97% compared with 2022; about 15.5% of them mention access, overcrowding and queues | [Público, 19 June 2024](https://www.publico.pt/2024/06/19/culturaipsilon/noticia/queixas-rock-in-rio-lisboa-aumentam-97-relacao-ano-passado-2094552) |
+| Parque Papa Francisco, Lisbon (October 2026) | Reports of chaos on the access routes after a concert, followed by the cancellation of the next concert by the municipality and the promoter | A disruption at one event led to the cancellation of the next one, announced in an official note | [Observador, 1 October 2026](https://observador.pt/2026/10/01/concerto-de-boris-brejcha-cancelado-no-parque-papa-francisco-apos-episodios-de-caos-no-acesso-ao-recinto/) |
+| UEFA Champions League final, Stade de France, Paris (May 2022) | Supporters unable to get into the stadium | The French Senate found a "series of dysfunctions" in preparation and execution and an inability to manage the crowds | [Euronews, 13 July 2022](https://www.euronews.com/2022/07/13/string-of-french-errors-lead-to-champions-league-chaos-inquiry-finds) |
+| UEFA Euro 2020 final, Wembley, London (July 2021) | About 2,000 people without tickets got in, with 17 mass breaches of gates and doors | The independent review identified a "collective failure" of the organizations involved and called the day a near miss for fatalities | [Sky Sports, 4 December 2021](https://www.skysports.com/football/news/19692/12485109/euro-2020-fa-review-on-wembley-final-disorder-finds-series-of-crowd-near-misses-which-could-have-led-to-fatalities) |
+
+When a concert is cancelled or changed in Portugal, the consumer is entitled to a refund regardless of the reason, paid within 30 days; complaints go to the promoter and then to the IGAC ([DECO](https://deco.pt/direitos-dos-consumidores/concerto-cancelado-ou-alterado-peca-o-reembolso/)).
+
+These cases come from news reports and complaint platforms, so they show the most visible disruptions and the view of those who complained; they do not measure how often disruptions happen across all events. Crowded does not prevent these disruptions; it shortens the time between a disruption and the moment the people affected know about it and what to do next.
+
 ---
 
 ## 4. Stakeholder Map
@@ -112,7 +143,7 @@ Participants who are on their way, or in another area of the venue, may not rece
 - Ticket wallet and followed public events
 - Crowd and queue information with its source and last-update time
 - Reporting what they see (crowd level, queues, incidents), routed to the organization
-- Participant estimates confirmed by other participants, with a confidence level, when the organization publishes nothing
+- Participant estimates confirmed by other participants, showing how many confirmed them, when the organization publishes nothing
 
 ### 4.2 Event Organizers
 

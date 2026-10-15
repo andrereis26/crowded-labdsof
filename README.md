@@ -12,6 +12,7 @@ Crowded is a platform that helps people discover, manage and attend events, prov
 - [User Research](/docs/deliverables/user-research.md)
 - [Product Vision](/docs/deliverables/product-vision.md)
 - [Responsible AI Opportunity Assessment](/docs/deliverables/responsible-ai-opportunity-assessment.md)
+- [Ethical Engagement Design](/docs/deliverables/ethical-engagement-design.md)
 - [Requirements Specification](/docs/deliverables/requirements.md)
 - [Security and Privacy Assessment](/docs/deliverables/security-and-privacy-assessment.md)
 - [Definition of Ready and Definition of Done](/docs/deliverables/definition-of-ready-and-done.md)
@@ -27,6 +28,7 @@ The domain model shows the main concepts of Crowded and how they relate, indepen
 - **Event** is the centre of the model. Participants connect to it through a **Ticket** or a **Follow**, organizations own it and publish on-site information, alerts, surveys and polls about it, and participants report what they see.
 - **Aggregate roots** (yellow) mark consistency boundaries: each one is created and changed as a unit, and other parts of the model refer to it rather than changing it directly.
 - **Provenance** is attached to every piece of event information, so the product can always show where it came from and when it was last updated.
+- **Disruptions** take three forms: official changes (**EventChange**), organizer alerts (**Alert**) and incidents reported by participants (**Incident**). Changes and alerts share a **Severity** (critical, warning, information), alerts stay active until the organization resolves them, and every **Notification** points to the disruption that caused it.
 - Integration details (ticketing sync state, external providers) are kept out of the model; they belong to the services described in the [Technical Design](/docs/deliverables/technical-design.md).
 
 ## Team

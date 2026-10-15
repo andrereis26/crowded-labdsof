@@ -53,7 +53,9 @@ surrounds event disruptions today.
 2. **Get notified of changes**
    When the event is cancelled, postponed, or moved in the official source, the
    user receives a notification labelled with its origin — ideally before leaving
-   home.
+   home. The notification says what changes for them: the new date, time or venue,
+   whether their ticket is still valid and, when there is one, where to ask for a
+   refund.
 
 3. **Check conditions and decide**
    On the day of the event, the user checks crowd levels, queues, organizer
@@ -122,19 +124,63 @@ conditions. This benefits participants (fewer wasted trips, safer and better-inf
 decisions) and organizations (better capacity planning, faster incident response,
 and a direct channel to their audience).
 
+Crowded supports the three phases of a disruption (see the Problem and Opportunity
+Report, section 2.1): **anticipating** it before leaving home (official changes,
+doors opening time, weather), **responding** on the way and on site (alerts, crowd
+levels, queues, reports and incidents) and **recovering** afterwards (what changes
+for the participant, resolved alerts and incidents, and a post-event summary for
+the organization).
+
+Crowded combines **trustworthy information** with **coordinated action**: every item
+shows its source and, for participant estimates, how many people confirmed it, and each one leads to an action. Organizers redirect
+people with alerts that say what to do ("Gate B closed, use Gate C"), participants
+confirm or correct what others report, and attendance polls let organizers adjust
+staff and entrances before the event. Participation is encouraged through private
+recognition and a contribution history (see the
+[Ethical Engagement Design](ethical-engagement-design.md)).
+
+## Success Criteria
+
+Crowded is measured by how early the people affected by a disruption know about it.
+
+**North star metric:** the share of participants connected to a disrupted event who
+are notified **before the doors open** (or before the start time, when no doors
+opening time is known), for disruptions published before that time.
+**MVP target: at least 90%.**
+
+| Criterion | MVP target | How it is measured |
+|---|---|---|
+| Participants notified before the doors open (north star) | ≥ 90% | Delivery time of each notification compared with the event's doors opening time, using the disruption that caused it (`Notification.causeId`, `Event.doorsOpenAt`) |
+| Critical disruptions delivered in time | 95% within 1 minute of detection or publication (NFR-001); source changes detected within 5 minutes (NFR-002) | Service-level indicators in the operational dashboard |
+| Alerts closed when the situation ends | ≥ 90% of operational alerts resolved before the event ends (FR-073) | `Alert.resolvedAt` compared with the event's end time |
+| Incident response | Median time from the first report to the incident being acknowledged ≤ 10 minutes | Report and incident timestamps |
+| Plans changed thanks to a notice | Tracked, no target in the MVP | Optional in-app question after a critical notice: "Did this change your plans?" |
+
+The targets are initial values. They are checked with the ticketing and
+entrance-counter simulators in Sprint 3 and revised with real organizers after the MVP.
+
 ## MVP Boundary
 
 **In the MVP:**
 - Ticket wallet (ticket import) and following public events
 - Minimal discovery ("near me / today")
 - Synchronization with the official event source (ticketing simulator) and change
-  notifications
+  notifications that say what changes for the participant (new date, time or venue,
+  ticket validity and refund information)
+- Severity of every change and alert (critical, warning, information), alerts that
+  the organization marks as resolved, and the doors opening time
+- Post-event summary for the organization (crowd peaks, incidents, alerts sent)
+- Offline access to the essential information of the user's events (ticket, entry code,
+  latest change, active alerts), and delivery through the notification center and live
+  banners when push notifications fail
+- Private recognition and contribution history for participants who report and confirm
 - Organizer backoffice: crowd levels, queues, incidents, alerts, and
   attendance-intention polls
 - Organizer API for crowd levels and queues (with an entrance-counter simulator)
 - Participant reports with predefined categories (including crowd level and
   queues), "Yes"/"No" confirmations by other participants, and a rule-based
-  confidence level shown with every participant estimate
+  confidence level that decides which estimates are shown (each estimate shows how
+  many participants confirmed it; the level itself is shown only to the organization)
 - Per-event choice, by the organization, of which categories trigger confirmations
 - Participant app on mobile and on the web (desktop and mobile browsers), with an
   in-app notification center, live banners and an unread badge on every client,

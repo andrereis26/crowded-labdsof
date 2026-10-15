@@ -33,6 +33,9 @@ This specification translates the Crowded product vision, problem and opportunit
 | FR-012 | The system shall periodically synchronize public events from the external municipal agenda source and detect changes to them. | 3 |
 | FR-013 | The system shall notify the users connected to an event (ticket holders and followers) when a change to that event is detected or published, according to their notification preferences. | 10 |
 | FR-014 | The system shall display an event's current status and its change history, each change with its source and time. | 8 |
+| FR-075 | When an event is cancelled, postponed or moved, the notification and the change detail shall tell the participant what changes for them: the new date, time or venue, whether their ticket is still valid and, when the source provides it, where to ask for a refund. | 8 |
+| FR-072 | The system shall display an event's doors opening time when the official source or the organization provides it, and shall treat a change to it as an event change (FR-011, FR-013). | 6 |
+| FR-074 | The system shall classify every official event change and operational alert as critical, warning or information (critical: cancellation, postponement, venue or start-time change, entrance closure), and shall present critical ones first and highlighted, not by color alone. | 7 |
 
 ### 1.3 Organization Backoffice
 
@@ -45,6 +48,7 @@ This specification translates the Crowded product vision, problem and opportunit
 | FR-019 | The system shall allow an organization to publish queue waiting times for points of its event (e.g., entrances, ticket office, bars, toilets). | 8 |
 | FR-020 | The system shall allow an organization to send an operational alert to the users connected to its event, according to their notification preferences, choosing an alert type (e.g., entrance closure, capacity reached, schedule delay) and writing its message, with or without an AI-assisted draft. | 10 |
 | FR-021 | The system shall generate an AI-assisted alert draft from the organization's brief input and the event's current state, which the organization must review, edit and approve before it is sent. | 8 |
+| FR-073 | The system shall allow an organization to mark an operational alert as resolved (e.g., the entrance reopened), removing it from the event's active alerts and informing the connected users that it has ended. | 8 |
 | FR-023 | The system shall present the organization with a live dashboard showing the event's crowd level, queues, open incidents and alerts sent. | 9 |
 | FR-024 | The system shall allow an organization to define its event's capacity and show the current crowd level relative to it. | 7 |
 | FR-025 | The system shall provide an API through which an organization's systems (e.g., entrance counters) can submit crowd counts and queue times automatically. | 6 |
@@ -56,7 +60,7 @@ This specification translates the Crowded product vision, problem and opportunit
 | FR-029 | The system shall allow an organization to view reported incidents and mark them as acknowledged or resolved, notifying the reporting user. | 8 |
 | FR-053 | The system shall use AI to group similar incident reports into a single incident with a short summary, allow the organization to split incorrectly grouped reports, and fall back to grouping by category and time window when the AI service is unavailable. | 8 |
 | FR-060 | The system shall allow an organization to choose, per event, which predefined report categories trigger confirmation prompts; events without an owning organization shall use the default settings. | 8 |
-| FR-030 | The system shall present the organization with a post-event summary (crowd peaks, incidents, alerts sent). | 3 |
+| FR-030 | The system shall present the organization with a post-event summary (crowd peaks, incidents, alerts sent, and how many connected participants were notified before the doors opened). | 8 |
 
 ### 1.4 On-Site Information for Participants
 
@@ -67,16 +71,16 @@ This specification translates the Crowded product vision, problem and opportunit
 | FR-033 | The system shall flag or hide on-site information that has not been updated within a configured period. | 8 |
 | FR-034 | The system shall allow a user to report something at an event by choosing a predefined category (e.g., crowd level, queue length, lost and found, accessibility barrier, on-site problem) and adding an optional description. | 8 |
 | FR-057 | The system shall ask a limited random sample of the users connected to an event who have allowed location access, excluding the reporter, to confirm a report with a single "Yes" or "No" while the event is taking place, only for categories that trigger confirmation prompts, stopping when enough answers are collected and limiting how often each user is asked. | 8 |
-| FR-058 | The system shall compute a rule-based confidence for each report — raised by "Yes" answers, lowered by "No" answers and decaying over time — and present it as Low, Medium or High. | 8 |
-| FR-059 | The system shall display reports with Medium or High confidence on the event page as participant estimates, showing their confidence and a notice that they are estimates that may not reflect reality. Crowd level and queue estimates shall only be shown when the organization has no current value for them, and reports in personal categories (e.g., lost and found) shall never be shown publicly or trigger confirmation prompts. | 8 |
+| FR-058 | The system shall compute a rule-based confidence for each report — raised by "Yes" answers, lowered by "No" answers and decaying over time — and classify it as Low, Medium or High. The level is shown to the organization; participants see the confirmations behind it instead (FR-059). | 8 |
+| FR-059 | The system shall display reports with Medium or High confidence on the event page as participant estimates, showing how many participants confirmed or denied each one and when it was last confirmed, and a notice that they are estimates that may not reflect reality. Crowd level and queue estimates shall only be shown when the organization has no current value for them, and reports in personal categories (e.g., lost and found) shall never be shown publicly or trigger confirmation prompts. | 8 |
 | FR-064 | The system shall only allow a user to submit a report in a non-personal category, or to answer a confirmation prompt, when the user has allowed location access and their approximate location is within a configured radius of the event venue. Otherwise, it shall explain that location is only requested to ensure better report quality. Reports in personal categories (e.g., lost and found) shall not require location. | 8 |
 | FR-054 | The system shall notify a participant when the organization marks their report as helpful, showing its impact (e.g., the incident was resolved, or an alert was sent to N people). | 7 |
 | FR-035 | The system shall display the weather forecast for the day and location of the event. | 6 |
 | FR-036 | The system shall notify connected users when the weather forecast for an event meets a configured severe-weather threshold. | 7 |
-| FR-037 | The system shall make the essential information of the user's events (date, time, venue, ticket details, latest change) available offline. | 5 |
+| FR-037 | The system shall make the essential information of the user's events (date, time, doors opening time, venue, ticket details and entry code, latest change and active alerts) available offline, showing the time of the last synchronization. | 8 |
 | FR-055 | The system shall display public transport options to the event venue (e.g., metro, bus, train) with their upcoming departure times, and indicate service disruptions when the transport source reports them. | 6 |
 | FR-056 | The system shall display an integrated map showing the event venue and routes to it from the user's location. | 6 |
-| FR-038 | The system shall allow a user to view a private history of their reported incidents and the recognitions received for them. | 5 |
+| FR-038 | The system shall allow a user to view a private history of their reports and confirmations, with the outcome of each report (confirmed, grouped into an incident, marked as helpful, resolved) and the recognitions received (see the Ethical Engagement Design). | 7 |
 
 ### 1.5 Accounts and Preferences
 
@@ -120,6 +124,7 @@ This specification translates the Crowded product vision, problem and opportunit
 | NFR-004 | Asynchronous workflows shall retry failed processing with backoff and move repeatedly failing messages to a dead-letter queue for inspection. | 8 |
 | NFR-005 | When an external event source is unavailable, delayed or returns invalid data, the system shall keep operating, reject and log invalid data, and show users the time of the last successful synchronization. | 9 |
 | NFR-006 | When the AI service is unavailable, the system shall fall back to manual ticket entry and manually written alerts so that the principal workflows continue. | 9 |
+| NFR-020 | When the push notification provider is unavailable, the system shall keep delivering notifications to the in-app notification center and as live banners on open clients, retry push delivery with backoff, never notify twice, and record the failure in the logs and the operational dashboard. | 9 |
 | NFR-007 | The system shall never present AI-generated content as verified fact: data filled in by AI shall be marked as pending until the user confirms it, and AI-generated content shown to other people (e.g., alert drafts, incident summaries) shall be labelled as AI-generated until approved. | 9 |
 | NFR-008 | Information published by an organization shall be visible to connected users within 30 seconds. | 8 |
 | NFR-009 | 95% of user requests shall receive a response within 2 seconds, excluding AI-assisted ticket extraction, which shall complete within 30 seconds. | 8 |
@@ -132,7 +137,7 @@ This specification translates the Crowded product vision, problem and opportunit
 | NFR-016 | The system shall be delivered using containers with reproducible builds and environment-specific configuration. | 8 |
 | NFR-017 | The participant interface shall be usable on mobile devices. | 7 |
 | NFR-018 | The principal user journeys shall meet WCAG 2.1 AA, and alerts and crowd levels shall not be conveyed by color alone. | 7 |
-| NFR-019 | Changes to a report's confidence shall be reflected on the event page within 30 seconds. | 7 |
+| NFR-019 | New confirmations of a report, and the resulting change in whether it is shown, shall be reflected on the event page within 30 seconds. | 7 |
 
 ---
 

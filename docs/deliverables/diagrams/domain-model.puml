@@ -73,6 +73,7 @@ package "Event Catalog" {
     name
     description
     startDateTime
+    doorsOpenAt [0..1]
     endDateTime
     status : EventStatus
     capacity : int [0..1]
@@ -90,8 +91,11 @@ package "Event Catalog" {
   class EventChange <<Entity>> {
     id
     type : ChangeType
+    severity : Severity
     previousValue
     newValue
+    ticketStillValid : boolean [0..1]
+    refundInfoUrl [0..1]
     provenance : Provenance
   }
 
@@ -117,6 +121,12 @@ package "Event Catalog" {
     TIME_CHANGE
     VENUE_CHANGE
     DETAILS_UPDATE
+  }
+
+  enum Severity {
+    CRITICAL
+    WARNING
+    INFO
   }
 
   enum EventOrigin {
@@ -241,9 +251,11 @@ package "Organizer Communication" {
   class Alert <<Aggregate Root>> {
     id
     type : AlertType
+    severity : Severity
     message
     status : AlertStatus
     sentAt [0..1]
+    resolvedAt [0..1]
     recipientsCount [0..1]
   }
 
@@ -518,11 +530,30 @@ note bottom of Notification
   Sent only if the recipient's setting for its type is on
   (FR-041, FR-065). deduplicationKey = recipient + trigger,
   unique, so redelivered messages never notify twice (NFR-003).
+  Each notification refers to the disruption that caused it
+  (EventChange, Alert or Incident), so delivery can be traced
+  and timed against NFR-001.
 end note
 
 note bottom of Incident
   Groups similar reports with AI, or by category
   and time window as fallback (FR-053).
+end note
+
+note bottom of Severity
+  Disruptions are official changes (EventChange),
+  organizer alerts (Alert) and reported incidents
+  (Incident). CRITICAL = cancellation, postponement,
+  venue or start-time change, entrance closure
+  (NFR-001); a doors-opening change is a WARNING
+  (FR-072, FR-074).
+end note
+
+note right of Alert
+  A sent alert stays active until the organization
+  resolves it (e.g., the entrance reopens), which
+  sets resolvedAt; connected users are told it
+  ended (FR-073).
 end note
 
 note right of Confidence

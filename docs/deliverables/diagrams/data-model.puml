@@ -59,6 +59,7 @@ entity "Event" as Event {
   name : TEXT
   description : TEXT
   startDateTime : TIMESTAMPTZ
+  doorsOpenAt : TIMESTAMPTZ [NULL]
   endDateTime : TIMESTAMPTZ
   status : event_status
   capacity : INTEGER [NULL]
@@ -88,8 +89,11 @@ entity "EventChange" as EventChange {
   eventId : UUID <<FK>>
   --
   type : change_type
+  severity : severity
   previousValue : JSONB
   newValue : JSONB
+  ticketStillValid : BOOLEAN [NULL]
+  refundInfoUrl : TEXT [NULL]
   provenanceSourceType : source_type
   provenanceSourceName : TEXT
   provenanceLastUpdatedAt : TIMESTAMPTZ
@@ -208,9 +212,11 @@ entity "Alert" as Alert {
   incidentId : UUID [NULL] <<FK>>
   --
   type : alert_type
+  severity : severity
   message : TEXT
   status : alert_status
   sentAt : TIMESTAMPTZ [NULL]
+  resolvedAt : TIMESTAMPTZ [NULL]
   recipientsCount : INTEGER [NULL]
 }
 
@@ -387,6 +393,7 @@ entity "Notification" as Notification {
   eventId : UUID <<FK>>
   --
   type : notification_type
+  causeId : UUID [NULL]
   title : TEXT
   body : TEXT
   deduplicationKey : TEXT <<UK>> [PERSONAL]
@@ -394,6 +401,16 @@ entity "Notification" as Notification {
   deliveredAt : TIMESTAMPTZ [NULL]
   readAt : TIMESTAMPTZ [NULL]
 }
+
+note right of Notification
+  causeId identifies the disruption that triggered the
+  notification; the type says which table it refers to
+  (OFFICIAL_CHANGE: EventChange, OPERATIONAL_ALERT: Alert,
+  INCIDENT_STATUS: Incident). It has no FK because those
+  tables belong to Core and the id arrives in the message
+  (ADR 0002, ADR 0003). It links delivery to its cause
+  for traceability and for measuring NFR-001.
+end note
 
 entity "UserNotificationSetting" as UserNotificationSetting {
   * id : UUID <<PK>>
@@ -506,6 +523,12 @@ enum "alert_type" as alert_type {
 enum "alert_status" as alert_status {
   DRAFT
   SENT
+}
+
+enum "severity" as severity {
+  CRITICAL
+  WARNING
+  INFO
 }
 
 enum "survey_type" as survey_type {
