@@ -123,15 +123,19 @@ Crowd levels, queues, alerts and incidents would be available to any organizer t
 
 Organizers could alert everyone connected to the event: ticket holders and followers. Unlike WhatsApp, Instagram or Festing's notifications to followers, the alerts would be tied to the specific event and its current state, and organizers would see how many people received them.
 
-### 3.5. Attendance-intention polls for capacity planning
+### 3.5. Interest polls before the event is booked
 
-Bandsintown RSVPs and Festing's "who's going" already show interest in confirmed events. Crowded would let organizers poll interest in a proposed event (artist, date or location) before finalizing capacity, staff and entrances. Results must be presented as indications, not guaranteed attendance.
+Bandsintown RSVPs and Festing's "who's going" already show interest in confirmed events, and Instagram polls are informal and reach only one platform's followers. Crowded would let organizers publish a proposed event (artist and tentative period, with no date or venue yet) and an interest poll with their own options (e.g., "one night or two", "small or large room"), shared through a public link, before deciding what to book. Participants who want to hear more follow the event, so they are notified when it is confirmed and of every later change. Results must be presented as indications, not guaranteed attendance.
+
+### 3.6. A complement to ticketing, not a competitor
+
+Crowded does not sell, resell or link to tickets. Ticketing platforms handle the purchase; Crowded covers the time before the event is booked (interest polls) and the time between the purchase and the end of the event (changes, alerts and on-site conditions), for tickets from any platform. For ticketing platforms, Crowded is an extra channel that delivers their official changes to ticket holders.
 
 ## 4. Value Proposition
 
-For people attending events in Portugal and the organizations that run them, Crowded keeps every event they are connected to up to date until it ends. It brings together official changes, crowd levels, queues and organizer alerts, each showing where it came from and when it was last updated.
+For people attending events in Portugal and the organizations that run them, Crowded keeps every event they are connected to up to date, from the moment it is proposed until it ends. It brings together official changes, crowd levels, queues and organizer alerts, each showing where it came from and when it was last updated.
 
-Unlike ticketing platforms, which stop at the ticket, discovery and social apps such as Bandsintown, Songkick and Festing, which focus on the time before the event, and social media, where information is scattered and unverified, Crowded works with tickets from any provider and with free events, and gives every organizer a direct channel to their audience when something changes or goes wrong.
+Unlike ticketing platforms, which stop at the ticket, discovery and social apps such as Bandsintown, Songkick and Festing, which focus on the time before the event, and social media, where information is scattered and unverified, Crowded works with tickets from any provider and with free events, and gives every organizer a direct channel to their audience to test interest before booking and to act when something changes or goes wrong. Crowded does not sell tickets.
 
 ## 5. References
 
