@@ -33,12 +33,14 @@ The domain model shows the main concepts of Crowded and how they relate, indepen
 
 ## Team
 
-| Student Number | Name               |
-|-----------------|-------------------|
-| 1191256         | André Reis        |
-| 1201506         | Guilherme Cunha   |
-| 1211105         | Margarida Pereira |
-| 1250491         | Acácio Coutinho   |
+| Student Number | Name               | Role                              |
+|-----------------|-------------------|-----------------------------------|
+| 1191256         | André Reis        | Scrum Master / Product Owner      |
+| 1201506         | Guilherme Cunha   | Project Manager                   |
+| 1211105         | Margarida Pereira | QA                                |
+| 1250491         | Acácio Coutinho   | UI/UX                             |
+
+Note: everyone's role is flexible and can change according to the needs of the project and everyone's assumed as developer as well.
 
 ## Contributing
 
