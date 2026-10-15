@@ -58,18 +58,20 @@ entity "Event" as Event {
   --
   name : TEXT
   description : TEXT
-  startDateTime : TIMESTAMPTZ
+  tentativePeriod : TEXT [NULL]
+  startDateTime : TIMESTAMPTZ [NULL]
   doorsOpenAt : TIMESTAMPTZ [NULL]
-  endDateTime : TIMESTAMPTZ
+  endDateTime : TIMESTAMPTZ [NULL]
   status : event_status
   capacity : INTEGER [NULL]
   visibility : event_visibility
   origin : event_origin
+  ticketingSourceEventId : TEXT [NULL] <<UK>>
   lastSyncedAt : TIMESTAMPTZ [NULL]
-  venueName : TEXT
-  address : TEXT
-  latitude : DOUBLE PRECISION
-  longitude : DOUBLE PRECISION
+  venueName : TEXT [NULL]
+  address : TEXT [NULL]
+  latitude : DOUBLE PRECISION [NULL]
+  longitude : DOUBLE PRECISION [NULL]
   crowdLevel : crowd_level [NULL]
   headCount : INTEGER [NULL]
   crowdProvenanceSourceType : source_type [NULL]
@@ -82,6 +84,10 @@ note right of Event
   The composed EventLocation and optional CrowdStatus
   are flattened into Event columns. Provenance is
   flattened within CrowdStatus.
+  A PROPOSED event has only tentativePeriod: start time
+  and venue are NULL until it is confirmed (FR-076).
+  ticketingSourceEventId links an organization event to
+  the ticketing source (FR-079).
 end note
 
 entity "EventChange" as EventChange {
@@ -98,6 +104,8 @@ entity "EventChange" as EventChange {
   provenanceSourceName : TEXT
   provenanceLastUpdatedAt : TIMESTAMPTZ
   provenanceConfirmed : BOOLEAN
+  corroboratingSourceType : source_type [NULL]
+  corroboratedAt : TIMESTAMPTZ [NULL]
 }
 
 note right of EventChange
@@ -105,6 +113,9 @@ note right of EventChange
   its old or new value (for example,
   {"status":"SCHEDULED"} to {"status":"POSTPONED"}).
   This supports changed attributes with different types.
+  When the organization and the ticketing source report
+  the same change, it is stored once and the second
+  source fills corroboratingSourceType (FR-078).
 end note
 
 entity "OwnershipRequest" as OwnershipRequest {
@@ -262,25 +273,40 @@ entity "SurveyResponse" as SurveyResponse {
   respondedAt : TIMESTAMPTZ
 }
 
-entity "AttendancePoll" as AttendancePoll {
+entity "InterestPoll" as InterestPoll {
   * id : UUID <<PK>>
   organizationId : UUID <<FK>>
-  eventId : UUID [NULL] <<FK>>
+  eventId : UUID <<FK>>
   --
   question : TEXT
-  proposedEventDescription : TEXT [NULL]
+  publicSlug : TEXT <<UK>>
   opensAt : TIMESTAMPTZ
   closesAt : TIMESTAMPTZ
 }
 
+entity "PollOption\n<<Dependent Value Object>>" as PollOption {
+  * id : UUID <<PK>>
+  interestPollId : UUID <<FK, UK>>
+  label : TEXT <<UK>>
+  --
+  position : INTEGER
+}
+
 entity "PollResponse" as PollResponse {
   * id : UUID <<PK>>
-  attendancePollId : UUID <<FK, UK>>
-  userId : UUID <<FK, UK>> [PERSONAL]
+  interestPollId : UUID <<FK, UK>>
+  userId : UUID <<FK, UK>> [PERSONAL, PRIVACY-SENSITIVE]
+  pollOptionId : UUID <<FK>>
   --
-  intention : attendance_intention
   respondedAt : TIMESTAMPTZ
 }
+
+note right of PollResponse
+  userId only enforces one answer per user per poll and
+  lets the user change it; organizations and other users
+  only see totals per option (SR-019). Answering does
+  not create a Follow (FR-027).
+end note
 
 ' Reports, confirmations and incidents
 entity "Report" as Report {
@@ -445,6 +471,7 @@ enum "verification_status" as verification_status {
 }
 
 enum "event_status" as event_status {
+  PROPOSED
   SCHEDULED
   POSTPONED
   RELOCATED
@@ -465,6 +492,7 @@ enum "event_origin" as event_origin {
 }
 
 enum "change_type" as change_type {
+  CONFIRMATION
   CANCELLATION
   POSTPONEMENT
   TIME_CHANGE
@@ -533,14 +561,8 @@ enum "severity" as severity {
 
 enum "survey_type" as survey_type {
   CONFIRMATION
-  POLL
+  CHOICE
   IDEA
-}
-
-enum "attendance_intention" as attendance_intention {
-  WILL_ATTEND
-  MAYBE
-  WILL_NOT_ATTEND
 }
 
 enum "confirmation_answer" as confirmation_answer {
@@ -610,9 +632,11 @@ Event ||--o{ EventSurvey : surveys
 EventSurvey ||--o{ SurveyOption : options
 EventSurvey ||--o{ SurveyResponse : responses
 User ||--o{ SurveyResponse : responds
-Organization ||--o{ AttendancePoll : launches
-Event |o--o{ AttendancePoll : for
-AttendancePoll ||--o{ PollResponse : responses
+Organization ||--o{ InterestPoll : launches
+Event ||--o{ InterestPoll : tests interest in
+InterestPoll ||--|{ PollOption : options
+InterestPoll ||--o{ PollResponse : responses
+PollOption ||--o{ PollResponse : chosen in
 User ||--o{ PollResponse : responds
 
 ' Reports, confirmations and incidents relationships
