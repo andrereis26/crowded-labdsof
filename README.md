@@ -27,6 +27,7 @@ Crowded keeps people informed when something changes or goes wrong at the events
 - [Definition of Ready and Definition of Done](/docs/deliverables/definition-of-ready-and-done.md)
 - [Technical Design](/docs/deliverables/technical-design.md)
 - [Architecture Decision Records](/docs/deliverables/adr/)
+- [API Outline](/docs/deliverables/api-outline.md)
 
 ## Domain Model
 

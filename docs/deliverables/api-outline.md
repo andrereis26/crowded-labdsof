@@ -75,8 +75,8 @@ Also uses: `POST /events/{eventId}/follow` (journey 2), `POST /events/{eventId}/
 | POST | `/events/{eventId}/polls` | Create an interest poll with the organization's own options (FR-026). | `question`, `options[]` (two or more labels), `opensAt`, `closesAt` | `pollId`, `publicSlug` | Member |
 | POST | `/polls/{pollId}/close` | Close a poll early (FR-026). | – | `closesAt` | Member |
 | GET | `/public/polls/{publicSlug}` | Public poll page, without an account (FR-080). | – | `pollId`, `question`, `options[]` {`id`, `label`}, `closesAt`, `event` {`id`, `name`, `status`, `tentativePeriod`} | Public |
-| PUT | `/polls/{pollId}/response` | Answer, or change the answer until the poll closes. Does not follow the event (FR-027, SR-019). | `optionId` | `totals[]` {`optionId`, `count`} | Participant |
-| GET | `/polls/{pollId}/results` | Totals per option, never who answered (FR-028, SR-019). Participants see them only after answering. | – | `totals[]` {`optionId`, `count`}, `myOptionId` (Participant), `followers` (Member) | Participant (answered), Member |
+| PUT | `/polls/{pollId}/response` | Answer, or change the answer until the poll closes. Does not follow the event (FR-027, SR-019). | `optionId` | `totals[]` {`optionId`, `count`} | Signed-in |
+| GET | `/polls/{pollId}/results` | Totals per option, never who answered (FR-028, SR-019). Users see them only after answering. | – | `totals[]` {`optionId`, `count`}, `myOptionId` (answered), `followers` (Member) | Signed-in (answered), Member |
 
 ### 2. Connect to an event
 
