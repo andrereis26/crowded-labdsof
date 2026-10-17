@@ -36,20 +36,47 @@
   --color-background: #f2f2f7;
   --color-surface: #ffffff;
   --color-border: #e3e3e8;
+  --color-border-strong: #c2c2c9;
+  --color-segment-track: #e5e5eb;
+  --color-switch-off: #dbdbe0;
+  --color-switch-on: #33ad59;
+  --color-inactive: #ccccd1;
+  --color-muted-bar: #bfbfc7;
+  --color-row-highlight: #f7faff;
 
   --color-primary: #0066d9;
   --color-primary-soft: #e8f2ff;
   --color-primary-border: #b8d4fa;
   --color-avatar: #dbe5fa;
   --color-organization: #6b33bf;
+  --color-chart-soft: #c7d6f2;
+  --color-chart-mid: #8cb2f2;
+
+  /* AI-generated content and organizer polls. */
+  --color-ai: #6b33bf;
+  --color-ai-soft: #f2ebff;
+  --color-ai-border: #d1bdf5;
 
   --color-success: #146b33;
   --color-success-soft: #def5e3;
   --color-approve: #218c45;
   --color-warning: #8c5400;
   --color-warning-soft: #fff2d6;
+  --color-warning-border: #edc266;
   --color-danger: #bf1a1a;
   --color-danger-soft: #ffebeb;
+  --color-danger-border: #f2b2b2;
+  --color-denied-soft: #fadbdb;
+
+  /* Crowd level meter. */
+  --color-crowd-low: #29994d;
+  --color-crowd-moderate: #d98c0d;
+  --color-crowd-high: #e05c0f;
+  --color-crowd-full: #c71f1f;
+
+  /* Wallet card status. */
+  --color-wallet-status: #14542b;
+  --color-wallet-status-soft: #dbf7e3;
 
   --color-sidebar: #171a21;
   --color-sidebar-card: #292b36;
@@ -57,8 +84,81 @@
   --color-sidebar-text: #c7c7cc;
   --color-sidebar-muted: #b2b2bd;
   --color-sidebar-accent: #b2c7ff;
+  --color-sidebar-verified: #8cd99e;
+
+  /* Phone tab bar. */
+  --color-tab-bar: #fafafcf0;
+  --color-tab-border: #dbdbe3;
+  --color-counter: #d93026;
 }
 
 body {
   @apply bg-background text-ink font-sans antialiased;
+}
+
+/* Date and time fields show the mockups' leading icon; the browser's picker
+   button stays invisible and covers the field, so a click still opens it. */
+input[type='date']::-webkit-calendar-picker-indicator,
+input[type='time']::-webkit-calendar-picker-indicator,
+input[type='datetime-local']::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Option list of the Select component, in browsers that support
+   customizable selects (Chrome and Edge 135+). Others keep the native list. */
+@supports (appearance: base-select) {
+  .ui-select,
+  .ui-select::picker(select) {
+    appearance: base-select;
+  }
+
+  /* The component draws its own chevron. */
+  .ui-select::picker-icon {
+    display: none;
+  }
+
+  .ui-select::picker(select) {
+    margin-block: 4px;
+    padding: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 0.12);
+    font-family: var(--font-sans);
+  }
+
+  .ui-select option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-ink);
+  }
+
+  .ui-select option:hover,
+  .ui-select option:focus-visible {
+    background: var(--color-background);
+    outline: none;
+  }
+
+  .ui-select option:checked {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  /* Tick on the right of the chosen option. */
+  .ui-select option::checkmark {
+    order: 1;
+    margin-left: auto;
+    color: var(--color-primary);
+  }
 }

@@ -1,7 +1,16 @@
 import { useState } from 'react'
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router'
-import { demoRequests, isOpen, type VerificationRequest } from './data/verifications'
+import { organization } from './data/organizer'
+import {
+  demoRequests,
+  isOpen,
+  managementRequest,
+  registrationRequest,
+  type VerificationRequest,
+} from './data/verifications'
 import { AdminLayout } from './layout/AdminLayout'
+import { OrganizerApp } from './OrganizerApp'
+import { RegisterPage, RegistrationPendingPage } from './pages/organizer/RegisterPage'
 import { Panel } from './ui/components'
 import { VerificationsPage } from './pages/VerificationsPage'
 
@@ -17,18 +26,60 @@ export default function App({ now }: { now: Date }) {
   const [requests, setRequests] = useState<VerificationRequest[]>(() =>
     demoRequests(now),
   )
-  const location = useLocation()
 
   const update = (updated: VerificationRequest) =>
     setRequests((all) => all.map((r) => (r.id === updated.id ? updated : r)))
+  // Registrations (O1) and management requests (O13) reach the admin queue.
+  const add = (request: VerificationRequest) => setRequests((all) => [request, ...all])
 
+  return (
+    <Routes>
+      <Route
+        path="/registo"
+        element={<RegisterPage onSubmit={(form) => add(registrationRequest(form, new Date()))} />}
+      />
+      <Route path="/registo/pendente" element={<RegistrationPendingPage />} />
+      <Route
+        path="/organizacao/*"
+        element={
+          <OrganizerApp
+            now={now}
+            onManagementRequest={(event, relation, document) =>
+              add(
+                managementRequest(
+                  { ...organization, user: organization.user.name },
+                  event.name,
+                  relation,
+                  document,
+                  new Date(),
+                ),
+              )
+            }
+          />
+        }
+      />
+      <Route path="*" element={<AdminArea requests={requests} now={now} onChange={update} />} />
+    </Routes>
+  )
+}
+
+function AdminArea({
+  requests,
+  now,
+  onChange,
+}: {
+  requests: VerificationRequest[]
+  now: Date
+  onChange: (updated: VerificationRequest) => void
+}) {
+  const location = useLocation()
   const open = requests.filter(isOpen)
   const title = location.pathname.startsWith('/verificacoes')
     ? 'Verificações'
     : (titles[location.pathname] ?? 'Crowded')
 
   const verifications = (
-    <Verifications requests={requests} now={now} onChange={update} />
+    <Verifications requests={requests} now={now} onChange={onChange} />
   )
 
   return (
