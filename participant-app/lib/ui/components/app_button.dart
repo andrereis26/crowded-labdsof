@@ -13,6 +13,9 @@ enum AppButtonVariant {
 
   /// Blue text-only button ("Procurar outro evento", "Não consigo ver daqui").
   link,
+
+  /// Red filled button for irreversible actions ("Apagar conta").
+  danger,
 }
 
 enum AppButtonSize {
@@ -51,6 +54,16 @@ class AppButton extends StatelessWidget {
     this.expand = true,
   }) : variant = AppButtonVariant.secondary;
 
+  const AppButton.danger({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.expand = true,
+  }) : trailingIcon = null,
+       variant = AppButtonVariant.danger,
+       size = AppButtonSize.regular;
+
   const AppButton.link({
     super.key,
     required this.label,
@@ -81,6 +94,7 @@ class AppButton extends StatelessWidget {
         Border.all(color: AppColors.border),
       ),
       AppButtonVariant.link => (Colors.transparent, AppColors.primary, null),
+      AppButtonVariant.danger => (AppColors.danger, Colors.white, null),
     };
     final (baseStyle, iconSize, padding, radius) = switch (size) {
       AppButtonSize.small => (
