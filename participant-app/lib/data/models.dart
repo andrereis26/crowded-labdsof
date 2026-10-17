@@ -329,3 +329,52 @@ class EventMatch {
   /// "Correspondência alta" when true, "Correspondência baixa" otherwise.
   final bool strong;
 }
+
+/// What a participant receives for one event (C2, "Por evento").
+enum EventNotificationLevel {
+  all('Tudo'),
+  officialOnly('Só alterações oficiais'),
+  none('Nada');
+
+  const EventNotificationLevel(this.label);
+
+  final String label;
+}
+
+/// Which organization requests reach the participant (C2).
+enum RequestNotificationLevel {
+  all('Todos'),
+  urgentOnly('Só urgentes'),
+  none('Nenhum');
+
+  const RequestNotificationLevel(this.label);
+
+  final String label;
+}
+
+/// Notification preferences (C2, FR-069).
+class NotificationPreferences {
+  bool officialChanges = true;
+  bool organizerAlerts = true;
+  bool weatherAlerts = true;
+  bool recognitions = true;
+  bool officialChangesByEmail = true;
+  RequestNotificationLevel requests = RequestNotificationLevel.urgentOnly;
+  bool confirmationPrompts = true;
+  final Map<String, EventNotificationLevel> perEvent = {};
+}
+
+/// The signed-in participant.
+class Account {
+  const Account({required this.name, required this.email});
+
+  final String name;
+  final String email;
+
+  String get initials => name
+      .split(RegExp(r'\s+'))
+      .where((p) => p.isNotEmpty)
+      .take(2)
+      .map((p) => p[0].toUpperCase())
+      .join();
+}

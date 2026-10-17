@@ -15,6 +15,8 @@ class AppStore extends ChangeNotifier {
     _tickets = demo.tickets;
     _followed = demo.followedIds;
     _notifications = demo.notifications;
+    _preferences = NotificationPreferences()
+      ..perEvent[demo.jazzNoParque.id] = EventNotificationLevel.officialOnly;
   }
 
   final DateTime Function() _clock;
@@ -23,11 +25,89 @@ class AppStore extends ChangeNotifier {
   late List<Ticket> _tickets;
   late Set<String> _followed;
   late List<AppNotification> _notifications;
+  late NotificationPreferences _preferences;
 
   DateTime get now => _clock();
 
   static AppStore of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppStoreScope>()!.notifier!;
+
+  // Account (C1, C3). Sign-in is a demo until Core authentication exists.
+
+  Account? _account = const Account(
+    name: 'Inês Martins',
+    email: 'ines.martins@email.pt',
+  );
+  Account? get account => _account;
+  bool get signedIn => _account != null;
+
+  static const minPasswordLength = 8;
+
+  /// Returns an error message, or null when signed in.
+  String? signIn({required String email, required String password}) {
+    if (!_looksLikeEmail(email)) return 'Introduz um email válido.';
+    if (password.length < minPasswordLength) {
+      return 'A palavra-passe tem pelo menos $minPasswordLength caracteres.';
+    }
+    final name = _account?.name ?? email.split('@').first;
+    _account = Account(name: name, email: email.trim());
+    notifyListeners();
+    return null;
+  }
+
+  /// Returns an error message, or null when the account was created.
+  String? register({
+    required String name,
+    required String email,
+    required String password,
+  }) {
+    if (name.trim().isEmpty) return 'Indica o teu nome.';
+    if (!_looksLikeEmail(email)) return 'Introduz um email válido.';
+    if (password.length < minPasswordLength) {
+      return 'Usa pelo menos $minPasswordLength caracteres na palavra-passe.';
+    }
+    _account = Account(name: name.trim(), email: email.trim());
+    notifyListeners();
+    return null;
+  }
+
+  void signOut() {
+    _account = null;
+    notifyListeners();
+  }
+
+  /// Deletes the account and its personal data (C3, FR-071). Reports stay,
+  /// without a link to the account.
+  void deleteAccount() {
+    _tickets = [];
+    _followed = {};
+    _notifications = [];
+    _preferences = NotificationPreferences();
+    importDraft = null;
+    _account = null;
+    notifyListeners();
+  }
+
+  static bool _looksLikeEmail(String value) =>
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim());
+
+  // Notification preferences (C2).
+
+  NotificationPreferences get preferences => _preferences;
+
+  void updatePreferences(void Function(NotificationPreferences p) change) {
+    change(_preferences);
+    notifyListeners();
+  }
+
+  EventNotificationLevel levelFor(String eventId) =>
+      _preferences.perEvent[eventId] ?? EventNotificationLevel.all;
+
+  /// Events with a ticket or followed, for "Por evento".
+  List<Event> get connectedEvents => [
+    for (final t in tickets) t.event,
+    ...followedEvents,
+  ];
 
   // Connectivity (demo toggle until real connectivity checks exist).
 
