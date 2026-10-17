@@ -12,6 +12,27 @@ flutter test
 
 For now the app opens the component gallery (`lib/dev/component_gallery.dart`). Replace `home` in `lib/main.dart` when the first screens exist.
 
+## Container image
+
+The image serves the web build with NGINX as a non-root user on port 8080, with a health check at `/healthz`:
+
+```bash
+flutter build web --release
+docker build -t crowded/participant-app .
+docker run -p 8080:8080 crowded/participant-app
+```
+
+## CI
+
+[`.github/workflows/participant-app.yml`](../.github/workflows/participant-app.yml) runs on every pull request that touches this folder and on every push to `main`:
+
+| Job | What it checks |
+|---|---|
+| Analyze and test | `dart format`, `flutter analyze --fatal-infos`, `flutter test --coverage`; fails below 80% line coverage |
+| Build and scan image | Web build, Docker image, Trivy scan (fails on fixable HIGH/CRITICAL), and a request to the running container |
+
+[`.github/workflows/security.yml`](../.github/workflows/security.yml) runs Gitleaks (committed secrets) and Trivy (dependency vulnerabilities and Dockerfile misconfigurations) on every pull request, on `main` and weekly. Dependabot opens weekly update PRs for pub packages, the base image and the GitHub Actions. The Flutter version is pinned in the workflow (`FLUTTER_VERSION`); update it there when upgrading.
+
 ## Design system
 
 The shared components follow the "0 · Componentes base" page and the participant screens of the [Crowded — Mockups](https://www.figma.com/design/EdgpgHGNgfRGewcW5kvbES/Crowded-%E2%80%94-Mockups) Figma file. Screens should import `package:crowded/ui/ui.dart` and use these components and tokens instead of raw colours or sizes.
