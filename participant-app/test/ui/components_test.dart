@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:crowded/dev/component_gallery.dart';
 import 'package:crowded/ui/ui.dart';
 import 'package:crowded/utils/pt_format.dart';
@@ -264,5 +266,21 @@ void main() {
         label: 'Talvez',
       ),
     );
+  });
+
+  testWidgets('switch thumb stays visible when off', (tester) async {
+    await tester.pumpWidget(_wrap(Switch(value: false, onChanged: (_) {})));
+    final theme = Theme.of(tester.element(find.byType(Switch))).switchTheme;
+    final thumb = theme.thumbColor!.resolve({})!;
+    final track = theme.trackColor!.resolve({})!;
+
+    double contrast(Color a, Color b) {
+      final (l1, l2) = (a.computeLuminance(), b.computeLuminance());
+      return (max(l1, l2) + 0.05) / (min(l1, l2) + 0.05);
+    }
+
+    // WCAG 2.1 AA non-text contrast for the thumb and the track.
+    expect(contrast(thumb, track), greaterThanOrEqualTo(3));
+    expect(contrast(track, AppColors.surface), greaterThanOrEqualTo(3));
   });
 }
