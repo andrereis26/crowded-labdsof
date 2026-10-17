@@ -1,0 +1,4 @@
+# The image only needs the web build and the NGINX config.
+*
+!build/web
+!nginx.conf
