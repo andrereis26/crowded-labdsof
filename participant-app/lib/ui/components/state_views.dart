@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import 'app_tag.dart';
 
 const _boxRadius = BorderRadius.all(AppRadii.button);
 
@@ -244,6 +245,61 @@ class AppStatusStrip extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Outcome of an action: a tinted round icon, a title and a message
+/// ("Reporte enviado", "Não estás perto do recinto" in P12, P15).
+class AppResultHeader extends StatelessWidget {
+  const AppResultHeader({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.message,
+    this.tone = AppTagTone.success,
+    this.large = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? message;
+
+  /// Colours of the circle, as in [AppTag].
+  final AppTagTone tone;
+
+  /// Bigger icon and title (recognition in P15).
+  final bool large;
+
+  @override
+  Widget build(BuildContext context) {
+    final (background, foreground) = AppTag.colorsFor(tone);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      spacing: AppSpacing.md,
+      children: [
+        Container(
+          padding: EdgeInsets.all(large ? AppSpacing.xxl : 18),
+          decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+          child: Icon(icon, size: large ? 40 : 36, color: foreground),
+        ),
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.sheetTitle.copyWith(
+              fontSize: large ? 28 : null,
+            ),
+          ),
+        ),
+        if (message != null)
+          Text(
+            message!,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodySecondary.copyWith(fontSize: 15),
+          ),
+      ],
     );
   }
 }

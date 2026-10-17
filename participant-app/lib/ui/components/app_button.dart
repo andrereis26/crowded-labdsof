@@ -38,6 +38,7 @@ class AppButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.icon,
+    this.trailingIcon,
     this.variant = AppButtonVariant.primary,
     this.size = AppButtonSize.regular,
     this.expand = true,
@@ -48,6 +49,7 @@ class AppButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.icon,
+    this.trailingIcon,
     this.size = AppButtonSize.regular,
     this.expand = true,
   }) : variant = AppButtonVariant.secondary;
@@ -58,7 +60,8 @@ class AppButton extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.expand = true,
-  }) : variant = AppButtonVariant.danger,
+  }) : trailingIcon = null,
+       variant = AppButtonVariant.danger,
        size = AppButtonSize.regular;
 
   const AppButton.link({
@@ -67,12 +70,16 @@ class AppButton extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.expand = true,
-  }) : variant = AppButtonVariant.link,
+  }) : trailingIcon = null,
+       variant = AppButtonVariant.link,
        size = AppButtonSize.regular;
 
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
+
+  /// Icon after the label ("Responder ›", "Abrir no mapa ↗").
+  final IconData? trailingIcon;
   final AppButtonVariant variant;
   final AppButtonSize size;
   final bool expand;
@@ -129,6 +136,12 @@ class AppButton extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ),
+        if (trailingIcon != null) ...[
+          SizedBox(
+            width: size == AppButtonSize.small ? AppSpacing.xs : AppSpacing.sm,
+          ),
+          Icon(trailingIcon, size: iconSize, color: foreground),
+        ],
       ],
     );
 

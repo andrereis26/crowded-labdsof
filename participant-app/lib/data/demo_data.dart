@@ -55,14 +55,63 @@ class DemoData {
     ),
     estimates: [
       ParticipantEstimate(
+        title: 'Fila nos WC junto ao palco · 15–20 min',
+        category: ReportCategory.queue,
+        reportedAt: _ago(const Duration(minutes: 4)),
+        confirmed: 9,
+        denied: 1,
+        confidence: ConfidenceLevel.high,
+      ),
+      ParticipantEstimate(
         title: 'Rampa da entrada Norte bloqueada',
-        category: 'Acessibilidade',
+        category: ReportCategory.accessibility,
         reportedAt: _ago(const Duration(minutes: 15)),
         confirmed: 4,
         denied: 1,
         confidence: ConfidenceLevel.high,
       ),
     ],
+    places: const [
+      VenuePlace('Porta A', 'na'),
+      VenuePlace('Porta B', 'na'),
+      VenuePlace('Porta C', 'na'),
+      VenuePlace('Entrada Norte', 'na'),
+      VenuePlace('Bar principal', 'no'),
+      VenuePlace('WC junto ao palco', 'nos'),
+      VenuePlace('Palco principal', 'no'),
+    ],
+    directions: Directions(
+      entrance: 'Porta A',
+      entranceDetail: 'Entrada principal',
+      updatedAt: _ago(const Duration(minutes: 1)),
+      options: const [
+        TransportOption(
+          mode: TransportMode.metro,
+          title: 'Metro + 8 min a pé',
+          detail: 'Próximo às 21:12 · depois às 21:24',
+          minutes: 26,
+        ),
+        TransportOption(
+          mode: TransportMode.bus,
+          title: 'Autocarro 502',
+          detail: 'Desvio na Av. da Boavista · próximo às 21:05',
+          minutes: 25,
+          disrupted: true,
+        ),
+        TransportOption(
+          mode: TransportMode.walk,
+          title: 'A pé',
+          detail: '2,6 km',
+          minutes: 35,
+        ),
+        TransportOption(
+          mode: TransportMode.car,
+          title: 'Carro ou TVDE',
+          detail: 'Estacionamento limitado junto ao recinto',
+          minutes: 12,
+        ),
+      ],
+    ),
     changes: [
       EventChange(
         id: 'margens-published',
@@ -252,6 +301,7 @@ class DemoData {
       importedAt: _ago(const Duration(days: 12)),
       gate: 'A',
       seat: 'Geral',
+      codeReference: '4821',
     ),
     Ticket(
       id: 't-tempestade',
@@ -260,6 +310,7 @@ class DemoData {
       importedAt: _ago(const Duration(days: 20)),
       gate: '2',
       seat: 'C-07',
+      codeReference: '1170',
     ),
     Ticket(
       id: 't-jazz',
@@ -268,6 +319,7 @@ class DemoData {
       importedAt: _ago(const Duration(days: 5)),
       gate: 'Norte',
       seat: 'Livre',
+      hasEntryCode: false,
     ),
     Ticket(
       id: 't-orquestra',
@@ -276,6 +328,7 @@ class DemoData {
       importedAt: _ago(const Duration(days: 3)),
       gate: 'B',
       seat: 'F-12',
+      codeReference: '0935',
     ),
   ];
 
@@ -303,8 +356,24 @@ class DemoData {
       eventName: festivalMargens.name,
       typeLabel: 'Pedido urgente',
       title: 'Vais usar o autocarro especial das 23:30?',
-      body: 'Responde até às 21h para reforçarmos o serviço.',
+      body: 'Responde até às 21h para reforçarmos o serviço de regresso.',
+      source: 'Organização Margens',
       receivedAt: _ago(const Duration(hours: 1)),
+      route: '/evento/${festivalMargens.id}/pedidos',
+      urgent: true,
+      responses: 412,
+    ),
+    AppNotification(
+      id: 'n-confirm',
+      kind: NotificationKind.confirmation,
+      eventId: festivalMargens.id,
+      eventName: festivalMargens.name,
+      typeLabel: 'Pedido de confirmação',
+      title: 'Fila longa na Porta C. Confirmas?',
+      body: 'Um participante perto de ti reportou-a há 4 min.',
+      receivedAt: _ago(const Duration(minutes: 4)),
+      route: '/evento/${festivalMargens.id}?confirmar=c-porta-c',
+      read: true,
     ),
     AppNotification(
       id: 'n-recognition',
@@ -315,6 +384,20 @@ class DemoData {
       title: 'O teu reporte ajudou',
       body: 'A organização resolveu a falta de água no bar principal.',
       receivedAt: _ago(const Duration(minutes: 25)),
+      route: '/reconhecimento/r-agua',
+      read: true,
+    ),
+    AppNotification(
+      id: 'n-poll',
+      kind: NotificationKind.poll,
+      eventId: festivalMargens.id,
+      eventName: 'Margens Inverno',
+      typeLabel: 'Sondagem',
+      title: 'Ajuda-nos a preparar o Margens Inverno',
+      body: '2 perguntas · menos de 1 minuto',
+      source: 'Organização Margens',
+      receivedAt: _ago(const Duration(days: 1)),
+      route: '/sondagem/p-inverno',
       read: true,
     ),
     AppNotification(
@@ -343,6 +426,128 @@ class DemoData {
       source: 'Fonte: IPMA',
       receivedAt: _ago(const Duration(days: 2)),
       read: true,
+    ),
+  ];
+
+  List<ConfirmationRequest> get confirmationRequests => [
+    ConfirmationRequest(
+      id: 'c-porta-c',
+      eventId: festivalMargens.id,
+      eventName: festivalMargens.name,
+      category: ReportCategory.queue,
+      title: 'Fila longa na Porta C',
+      detail: WaitTime.from20To40.sentence,
+      reportedAt: _ago(const Duration(minutes: 4)),
+    ),
+  ];
+
+  List<Recognition> get recognitions => [
+    Recognition(
+      id: 'r-agua',
+      eventId: festivalMargens.id,
+      organizer: festivalMargens.organizer,
+      reportTitle: 'Falta de água no bar principal',
+      category: ReportCategory.venueProblem,
+      reportedAt: _ago(const Duration(minutes: 43)),
+      resolvedAfter: const Duration(minutes: 18),
+      resolution: 'Água reposta no bar principal',
+      alertReach: 1240,
+      alertMessage: 'Água disponível de novo no bar principal',
+    ),
+  ];
+
+  List<Poll> get polls {
+    final date = _day(56, 20);
+    return [
+      Poll(
+        id: 'p-inverno',
+        eventId: festivalMargens.id,
+        organizer: festivalMargens.organizer,
+        organizerInitials: 'OM',
+        proposedEvent: 'Margens Inverno',
+        date: date,
+        venue: 'Pavilhão Municipal',
+        closesAt: date.subtract(const Duration(days: 2)),
+        title: 'Ajuda-nos a preparar o Margens Inverno',
+        questions: [
+          PollQuestion(
+            'Vais ao Margens Inverno a ${formatLongDate(date)}?',
+            const ['Sim, vou', 'Talvez', 'Não vou'],
+          ),
+          const PollQuestion('A que horas pensas chegar?', [
+            'Antes das 20h',
+            'Entre as 20h e as 22h',
+            'Depois das 22h',
+          ]),
+        ],
+        sentAt: _ago(const Duration(days: 1)),
+        responses: 486,
+      ),
+    ];
+  }
+
+  List<IdeaPrompt> get ideaPrompts => [
+    IdeaPrompt(
+      id: 'i-proxima-edicao',
+      eventId: festivalMargens.id,
+      question: 'O que melhorarias na próxima edição?',
+      sentAt: _ago(const Duration(days: 2)),
+      ideasShared: 23,
+    ),
+  ];
+
+  /// What the participant reported and confirmed so far (P20).
+  List<Contribution> get contributions => [
+    Contribution(
+      id: 'k-porta-c',
+      kind: ContributionKind.report,
+      eventId: festivalMargens.id,
+      eventName: festivalMargens.name,
+      title: 'Fila longa na Porta C',
+      status: 'Confirmado por 6 pessoas · agrupado num incidente',
+      at: _ago(const Duration(minutes: 40)),
+      tone: AppTagTone.warning,
+    ),
+    Contribution(
+      id: 'k-rampa',
+      kind: ContributionKind.confirmation,
+      eventId: festivalMargens.id,
+      eventName: festivalMargens.name,
+      title: 'Rampa da entrada Norte bloqueada',
+      status: 'Respondeste Sim · confirmado',
+      at: _ago(const Duration(hours: 1)),
+      tone: AppTagTone.info,
+    ),
+    Contribution(
+      id: 'k-agua',
+      kind: ContributionKind.helpful,
+      eventId: festivalMargens.id,
+      eventName: festivalMargens.name,
+      title: 'Falta de água no bar principal',
+      status: 'A organização resolveu-o e enviou um alerta a 1 240 pessoas.',
+      at: _ago(const Duration(minutes: 25)),
+      tone: AppTagTone.success,
+      route: '/reconhecimento/r-agua',
+    ),
+    Contribution(
+      id: 'k-palco',
+      kind: ContributionKind.report,
+      eventId: festivalMargens.id,
+      eventName: festivalMargens.name,
+      title: 'Lotação alta junto ao palco',
+      status: 'Em análise · ainda sem confirmações suficientes',
+      at: _ago(const Duration(hours: 2)),
+      tone: AppTagTone.danger,
+    ),
+    Contribution(
+      id: 'k-noite-branca',
+      kind: ContributionKind.report,
+      eventId: 'noite-branca',
+      eventName: 'Noite Branca',
+      title: 'Entrada lateral fechada',
+      status: 'Confirmado por 4 pessoas · resolvido',
+      at: _ago(const Duration(days: 9)),
+      tone: AppTagTone.info,
     ),
   ];
 

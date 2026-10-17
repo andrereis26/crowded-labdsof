@@ -1,4 +1,4 @@
-import 'package:flutter/painting.dart';
+import 'package:flutter/material.dart';
 
 import '../ui/ui.dart';
 
@@ -93,7 +93,7 @@ class ParticipantEstimate {
   });
 
   final String title;
-  final String category;
+  final ReportCategory category;
   final DateTime reportedAt;
   final int confirmed;
   final int denied;
@@ -167,6 +167,8 @@ class Event {
     this.estimates = const [],
     this.distanceKm,
     this.sourceUpdatedAt,
+    this.places = const [],
+    this.directions,
   });
 
   final String id;
@@ -190,6 +192,10 @@ class Event {
 
   /// Last sync with the ticketing source.
   final DateTime? sourceUpdatedAt;
+
+  /// Gates and services a report can point to ("Onde?" in P11).
+  final List<VenuePlace> places;
+  final Directions? directions;
 
   String get place => '$venue, $city';
 
@@ -218,6 +224,7 @@ class Ticket {
     this.gate,
     this.seat,
     this.hasEntryCode = true,
+    this.codeReference,
   });
 
   final String id;
@@ -230,6 +237,9 @@ class Ticket {
   final String? gate;
   final String? seat;
   final bool hasEntryCode;
+
+  /// Last digits of the entry code, shown under it (P19).
+  final String? codeReference;
 }
 
 /// Event the participant follows without a ticket.
@@ -239,7 +249,17 @@ class FollowedEvent {
   final Event event;
 }
 
-enum NotificationKind { alert, request, recognition, officialChange, weather }
+enum NotificationKind {
+  alert,
+  request,
+
+  /// Asks to confirm another participant's report (P13).
+  confirmation,
+  poll,
+  recognition,
+  officialChange,
+  weather,
+}
 
 enum NotificationFilter {
   all('Todas'),
@@ -264,6 +284,9 @@ class AppNotification {
     this.body,
     this.source,
     this.changeId,
+    this.route,
+    this.urgent = false,
+    this.responses,
     this.read = false,
   });
 
@@ -281,6 +304,15 @@ class AppNotification {
   final String? source;
   final DateTime receivedAt;
   final String? changeId;
+
+  /// Screen opened on tap, when it is not the event page or a change.
+  final String? route;
+
+  /// Urgent requests are highlighted in P17.
+  final bool urgent;
+
+  /// How many people answered a request so far.
+  final int? responses;
   bool read;
 
   /// Answer to a request ("Sim" / "Não"), once given.
@@ -291,7 +323,10 @@ class AppNotification {
     NotificationFilter.changes => kind == NotificationKind.officialChange,
     NotificationFilter.alerts =>
       kind == NotificationKind.alert || kind == NotificationKind.weather,
-    NotificationFilter.requests => kind == NotificationKind.request,
+    NotificationFilter.requests =>
+      kind == NotificationKind.request ||
+          kind == NotificationKind.confirmation ||
+          kind == NotificationKind.poll,
   };
 }
 
@@ -377,4 +412,331 @@ class Account {
       .take(2)
       .map((p) => p[0].toUpperCase())
       .join();
+}
+
+/// A gate or service at the venue, with the preposition used before it
+/// ("na Porta C", "no Bar principal", "nos WC junto ao palco").
+class VenuePlace {
+  const VenuePlace(this.name, this.preposition);
+
+  final String name;
+  final String preposition;
+
+  String get withPreposition => '$preposition $name';
+}
+
+/// What a participant can report at the venue (P11).
+enum ReportCategory {
+  crowd('Lotação', 'a lotação', Icons.people_outline, AppTagTone.warning),
+  queue('Fila', 'a fila', Icons.schedule, AppTagTone.warning),
+  accessibility(
+    'Acessibilidade',
+    'acessibilidade',
+    Icons.accessibility_new,
+    AppTagTone.info,
+  ),
+  venueProblem(
+    'Problema no recinto',
+    'um problema',
+    Icons.build_outlined,
+    AppTagTone.warning,
+  ),
+  lostAndFound(
+    'Perdidos e achados',
+    'um objeto perdido',
+    Icons.shopping_bag_outlined,
+    AppTagTone.neutral,
+  );
+
+  const ReportCategory(this.label, this.subject, this.icon, this.tone);
+
+  final String label;
+
+  /// Used in sentences: "o teu reporte sobre a fila na Porta C".
+  final String subject;
+  final IconData icon;
+  final AppTagTone tone;
+
+  /// Lost items can be reported away from the venue (P12).
+  bool get needsPresence => this != lostAndFound;
+}
+
+/// Waiting time options for a queue report.
+enum WaitTime {
+  under10('< 10 min', 'Espera de menos de 10 minutos'),
+  from10To20('10–20', 'Espera de 10 a 20 minutos'),
+  from20To40('20–40', 'Espera de 20 a 40 minutos'),
+  over40('> 40', 'Espera de mais de 40 minutos');
+
+  const WaitTime(this.label, this.sentence);
+
+  final String label;
+  final String sentence;
+}
+
+/// A report sent from P11.
+class ParticipantReport {
+  const ParticipantReport({
+    required this.id,
+    required this.eventId,
+    required this.category,
+    required this.place,
+    required this.sentAt,
+    this.waitTime,
+    this.crowdLevel,
+    this.description = '',
+  });
+
+  final String id;
+  final String eventId;
+  final ReportCategory category;
+  final VenuePlace place;
+  final DateTime sentAt;
+  final WaitTime? waitTime;
+  final CrowdLevel? crowdLevel;
+  final String description;
+
+  /// "Fila na Porta C".
+  String get title {
+    final subject = category.subject;
+    final noun = subject.startsWith('a ')
+        ? subject.substring(2)
+        : subject.startsWith('um ')
+        ? subject.substring(3)
+        : subject;
+    return '${noun[0].toUpperCase()}${noun.substring(1)} '
+        '${place.withPreposition}';
+  }
+}
+
+enum ConfirmationAnswer { yes, no, cantSee }
+
+/// Another participant's report that nearby people are asked to confirm
+/// (P13).
+class ConfirmationRequest {
+  ConfirmationRequest({
+    required this.id,
+    required this.eventId,
+    required this.eventName,
+    required this.category,
+    required this.title,
+    required this.detail,
+    required this.reportedAt,
+  });
+
+  final String id;
+  final String eventId;
+  final String eventName;
+  final ReportCategory category;
+
+  /// "Fila longa na Porta C".
+  final String title;
+
+  /// "Espera de 20 a 40 minutos".
+  final String detail;
+  final DateTime reportedAt;
+  ConfirmationAnswer? answer;
+}
+
+/// The organizer marked a report as helpful (P15).
+class Recognition {
+  const Recognition({
+    required this.id,
+    required this.eventId,
+    required this.organizer,
+    required this.reportTitle,
+    required this.category,
+    required this.reportedAt,
+    required this.resolvedAfter,
+    required this.resolution,
+    required this.alertReach,
+    required this.alertMessage,
+  });
+
+  final String id;
+  final String eventId;
+  final String organizer;
+  final String reportTitle;
+  final ReportCategory category;
+  final DateTime reportedAt;
+  final Duration resolvedAfter;
+
+  /// "Água reposta no bar principal".
+  final String resolution;
+
+  /// People who received the organizer's alert.
+  final int alertReach;
+  final String alertMessage;
+}
+
+class PollQuestion {
+  const PollQuestion(this.text, this.options);
+
+  final String text;
+  final List<String> options;
+}
+
+/// Interest poll about a proposed event (P16). Answering does not follow
+/// the event.
+class Poll {
+  Poll({
+    required this.id,
+    required this.eventId,
+    required this.organizer,
+    required this.organizerInitials,
+    required this.proposedEvent,
+    required this.date,
+    required this.venue,
+    required this.closesAt,
+    required this.title,
+    required this.questions,
+    required this.sentAt,
+    required this.responses,
+  });
+
+  final String id;
+
+  /// Event whose participants are asked (the requests list in P17).
+  final String eventId;
+  final String organizer;
+  final String organizerInitials;
+
+  /// "Margens Inverno".
+  final String proposedEvent;
+  final DateTime date;
+  final String venue;
+  final DateTime closesAt;
+  final String title;
+  final List<PollQuestion> questions;
+  final DateTime sentAt;
+  int responses;
+
+  /// Index of the chosen option per question, once sent.
+  List<int>? answers;
+}
+
+/// Open question from the organizer (P17).
+class IdeaPrompt {
+  IdeaPrompt({
+    required this.id,
+    required this.eventId,
+    required this.question,
+    required this.sentAt,
+    required this.ideasShared,
+  });
+
+  final String id;
+  final String eventId;
+  final String question;
+  final DateTime sentAt;
+  int ideasShared;
+  bool shared = false;
+}
+
+enum TransportMode {
+  metro(Icons.directions_subway_outlined, AppTagTone.info),
+  bus(Icons.directions_bus_outlined, AppTagTone.info),
+  walk(Icons.directions_walk, AppTagTone.neutral),
+  car(Icons.directions_car_outlined, AppTagTone.neutral);
+
+  const TransportMode(this.icon, this.tone);
+
+  final IconData icon;
+  final AppTagTone tone;
+}
+
+class TransportOption {
+  const TransportOption({
+    required this.mode,
+    required this.title,
+    required this.detail,
+    required this.minutes,
+    this.disrupted = false,
+  });
+
+  final TransportMode mode;
+  final String title;
+  final String detail;
+  final int minutes;
+
+  /// Shows "Perturbação" and the detail in warning colours.
+  final bool disrupted;
+}
+
+/// How to get to the venue (P18).
+class Directions {
+  const Directions({
+    required this.entrance,
+    required this.entranceDetail,
+    required this.options,
+    required this.updatedAt,
+  });
+
+  /// "Porta A".
+  final String entrance;
+
+  /// "Entrada principal".
+  final String entranceDetail;
+  final List<TransportOption> options;
+  final DateTime updatedAt;
+}
+
+enum ContributionKind {
+  report('Reporte', Icons.flag_outlined),
+  confirmation('Confirmação', Icons.check),
+  helpful('Reporte útil', Icons.workspace_premium_outlined);
+
+  const ContributionKind(this.label, this.icon);
+
+  final String label;
+  final IconData icon;
+}
+
+enum ContributionFilter {
+  all('Todas', Icons.inbox_outlined),
+  reports('Reportes', Icons.flag_outlined),
+  confirmations('Confirmações', Icons.check),
+  helpful('Marcados como úteis', Icons.workspace_premium_outlined);
+
+  const ContributionFilter(this.label, this.icon);
+
+  final String label;
+  final IconData icon;
+}
+
+/// A report or confirmation the participant made, with what happened to it
+/// (P20, FR-038). Private to the participant.
+class Contribution {
+  const Contribution({
+    required this.id,
+    required this.kind,
+    required this.eventId,
+    required this.eventName,
+    required this.title,
+    required this.status,
+    required this.at,
+    required this.tone,
+    this.route,
+  });
+
+  final String id;
+  final ContributionKind kind;
+  final String eventId;
+  final String eventName;
+  final String title;
+
+  /// "Confirmado por 6 pessoas · agrupado num incidente".
+  final String status;
+  final DateTime at;
+
+  /// Colour of the icon: in review, confirmed, resolved…
+  final AppTagTone tone;
+  final String? route;
+
+  bool matches(ContributionFilter filter) => switch (filter) {
+    ContributionFilter.all => true,
+    ContributionFilter.reports => kind != ContributionKind.confirmation,
+    ContributionFilter.confirmations => kind == ContributionKind.confirmation,
+    ContributionFilter.helpful => kind == ContributionKind.helpful,
+  };
 }

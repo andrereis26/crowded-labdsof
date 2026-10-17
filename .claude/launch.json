@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "participant-gallery",
-      "runtimeExecutable": "python",
+      "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8765", "--directory", "participant-app/build/web"],
       "port": 8765
     }

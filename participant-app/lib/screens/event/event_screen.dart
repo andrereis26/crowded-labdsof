@@ -5,23 +5,56 @@ import '../../data/app_store.dart';
 import '../../data/models.dart';
 import '../../ui/ui.dart';
 import '../../utils/pt_format.dart';
+import '../report/confirmation_request.dart';
+import '../report/report_flow.dart';
 import '../shared/shell.dart';
 import '../shared/ticket_card.dart';
 import 'event_widgets.dart';
-import 'location_request_sheet.dart';
 
 /// P5 · Página do evento: the "opened ticket". On the event day it shows the
 /// entry code, organizer alerts, crowd level, queues and weather; on other
 /// days the schedule and forecast. Offline, it shows what was saved.
-class EventScreen extends StatelessWidget {
-  const EventScreen({super.key, required this.eventId});
+class EventScreen extends StatefulWidget {
+  const EventScreen({super.key, required this.eventId, this.confirmationId});
 
   final String eventId;
+
+  /// Opens this confirmation request (P13) over the page, e.g. from a
+  /// notification.
+  final String? confirmationId;
+
+  @override
+  State<EventScreen> createState() => _EventScreenState();
+}
+
+class _EventScreenState extends State<EventScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _askToConfirm(widget.confirmationId);
+  }
+
+  @override
+  void didUpdateWidget(EventScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.confirmationId != oldWidget.confirmationId) {
+      _askToConfirm(widget.confirmationId);
+    }
+  }
+
+  void _askToConfirm(String? id) {
+    if (id == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final request = AppStore.read(context).confirmationRequest(id);
+      if (request != null) showConfirmationRequest(context, request);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final store = AppStore.of(context);
-    final event = store.eventById(eventId);
+    final event = store.eventById(widget.eventId);
     if (event == null) {
       return AppPage(
         leadingLabel: 'Fechar',
@@ -57,6 +90,24 @@ class _EventPageData {
   bool get isEventDay => isSameDay(event.start, now);
   int get daysToGo => daysBetween(now, event.start);
   bool get hasEntryCode => ticket?.hasEntryCode ?? false;
+
+  /// Estimates shown to participants: not low confidence (FR-058).
+  List<ParticipantEstimate> get visibleEstimates => isEventDay && !offline
+      ? event.estimates
+            .where((e) => e.confidence != ConfidenceLevel.low)
+            .toList()
+      : const [];
+
+  int get requestCount =>
+      store.yesNoRequestsFor(event.id).length +
+      store.pollsFor(event.id).length +
+      store.ideasFor(event.id).length;
+
+  void openEntryCode(BuildContext context) =>
+      context.push('/evento/${event.id}/codigo');
+
+  void openDirections(BuildContext context) =>
+      context.push('/evento/${event.id}/como-chegar');
 
   /// "Fonte: IPMA · atualizado há 30 min", or "guardado às 22:14" offline.
   String source(String name, DateTime? updatedAt) {
@@ -212,14 +263,30 @@ class _EventPageData {
         icon: Icons.directions_outlined,
         title: 'Como chegar',
         subtitle: event.place,
-        onTap: () => showComingSoon(context),
+        onTap: () => openDirections(context),
+      ),
+    if (!withSchedule && visibleEstimates.isNotEmpty)
+      AppListTile(
+        icon: Icons.people_outline,
+        title: 'Estimativas de participantes',
+        subtitle: visibleEstimates.length == 1
+            ? '1 confirmada por quem está no recinto'
+            : '${visibleEstimates.length} confirmadas por quem está no recinto',
+        onTap: () => context.push('/evento/${event.id}/estimativas'),
+      ),
+    if (requestCount > 0)
+      AppListTile(
+        icon: Icons.chat_bubble_outline,
+        title: 'Pedidos da organização',
+        subtitle: requestCount == 1 ? '1 pedido' : '$requestCount pedidos',
+        onTap: () => context.push('/evento/${event.id}/pedidos'),
       ),
     if (ticket != null)
       AppListTile(
         icon: Icons.confirmation_number_outlined,
         title: 'Detalhes do bilhete',
         subtitle: ticketSummary,
-        onTap: () => showComingSoon(context),
+        onTap: () => openEntryCode(context),
       ),
     AppListTile(
       icon: Icons.history,
@@ -229,18 +296,13 @@ class _EventPageData {
     ),
   ];
 
-  Future<void> report(BuildContext context) async {
-    final allowed = await showLocationRequest(context, event.name);
-    if (allowed && context.mounted) showComingSoon(context);
-  }
-
   Widget? reportButton(BuildContext context, {bool expand = true}) {
     if (!isEventDay || ticket == null) return null;
     return AppButton(
       label: 'Reportar algo no recinto',
       icon: Icons.flag_outlined,
       expand: expand,
-      onPressed: offline ? null : () => report(context),
+      onPressed: offline ? null : () => startReport(context, event),
     );
   }
 }
@@ -261,7 +323,7 @@ class _MobileEventPage extends StatelessWidget {
             AppCircleButton(
               icon: Icons.qr_code_2,
               semanticLabel: 'Mostrar código de entrada',
-              onPressed: () => showComingSoon(context),
+              onPressed: () => page.openEntryCode(context),
             ),
             const SizedBox(width: AppSpacing.sm),
           ],
@@ -288,7 +350,7 @@ class _MobileEventPage extends StatelessWidget {
               const SizedBox(height: AppSpacing.xs),
               ...page.notices(context),
               if (page.isEventDay && page.hasEntryCode)
-                EntryCodeButton(onTap: () => showComingSoon(context)),
+                EntryCodeButton(onTap: () => page.openEntryCode(context)),
               ...page.alerts(),
               if (!page.isEventDay && page.daysToGo > 0) page.countdown(),
               page.schedule(),
@@ -312,11 +374,7 @@ class _DesktopEventPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final event = page.event;
-    final estimates = page.isEventDay && !page.offline
-        ? event.estimates
-              .where((e) => e.confidence != ConfidenceLevel.low)
-              .toList()
-        : const <ParticipantEstimate>[];
+    final estimates = page.visibleEstimates;
     final weather = page.weather();
     final report = page.reportButton(context, expand: false);
 
@@ -368,7 +426,7 @@ class _DesktopEventPage extends StatelessWidget {
                                 AppButton(
                                   label: 'Mostrar código de entrada',
                                   icon: Icons.qr_code_2,
-                                  onPressed: () => showComingSoon(context),
+                                  onPressed: () => page.openEntryCode(context),
                                 ),
                               AppListGroup(
                                 children: page.links(
@@ -393,6 +451,9 @@ class _DesktopEventPage extends StatelessWidget {
                                 _EstimatesPanel(
                                   estimates: estimates,
                                   now: page.now,
+                                  onSeeAll: () => context.push(
+                                    '/evento/${event.id}/estimativas',
+                                  ),
                                 ),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -406,7 +467,8 @@ class _DesktopEventPage extends StatelessWidget {
                                           icon: Icons.directions_outlined,
                                           title: 'Como chegar',
                                           subtitle: event.place,
-                                          onTap: () => showComingSoon(context),
+                                          onTap: () =>
+                                              page.openDirections(context),
                                         ),
                                       ],
                                     ),
@@ -432,10 +494,15 @@ class _DesktopEventPage extends StatelessWidget {
 
 /// Participant estimates with their confidence (desktop event page).
 class _EstimatesPanel extends StatelessWidget {
-  const _EstimatesPanel({required this.estimates, required this.now});
+  const _EstimatesPanel({
+    required this.estimates,
+    required this.now,
+    required this.onSeeAll,
+  });
 
   final List<ParticipantEstimate> estimates;
   final DateTime now;
+  final VoidCallback onSeeAll;
 
   @override
   Widget build(BuildContext context) {
@@ -450,10 +517,7 @@ class _EstimatesPanel extends StatelessWidget {
                 style: AppTextStyles.bodyStrong,
               ),
             ),
-            AppInlineLink(
-              label: 'Ver todas',
-              onPressed: () => showComingSoon(context),
-            ),
+            AppInlineLink(label: 'Ver todas', onPressed: onSeeAll),
           ],
         ),
         Text(
@@ -465,8 +529,8 @@ class _EstimatesPanel extends StatelessWidget {
           Row(
             spacing: AppSpacing.md,
             children: [
-              const Icon(
-                Icons.accessibility_new,
+              Icon(
+                estimate.category.icon,
                 size: 22,
                 color: AppColors.crowdModerate,
               ),
@@ -482,7 +546,7 @@ class _EstimatesPanel extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${estimate.category} · '
+                      '${estimate.category.label} · '
                       '${formatTimeAgo(estimate.reportedAt, now: now)}',
                       style: AppTextStyles.caption,
                     ),

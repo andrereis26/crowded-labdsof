@@ -4,18 +4,28 @@ import 'package:go_router/go_router.dart';
 
 import 'data/app_store.dart';
 import 'dev/component_gallery.dart';
+import 'data/models.dart';
 import 'screens/account/account_screen.dart';
 import 'screens/account/delete_account_screen.dart';
 import 'screens/account/notification_preferences_screen.dart';
 import 'screens/auth/sign_in_screen.dart';
+import 'screens/account/contributions_screen.dart';
 import 'screens/event/change_detail_screen.dart';
 import 'screens/event/change_history_screen.dart';
+import 'screens/event/directions_screen.dart';
+import 'screens/event/entry_code_screen.dart';
+import 'screens/event/estimates_screen.dart';
 import 'screens/event/event_screen.dart';
 import 'screens/events/events_screen.dart';
 import 'screens/import/import_screen.dart';
 import 'screens/import/link_event_screen.dart';
 import 'screens/import/review_ticket_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
+import 'screens/report/recognition_screen.dart';
+import 'screens/report/report_result_screen.dart';
+import 'screens/report/report_screen.dart';
+import 'screens/requests/poll_screen.dart';
+import 'screens/requests/requests_screen.dart';
 import 'screens/shared/shell.dart';
 import 'screens/wallet/wallet_screen.dart';
 import 'ui/ui.dart';
@@ -62,6 +72,13 @@ GoRouter buildRouter({
             GoRoute(
               path: '/conta',
               builder: (context, state) => const AccountScreen(),
+              routes: [
+                GoRoute(
+                  path: 'contribuicoes',
+                  builder: (context, state) =>
+                      const ContributionsScreen(), // P20
+                ),
+              ],
             ),
           ],
         ),
@@ -95,9 +112,46 @@ GoRouter buildRouter({
     ),
     GoRoute(
       path: '/evento/:id',
-      builder: (context, state) =>
-          EventScreen(eventId: state.pathParameters['id']!), // P5, P10
+      builder: (context, state) => EventScreen(
+        eventId: state.pathParameters['id']!,
+        confirmationId: state.uri.queryParameters['confirmar'],
+      ), // P5, P10, P13
       routes: [
+        GoRoute(
+          path: 'reportar',
+          builder: (context, state) => ReportScreen(
+            eventId: state.pathParameters['id']!,
+            category: ReportCategory.values
+                .asNameMap()[state.uri.queryParameters['categoria']],
+          ), // P11
+        ),
+        GoRoute(
+          path: 'reporte',
+          builder: (context, state) => ReportResultScreen(
+            eventId: state.pathParameters['id']!,
+            away: state.uri.queryParameters['estado'] == 'longe',
+          ), // P12
+        ),
+        GoRoute(
+          path: 'estimativas',
+          builder: (context, state) =>
+              EstimatesScreen(eventId: state.pathParameters['id']!), // P14
+        ),
+        GoRoute(
+          path: 'pedidos',
+          builder: (context, state) =>
+              RequestsScreen(eventId: state.pathParameters['id']!), // P17
+        ),
+        GoRoute(
+          path: 'como-chegar',
+          builder: (context, state) =>
+              DirectionsScreen(eventId: state.pathParameters['id']!), // P18
+        ),
+        GoRoute(
+          path: 'codigo',
+          builder: (context, state) =>
+              EntryCodeScreen(eventId: state.pathParameters['id']!), // P19
+        ),
         GoRoute(
           path: 'historico',
           builder: (context, state) =>
@@ -111,6 +165,16 @@ GoRouter buildRouter({
           ), // P7
         ),
       ],
+    ),
+    GoRoute(
+      path: '/reconhecimento/:id',
+      builder: (context, state) =>
+          RecognitionScreen(recognitionId: state.pathParameters['id']!), // P15
+    ),
+    GoRoute(
+      path: '/sondagem/:id',
+      builder: (context, state) =>
+          PollScreen(pollId: state.pathParameters['id']!), // P16
     ),
     GoRoute(
       path: '/dev/componentes',

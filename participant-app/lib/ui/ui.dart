@@ -7,6 +7,8 @@ export 'components/app_button.dart';
 export 'components/app_chip.dart';
 export 'components/app_choice_cards.dart';
 export 'components/app_circle_button.dart';
+export 'components/app_dialog.dart';
+export 'components/app_icon_badge.dart';
 export 'components/app_list.dart';
 export 'components/app_panel.dart';
 export 'components/app_segmented_control.dart';

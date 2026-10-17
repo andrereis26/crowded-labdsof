@@ -20,7 +20,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   void _open(AppStore store, AppNotification n) {
     store.markRead(n);
-    if (n.changeId != null) {
+    if (n.route != null) {
+      context.push(n.route!);
+    } else if (n.changeId != null) {
       context.push('/evento/${n.eventId}/alteracao/${n.changeId}');
     } else {
       context.push('/evento/${n.eventId}');
@@ -139,6 +141,16 @@ class _NotificationTile extends StatelessWidget {
       Icons.chat_bubble_outline,
       AppColors.primarySoft,
       AppColors.primary,
+    ),
+    NotificationKind.confirmation => (
+      Icons.fact_check_outlined,
+      AppColors.primarySoft,
+      AppColors.primary,
+    ),
+    NotificationKind.poll => (
+      Icons.poll_outlined,
+      AppColors.pollSoft,
+      AppColors.poll,
     ),
     NotificationKind.recognition => (
       Icons.workspace_premium_outlined,

@@ -7,14 +7,25 @@ import '../theme/app_text_styles.dart';
 /// White rounded group of [AppListTile]s separated by dividers
 /// ("Como chegar / Detalhes do bilhete / Histórico de alterações" in P5).
 class AppListGroup extends StatelessWidget {
-  const AppListGroup({super.key, required this.children});
+  const AppListGroup({
+    super.key,
+    required this.children,
+    this.title,
+    this.color = AppColors.surface,
+  });
 
   final List<Widget> children;
+
+  /// Small grey heading inside the group ("O que acontece a seguir").
+  final String? title;
+
+  /// Grey groups sit on white pages (P12).
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: color,
       borderRadius: const BorderRadius.all(AppRadii.panel),
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -22,6 +33,22 @@ class AppListGroup extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (title != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  AppSpacing.xs,
+                  AppSpacing.xl,
+                  0,
+                ),
+                child: Text(
+                  title!,
+                  style: AppTextStyles.label.copyWith(
+                    color: AppColors.inkSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             for (final (index, child) in children.indexed) ...[
               if (index > 0)
                 const Padding(
@@ -44,19 +71,31 @@ class AppListTile extends StatelessWidget {
     required this.title,
     this.icon,
     this.iconColor = AppColors.primary,
+    this.leading,
     this.subtitle,
+    this.subtitleColor,
     this.trailing,
     this.onTap,
     this.showChevron = true,
+    this.strong = false,
   });
 
   final String title;
   final IconData? icon;
   final Color iconColor;
+
+  /// Replaces [icon], e.g. an [AppIconBadge].
+  final Widget? leading;
   final String? subtitle;
+
+  /// Defaults to the secondary grey; warning text uses [AppColors.warning].
+  final Color? subtitleColor;
   final Widget? trailing;
   final VoidCallback? onTap;
   final bool showChevron;
+
+  /// Semibold title, for rows that carry the main information (P12, P18).
+  final bool strong;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +110,10 @@ class AppListTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              if (icon != null) ...[
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: AppSpacing.md),
+              ] else if (icon != null) ...[
                 Icon(icon, size: 22, color: iconColor),
                 const SizedBox(width: AppSpacing.md),
               ],
@@ -84,11 +126,16 @@ class AppListTile extends StatelessWidget {
                     Text(
                       title,
                       style: AppTextStyles.body.copyWith(
-                        fontWeight: FontWeight.w500,
+                        fontWeight: strong ? FontWeight.w600 : FontWeight.w500,
                       ),
                     ),
                     if (subtitle != null)
-                      Text(subtitle!, style: AppTextStyles.caption),
+                      Text(
+                        subtitle!,
+                        style: AppTextStyles.caption.copyWith(
+                          color: subtitleColor,
+                        ),
+                      ),
                   ],
                 ),
               ),

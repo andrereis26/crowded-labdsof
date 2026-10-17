@@ -13,6 +13,8 @@ class AppPanel extends StatelessWidget {
     this.title,
     this.padding = const EdgeInsets.all(AppSpacing.xl),
     this.spacing = AppSpacing.lg,
+    this.color = AppColors.surface,
+    this.borderColor,
   });
 
   final String? title;
@@ -20,14 +22,21 @@ class AppPanel extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final double spacing;
 
+  /// Grey panels sit on white pages and dialogs (P12, P15).
+  final Color color;
+
+  /// Outlined panels on white cards (P15, P16) and urgent requests (P17).
+  final Color? borderColor;
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: padding,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.all(AppRadii.panel),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: const BorderRadius.all(AppRadii.panel),
+        border: borderColor == null ? null : Border.all(color: borderColor!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

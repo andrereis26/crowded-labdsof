@@ -18,6 +18,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
   String? _wait = '20-40';
   String? _place = 'gate-c';
   String _match = 'margens';
+  int _pollOption = 0;
 
   DateTime _ago(int minutes) => _now.subtract(Duration(minutes: minutes));
 
@@ -112,6 +113,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                   ],
                 ),
                 const EstimateNotice(),
+                const ConfirmationBar(confirmed: 9, denied: 1),
               ]),
               _section('Etiqueta de origem e etiquetas', [
                 SourceLabel(source: 'organização', updatedAt: _ago(2)),
@@ -141,6 +143,33 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                       size: AppTagSize.large,
                       icon: Icons.check,
                     ),
+                    AppTag(
+                      label: 'Sondagem',
+                      tone: AppTagTone.poll,
+                      icon: Icons.poll_outlined,
+                    ),
+                  ],
+                ),
+                const Wrap(
+                  spacing: AppSpacing.sm,
+                  children: [
+                    AppIconBadge(
+                      icon: Icons.schedule,
+                      tone: AppTagTone.warning,
+                    ),
+                    AppIconBadge(
+                      icon: Icons.accessibility_new,
+                      tone: AppTagTone.info,
+                    ),
+                    AppIconBadge(icon: Icons.directions_walk),
+                    AppIconBadge(icon: Icons.location_on_outlined, dark: true),
+                  ],
+                ),
+                AppBreadcrumbs(
+                  items: [
+                    AppBreadcrumb('Carteira', onTap: () {}),
+                    AppBreadcrumb('Festival Margens', onTap: () {}),
+                    const AppBreadcrumb('Como chegar'),
                   ],
                 ),
               ]),
@@ -267,8 +296,28 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                   ),
                 ),
                 AppButton.secondary(
+                  label: 'Abrir no mapa',
+                  trailingIcon: Icons.open_in_new,
+                  onPressed: () {},
+                ),
+                AppButton.secondary(
                   label: 'Abrir folha (bottom sheet)',
                   onPressed: () => _showConfirmationSheet(context),
+                ),
+                AppButton.secondary(
+                  label: 'Abrir diálogo (desktop)',
+                  onPressed: () => showAppDialog<void>(
+                    context: context,
+                    builder: (context) => AppDialog(
+                      title: 'Reportar algo',
+                      onClose: () => Navigator.pop(context),
+                      child: const AppResultHeader(
+                        icon: Icons.check,
+                        title: 'Reporte enviado',
+                        message: 'A organização já recebeu o teu reporte.',
+                      ),
+                    ),
+                  ),
                 ),
               ]),
               _section('Escolhas', [
@@ -315,6 +364,16 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                   selected: _match == 'none',
                   onTap: () => setState(() => _match = 'none'),
                 ),
+                for (final (i, option) in const [
+                  'Sim, vou',
+                  'Talvez',
+                  'Não vou',
+                ].indexed)
+                  AppOptionTile(
+                    label: option,
+                    selected: _pollOption == i,
+                    onTap: () => setState(() => _pollOption = i),
+                  ),
                 AppNavigationCard(
                   icon: Icons.description_outlined,
                   title: 'PDF do bilhete',
@@ -335,6 +394,12 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                 ),
               ]),
               _section('Estados', [
+                const AppResultHeader(
+                  icon: Icons.gps_fixed,
+                  tone: AppTagTone.warning,
+                  title: 'Não estás perto do recinto',
+                  message: 'Tens de estar a menos de 500 m do recinto.',
+                ),
                 AppEmptyState(
                   icon: Icons.credit_card,
                   message: 'Ainda sem bilhetes',
