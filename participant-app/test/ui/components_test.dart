@@ -89,8 +89,10 @@ void main() {
       _wrap(const CrowdLevelIndicator(level: CrowdLevel.high)),
     );
 
-    expect(find.text('Elevada'), findsOneWidget);
-    expect(find.text('· 3 de 4'), findsOneWidget);
+    expect(
+      find.text('Lotação Elevada · 3 de 4', findRichText: true),
+      findsOneWidget,
+    );
     expect(
       find.bySemanticsLabel('Lotação Elevada, nível 3 de 4'),
       findsOneWidget,

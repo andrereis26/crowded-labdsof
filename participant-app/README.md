@@ -10,7 +10,16 @@ flutter run -d chrome
 flutter test
 ```
 
-For now the app opens the component gallery (`lib/dev/component_gallery.dart`). Replace `home` in `lib/main.dart` when the first screens exist.
+## Structure
+
+| Folder | Contents |
+|---|---|
+| `lib/ui/` | Design system: tokens and shared components |
+| `lib/screens/` | Participant screens, one folder per area (wallet, import, event, notifications, events, account) |
+| `lib/data/` | Models and `AppStore`, backed by demo data until the Core API exists |
+| `lib/app.dart` | Routes (`go_router`); each route notes its mockup code (P1, P2, …) |
+
+The screens use demo data relative to the current date, so the Festival Margens ticket is always "today". The Conta tab has a switch to simulate being offline, and a link to the component gallery (`/dev/componentes`). File picking, the entry code (P19), reports (P11) and directions (P18) show "Disponível em breve" for now.
 
 ## Design system
 
@@ -19,10 +28,10 @@ The shared components follow the "0 · Componentes base" page and the participan
 | Need | Use |
 |---|---|
 | Colours, type, spacing, radii | `AppColors`, `AppTextStyles`, `AppSpacing`, `AppRadii`, `AppTheme.light()` |
-| Buttons | `AppButton` (primary), `AppButton.secondary`, `AppButton.link`, `AppInlineLink` |
+| Buttons | `AppButton` (primary), `AppButton.secondary`, `AppButton.link`, sizes small/regular/large, `AppInlineLink`, `AppCircleButton`, `AppChip` |
 | Form fields | `AppTextField`, `AppTextField.multiline`, `AppSelectField`, `AppSegmentedControl`, `AppFieldLabel` |
 | Choices | `AppCategoryTile` (P11), `AppRadioCard` (P4, P16), `AppNavigationCard` (P2) |
-| Layout | `AppPanel`, `AppStepHeading`, `showAppBottomSheet` |
+| Layout | `AppPanel`, `AppListGroup` / `AppListTile`, `AppStepHeading`, `showAppBottomSheet` |
 | Navigation | `AppTopBar`, `AppTabBar` (mobile), `AppWebHeader` (desktop), `isDesktopLayout` |
 | Event information | `WalletCard`, `AlertBanner`, `CrowdLevelIndicator`, `ConfidenceIndicator`, `EstimateNotice`, `SourceLabel` / `formatSource` |
 | Tags | `AppTag` |

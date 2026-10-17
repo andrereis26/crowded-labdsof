@@ -16,6 +16,9 @@ enum AppButtonVariant {
 }
 
 enum AppButtonSize {
+  /// Compact button inside lists ("Seguir", inline "Sim" / "Não" in P8).
+  small,
+
   regular,
 
   /// Taller button with larger text, for Yes/No answers (P13).
@@ -64,7 +67,6 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLarge = size == AppButtonSize.large;
     final (background, foreground, border) = switch (variant) {
       AppButtonVariant.primary => (AppColors.ink, Colors.white, null),
       AppButtonVariant.secondary => (
@@ -74,19 +76,37 @@ class AppButton extends StatelessWidget {
       ),
       AppButtonVariant.link => (Colors.transparent, AppColors.primary, null),
     };
-    final textStyle =
-        (isLarge ? AppTextStyles.buttonLarge : AppTextStyles.button).copyWith(
-          color: foreground,
-        );
-    const radius = BorderRadius.all(AppRadii.button);
+    final (baseStyle, iconSize, padding, radius) = switch (size) {
+      AppButtonSize.small => (
+        AppTextStyles.label.copyWith(fontWeight: FontWeight.w600),
+        15.0,
+        const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 7),
+        const BorderRadius.all(AppRadii.field),
+      ),
+      AppButtonSize.regular => (
+        AppTextStyles.button,
+        18.0,
+        const EdgeInsets.symmetric(horizontal: AppSpacing.xxl, vertical: 14),
+        const BorderRadius.all(AppRadii.button),
+      ),
+      AppButtonSize.large => (
+        AppTextStyles.buttonLarge,
+        22.0,
+        const EdgeInsets.symmetric(horizontal: AppSpacing.xxl, vertical: 18),
+        const BorderRadius.all(AppRadii.button),
+      ),
+    };
+    final textStyle = baseStyle.copyWith(color: foreground);
 
     final content = Row(
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (icon != null) ...[
-          Icon(icon, size: isLarge ? 22 : 18, color: foreground),
-          const SizedBox(width: AppSpacing.sm),
+          Icon(icon, size: iconSize, color: foreground),
+          SizedBox(
+            width: size == AppButtonSize.small ? AppSpacing.xs : AppSpacing.sm,
+          ),
         ],
         Flexible(
           child: Text(
@@ -113,10 +133,7 @@ class AppButton extends StatelessWidget {
             borderRadius: radius,
             child: Container(
               decoration: BoxDecoration(border: border, borderRadius: radius),
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.xxl,
-                vertical: isLarge ? 18 : 14,
-              ),
+              padding: padding,
               child: content,
             ),
           ),
