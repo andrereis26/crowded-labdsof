@@ -20,6 +20,7 @@ import {
   Tag,
 } from '../../ui/components'
 import { categoryTile, incidentIcon } from '../../ui/categories'
+import { Select } from '../../ui/forms'
 
 type Filter = 'open' | 'in-progress' | 'resolved'
 
@@ -59,22 +60,21 @@ export function IncidentsPage({ incidents, now }: { incidents: Incident[]; now: 
           </Chip>
         </div>
         <span className="flex-1" />
-        <label className="relative flex items-center gap-1.5 rounded-[10px] border border-border bg-surface py-2 pr-3 pl-3 text-[13px] font-medium max-sm:hidden">
-          <ListFilter size={16} aria-hidden />
-          <span className="sr-only">Categoria</span>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value as IncidentCategory | 'all')}
-            className="appearance-none bg-transparent pr-1 outline-none"
-          >
-            <option value="all">Todas as categorias</option>
-            {Object.entries(categories).map(([value, c]) => (
-              <option key={value} value={value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          aria-label="Categoria"
+          icon={ListFilter}
+          size="sm"
+          className="max-sm:hidden"
+          value={category}
+          onChange={(e) => setCategory(e.target.value as IncidentCategory | 'all')}
+          options={[
+            { value: 'all', label: 'Todas as categorias' },
+            ...(Object.keys(categories) as IncidentCategory[]).map((value) => ({
+              value,
+              label: categories[value].label,
+            })),
+          ]}
+        />
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">

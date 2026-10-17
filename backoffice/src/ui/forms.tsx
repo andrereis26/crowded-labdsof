@@ -98,18 +98,37 @@ export function TextArea({ className = '', ...props }: TextareaHTMLAttributes<HT
   )
 }
 
-/** Native select with the chevron of the mockups. */
+/** Native select with the chevron of the mockups. `sm` is the compact
+ * toolbar filter (e.g. "Todas as categorias"), with an optional icon. Where
+ * the browser allows it, the option list is styled too (see `.ui-select` in
+ * index.css). */
 export function Select({
   options,
+  icon: Icon,
+  size = 'md',
   className = '',
   ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & {
+}: Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> & {
   options: readonly (string | { value: string; label: string })[]
+  icon?: Icon
+  size?: 'sm' | 'md'
 }) {
+  const small = size === 'sm'
   return (
     <div className={`relative ${className}`}>
+      {Icon && (
+        <Icon
+          size={small ? 16 : 18}
+          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${small ? 'left-3' : 'left-3.5'}`}
+          aria-hidden
+        />
+      )}
       <select
-        className="w-full appearance-none rounded-[10px] border border-border bg-surface py-3 pr-10 pl-3.5 text-[15px] focus:outline-2 focus:outline-primary"
+        className={`ui-select w-full cursor-pointer appearance-none border border-border bg-surface text-left focus:outline-2 focus:outline-primary ${
+          small
+            ? `rounded-[10px] py-2 pr-8 text-[13px] font-medium ${Icon ? 'pl-[34px]' : 'pl-3'}`
+            : `rounded-[10px] py-3 pr-10 text-[15px] ${Icon ? 'pl-10' : 'pl-3.5'}`
+        }`}
         {...props}
       >
         {options.map((o) => {
@@ -122,8 +141,8 @@ export function Select({
         })}
       </select>
       <ChevronDown
-        size={18}
-        className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2"
+        size={small ? 16 : 18}
+        className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${small ? 'right-2.5' : 'right-3.5'}`}
         aria-hidden
       />
     </div>

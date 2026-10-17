@@ -211,6 +211,12 @@ describe('O8–O10 incidents and confirmations', () => {
     await user.click(screen.getByRole('button', { name: /Rampa da entrada Norte bloqueada/ }))
     expect(screen.getByRole('heading', { name: 'Rampa da entrada Norte bloqueada' })).toBeInTheDocument()
 
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Categoria' }), 'Acessibilidade')
+    const groups = screen.getByRole('list', { name: 'Grupos de reportes' })
+    expect(within(groups).getAllByText('Rampa da entrada Norte bloqueada').length).toBeGreaterThan(0)
+    expect(within(groups).queryByText('Fila longa na Porta C')).not.toBeInTheDocument()
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Categoria' }), 'Todas as categorias')
+
     await user.click(screen.getByRole('button', { name: 'Resolvidos · 1' }))
     expect(screen.getAllByText('Falta de água no bar principal').length).toBeGreaterThan(0)
     expect(screen.queryByText('Carteira castanha perdida')).not.toBeInTheDocument()

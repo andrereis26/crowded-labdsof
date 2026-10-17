@@ -108,3 +108,57 @@ input[type='datetime-local']::-webkit-calendar-picker-indicator {
   opacity: 0;
   cursor: pointer;
 }
+
+/* Option list of the Select component, in browsers that support
+   customizable selects (Chrome and Edge 135+). Others keep the native list. */
+@supports (appearance: base-select) {
+  .ui-select,
+  .ui-select::picker(select) {
+    appearance: base-select;
+  }
+
+  /* The component draws its own chevron. */
+  .ui-select::picker-icon {
+    display: none;
+  }
+
+  .ui-select::picker(select) {
+    margin-block: 4px;
+    padding: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 0.12);
+    font-family: var(--font-sans);
+  }
+
+  .ui-select option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-ink);
+  }
+
+  .ui-select option:hover,
+  .ui-select option:focus-visible {
+    background: var(--color-background);
+    outline: none;
+  }
+
+  .ui-select option:checked {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  /* Tick on the right of the chosen option. */
+  .ui-select option::checkmark {
+    order: 1;
+    margin-left: auto;
+    color: var(--color-primary);
+  }
+}
