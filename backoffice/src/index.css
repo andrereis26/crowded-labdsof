@@ -1,0 +1,64 @@
+@import 'tailwindcss';
+
+/* Inter, bundled so the backoffice works without external font requests. */
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/Inter-Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/Inter-Medium.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/Inter-SemiBold.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/Inter-Bold.ttf') format('truetype');
+}
+
+/* Tokens from the "Crowded — Mockups" Figma file, shared with the
+   participant app (participant-app/lib/ui/theme/app_colors.dart). */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #121214;
+  --color-ink-secondary: #6b6b73;
+  --color-background: #f2f2f7;
+  --color-surface: #ffffff;
+  --color-border: #e3e3e8;
+
+  --color-primary: #0066d9;
+  --color-primary-soft: #e8f2ff;
+  --color-primary-border: #b8d4fa;
+  --color-avatar: #dbe5fa;
+  --color-organization: #6b33bf;
+
+  --color-success: #146b33;
+  --color-success-soft: #def5e3;
+  --color-approve: #218c45;
+  --color-warning: #8c5400;
+  --color-warning-soft: #fff2d6;
+  --color-danger: #bf1a1a;
+  --color-danger-soft: #ffebeb;
+
+  --color-sidebar: #171a21;
+  --color-sidebar-card: #292b36;
+  --color-sidebar-active: #383d4d;
+  --color-sidebar-text: #c7c7cc;
+  --color-sidebar-muted: #b2b2bd;
+  --color-sidebar-accent: #b2c7ff;
+}
+
+body {
+  @apply bg-background text-ink font-sans antialiased;
+}
