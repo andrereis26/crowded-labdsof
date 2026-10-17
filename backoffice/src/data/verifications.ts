@@ -176,3 +176,94 @@ export function decide(
   }[decision] as VerificationStatus
   return { ...request, status, note: trimmed || undefined }
 }
+
+/** "420 KB", "1,2 MB". */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`
+}
+
+export interface RegistrationForm {
+  organization: string
+  nipc: string
+  website: string
+  responsible: string
+  email: string
+  document?: { name: string; size: number }
+  confirmed: boolean
+}
+
+const domain = (value: string) =>
+  value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split(/[/?#]/)[0]
+
+/** Checks an organization registration (O1) before it reaches A1. */
+export function validateRegistration(
+  form: RegistrationForm,
+): Partial<Record<keyof RegistrationForm, string>> {
+  const errors: Partial<Record<keyof RegistrationForm, string>> = {}
+  if (!form.organization.trim()) errors.organization = 'Escreve o nome da organização.'
+  if (!/^\d{9}$/.test(form.nipc.replace(/\s/g, ''))) errors.nipc = 'O NIPC tem 9 algarismos.'
+  if (!/^[^\s.]+(\.[^\s.]+)+$/.test(domain(form.website))) errors.website = 'Indica o site da organização.'
+  if (!form.responsible.trim()) errors.responsible = 'Indica quem é o responsável.'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = 'Indica um email válido.'
+  if (!form.document) errors.document = 'Carrega um comprovativo da organização.'
+  if (!form.confirmed) errors.confirmed = 'Confirma que representas esta organização.'
+  return errors
+}
+
+/** A new registration request, with the automatic checks of A1. */
+export function registrationRequest(form: RegistrationForm, now: Date): VerificationRequest {
+  const nipc = form.nipc.replace(/\s/g, '')
+  return {
+    id: `registo-${now.getTime()}`,
+    organization: form.organization.trim(),
+    kind: 'registration',
+    submittedAt: now,
+    submittedBy: form.responsible.trim(),
+    nipc,
+    email: form.email.trim(),
+    website: domain(form.website),
+    checks: [
+      { label: 'Formato do NIPC válido', passed: /^\d{9}$/.test(nipc) },
+      {
+        label: 'Domínio do email igual ao do site',
+        passed: form.email.trim().toLowerCase().endsWith(`@${domain(form.website)}`),
+      },
+      { label: 'Documento carregado', passed: !!form.document },
+    ],
+    document: {
+      name: form.document?.name ?? '—',
+      size: form.document ? formatFileSize(form.document.size) : '—',
+      pages: 1,
+    },
+    status: 'pending',
+  }
+}
+
+/** A request from a verified organization to manage a synced event (O13). */
+export function managementRequest(
+  organization: { name: string; nipc: string; email: string; website: string; user: string },
+  event: string,
+  relation: string,
+  document: { name: string; size: number },
+  now: Date,
+): VerificationRequest {
+  return {
+    id: `gestao-${now.getTime()}`,
+    organization: organization.name,
+    kind: 'management',
+    event,
+    submittedAt: now,
+    submittedBy: organization.user,
+    nipc: organization.nipc,
+    email: organization.email,
+    website: organization.website,
+    checks: [
+      { label: 'Organização verificada', passed: true },
+      { label: 'Evento sincronizado com a bilheteira', passed: true },
+      { label: `Relação declarada: ${relation}`, passed: true },
+    ],
+    document: { name: document.name, size: formatFileSize(document.size), pages: 1 },
+    status: 'pending',
+  }
+}
