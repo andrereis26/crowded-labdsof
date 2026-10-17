@@ -34,6 +34,9 @@ abstract final class AppColors {
   static const counter = Color(0xFFD93026);
   static const switchOn = Color(0xFF34C759);
 
+  /// Off track: dark enough that the white thumb stands out (3.3:1).
+  static const switchOff = Color(0xFF8E8E93);
+
   /// Organizer polls and their avatar (P16, P17).
   static const pollSoft = Color(0xFFF2EBFF);
   static const poll = Color(0xFF6B33BF);
