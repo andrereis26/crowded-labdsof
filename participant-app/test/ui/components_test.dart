@@ -1,5 +1,6 @@
 import 'package:crowded/dev/component_gallery.dart';
 import 'package:crowded/ui/ui.dart';
+import 'package:crowded/utils/pt_format.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -216,4 +217,52 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  test('formats counts and durations in European Portuguese', () {
+    expect(formatCount(1240), '1 240');
+    expect(formatCount(486), '486');
+    expect(formatDuration(const Duration(minutes: 18)), '18 min');
+    expect(formatDuration(const Duration(minutes: 65)), '1 h 05 min');
+    expect(
+      formatSentAgo(now.subtract(const Duration(days: 1)), now: now),
+      'ontem',
+    );
+  });
+
+  testWidgets('ConfirmationBar says how many confirmed and denied', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(const ConfirmationBar(confirmed: 1, denied: 2)),
+    );
+    expect(find.text('1 confirmou · 2 negaram'), findsOneWidget);
+    expect(
+      tester
+          .widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator))
+          .value,
+      closeTo(1 / 3, 0.001),
+    );
+  });
+
+  testWidgets('AppOptionTile reports its selection to accessibility', (
+    tester,
+  ) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      _wrap(
+        AppOptionTile(label: 'Talvez', selected: true, onTap: () => taps++),
+      ),
+    );
+    await tester.tap(find.text('Talvez'));
+    expect(taps, 1);
+    expect(
+      tester.getSemantics(find.byType(AppOptionTile)),
+      isSemantics(
+        isButton: true,
+        isChecked: true,
+        isInMutuallyExclusiveGroup: true,
+        label: 'Talvez',
+      ),
+    );
+  });
 }

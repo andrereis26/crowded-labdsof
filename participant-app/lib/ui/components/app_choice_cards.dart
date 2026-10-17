@@ -184,6 +184,65 @@ class AppRadioCard extends StatelessWidget {
   }
 }
 
+/// Bordered answer with a radio, tinted when selected (poll options in P16).
+class AppOptionTile extends StatelessWidget {
+  const AppOptionTile({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const radius = BorderRadius.all(AppRadii.button);
+    return Semantics(
+      inMutuallyExclusiveGroup: true,
+      checked: selected,
+      button: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: Container(
+            // Keeps the box the same size when the 2 px border appears.
+            padding: EdgeInsets.symmetric(
+              horizontal: selected ? 13 : 14,
+              vertical: selected ? 12 : 13,
+            ),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primarySoft : AppColors.surface,
+              borderRadius: radius,
+              border: selected
+                  ? Border.all(color: AppColors.primary, width: 2)
+                  : Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              spacing: AppSpacing.md,
+              children: [
+                AppRadio(selected: selected),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Tappable row card with a tinted icon, title, subtitle and a chevron
 /// (import options in P2).
 class AppNavigationCard extends StatelessWidget {

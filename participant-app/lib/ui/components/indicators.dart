@@ -145,3 +145,48 @@ class CrowdLevelIndicator extends StatelessWidget {
     );
   }
 }
+
+/// "9 confirmaram · 1 negou" with a green and red bar, so the split is
+/// readable as text and as a shape (P14).
+class ConfirmationBar extends StatelessWidget {
+  const ConfirmationBar({
+    super.key,
+    required this.confirmed,
+    required this.denied,
+  });
+
+  final int confirmed;
+  final int denied;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = confirmed + denied;
+    final share = total == 0 ? 0.0 : confirmed / total;
+    final label =
+        '$confirmed ${confirmed == 1 ? 'confirmou' : 'confirmaram'} · '
+        '$denied ${denied == 1 ? 'negou' : 'negaram'}';
+    return Semantics(
+      label: label,
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        spacing: 5,
+        children: [
+          Text(label, style: AppTextStyles.caption.copyWith(height: 1.2)),
+          ClipRRect(
+            borderRadius: const BorderRadius.all(Radius.circular(4)),
+            child: SizedBox(
+              height: 6,
+              child: LinearProgressIndicator(
+                value: share,
+                color: AppColors.crowdLow,
+                backgroundColor: AppColors.deniedSoft,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

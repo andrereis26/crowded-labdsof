@@ -124,6 +124,60 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
+/// One step of [AppBreadcrumbs]; the last one has no [onTap].
+class AppBreadcrumb {
+  const AppBreadcrumb(this.label, {this.onTap});
+
+  final String label;
+  final VoidCallback? onTap;
+}
+
+/// "Carteira › Festival Margens › Como chegar" above desktop pages.
+class AppBreadcrumbs extends StatelessWidget {
+  const AppBreadcrumbs({super.key, required this.items});
+
+  final List<AppBreadcrumb> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xxs,
+      children: [
+        for (final (index, item) in items.indexed) ...[
+          if (index > 0)
+            const Icon(
+              Icons.chevron_right,
+              size: 14,
+              color: AppColors.inkSecondary,
+            ),
+          if (item.onTap == null)
+            Text(
+              item.label,
+              style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w500),
+            )
+          else
+            Semantics(
+              link: true,
+              child: InkWell(
+                onTap: item.onTap,
+                borderRadius: const BorderRadius.all(AppRadii.sm),
+                child: Text(
+                  item.label,
+                  style: AppTextStyles.label.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
 /// Bottom tab bar of the mobile app (Eventos, Carteira, Conta).
 class AppTabBar extends StatelessWidget {
   const AppTabBar({

@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import '../ui/ui.dart';
+
 import '../utils/pt_format.dart';
 import 'demo_data.dart';
 import 'models.dart';
@@ -15,6 +17,11 @@ class AppStore extends ChangeNotifier {
     _tickets = demo.tickets;
     _followed = demo.followedIds;
     _notifications = demo.notifications;
+    _confirmations = demo.confirmationRequests;
+    _recognitions = demo.recognitions;
+    _polls = demo.polls;
+    _ideas = demo.ideaPrompts;
+    _contributions = demo.contributions;
   }
 
   final DateTime Function() _clock;
@@ -23,11 +30,23 @@ class AppStore extends ChangeNotifier {
   late List<Ticket> _tickets;
   late Set<String> _followed;
   late List<AppNotification> _notifications;
+  late List<ConfirmationRequest> _confirmations;
+  late List<Recognition> _recognitions;
+  late List<Poll> _polls;
+  late List<IdeaPrompt> _ideas;
+  late List<Contribution> _contributions;
+
+  /// Signed-in participant, until accounts exist.
+  final String userName = 'Inês Martins';
 
   DateTime get now => _clock();
 
   static AppStore of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppStoreScope>()!.notifier!;
+
+  /// For callbacks: reads the store without rebuilding on changes.
+  static AppStore read(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<AppStoreScope>()!.notifier!;
 
   // Connectivity (demo toggle until real connectivity checks exist).
 
@@ -41,6 +60,27 @@ class AppStore extends ChangeNotifier {
     _offlineSince = value ? now : null;
     notifyListeners();
   }
+
+  // Location (P10). Asked once; the distance check is a demo toggle until
+  // the device location is used.
+
+  bool locationAllowed = false;
+
+  void allowLocation() {
+    locationAllowed = true;
+    notifyListeners();
+  }
+
+  bool _awayFromVenue = false;
+  bool get awayFromVenue => _awayFromVenue;
+
+  void setAwayFromVenue(bool value) {
+    _awayFromVenue = value;
+    notifyListeners();
+  }
+
+  /// Within 500 m of the venue, as required to report (P12).
+  bool isNearVenue(Event event) => !_awayFromVenue;
 
   // Events and tickets.
 
@@ -115,6 +155,109 @@ class AppStore extends ChangeNotifier {
     notification
       ..answer = answer
       ..read = true;
+    notifyListeners();
+  }
+
+  // Reports, confirmations and contributions (P11–P15, P20).
+
+  ParticipantReport? lastReport;
+
+  ParticipantReport sendReport({
+    required Event event,
+    required ReportCategory category,
+    required VenuePlace place,
+    WaitTime? waitTime,
+    CrowdLevel? crowdLevel,
+    String description = '',
+  }) {
+    final report = ParticipantReport(
+      id: 'report-${now.millisecondsSinceEpoch}',
+      eventId: event.id,
+      category: category,
+      place: place,
+      sentAt: now,
+      waitTime: waitTime,
+      crowdLevel: crowdLevel,
+      description: description.trim(),
+    );
+    lastReport = report;
+    _contributions.add(
+      Contribution(
+        id: report.id,
+        kind: ContributionKind.report,
+        eventId: event.id,
+        eventName: event.name,
+        title: report.title,
+        status: 'Enviado · a pedir confirmação a quem está perto',
+        at: now,
+        tone: AppTagTone.warning,
+      ),
+    );
+    notifyListeners();
+    return report;
+  }
+
+  ConfirmationRequest? confirmationRequest(String id) =>
+      _confirmations.where((c) => c.id == id).firstOrNull;
+
+  void answerConfirmation(
+    ConfirmationRequest request,
+    ConfirmationAnswer answer,
+  ) {
+    request.answer = answer;
+    if (answer != ConfirmationAnswer.cantSee) {
+      _contributions.add(
+        Contribution(
+          id: 'confirmation-${request.id}',
+          kind: ContributionKind.confirmation,
+          eventId: request.eventId,
+          eventName: request.eventName,
+          title: request.title,
+          status: answer == ConfirmationAnswer.yes
+              ? 'Respondeste Sim'
+              : 'Respondeste Não',
+          at: now,
+          tone: AppTagTone.info,
+        ),
+      );
+    }
+    notifyListeners();
+  }
+
+  Recognition? recognition(String id) =>
+      _recognitions.where((r) => r.id == id).firstOrNull;
+
+  /// Newest first.
+  List<Contribution> get contributions =>
+      [..._contributions]..sort((a, b) => b.at.compareTo(a.at));
+
+  // Organizer requests (P16, P17).
+
+  Poll? poll(String id) => _polls.where((p) => p.id == id).firstOrNull;
+
+  void answerPoll(Poll poll, List<int> answers) {
+    poll
+      ..answers = answers
+      ..responses += 1;
+    notifyListeners();
+  }
+
+  /// Yes/no requests sent to the participants of [eventId].
+  List<AppNotification> yesNoRequestsFor(String eventId) => notifications
+      .where((n) => n.eventId == eventId && n.kind == NotificationKind.request)
+      .toList();
+
+  List<Poll> pollsFor(String eventId) =>
+      _polls.where((p) => p.eventId == eventId).toList();
+
+  List<IdeaPrompt> ideasFor(String eventId) =>
+      _ideas.where((i) => i.eventId == eventId).toList();
+
+  void shareIdea(IdeaPrompt prompt, String idea) {
+    if (idea.trim().isEmpty) return;
+    prompt
+      ..shared = true
+      ..ideasShared += 1;
     notifyListeners();
   }
 

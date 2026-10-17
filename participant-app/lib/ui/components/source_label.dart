@@ -17,6 +17,17 @@ String formatTimeAgo(DateTime time, {DateTime? now}) {
   return days == 1 ? 'há 1 dia' : 'há $days dias';
 }
 
+/// Like [formatTimeAgo], but "ontem" for the day before (requests in P17).
+String formatSentAgo(DateTime sent, {DateTime? now}) {
+  final reference = now ?? DateTime.now();
+  final days = DateTime(
+    reference.year,
+    reference.month,
+    reference.day,
+  ).difference(DateTime(sent.year, sent.month, sent.day)).inDays;
+  return days == 1 ? 'ontem' : formatTimeAgo(sent, now: reference);
+}
+
 /// "Fonte: bilheteira oficial · há 5 min", or "Organização Margens · agora"
 /// when [withPrefix] is false (alerts name the publisher directly).
 String formatSource(

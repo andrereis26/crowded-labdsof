@@ -33,6 +33,13 @@ abstract final class AppColors {
   static const danger = Color(0xFFBF1A1A);
   static const counter = Color(0xFFD93026);
 
+  /// Organizer polls and their avatar (P16, P17).
+  static const pollSoft = Color(0xFFF2EBFF);
+  static const poll = Color(0xFF6B33BF);
+
+  /// Share of "Não" answers in a confirmation bar (P14).
+  static const deniedSoft = Color(0xFFFADBDB);
+
   // Crowd level meter
   static const crowdLow = Color(0xFF29994D);
   static const crowdModerate = Color(0xFFD98C0D);
@@ -60,6 +67,12 @@ abstract final class AppColors {
     ],
     stops: [0, 0.3, 0.5, 0.72, 1],
   );
+
+  // Map illustration (P18), until a map provider is chosen.
+  static const mapLand = Color(0xFFECEEE8);
+  static const mapWater = Color(0xFFC6DDF0);
+  static const mapPark = Color(0xFFCFE6C4);
+  static const mapOrigin = Color(0xFF218C45);
 
   // Navigation
   static const tabBar = Color(0xF0FAFAFC);

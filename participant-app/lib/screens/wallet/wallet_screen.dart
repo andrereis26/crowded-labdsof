@@ -466,7 +466,7 @@ class _TodayPanel extends StatelessWidget {
                 child: AppButton.secondary(
                   label: 'Mostrar código',
                   icon: Icons.qr_code_2,
-                  onPressed: () => showComingSoon(context),
+                  onPressed: () => context.push('/evento/${event.id}/codigo'),
                 ),
               ),
             Expanded(

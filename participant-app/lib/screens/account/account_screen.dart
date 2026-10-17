@@ -5,7 +5,8 @@ import '../../data/app_store.dart';
 import '../../ui/ui.dart';
 import '../shared/shell.dart';
 
-/// Conta. Placeholder until C2 and C3 are built; holds the demo switches.
+/// Conta. Placeholder until C2 and C3 are built; links to the
+/// contributions (P20) and holds the demo switches.
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
 
@@ -32,6 +33,12 @@ class AccountScreen extends StatelessWidget {
                   const SectionHeader(title: 'Conta'),
                   AppListGroup(
                     children: [
+                      AppListTile(
+                        icon: Icons.flag_outlined,
+                        title: 'As tuas contribuições',
+                        subtitle: 'Reportes e confirmações que fizeste',
+                        onTap: () => context.push('/conta/contribuicoes'),
+                      ),
                       AppListTile(
                         icon: Icons.notifications_none,
                         title: 'Preferências de notificações',
@@ -62,6 +69,17 @@ class AccountScreen extends StatelessWidget {
                         trailing: Switch(
                           value: store.offline,
                           onChanged: store.setOffline,
+                        ),
+                      ),
+                      AppListTile(
+                        icon: Icons.location_off_outlined,
+                        iconColor: AppColors.ink,
+                        title: 'Simular longe do recinto',
+                        subtitle: 'Os reportes mostram "Não estás perto".',
+                        showChevron: false,
+                        trailing: Switch(
+                          value: store.awayFromVenue,
+                          onChanged: store.setAwayFromVenue,
                         ),
                       ),
                       AppListTile(

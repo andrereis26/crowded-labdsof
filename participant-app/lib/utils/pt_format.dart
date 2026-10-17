@@ -18,6 +18,21 @@ const _months = [
   'DEZ',
 ];
 
+const _monthNames = [
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
+];
+
 DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
 int daysBetween(DateTime from, DateTime to) =>
@@ -27,6 +42,29 @@ bool isSameDay(DateTime a, DateTime b) => daysBetween(a, b) == 0;
 
 /// "8 NOV".
 String formatDayMonth(DateTime d) => '${d.day} ${_months[d.month - 1]}';
+
+/// "12 de dezembro".
+String formatLongDate(DateTime d) => '${d.day} de ${_monthNames[d.month - 1]}';
+
+/// "18 min", "1 h 05 min".
+String formatDuration(Duration d) {
+  if (d.inHours == 0) return '${d.inMinutes} min';
+  final minutes = d.inMinutes % 60;
+  return minutes == 0
+      ? '${d.inHours} h'
+      : '${d.inHours} h ${minutes.toString().padLeft(2, '0')} min';
+}
+
+/// "1 240", with a space as the thousands separator.
+String formatCount(int n) {
+  final digits = n.toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(' ');
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
+}
 
 /// "SÁB 8 NOV".
 String formatWeekdayDate(DateTime d) =>
