@@ -113,15 +113,16 @@ class CrowdLevelIndicator extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            spacing: AppSpacing.xs,
-            children: [
-              Text(title, style: AppTextStyles.footnote),
-              Text(level.label, style: AppTextStyles.bodyStrong),
-              Text('· ${level.step} de $total', style: AppTextStyles.footnote),
-            ],
+          // One paragraph, so it wraps instead of overflowing.
+          Text.rich(
+            TextSpan(
+              style: AppTextStyles.footnote,
+              children: [
+                TextSpan(text: '$title '),
+                TextSpan(text: level.label, style: AppTextStyles.bodyStrong),
+                TextSpan(text: ' · ${level.step} de $total'),
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Row(

@@ -38,6 +38,7 @@ class WalletCard extends StatelessWidget {
     this.gate,
     this.seat,
     this.image,
+    this.gradient,
     this.onTap,
   });
 
@@ -55,6 +56,9 @@ class WalletCard extends StatelessWidget {
   /// Source and update time, e.g. built with `formatSource`.
   final String source;
   final ImageProvider? image;
+
+  /// Shown when there is no [image]; defaults to a dark blue gradient.
+  final Gradient? gradient;
   final VoidCallback? onTap;
 
   static const height = 224.0;
@@ -96,7 +100,9 @@ class WalletCard extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: Ink(
             decoration: BoxDecoration(
-              gradient: image == null ? AppColors.walletFallbackPhoto : null,
+              gradient: image == null
+                  ? gradient ?? AppColors.walletFallbackPhoto
+                  : null,
               image: image == null
                   ? null
                   : DecorationImage(image: image!, fit: BoxFit.cover),
@@ -164,27 +170,33 @@ class WalletCard extends StatelessWidget {
           spacing: 28,
           children: [
             for (final (label, value) in fields)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 2,
-                children: [
-                  Text(
-                    label,
-                    style: white.copyWith(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.8,
-                      color: Colors.white.withValues(alpha: 0.75),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 2,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: white.copyWith(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.8,
+                        color: Colors.white.withValues(alpha: 0.75),
+                      ),
                     ),
-                  ),
-                  Text(
-                    value,
-                    style: white.copyWith(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: white.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
           ],
         ),
