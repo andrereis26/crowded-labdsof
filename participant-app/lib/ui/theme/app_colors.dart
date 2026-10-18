@@ -32,6 +32,10 @@ abstract final class AppColors {
   static const dangerBorder = Color(0xFFED9E9E);
   static const danger = Color(0xFFBF1A1A);
   static const counter = Color(0xFFD93026);
+  static const switchOn = Color(0xFF34C759);
+
+  /// Off track: dark enough that the white thumb stands out (3.3:1).
+  static const switchOff = Color(0xFF8E8E93);
 
   /// Organizer polls and their avatar (P16, P17).
   static const pollSoft = Color(0xFFF2EBFF);

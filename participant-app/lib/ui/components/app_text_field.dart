@@ -37,6 +37,7 @@ class AppTextField extends StatelessWidget {
     this.hint,
     this.optional = false,
     this.prefixIcon,
+    this.suffix,
     this.minLines,
     this.maxLines = 1,
     this.keyboardType,
@@ -65,6 +66,7 @@ class AppTextField extends StatelessWidget {
     this.onChanged,
   }) : assert(controller == null || initialValue == null),
        prefixIcon = null,
+       suffix = null,
        keyboardType = TextInputType.multiline,
        textInputAction = TextInputAction.newline,
        inputFormatters = null,
@@ -78,6 +80,9 @@ class AppTextField extends StatelessWidget {
   final String? hint;
   final bool optional;
   final IconData? prefixIcon;
+
+  /// Trailing widget inside the box, e.g. a show-password button.
+  final Widget? suffix;
   final int? minLines;
   final int? maxLines;
   final TextInputType? keyboardType;
@@ -115,6 +120,12 @@ class AppTextField extends StatelessWidget {
           decoration: appInputDecoration(
             hint: hint,
             prefixIcon: prefixIcon,
+            suffixIcon: suffix == null
+                ? null
+                : Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.xs),
+                    child: suffix,
+                  ),
             errorText: errorText,
           ),
         ),

@@ -30,6 +30,17 @@ abstract final class AppTheme {
         thickness: 1,
         space: 1,
       ),
+      // iOS-style switches, as in the notification preferences (C2).
+      switchTheme: SwitchThemeData(
+        thumbColor: const WidgetStatePropertyAll(Colors.white),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppColors.switchOn
+              : AppColors.switchOff,
+        ),
+        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+        thumbIcon: const WidgetStatePropertyAll(null),
+      ),
       textSelectionTheme: const TextSelectionThemeData(
         cursorColor: AppColors.primary,
       ),

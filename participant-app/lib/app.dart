@@ -6,6 +6,9 @@ import 'data/app_store.dart';
 import 'dev/component_gallery.dart';
 import 'data/models.dart';
 import 'screens/account/account_screen.dart';
+import 'screens/account/delete_account_screen.dart';
+import 'screens/account/notification_preferences_screen.dart';
+import 'screens/auth/sign_in_screen.dart';
 import 'screens/account/contributions_screen.dart';
 import 'screens/event/change_detail_screen.dart';
 import 'screens/event/change_history_screen.dart';
@@ -28,9 +31,23 @@ import 'screens/wallet/wallet_screen.dart';
 import 'ui/ui.dart';
 
 /// Routes of the participant app. Screen codes (P1…) refer to the mockups.
-GoRouter buildRouter({String initialLocation = '/carteira'}) => GoRouter(
+GoRouter buildRouter({
+  required AppStore store,
+  String initialLocation = '/carteira',
+}) => GoRouter(
   initialLocation: initialLocation,
+  refreshListenable: store,
+  // Signed-out users only see C1; signed-in users skip it.
+  redirect: (context, state) {
+    final atSignIn = state.matchedLocation == '/entrar';
+    if (!store.signedIn) return atSignIn ? null : '/entrar';
+    return atSignIn ? '/carteira' : null;
+  },
   routes: [
+    GoRoute(
+      path: '/entrar',
+      builder: (context, state) => const SignInScreen(), // C1
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => AppShell(navigationShell: shell),
       branches: [
@@ -66,6 +83,14 @@ GoRouter buildRouter({String initialLocation = '/carteira'}) => GoRouter(
           ],
         ),
       ],
+    ),
+    GoRoute(
+      path: '/conta/notificacoes',
+      builder: (context, state) => const NotificationPreferencesScreen(), // C2
+    ),
+    GoRoute(
+      path: '/conta/apagar',
+      builder: (context, state) => const DeleteAccountScreen(), // C3
     ),
     GoRoute(
       path: '/notificacoes',
@@ -171,6 +196,7 @@ class CrowdedApp extends StatefulWidget {
 class _CrowdedAppState extends State<CrowdedApp> {
   late final AppStore _store = widget.store ?? AppStore();
   late final GoRouter _router = buildRouter(
+    store: _store,
     initialLocation: widget.initialLocation,
   );
 

@@ -16,11 +16,13 @@ Future<AppStore> _pump(
   WidgetTester tester, {
   String location = '/carteira',
   Size size = _mobile,
+  bool signedIn = true,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final store = AppStore(clock: () => _now);
+  if (!signedIn) store.signOut();
   await tester.pumpWidget(CrowdedApp(store: store, initialLocation: location));
   await tester.pumpAndSettle();
   return store;
@@ -200,6 +202,103 @@ void main() {
     await tester.tap(find.text('Seguir').first);
     await tester.pumpAndSettle();
     expect(store.isFollowing('mercado-outono'), isTrue);
+  });
+
+  group('C1 sign in', () {
+    testWidgets('signed-out users are sent to C1', (tester) async {
+      await _pump(tester, location: '/carteira', signedIn: false);
+
+      expect(find.text('Sabe o que se passa nos teus eventos'), findsOneWidget);
+      expect(find.text('Esqueci-me da palavra-passe'), findsOneWidget);
+    });
+
+    testWidgets('validates and signs in', (tester) async {
+      final store = await _pump(tester, location: '/entrar', signedIn: false);
+
+      await tester.enterText(find.byType(TextField).at(0), 'ines@email');
+      await tester.enterText(find.byType(TextField).at(1), 'curta');
+      await tester.tap(find.widgetWithText(AppButton, 'Entrar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Introduz um email válido.'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).at(0), 'ines@email.pt');
+      await tester.enterText(find.byType(TextField).at(1), 'palavra-secreta');
+      await tester.tap(find.widgetWithText(AppButton, 'Entrar'));
+      await tester.pumpAndSettle();
+      expect(store.signedIn, isTrue);
+      expect(find.text('4 bilhetes · 1 alteração'), findsOneWidget);
+    });
+
+    testWidgets('creates an account', (tester) async {
+      final store = await _pump(tester, location: '/entrar', signedIn: false);
+
+      await tester.tap(find.text('Criar conta').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).at(0), 'Ana Costa');
+      await tester.enterText(find.byType(TextField).at(1), 'ana@email.pt');
+      await tester.enterText(find.byType(TextField).at(2), 'palavra-secreta');
+      await tester.tap(find.widgetWithText(AppButton, 'Criar conta'));
+      await tester.pumpAndSettle();
+      expect(store.account?.name, 'Ana Costa');
+    });
+  });
+
+  testWidgets('Conta signs out to C1', (tester) async {
+    final store = await _pump(tester, location: '/conta');
+
+    expect(find.text('Inês Martins'), findsOneWidget);
+    await tester.ensureVisible(find.text('Terminar sessão'));
+    await tester.tap(find.text('Terminar sessão'));
+    await tester.pumpAndSettle();
+    expect(store.signedIn, isFalse);
+    expect(find.text('Sabe o que se passa nos teus eventos'), findsOneWidget);
+  });
+
+  testWidgets('C2 updates notification preferences', (tester) async {
+    final store = await _pump(tester, location: '/conta/notificacoes');
+
+    expect(find.text('Só alterações oficiais'), findsOneWidget);
+    await tester.tap(find.text('Alertas de meteorologia'));
+    await tester.pumpAndSettle();
+    expect(store.preferences.weatherAlerts, isFalse);
+
+    await tester.tap(find.text('Todos'));
+    await tester.pumpAndSettle();
+    expect(store.preferences.requests, RequestNotificationLevel.all);
+
+    await tester.ensureVisible(find.text('A Tempestade'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('A Tempestade'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nada'));
+    await tester.pumpAndSettle();
+    expect(store.levelFor('a-tempestade'), EventNotificationLevel.none);
+  });
+
+  testWidgets('C3 deletes the account only after confirmation', (tester) async {
+    final store = await _pump(tester, location: '/conta/apagar');
+
+    expect(
+      find.text('4 bilhetes e os respetivos códigos de entrada'),
+      findsOneWidget,
+    );
+    final button = find.widgetWithText(
+      AppButton,
+      'Apagar conta definitivamente',
+    );
+    expect(tester.widget<AppButton>(button).onPressed, isNull);
+
+    await tester.enterText(find.byType(TextField).at(0), 'APAGAR');
+    await tester.enterText(find.byType(TextField).at(1), 'palavra-secreta');
+    await tester.pumpAndSettle();
+    expect(tester.widget<AppButton>(button).onPressed, isNotNull);
+
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(store.signedIn, isFalse);
+    expect(store.tickets, isEmpty);
+    expect(find.text('A tua conta foi apagada.'), findsOneWidget);
   });
 
   group('P11–P12 report', () {
@@ -440,6 +539,8 @@ void main() {
         '/evento/a-tempestade/alteracao/tempestade-date',
         '/evento/feira-medieval',
         '/evento/nao-existe',
+        '/conta/notificacoes',
+        '/conta/apagar',
         '/evento/festival-margens/reportar',
         '/evento/festival-margens/reporte?estado=enviado',
         '/evento/festival-margens/reporte?estado=longe',
