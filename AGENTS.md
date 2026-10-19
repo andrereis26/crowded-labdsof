@@ -28,7 +28,7 @@
     `http://localhost:8765`, so run `flutter build web --release` first.
   - Local identity: none. Both apps use demo data (`backoffice/src/data/`,
     `participant-app/lib/data/`) until the Core API exists.
-- Graph: on-demand.
+- Graph: auto
 - Pitfalls:
   - The backoffice has no CI workflow; only the Security workflow touches it. Run its
     three gates locally before opening a PR.
