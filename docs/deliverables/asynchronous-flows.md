@@ -134,8 +134,3 @@ These flows use the same rules, retries and deduplication ([API Outline: Message
 | Severe weather | Jobs → `WeatherForecastFetched` → Core stores the forecast and, above the threshold, publishes `NotificationRequested` (`SEVERE_WEATHER`) |
 | Report grouping | Core → `ReportSubmitted` → Jobs → `ReportsGrouped` → Core. Without AI, Jobs groups by category and time window (FR-053). |
 | Account deletion | Core → `UserDeleted` → Notifications deletes the user's notifications, settings and device tokens (FR-042) |
-
-## 8. Open points
-
-- The [Data Model](diagrams/data-model.svg) does not yet include these tables, which the flows above need: sync snapshots with the time of the last successful sync (Jobs), `outbox` (Core and Jobs), `device_token` and notification settings (Notifications).
-- `Event.lastSyncedAt` is a Core column, but only Jobs knows when a sync succeeded. Core returns the time from the sync snapshots (§3, Step 1.5), so the column can be removed or kept only as a cached copy.
