@@ -295,12 +295,14 @@ class AppNotification {
   final String eventId;
   final String eventName;
 
-  /// "Alerta da organização", "Pedido urgente".
+  /// "Alerta da organização", "Pedido urgente": read by screen readers on
+  /// the notification icon.
   final String typeLabel;
   final String title;
   final String? body;
 
-  /// "Organização Margens", "Fonte: IPMA".
+  /// "Organização Margens", "Fonte: IPMA". Shown on request cards (P17), not
+  /// in the notification centre.
   final String? source;
   final DateTime receivedAt;
   final String? changeId;

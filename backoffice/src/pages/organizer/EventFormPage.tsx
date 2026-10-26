@@ -103,7 +103,6 @@ export function EventFormPage({
         />
         <PageHeader
           title={title}
-          description="Os participantes veem estes dados na página do evento e na carteira."
           actions={
             <Tag tone={tag.tone} dot={tag.dot}>
               {tag.label}
@@ -170,7 +169,7 @@ export function EventFormPage({
             <Field
               label="Capacidade"
               error={errors.capacity}
-              help="Usada para calcular a lotação a partir do contador de entradas."
+              hint="Usada para calcular a lotação a partir do contador de entradas."
             >
               {(p) => (
                 <TextInput
@@ -186,14 +185,14 @@ export function EventFormPage({
           <Panel title="Participação no recinto" titleClassName="text-base" className="gap-3">
             <ToggleRow
               title="Pedir confirmação de reportes"
-              description="Outros participantes confirmam com Sim ou Não."
+              hint="Outros participantes confirmam com Sim ou Não."
               checked={event.askConfirmation}
               onChange={(v) => set('askConfirmation', v)}
               action={<TextLink to="/organizacao/definicoes">Escolher categorias</TextLink>}
             />
             <ToggleRow
               title="Mostrar estimativas de participantes"
-              description="Só com confiança média ou alta e quando não há dados teus."
+              hint="Só com confiança média ou alta e quando não há dados teus."
               checked={event.showEstimates}
               onChange={(v) => set('showEstimates', v)}
             />

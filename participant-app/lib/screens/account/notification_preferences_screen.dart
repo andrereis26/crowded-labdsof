@@ -52,20 +52,19 @@ class NotificationPreferencesScreen extends StatelessWidget {
         children: [
           PreferenceSwitchTile(
             title: 'Alterações oficiais',
-            subtitle:
-                'Cancelamentos, adiamentos e mudanças de local. Recomendado.',
+            subtitle: 'Cancelamentos, adiamentos, novo local.',
             value: prefs.officialChanges,
             onChanged: (v) => update((p) => p.officialChanges = v),
           ),
           PreferenceSwitchTile(
             title: 'Alertas da organização',
-            subtitle: 'Ex.: portas fechadas, mudanças no recinto.',
+            subtitle: 'Portas fechadas, mudanças no recinto.',
             value: prefs.organizerAlerts,
             onChanged: (v) => update((p) => p.organizerAlerts = v),
           ),
           PreferenceSwitchTile(
             title: 'Alertas de meteorologia',
-            subtitle: 'Só quando a previsão passa um limite de risco.',
+            subtitle: 'Só avisos de risco.',
             value: prefs.weatherAlerts,
             onChanged: (v) => update((p) => p.weatherAlerts = v),
           ),
@@ -82,9 +81,7 @@ class NotificationPreferencesScreen extends StatelessWidget {
           PreferenceSwitchTile(
             icon: Icons.mail_outline,
             title: 'Alterações oficiais também por email',
-            subtitle:
-                'Cancelamentos, adiamentos e mudanças de local chegam por '
-                'email, mesmo sem a app instalada.',
+            subtitle: 'Mesmo sem a app instalada.',
             value: prefs.officialChangesByEmail,
             onChanged: (v) => update((p) => p.officialChangesByEmail = v),
           ),
@@ -112,9 +109,7 @@ class NotificationPreferencesScreen extends StatelessWidget {
         children: [
           PreferenceSwitchTile(
             title: 'Pedidos de confirmação',
-            subtitle:
-                'No máximo 3 por evento, por hora, e só quando estás perto do '
-                'recinto.',
+            subtitle: 'Só perto do recinto · até 3 por hora.',
             value: prefs.confirmationPrompts,
             onChanged: (v) => update((p) => p.confirmationPrompts = v),
           ),

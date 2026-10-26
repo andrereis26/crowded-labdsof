@@ -178,7 +178,7 @@ class EstimatesScreen extends StatelessWidget {
     return AppPage(
       title: 'Estimativas',
       children: [
-        EventContextRow(event: event, subtitle: '${event.venue} · agora'),
+        EventContextRow(event: event),
         const EstimateNotice(
           message:
               'Confirmadas por outros participantes no recinto. Podem não '

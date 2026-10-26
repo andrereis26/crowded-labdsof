@@ -1,7 +1,8 @@
-import { Check, ChevronDown, CircleCheck, FileText, Minus, Plus } from 'lucide-react'
+import { Check, ChevronDown, CircleCheck, FileText, Info, Minus, Plus } from 'lucide-react'
 import {
   useId,
   useRef,
+  useState,
   type ComponentProps,
   type ReactNode,
   type SelectHTMLAttributes,
@@ -24,6 +25,7 @@ export function Field({
   label,
   optional = false,
   help,
+  hint,
   error,
   className = '',
   children,
@@ -31,6 +33,8 @@ export function Field({
   label: ReactNode
   optional?: boolean
   help?: ReactNode
+  /** Like `help`, but shown in an ⓘ tooltip next to the label. */
+  hint?: ReactNode
   error?: string
   className?: string
   children: (props: ControlProps) => ReactNode
@@ -38,19 +42,22 @@ export function Field({
   const id = useId()
   const helpId = `${id}-help`
   const errorId = `${id}-error`
-  const describedBy = [help && helpId, error && errorId].filter(Boolean).join(' ')
+  const describedBy = [(help || hint) && helpId, error && errorId].filter(Boolean).join(' ')
   return (
     <div className={`flex min-w-0 flex-col gap-1.5 ${className}`}>
-      <label htmlFor={id} className="text-[13px] font-medium">
-        {label}
-        {optional && <span className="ml-1.5 text-xs font-normal text-ink-secondary">(opcional)</span>}
-      </label>
+      <div className="flex items-center gap-1">
+        <label htmlFor={id} className="text-[13px] font-medium">
+          {label}
+          {optional && <span className="ml-1.5 text-xs font-normal text-ink-secondary">(opcional)</span>}
+        </label>
+        {hint && <InfoTip id={helpId}>{hint}</InfoTip>}
+      </div>
       {children({
         id,
         'aria-describedby': describedBy || undefined,
         'aria-invalid': error ? true : undefined,
       })}
-      {help && (
+      {help && !hint && (
         <p id={helpId} className="text-xs leading-[1.35] text-ink-secondary">
           {help}
         </p>
@@ -61,6 +68,48 @@ export function Field({
         </p>
       )}
     </div>
+  )
+}
+
+/**
+ * ⓘ button with a short explanation that opens on hover, focus or tap and closes
+ * with Escape. The text stays in the accessibility tree while closed, so controls
+ * can point `aria-describedby` at `id`.
+ */
+export function InfoTip({ id, children }: { id?: string; children: ReactNode }) {
+  const ownId = useId()
+  const tipId = id ?? ownId
+  const [open, setOpen] = useState(false)
+  return (
+    <span
+      className="relative inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        aria-label="Mais informação"
+        aria-describedby={tipId}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+        className="inline-flex size-5 items-center justify-center rounded-full text-ink-secondary hover:text-ink focus-visible:outline-2 focus-visible:outline-primary"
+      >
+        <Info size={14} aria-hidden />
+      </button>
+      <span
+        id={tipId}
+        role="tooltip"
+        className={
+          open
+            ? 'absolute top-full left-0 z-20 mt-1 w-max max-w-64 rounded-lg bg-ink px-2.5 py-1.5 text-xs leading-[1.35] font-normal text-white shadow-lg'
+            : 'sr-only'
+        }
+      >
+        {children}
+      </span>
+    </span>
   )
 }
 
@@ -154,11 +203,13 @@ export function Toggle({
   checked,
   onChange,
   label,
+  describedBy,
   disabled = false,
 }: {
   checked: boolean
   onChange: (checked: boolean) => void
   label: string
+  describedBy?: string
   disabled?: boolean
 }) {
   return (
@@ -167,6 +218,7 @@ export function Toggle({
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      aria-describedby={describedBy}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative h-7 w-[46px] shrink-0 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-45 ${
@@ -187,6 +239,7 @@ export function Toggle({
 export function ToggleRow({
   title,
   description,
+  hint,
   checked,
   onChange,
   action,
@@ -194,19 +247,31 @@ export function ToggleRow({
 }: {
   title: string
   description?: ReactNode
+  /** Like `description`, but shown in an ⓘ tooltip next to the title. */
+  hint?: ReactNode
   checked: boolean
   onChange: (checked: boolean) => void
   action?: ReactNode
   disabled?: boolean
 }) {
+  const hintId = useId()
   return (
     <div className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">{title}</p>
+        <div className="flex items-center gap-1">
+          <p className="text-sm font-semibold">{title}</p>
+          {hint && <InfoTip id={hintId}>{hint}</InfoTip>}
+        </div>
         {description && <p className="mt-0.5 text-xs text-ink-secondary">{description}</p>}
       </div>
       {action}
-      <Toggle checked={checked} onChange={onChange} label={title} disabled={disabled} />
+      <Toggle
+        checked={checked}
+        onChange={onChange}
+        label={title}
+        describedBy={hint ? hintId : undefined}
+        disabled={disabled}
+      />
     </div>
   )
 }

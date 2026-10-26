@@ -237,21 +237,11 @@ class EntryCodeButton extends StatelessWidget {
               children: [
                 const Icon(Icons.qr_code_2, size: 26, color: AppColors.primary),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: 2,
-                    children: [
-                      Text(
-                        'Mostrar código de entrada',
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      Text(
-                        'Código da bilheteira · funciona sem rede',
-                        style: AppTextStyles.caption,
-                      ),
-                    ],
+                  child: Text(
+                    'Mostrar código de entrada',
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
                 const Icon(
@@ -316,13 +306,14 @@ class MutedNotice extends StatelessWidget {
   }
 }
 
-/// Number of changes after publication, for "Histórico de alterações".
-String changeSummary(Event event) {
+/// Number of changes after publication, for "Histórico de alterações", or
+/// null when there are none.
+String? changeSummary(Event event) {
   final count = event.changes
       .where((c) => c.kind != ChangeKind.published)
       .length;
   return switch (count) {
-    0 => 'Sem alterações',
+    0 => null,
     1 => '1 alteração',
     _ => '$count alterações',
   };

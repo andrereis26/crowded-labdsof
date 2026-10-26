@@ -85,22 +85,20 @@ void main() {
     });
   });
 
-  testWidgets('CrowdLevelIndicator shows the level as text and number', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      _wrap(const CrowdLevelIndicator(level: CrowdLevel.high)),
-    );
+  testWidgets(
+    'CrowdLevelIndicator shows the level as text, number for screen readers',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(const CrowdLevelIndicator(level: CrowdLevel.high)),
+      );
 
-    expect(
-      find.text('Lotação Elevada · 3 de 4', findRichText: true),
-      findsOneWidget,
-    );
-    expect(
-      find.bySemanticsLabel('Lotação Elevada, nível 3 de 4'),
-      findsOneWidget,
-    );
-  });
+      expect(find.text('Lotação Elevada', findRichText: true), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('Lotação Elevada, nível 3 de 4'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('AppSegmentedControl reports the tapped segment', (tester) async {
     String? selected = 'a';

@@ -23,18 +23,6 @@ class WalletScreen extends StatelessWidget {
   }
 }
 
-String _summary(AppStore store, {bool withFollowed = false}) {
-  final count = store.tickets.length;
-  final changes = store.changedTicketCount;
-  final followed = store.followedEvents.length;
-  return [
-    count == 1 ? '1 bilhete' : '$count bilhetes',
-    if (changes > 0) changes == 1 ? '1 alteração' : '$changes alterações',
-    if (withFollowed && followed > 0)
-      followed == 1 ? '1 evento que segues' : '$followed eventos que segues',
-  ].join(' · ');
-}
-
 void _openEvent(BuildContext context, Event event) =>
     context.push('/evento/${event.id}');
 
@@ -60,7 +48,6 @@ class _MobileWallet extends StatelessWidget {
         children: [
           SectionHeader(
             title: 'Carteira',
-            subtitle: tickets.isEmpty ? null : _summary(store),
             actions: [
               AppCircleButton(
                 icon: Icons.notifications_none,
@@ -240,21 +227,11 @@ class _DesktopWallet extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          spacing: 4,
-                          children: [
-                            Text(
-                              'Carteira',
-                              style: AppTextStyles.largeTitle.copyWith(
-                                fontSize: 28,
-                              ),
-                            ),
-                            Text(
-                              _summary(store, withFollowed: true),
-                              style: AppTextStyles.footnote,
-                            ),
-                          ],
+                        child: Text(
+                          'Carteira',
+                          style: AppTextStyles.largeTitle.copyWith(
+                            fontSize: 28,
+                          ),
                         ),
                       ),
                       AppButton.secondary(

@@ -34,10 +34,9 @@ void main() {
       await _pump(tester);
 
       expect(find.text('Carteira'), findsWidgets);
-      expect(find.text('4 bilhetes · 1 alteração'), findsOneWidget);
       expect(find.text('HOJE'), findsOneWidget);
       expect(find.text('ADIADO · 8 NOV'), findsOneWidget);
-      expect(find.text('Adiado · era 25 OUT'), findsOneWidget);
+      expect(find.text('Adiado'), findsOneWidget);
 
       await tester.scrollUntilVisible(find.text('Corrida de Natal'), 200);
       expect(find.text('Feira Medieval de Gaia'), findsOneWidget);
@@ -117,10 +116,7 @@ void main() {
       await _pump(tester, location: '/evento/festival-margens');
 
       expect(find.text('Agora no recinto'), findsOneWidget);
-      expect(
-        find.text('Lotação Moderada · 2 de 4', findRichText: true),
-        findsOneWidget,
-      );
+      expect(find.text('Lotação Moderada', findRichText: true), findsOneWidget);
       expect(find.text('~25 min'), findsOneWidget);
       expect(find.text('a aumentar'), findsOneWidget);
     });
@@ -226,7 +222,7 @@ void main() {
       await tester.tap(find.widgetWithText(AppButton, 'Entrar'));
       await tester.pumpAndSettle();
       expect(store.signedIn, isTrue);
-      expect(find.text('4 bilhetes · 1 alteração'), findsOneWidget);
+      expect(find.text('ADIADO · 8 NOV'), findsOneWidget);
     });
 
     testWidgets('creates an account', (tester) async {
