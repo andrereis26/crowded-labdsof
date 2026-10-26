@@ -118,20 +118,10 @@ class _EventPageData {
     return 'Fonte: $name · atualizado ${formatTimeAgo(updatedAt, now: now)}';
   }
 
+  /// Only the time: the banner's overline already says who sent it.
   String alertOrigin(EventAlert alert) => offline
-      ? '${alert.publisher} · enviado às ${formatTime(alert.sentAt)}'
-      : formatSource(
-          alert.publisher,
-          alert.sentAt,
-          now: now,
-          withPrefix: false,
-        );
-
-  String get ticketSummary => [
-    ticket!.origin.label,
-    if (ticket!.gate != null) 'Porta ${ticket!.gate}',
-    ?ticket!.seat,
-  ].join(' · ');
+      ? 'enviado às ${formatTime(alert.sentAt)}'
+      : formatTimeAgo(alert.sentAt, now: now);
 
   Widget header(BuildContext context) {
     if (ticket != null) {
@@ -262,7 +252,6 @@ class _EventPageData {
       AppListTile(
         icon: Icons.directions_outlined,
         title: 'Como chegar',
-        subtitle: event.place,
         onTap: () => openDirections(context),
       ),
     if (!withSchedule && visibleEstimates.isNotEmpty)
@@ -285,7 +274,6 @@ class _EventPageData {
       AppListTile(
         icon: Icons.confirmation_number_outlined,
         title: 'Detalhes do bilhete',
-        subtitle: ticketSummary,
         onTap: () => openEntryCode(context),
       ),
     AppListTile(
@@ -466,7 +454,6 @@ class _DesktopEventPage extends StatelessWidget {
                                         AppListTile(
                                           icon: Icons.directions_outlined,
                                           title: 'Como chegar',
-                                          subtitle: event.place,
                                           onTap: () =>
                                               page.openDirections(context),
                                         ),

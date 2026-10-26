@@ -29,13 +29,10 @@ class TicketCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final event = ticket.event;
-    final previous = event.latestDateChange?.previousStart;
     final (dateLabel, statusLabel, tone) = switch (event.status) {
       EventStatus.postponed => (
         'ADIADO · ${formatDayMonth(event.start)}',
-        previous == null
-            ? 'Adiado'
-            : 'Adiado · era ${formatDayMonth(previous)}',
+        'Adiado',
         WalletCardStatusTone.changed,
       ),
       EventStatus.cancelled => (

@@ -10,13 +10,13 @@ class EventContextRow extends StatelessWidget {
   const EventContextRow({
     super.key,
     required this.event,
-    required this.subtitle,
+    this.subtitle,
     this.trailing,
     this.background,
   });
 
   final Event event;
-  final String subtitle;
+  final String? subtitle;
 
   /// Usually an [AppTag] ("No recinto").
   final Widget? trailing;
@@ -40,11 +40,12 @@ class EventContextRow extends StatelessWidget {
                 style: AppTextStyles.subhead,
                 overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                subtitle,
-                style: AppTextStyles.caption.copyWith(height: 1.2),
-                overflow: TextOverflow.ellipsis,
-              ),
+              if (subtitle != null)
+                Text(
+                  subtitle!,
+                  style: AppTextStyles.caption.copyWith(height: 1.2),
+                  overflow: TextOverflow.ellipsis,
+                ),
             ],
           ),
         ),

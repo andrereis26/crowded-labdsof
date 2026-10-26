@@ -121,6 +121,23 @@ describe('O2–O4 events', () => {
     expect(screen.getAllByText('SÁB 21 NOV · 22:00 · Coliseu, Porto').length).toBeGreaterThan(0)
   })
 
+  it('keeps field hints in tooltips that stay readable by screen readers', async () => {
+    const user = userEvent.setup()
+    renderAt('/organizacao/eventos/novo')
+    const hint = 'Usada para calcular a lotação a partir do contador de entradas.'
+
+    expect(screen.getByLabelText('Capacidade')).toHaveAccessibleDescription(hint)
+    expect(screen.getByRole('switch', { name: 'Pedir confirmação de reportes' })).toHaveAccessibleDescription(
+      'Outros participantes confirmam com Sim ou Não.',
+    )
+
+    const [capacityInfo] = screen.getAllByRole('button', { name: 'Mais informação' })
+    await user.click(capacityInfo)
+    expect(screen.getByRole('tooltip', { name: hint })).toHaveClass('absolute')
+    await user.keyboard('{Escape}')
+    expect(screen.getByText(hint)).toHaveClass('sr-only')
+  })
+
   it('postpones an event only after confirming the change is official', async () => {
     const user = userEvent.setup()
     renderAt('/organizacao/eventos/margens-inverno')

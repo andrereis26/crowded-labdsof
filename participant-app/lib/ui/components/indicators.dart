@@ -91,8 +91,9 @@ enum CrowdLevel {
   int get step => index + 1;
 }
 
-/// "Lotação Moderada · 2 de 4" with a four-segment meter: text, level
-/// number and meter, so colour is never the only cue (#51).
+/// "Lotação Moderada" with a four-segment meter: the level name and the
+/// number of filled segments, so colour is never the only cue (#51).
+/// Screen readers also hear the level number.
 class CrowdLevelIndicator extends StatelessWidget {
   const CrowdLevelIndicator({
     super.key,
@@ -120,7 +121,6 @@ class CrowdLevelIndicator extends StatelessWidget {
               children: [
                 TextSpan(text: '$title '),
                 TextSpan(text: level.label, style: AppTextStyles.bodyStrong),
-                TextSpan(text: ' · ${level.step} de $total'),
               ],
             ),
           ),

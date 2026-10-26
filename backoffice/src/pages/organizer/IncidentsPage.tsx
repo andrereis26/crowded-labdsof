@@ -44,7 +44,6 @@ export function IncidentsPage({ incidents, now }: { incidents: Incident[]; now: 
     <div className="flex flex-col gap-4 lg:gap-5">
       <PageHeader
         title="Incidentes"
-        description={<span className="max-sm:hidden">Reportes de participantes, agrupados por assunto.</span>}
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -155,8 +154,8 @@ function IncidentSummary({ incident: i, now }: { incident: Incident; now: Date }
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-semibold">{i.title}</span>
         <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-secondary">
-          {category.label} · {reportsLabel(i.reports.length)}
-          {category.personal ? ' · privado' : ''} · {ago(i.createdAt, now)}
+          <span className="sr-only">{category.label} · </span>
+          {reportsLabel(i.reports.length)} · {ago(i.createdAt, now)}
           {category.personal ? (
             <Tag icon={Lock}>Pessoal · não público</Tag>
           ) : (

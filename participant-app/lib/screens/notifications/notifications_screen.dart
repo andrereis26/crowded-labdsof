@@ -169,6 +169,14 @@ class _NotificationTile extends StatelessWidget {
     ),
   };
 
+  /// Next to the event name only when it changes priority or trust; the
+  /// icon already shows the type.
+  String? get _tag => notification.urgent
+      ? 'Urgente'
+      : notification.kind == NotificationKind.officialChange
+      ? 'Oficial'
+      : null;
+
   String get _when {
     final at = notification.receivedAt;
     if (isSameDay(at, now)) return formatTimeAgo(at, now: now);
@@ -199,7 +207,12 @@ class _NotificationTile extends StatelessWidget {
                   color: background,
                   borderRadius: const BorderRadius.all(AppRadii.field),
                 ),
-                child: Icon(icon, size: 18, color: foreground),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: foreground,
+                  semanticLabel: n.typeLabel,
+                ),
               ),
               Expanded(
                 child: Column(
@@ -212,7 +225,7 @@ class _NotificationTile extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            '${n.eventName} · ${n.typeLabel}',
+                            [n.eventName, ?_tag].join(' · '),
                             style: AppTextStyles.caption.copyWith(
                               fontWeight: FontWeight.w500,
                             ),
@@ -230,8 +243,6 @@ class _NotificationTile extends StatelessWidget {
                           height: 1.4,
                         ),
                       ),
-                    if (n.source != null)
-                      Text(n.source!, style: AppTextStyles.source),
                     if (isOpenRequest)
                       Padding(
                         padding: const EdgeInsets.only(top: AppSpacing.xs),

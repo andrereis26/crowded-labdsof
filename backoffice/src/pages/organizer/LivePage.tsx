@@ -81,11 +81,7 @@ export function LivePage({
     <div className="flex flex-col gap-4 lg:gap-5">
       <PageHeader
         title="Ao vivo"
-        description={
-          <>
-            <span className="max-sm:hidden">{event.name} · </span>atualizado há 30 s
-          </>
-        }
+        description="Atualizado há 30 s"
         actions={<div className="flex gap-2.5 max-sm:hidden">{actions}</div>}
       />
 
@@ -93,8 +89,8 @@ export function LivePage({
         <StatCard
           icon={Users}
           label="Lotação"
-          value={crowdLevels[live.level].label}
-          note={`Contador: ${formatNumber(live.entries)} de ${formatNumber(event.capacity)} (${ratio}%)`}
+          value={`${crowdLevels[live.level].label} · ${ratio}%`}
+          note={`${formatNumber(live.entries)} de ${formatNumber(event.capacity)}`}
         >
           <CrowdMeter level={live.level} stretch />
         </StatCard>
@@ -102,7 +98,7 @@ export function LivePage({
           icon={DoorClosed}
           label="Fila mais longa"
           value={longest ? `${longest.name} · ${longest.minutes} min` : '—'}
-          note={longest?.rising ? 'A aumentar nos últimos 10 min' : undefined}
+          note={longest?.rising ? 'A aumentar' : undefined}
           noteClassName="font-medium text-warning"
         />
         <StatCard
@@ -130,7 +126,7 @@ export function LivePage({
           className="min-w-0 flex-1 max-lg:hidden"
           action={
             <Tag tone="success" dot>
-              Contador de entradas · há 1 min
+              há 1 min
             </Tag>
           }
         >
