@@ -2,7 +2,7 @@
 # Build the app first (CI does this with a pinned Flutter version):
 #   flutter build web --release
 #   docker build -t crowded/participant-app .
-FROM nginxinc/nginx-unprivileged:1.30.6-alpine
+FROM nginxinc/nginx-unprivileged:1.31.7-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY build/web /usr/share/nginx/html
