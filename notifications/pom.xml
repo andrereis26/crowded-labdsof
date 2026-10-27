@@ -17,6 +17,10 @@
   <properties>
     <java.version>25</java.version>
     <google-java-format.version>1.36.1</google-java-format.version>
+    <!-- Spring Boot 4.1.2 pins amqp-client 5.30.0, which has HIGH CVEs (CVE-2026-63337,
+         CVE-2026-69219, CVE-2026-69220, CVE-2026-75516). Remove this override when a
+         Spring Boot release manages 5.34.0 or later. -->
+    <rabbit-amqp-client.version>5.37.0</rabbit-amqp-client.version>
   </properties>
 
   <dependencies>
