@@ -129,7 +129,11 @@ export function SummaryPage({ events }: { events: OrgEvent[] }) {
         >
           <HourlyChart data={s.hourly} />
         </Panel>
-        <Panel title="Fila máxima por ponto" titleClassName="text-base" className="gap-3.5 lg:w-[400px] lg:shrink-0">
+        <Panel
+          title="Fila máxima por ponto"
+          titleClassName="text-base"
+          className="gap-3.5 lg:w-[400px] lg:shrink-0"
+        >
           {s.maxQueues.map((q) => (
             <div key={q.name} className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between gap-2">
@@ -137,7 +141,9 @@ export function SummaryPage({ events }: { events: OrgEvent[] }) {
                   {q.name}
                   {q.peakAt && <Tag tone="warning">Pico às {q.peakAt}</Tag>}
                 </p>
-                <p className={`text-sm font-semibold ${q.tone === 'warning' ? 'text-warning' : ''}`}>
+                <p
+                  className={`text-sm font-semibold ${q.tone === 'warning' ? 'text-warning' : ''}`}
+                >
                   ~{q.minutes} min
                 </p>
               </div>
@@ -152,11 +158,18 @@ export function SummaryPage({ events }: { events: OrgEvent[] }) {
           title="Incidentes"
           titleClassName="text-base"
           className="min-w-0 flex-1 gap-0.5"
-          action={<span className="text-[13px] font-semibold text-ink-secondary">{s.incidents.total} no total</span>}
+          action={
+            <span className="text-[13px] font-semibold text-ink-secondary">
+              {s.incidents.total} no total
+            </span>
+          }
         >
           <ul>
             {s.incidentList.map((i) => (
-              <li key={i.title} className="flex items-center gap-3 border-b border-border py-3 last:border-b-0">
+              <li
+                key={i.title}
+                className="flex items-center gap-3 border-b border-border py-3 last:border-b-0"
+              >
                 <IconTile icon={incidentIcon(i)} className={categoryTile[i.category]} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">{i.title}</p>

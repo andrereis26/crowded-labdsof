@@ -36,7 +36,9 @@ describe('organizer helpers', () => {
     expect(suggestedLevel(2790, 4500)).toBe('moderate')
     expect(suggestedLevel(4400, 4500)).toBe('full')
     expect(
-      draftAlert('Porta B fechada por avaria no torniquete. Desviar para a Porta C, 200 m à direita.'),
+      draftAlert(
+        'Porta B fechada por avaria no torniquete. Desviar para a Porta C, 200 m à direita.',
+      ),
     ).toEqual({
       title: 'Porta B fechada',
       message:
@@ -127,9 +129,9 @@ describe('O2–O4 events', () => {
     const hint = 'Usada para calcular a lotação a partir do contador de entradas.'
 
     expect(screen.getByLabelText('Capacidade')).toHaveAccessibleDescription(hint)
-    expect(screen.getByRole('switch', { name: 'Pedir confirmação de reportes' })).toHaveAccessibleDescription(
-      'Outros participantes confirmam com Sim ou Não.',
-    )
+    expect(
+      screen.getByRole('switch', { name: 'Pedir confirmação de reportes' }),
+    ).toHaveAccessibleDescription('Outros participantes confirmam com Sim ou Não.')
 
     const [capacityInfo] = screen.getAllByRole('button', { name: 'Mais informação' })
     await user.click(capacityInfo)
@@ -144,7 +146,9 @@ describe('O2–O4 events', () => {
 
     await user.click(screen.getByRole('button', { name: 'Alterar ou cancelar' }))
     const dialog = screen.getByRole('dialog', { name: 'Alterar data, local ou cancelar' })
-    fireEvent.change(within(dialog).getByLabelText('Nova data'), { target: { value: '2026-12-19' } })
+    fireEvent.change(within(dialog).getByLabelText('Nova data'), {
+      target: { value: '2026-12-19' },
+    })
     await user.click(within(dialog).getByRole('button', { name: 'Adiar e notificar' }))
     expect(within(dialog).getByText('Confirma que a alteração é oficial.')).toBeInTheDocument()
 
@@ -173,7 +177,9 @@ describe('O5–O7 live operations', () => {
     expect(screen.getByText('Lotação publicada: Elevada.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Aumentar espera em Bar principal' }))
-    expect(within(screen.getByRole('group', { name: 'espera em Bar principal' })).getByText('6 min')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('group', { name: 'espera em Bar principal' })).getByText('6 min'),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Publicar filas' }))
     expect(screen.getByText('Filas publicadas.')).toBeInTheDocument()
   })
@@ -226,13 +232,20 @@ describe('O8–O10 incidents and confirmations', () => {
     renderAt('/organizacao/incidentes')
 
     await user.click(screen.getByRole('button', { name: /Rampa da entrada Norte bloqueada/ }))
-    expect(screen.getByRole('heading', { name: 'Rampa da entrada Norte bloqueada' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Rampa da entrada Norte bloqueada' }),
+    ).toBeInTheDocument()
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Categoria' }), 'Acessibilidade')
     const groups = screen.getByRole('list', { name: 'Grupos de reportes' })
-    expect(within(groups).getAllByText('Rampa da entrada Norte bloqueada').length).toBeGreaterThan(0)
+    expect(within(groups).getAllByText('Rampa da entrada Norte bloqueada').length).toBeGreaterThan(
+      0,
+    )
     expect(within(groups).queryByText('Fila longa na Porta C')).not.toBeInTheDocument()
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Categoria' }), 'Todas as categorias')
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Categoria' }),
+      'Todas as categorias',
+    )
 
     await user.click(screen.getByRole('button', { name: 'Resolvidos · 1' }))
     expect(screen.getAllByText('Falta de água no bar principal').length).toBeGreaterThan(0)
@@ -241,7 +254,9 @@ describe('O8–O10 incidents and confirmations', () => {
 
   it('never asks confirmation for personal categories', () => {
     renderAt('/organizacao/definicoes')
-    expect(screen.getByRole('switch', { name: 'Pedir confirmação para Perdidos e achados' })).toBeDisabled()
+    expect(
+      screen.getByRole('switch', { name: 'Pedir confirmação para Perdidos e achados' }),
+    ).toBeDisabled()
     expect(screen.getByRole('switch', { name: 'Pedir confirmação para Fila' })).toBeChecked()
   })
 })
@@ -250,7 +265,11 @@ describe('O11–O14', () => {
   it('shows poll results of the selected event and publishes a new poll', async () => {
     const user = userEvent.setup()
     renderAt('/organizacao/eventos/margens-inverno')
-    await user.click(within(screen.getByRole('navigation', { name: 'Organização' })).getByRole('link', { name: 'Sondagens' }))
+    await user.click(
+      within(screen.getByRole('navigation', { name: 'Organização' })).getByRole('link', {
+        name: 'Sondagens',
+      }),
+    )
 
     expect(screen.getByText('Vais ao Margens Inverno a 12 de dezembro?')).toBeInTheDocument()
     expect(screen.getByText('486')).toBeInTheDocument()
@@ -269,7 +288,9 @@ describe('O11–O14', () => {
     await user.click(screen.getByRole('switch', { name: 'Marcar como urgente' }))
     const preview = screen.getByRole('complementary', { name: 'Pré-visualização' })
     expect(within(preview).getByText('URGENTE')).toBeInTheDocument()
-    expect(within(preview).getByText('Vais usar o autocarro especial das 23:30?')).toBeInTheDocument()
+    expect(
+      within(preview).getByText('Vais usar o autocarro especial das 23:30?'),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Publicar pedido' }))
     expect(screen.getByRole('status')).toHaveTextContent('Pedido publicado e notificação enviada.')
@@ -281,7 +302,9 @@ describe('O11–O14', () => {
     renderAt('/organizacao/eventos/pedir-gestao')
 
     await user.click(screen.getByRole('button', { name: 'Enviar pedido' }))
-    expect(screen.getByText('Carrega um comprovativo da tua relação com o evento.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Carrega um comprovativo da tua relação com o evento.'),
+    ).toBeInTheDocument()
 
     await user.upload(
       screen.getByLabelText('Comprovativo'),

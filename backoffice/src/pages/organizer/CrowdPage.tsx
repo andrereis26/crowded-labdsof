@@ -84,7 +84,11 @@ export function CrowdPage({
       <SuccessBanner>{message}</SuccessBanner>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-        <Panel title="Lotação atual" titleClassName="text-base" className="gap-3.5 lg:w-[520px] lg:shrink-0">
+        <Panel
+          title="Lotação atual"
+          titleClassName="text-base"
+          className="gap-3.5 lg:w-[520px] lg:shrink-0"
+        >
           <div role="radiogroup" aria-label="Lotação atual" className="grid grid-cols-2 gap-2.5">
             {levels.map((l) => (
               <RadioOption
@@ -105,7 +109,9 @@ export function CrowdPage({
           <p className="flex items-center gap-2 rounded-[10px] bg-success-soft px-3 py-2.5 text-[13px] font-medium text-success">
             <ChartNoAxesColumn size={18} className="shrink-0" aria-hidden />
             <span>
-              <span className="max-sm:hidden">Sugestão do contador: {crowdLevels[suggestion].label} · </span>
+              <span className="max-sm:hidden">
+                Sugestão do contador: {crowdLevels[suggestion].label} ·{' '}
+              </span>
               <span className="sm:hidden">Contador: </span>
               {formatNumber(live.entries)} de {formatNumber(event.capacity)}
               <span className="max-sm:hidden"> pessoas</span> ({ratio}%)
@@ -131,7 +137,12 @@ export function CrowdPage({
         >
           <ul>
             {queues.map((q) => (
-              <QueueRow key={q.id} queue={q} now={now} onChange={(patch) => updateQueue(q.id, patch)} />
+              <QueueRow
+                key={q.id}
+                queue={q}
+                now={now}
+                onChange={(patch) => updateQueue(q.id, patch)}
+              />
             ))}
           </ul>
           <div className="pt-3">
@@ -164,7 +175,9 @@ function QueueRow({
           {q.rising && <Tag tone="warning">A aumentar</Tag>}
           {stale && <Tag tone="warning">Desatualizado</Tag>}
         </p>
-        <p className={`mt-[3px] text-xs ${q.source === 'counter' ? 'text-success' : 'text-ink-secondary'}`}>
+        <p
+          className={`mt-[3px] text-xs ${q.source === 'counter' ? 'text-success' : 'text-ink-secondary'}`}
+        >
           {q.source === 'counter' ? 'Contador automático' : 'Manual'} · {ago(q.updatedAt, now)}
         </p>
       </div>
@@ -172,11 +185,21 @@ function QueueRow({
         <p className="text-[15px] font-semibold">~{q.minutes} min</p>
       ) : q.kind === 'entrance' ? (
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-ink-secondary">{q.open ? 'Aberta' : 'Fechada'}</span>
-          <Toggle checked={q.open} onChange={(open) => onChange({ open })} label={`${q.name} aberta`} />
+          <span className="text-xs font-medium text-ink-secondary">
+            {q.open ? 'Aberta' : 'Fechada'}
+          </span>
+          <Toggle
+            checked={q.open}
+            onChange={(open) => onChange({ open })}
+            label={`${q.name} aberta`}
+          />
         </div>
       ) : (
-        <Stepper value={q.minutes} onChange={(minutes) => onChange({ minutes })} label={`espera em ${q.name}`} />
+        <Stepper
+          value={q.minutes}
+          onChange={(minutes) => onChange({ minutes })}
+          label={`espera em ${q.name}`}
+        />
       )}
     </li>
   )

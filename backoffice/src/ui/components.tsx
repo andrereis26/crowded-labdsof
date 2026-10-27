@@ -8,7 +8,13 @@ import {
 } from 'react'
 import { ChevronRight, Sparkles, X, type LucideProps } from 'lucide-react'
 import { Link, type LinkProps } from 'react-router'
-import { buttonClass, crowdLevels, type ButtonSize, type ButtonVariant, type CrowdLevel } from './styles'
+import {
+  buttonClass,
+  crowdLevels,
+  type ButtonSize,
+  type ButtonVariant,
+  type CrowdLevel,
+} from './styles'
 
 /** Shared building blocks of the backoffice, matching the Figma components. */
 
@@ -27,11 +33,7 @@ export function Button({
   icon?: Icon
 }) {
   return (
-    <button
-      type="button"
-      className={buttonClass(variant, size, className)}
-      {...props}
-    >
+    <button type="button" className={buttonClass(variant, size, className)} {...props}>
       {Icon && <Icon size={size === 'sm' ? 16 : 18} aria-hidden />}
       {children}
     </button>
@@ -255,7 +257,9 @@ export function StatCard({
   children?: ReactNode
 }) {
   return (
-    <div className={`flex min-w-0 flex-1 flex-col gap-1.5 rounded-[14px] bg-surface px-[18px] py-4 ${className}`}>
+    <div
+      className={`flex min-w-0 flex-1 flex-col gap-1.5 rounded-[14px] bg-surface px-[18px] py-4 ${className}`}
+    >
       <p className="flex items-center gap-2 text-[13px] font-medium text-ink-secondary">
         <Icon size={18} className={`shrink-0 ${iconClassName}`} aria-hidden />
         {label}
@@ -490,7 +494,9 @@ export function TicketCard({
         }}
       />
       <div className="relative flex items-center justify-between gap-2">
-        <p className="truncate text-[19px] font-bold tracking-[-0.19px]">{name || 'Nome do evento'}</p>
+        <p className="truncate text-[19px] font-bold tracking-[-0.19px]">
+          {name || 'Nome do evento'}
+        </p>
         <p className="shrink-0 text-[13px] font-semibold tracking-[0.78px]">{dateLabel}</p>
       </div>
       <p className="relative truncate text-[13px] text-white/85">{venue}</p>
@@ -556,7 +562,11 @@ export function Dialog({
         className="flex h-full w-full flex-col gap-4 overflow-y-auto bg-surface p-4 outline-none sm:h-auto sm:max-h-[80vh] sm:max-w-[620px] sm:rounded-[20px] sm:p-7 sm:shadow-[0_12px_40px_rgba(0,0,0,0.22)]"
       >
         <div className="grid grid-cols-[1fr_auto_1fr] items-center sm:hidden">
-          <button type="button" onClick={onClose} className="justify-self-start text-[17px] text-primary">
+          <button
+            type="button"
+            onClick={onClose}
+            className="justify-self-start text-[17px] text-primary"
+          >
             {backLabel}
           </button>
           <p className="text-[17px] font-semibold" aria-hidden>
@@ -567,7 +577,12 @@ export function Dialog({
           <h2 id={titleId} className="flex-1 text-[22px] font-bold">
             {title}
           </h2>
-          <button type="button" aria-label="Fechar" onClick={onClose} className="rounded-md p-1 hover:bg-background">
+          <button
+            type="button"
+            aria-label="Fechar"
+            onClick={onClose}
+            className="rounded-md p-1 hover:bg-background"
+          >
             <X size={20} aria-hidden />
           </button>
         </div>

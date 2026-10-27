@@ -1,4 +1,13 @@
-import { Bell, DoorClosed, Info, Megaphone, Pencil, Sparkles, TriangleAlert, Users } from 'lucide-react'
+import {
+  Bell,
+  DoorClosed,
+  Info,
+  Megaphone,
+  Pencil,
+  Sparkles,
+  TriangleAlert,
+  Users,
+} from 'lucide-react'
 import { Link } from 'react-router'
 import {
   ago,
@@ -168,7 +177,9 @@ export function LivePage({
                   aria-hidden
                 />
                 <span className="flex-1 font-medium">{s.name}</span>
-                <span className={`text-xs ${s.ok ? 'text-ink-secondary' : 'text-warning'}`}>{s.detail}</span>
+                <span className={`text-xs ${s.ok ? 'text-ink-secondary' : 'text-warning'}`}>
+                  {s.detail}
+                </span>
               </li>
             ))}
           </ul>
@@ -217,20 +228,35 @@ function QueueBar({ queue: q, stale }: { queue: QueuePoint; stale: boolean }) {
           {q.rising && <Tag tone="warning">A aumentar</Tag>}
           {stale && <Tag tone="warning">Desatualizado</Tag>}
         </p>
-        <p className={`text-sm font-semibold ${q.rising ? 'text-warning' : ''}`}>~{q.minutes} min</p>
+        <p className={`text-sm font-semibold ${q.rising ? 'text-warning' : ''}`}>
+          ~{q.minutes} min
+        </p>
       </div>
       <ProgressBar value={q.minutes / FULL_QUEUE_MINUTES} className={color} />
     </div>
   )
 }
 
-export function IncidentRow({ incident: i, now, note }: { incident: Incident; now: Date; note?: string }) {
+export function IncidentRow({
+  incident: i,
+  now,
+  note,
+}: {
+  incident: Incident
+  now: Date
+  note?: string
+}) {
   const tag = incidentTag(i)
   const when =
-    i.status === 'resolved' && i.resolvedAt ? `resolvido ${ago(i.resolvedAt, now)}` : ago(i.createdAt, now)
+    i.status === 'resolved' && i.resolvedAt
+      ? `resolvido ${ago(i.resolvedAt, now)}`
+      : ago(i.createdAt, now)
   return (
     <li className="border-b border-border last:border-b-0">
-      <Link to={`/organizacao/incidentes/${i.id}`} className="flex items-center gap-3 py-3 hover:opacity-80">
+      <Link
+        to={`/organizacao/incidentes/${i.id}`}
+        className="flex items-center gap-3 py-3 hover:opacity-80"
+      >
         <IconTile icon={incidentIcon(i)} className={categoryTile[i.category]} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">{i.title}</p>

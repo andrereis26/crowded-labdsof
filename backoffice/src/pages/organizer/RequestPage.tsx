@@ -8,7 +8,15 @@ import {
   type RequestType,
 } from '../../data/organizer'
 import { Button, PageHeader, Panel, SuccessBanner, Tag, type Icon } from '../../ui/components'
-import { Field, RadioDot, RadioOption, Select, TextArea, TextInput, ToggleRow } from '../../ui/forms'
+import {
+  Field,
+  RadioDot,
+  RadioOption,
+  Select,
+  TextArea,
+  TextInput,
+  ToggleRow,
+} from '../../ui/forms'
 import { PollIcon } from '../../ui/icons'
 
 const typeIcon: Record<RequestType, Icon> = {
@@ -43,14 +51,20 @@ export function RequestPage({ event }: { event: OrgEvent }) {
     }
     setError('')
     setActive((n) => n + 1)
-    setMessage(urgent ? 'Pedido publicado e notificação enviada.' : 'Pedido publicado na página do evento.')
+    setMessage(
+      urgent ? 'Pedido publicado e notificação enviada.' : 'Pedido publicado na página do evento.',
+    )
     setQuestion('')
     setDetails('')
     setUrgent(false)
   }
 
   const answerButtons =
-    type === 'confirmation' ? responses.split(' / ').reverse() : type === 'poll' ? ['Responder'] : []
+    type === 'confirmation'
+      ? responses.split(' / ').reverse()
+      : type === 'poll'
+        ? ['Responder']
+        : []
 
   return (
     <form onSubmit={publish} noValidate className="flex flex-col gap-4 lg:gap-5">
@@ -69,7 +83,11 @@ export function RequestPage({ event }: { event: OrgEvent }) {
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
         <Panel title="Tipo de pedido" titleClassName="text-base" className="min-w-0 flex-1 gap-4">
-          <div role="radiogroup" aria-label="Tipo de pedido" className="flex flex-col gap-2.5 sm:flex-row">
+          <div
+            role="radiogroup"
+            aria-label="Tipo de pedido"
+            className="flex flex-col gap-2.5 sm:flex-row"
+          >
             {(Object.keys(requestTypes) as RequestType[]).map((t) => {
               const TypeIcon = typeIcon[t]
               return (
@@ -82,10 +100,16 @@ export function RequestPage({ event }: { event: OrgEvent }) {
                   card
                   className="min-w-0 flex-1"
                 >
-                  <TypeIcon size={20} className={`shrink-0 ${type === t ? 'text-primary' : ''}`} aria-hidden />
+                  <TypeIcon
+                    size={20}
+                    className={`shrink-0 ${type === t ? 'text-primary' : ''}`}
+                    aria-hidden
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold">{requestTypes[t].label}</span>
-                    <span className="block truncate text-xs text-ink-secondary">{requestTypes[t].hint}</span>
+                    <span className="block truncate text-xs text-ink-secondary">
+                      {requestTypes[t].hint}
+                    </span>
                   </span>
                   <RadioDot checked={type === t} />
                 </RadioOption>
@@ -101,17 +125,29 @@ export function RequestPage({ event }: { event: OrgEvent }) {
                   setQuestion(e.target.value)
                   setError('')
                 }}
-                placeholder={type === 'idea' ? 'Ex.: Que artista gostavas de ver no próximo ano?' : 'Ex.: Vais usar o autocarro especial das 23:30?'}
+                placeholder={
+                  type === 'idea'
+                    ? 'Ex.: Que artista gostavas de ver no próximo ano?'
+                    : 'Ex.: Vais usar o autocarro especial das 23:30?'
+                }
               />
             )}
           </Field>
           <Field label="Detalhes" optional className="max-sm:hidden">
-            {(p) => <TextArea {...p} value={details} onChange={(e) => setDetails(e.target.value)} />}
+            {(p) => (
+              <TextArea {...p} value={details} onChange={(e) => setDetails(e.target.value)} />
+            )}
           </Field>
           <div className="grid gap-3.5 sm:grid-cols-2">
             <Field label="Prazo">
               {(p) => (
-                <TextInput {...p} type="time" icon={Clock} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+                <TextInput
+                  {...p}
+                  type="time"
+                  icon={Clock}
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                />
               )}
             </Field>
             {type !== 'idea' && (
@@ -144,7 +180,10 @@ export function RequestPage({ event }: { event: OrgEvent }) {
           </div>
         </Panel>
 
-        <aside className="flex flex-col gap-3 max-lg:hidden lg:w-[380px] lg:shrink-0" aria-label="Pré-visualização">
+        <aside
+          className="flex flex-col gap-3 max-lg:hidden lg:w-[380px] lg:shrink-0"
+          aria-label="Pré-visualização"
+        >
           <p className="text-[13px] font-semibold text-ink-secondary">Como os participantes veem</p>
           <div
             className={`flex flex-col gap-2.5 rounded-[14px] border bg-surface p-4 ${urgent ? 'border-danger-border' : 'border-border'}`}
@@ -180,7 +219,9 @@ export function RequestPage({ event }: { event: OrgEvent }) {
               </span>
             )}
           </div>
-          <p className="text-xs text-ink-secondary">Pedidos ativos: {active} · Ideias recebidas: 23</p>
+          <p className="text-xs text-ink-secondary">
+            Pedidos ativos: {active} · Ideias recebidas: 23
+          </p>
         </aside>
       </div>
     </form>

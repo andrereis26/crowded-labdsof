@@ -46,7 +46,11 @@ export function PollsPage({
         title="Sondagens"
         description={<span className="max-sm:hidden">Intenção de presença no {shortName}.</span>}
         actions={
-          <Button icon={Plus} onClick={() => question.current?.focus()} className="max-sm:!rounded-full max-sm:!p-2">
+          <Button
+            icon={Plus}
+            onClick={() => question.current?.focus()}
+            className="max-sm:!rounded-full max-sm:!p-2"
+          >
             <span className="max-sm:sr-only">Nova sondagem</span>
           </Button>
         }
@@ -58,7 +62,11 @@ export function PollsPage({
           {polls.length > 1 && (
             <div className="flex gap-2 overflow-x-auto" role="group" aria-label="Escolher sondagem">
               {polls.map((p) => (
-                <Chip key={p.id} selected={p.id === selected?.id} onClick={() => setSelectedId(p.id)}>
+                <Chip
+                  key={p.id}
+                  selected={p.id === selected?.id}
+                  onClick={() => setSelectedId(p.id)}
+                >
                   {p.questions[0].text}
                 </Chip>
               ))}
@@ -112,11 +120,18 @@ function Results({ poll, now }: { poll: Poll; now: Date }) {
     >
       <div className="flex gap-3 max-sm:hidden">
         <Metric value={formatNumber(responses)} label="respostas" />
-        <Metric value={`${Math.round((responses / poll.audience) * 100)}%`} label="das pessoas ligadas" />
-        <Metric value={closed ? '—' : `${daysLeft} ${daysLeft === 1 ? 'dia' : 'dias'}`} label="até fechar" />
+        <Metric
+          value={`${Math.round((responses / poll.audience) * 100)}%`}
+          label="das pessoas ligadas"
+        />
+        <Metric
+          value={closed ? '—' : `${daysLeft} ${daysLeft === 1 ? 'dia' : 'dias'}`}
+          label="até fechar"
+        />
       </div>
       <p className="text-xs text-ink-secondary sm:hidden">
-        {formatNumber(responses)} respostas · {Math.round((responses / poll.audience) * 100)}% das pessoas ligadas
+        {formatNumber(responses)} respostas · {Math.round((responses / poll.audience) * 100)}% das
+        pessoas ligadas
       </p>
 
       {poll.questions.map((q) => {
@@ -217,7 +232,10 @@ function NewPollForm({
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-[13px] font-medium">Opções</legend>
           {options.map((o, n) => (
-            <div key={n} className="flex items-center gap-2 rounded-[10px] border border-border px-3 py-1 focus-within:outline-2 focus-within:outline-primary">
+            <div
+              key={n}
+              className="flex items-center gap-2 rounded-[10px] border border-border px-3 py-1 focus-within:outline-2 focus-within:outline-primary"
+            >
               <GripVertical size={16} className="shrink-0 text-ink-secondary" aria-hidden />
               <input
                 aria-label={`Opção ${n + 1}`}

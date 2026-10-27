@@ -68,7 +68,10 @@ export function ConfirmationsPage({
             {(Object.keys(categories) as IncidentCategory[]).map((c) => {
               const category = categories[c]
               return (
-                <li key={c} className="flex items-center gap-3 border-b border-border py-3.5 last:border-b-0">
+                <li
+                  key={c}
+                  className="flex items-center gap-3 border-b border-border py-3.5 last:border-b-0"
+                >
                   <IconTile icon={categoryIcon[c]} />
                   <div className="min-w-0 flex-1">
                     <p
@@ -100,13 +103,22 @@ export function ConfirmationsPage({
           </ul>
         </Panel>
 
-        <Panel title="Regras" titleClassName="text-base" className="gap-3.5 lg:w-[400px] lg:shrink-0 max-sm:[&>div:first-child]:hidden">
+        <Panel
+          title="Regras"
+          titleClassName="text-base"
+          className="gap-3.5 lg:w-[400px] lg:shrink-0 max-sm:[&>div:first-child]:hidden"
+        >
           <Field
             label="Raio do recinto"
             help="Só pede confirmação a quem permitiu a localização e está dentro deste raio."
           >
             {(p) => (
-              <Select {...p} value={draft.radius} onChange={(e) => setDraft({ ...draft, radius: e.target.value })} options={radii} />
+              <Select
+                {...p}
+                value={draft.radius}
+                onChange={(e) => setDraft({ ...draft, radius: e.target.value })}
+                options={radii}
+              />
             )}
           </Field>
           <Field label="Respostas para confiança alta" error={error} className="max-sm:hidden">

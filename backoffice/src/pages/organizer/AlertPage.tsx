@@ -136,7 +136,13 @@ export function AlertPage({
               )}
             </Field>
             <div>
-              <Button variant="ai" size="lg" icon={Sparkles} onClick={generate} className="max-sm:w-full">
+              <Button
+                variant="ai"
+                size="lg"
+                icon={Sparkles}
+                onClick={generate}
+                className="max-sm:w-full"
+              >
                 Gerar rascunho com IA
               </Button>
             </div>
@@ -155,7 +161,9 @@ export function AlertPage({
               action={draft === 'ai' && <AiTag />}
             >
               <Field label="Título" error={errors.title}>
-                {(p) => <TextInput {...p} value={title} onChange={(e) => setTitle(e.target.value)} />}
+                {(p) => (
+                  <TextInput {...p} value={title} onChange={(e) => setTitle(e.target.value)} />
+                )}
               </Field>
               <Field label="Mensagem" error={errors.text}>
                 {(p) => <TextArea {...p} value={text} onChange={(e) => setText(e.target.value)} />}
@@ -190,7 +198,9 @@ export function AlertPage({
                   onChange={(v) => setAudience(v as Audience)}
                 >
                   <RadioDot checked={audience === r.value} />
-                  <span className={`text-sm ${audience === r.value ? 'font-semibold' : 'font-medium'}`}>
+                  <span
+                    className={`text-sm ${audience === r.value ? 'font-semibold' : 'font-medium'}`}
+                  >
                     {r.label}
                   </span>
                 </RadioOption>
@@ -219,7 +229,9 @@ export function AlertPage({
                 <p className="text-[13px] font-semibold">
                   {shortName} · {title || 'Título do alerta'}
                 </p>
-                <p className="line-clamp-2 text-xs leading-[1.35]">{text || 'A mensagem aparece aqui.'}</p>
+                <p className="line-clamp-2 text-xs leading-[1.35]">
+                  {text || 'A mensagem aparece aqui.'}
+                </p>
               </div>
             </div>
             <p className="flex items-center gap-2.5 rounded-xl bg-warning-soft px-3 py-2.5 text-[13px] font-semibold">
@@ -229,7 +241,9 @@ export function AlertPage({
           </Panel>
 
           <Panel title="Alertas recentes" titleClassName="text-sm" className="gap-1 max-lg:hidden">
-            {alerts.length === 0 && <p className="py-2 text-sm text-ink-secondary">Ainda não enviaste alertas.</p>}
+            {alerts.length === 0 && (
+              <p className="py-2 text-sm text-ink-secondary">Ainda não enviaste alertas.</p>
+            )}
             <ul>
               {alerts.slice(0, 4).map((a) => (
                 <li key={a.id} className="flex items-center gap-2.5 py-2.5">

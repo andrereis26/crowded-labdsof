@@ -12,12 +12,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router'
-import {
-  eventSubtitle,
-  organization,
-  statusTag,
-  type OrgEvent,
-} from '../data/organizer'
+import { eventSubtitle, organization, statusTag, type OrgEvent } from '../data/organizer'
 import { Avatar, EventThumb, Tag } from '../ui/components'
 import { buttonClass } from '../ui/styles'
 import { PollIcon } from '../ui/icons'
@@ -57,7 +52,12 @@ export function OrganizerLayout({
   const nav: NavItem[] = [
     { label: 'Eventos', to: '/organizacao/eventos', icon: Calendar },
     { label: 'Ao vivo', to: '/organizacao/ao-vivo', icon: ChartNoAxesColumn },
-    { label: 'Incidentes', to: '/organizacao/incidentes', icon: TriangleAlert, count: openIncidents },
+    {
+      label: 'Incidentes',
+      to: '/organizacao/incidentes',
+      icon: TriangleAlert,
+      count: openIncidents,
+    },
     { label: 'Alertas', to: '/organizacao/alertas', icon: Megaphone },
     { label: 'Sondagens', to: '/organizacao/sondagens', icon: PollIcon },
     { label: 'Pedidos', to: '/organizacao/pedidos', icon: MessageSquare },
@@ -136,7 +136,11 @@ export function OrganizerLayout({
               />
             </div>
           )}
-          <Avatar initials={organization.user.initials} size={34} className="bg-avatar text-primary" />
+          <Avatar
+            initials={organization.user.initials}
+            size={34}
+            className="bg-avatar text-primary"
+          />
         </header>
       )}
 
@@ -168,7 +172,9 @@ function EventSelector({
   useEffect(() => {
     if (!open) return
     const close = (e: MouseEvent | KeyboardEvent) => {
-      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !root.current?.contains(e.target as Node)) {
+      if (
+        e instanceof KeyboardEvent ? e.key === 'Escape' : !root.current?.contains(e.target as Node)
+      ) {
         setOpen(false)
       }
     }
@@ -191,7 +197,12 @@ function EventSelector({
         onClick={() => setOpen((o) => !o)}
         className={`flex items-center gap-2.5 rounded-[10px] border border-border bg-surface py-1.5 pr-3 pl-1.5 text-left hover:bg-background ${block ? 'w-full' : ''}`}
       >
-        <EventThumb image={current.image} gradient={current.gradient} size={32} rounded="rounded-[7px]" />
+        <EventThumb
+          image={current.image}
+          gradient={current.gradient}
+          size={32}
+          rounded="rounded-[7px]"
+        />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold">{current.name}</span>
           <span className="block truncate text-[11px] text-ink-secondary">{subtitle}</span>
@@ -235,7 +246,13 @@ const tabs = [
 ]
 
 /** Pages reached from "Mais" on phones. */
-const morePaths = ['/organizacao/mais', '/organizacao/sondagens', '/organizacao/pedidos', '/organizacao/definicoes', '/organizacao/api']
+const morePaths = [
+  '/organizacao/mais',
+  '/organizacao/sondagens',
+  '/organizacao/pedidos',
+  '/organizacao/definicoes',
+  '/organizacao/api',
+]
 
 function TabBar({ openIncidents }: { openIncidents: number }) {
   const { pathname } = useLocation()
@@ -251,7 +268,9 @@ function TabBar({ openIncidents }: { openIncidents: number }) {
           to={to}
           className={({ isActive }) =>
             `relative flex flex-1 flex-col items-center gap-1 pt-2 text-[11px] font-medium ${
-              isActive || (to === '/organizacao/mais' && inMore) ? 'text-primary' : 'text-ink-secondary'
+              isActive || (to === '/organizacao/mais' && inMore)
+                ? 'text-primary'
+                : 'text-ink-secondary'
             }`
           }
         >

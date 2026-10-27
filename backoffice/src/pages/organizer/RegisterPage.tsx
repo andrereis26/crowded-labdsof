@@ -1,18 +1,36 @@
-import { ChartNoAxesColumn, CircleCheck, Clock, Info, Megaphone, Plus, ShieldCheck, Users } from 'lucide-react'
+import {
+  ChartNoAxesColumn,
+  CircleCheck,
+  Clock,
+  Info,
+  Megaphone,
+  Plus,
+  ShieldCheck,
+  Users,
+} from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import {
-  validateRegistration,
-  type RegistrationForm,
-} from '../../data/verifications'
+import { validateRegistration, type RegistrationForm } from '../../data/verifications'
 import { Logo } from '../../layout/Shell'
 import { Button, ButtonLink, Notice, type Icon } from '../../ui/components'
 import { Checkbox, Field, FileInput, TextInput } from '../../ui/forms'
 
 const benefits: { icon: Icon; title: string; text: string }[] = [
-  { icon: Megaphone, title: 'Alterações oficiais e alertas', text: 'Chegam a quem tem bilhete ou segue o evento.' },
-  { icon: Users, title: 'O que se passa no recinto', text: 'Reportes dos participantes, agrupados e com confiança.' },
-  { icon: ChartNoAxesColumn, title: 'Planeamento com dados', text: 'Sondagens de presença e contador de entradas.' },
+  {
+    icon: Megaphone,
+    title: 'Alterações oficiais e alertas',
+    text: 'Chegam a quem tem bilhete ou segue o evento.',
+  },
+  {
+    icon: Users,
+    title: 'O que se passa no recinto',
+    text: 'Reportes dos participantes, agrupados e com confiança.',
+  },
+  {
+    icon: ChartNoAxesColumn,
+    title: 'Planeamento com dados',
+    text: 'Sondagens de presença e contador de entradas.',
+  },
 ]
 
 const empty: RegistrationForm = {
@@ -41,7 +59,9 @@ export function RegisterPage({ onSubmit }: { onSubmit: (form: RegistrationForm) 
     setErrors(found)
     if (Object.keys(found).length) return
     onSubmit(form)
-    navigate('/registo/pendente', { state: { organization: form.organization.trim(), at: new Date() } })
+    navigate('/registo/pendente', {
+      state: { organization: form.organization.trim(), at: new Date() },
+    })
   }
 
   return (
@@ -64,7 +84,10 @@ export function RegisterPage({ onSubmit }: { onSubmit: (form: RegistrationForm) 
           </div>
         ))}
         <span className="flex-1" />
-        <Link to="/organizacao/eventos" className="text-sm font-medium text-sidebar-accent hover:underline">
+        <Link
+          to="/organizacao/eventos"
+          className="text-sm font-medium text-sidebar-accent hover:underline"
+        >
           Já tens conta de organização? Entrar
         </Link>
       </aside>
@@ -78,10 +101,14 @@ export function RegisterPage({ onSubmit }: { onSubmit: (form: RegistrationForm) 
             <span className="rounded-full bg-primary-soft px-2 py-[3px] text-[11px] font-semibold text-primary">
               PASSO 1 DE 2
             </span>
-            <span className="text-xs text-ink-secondary max-sm:hidden">Depois verificamos a organização</span>
+            <span className="text-xs text-ink-secondary max-sm:hidden">
+              Depois verificamos a organização
+            </span>
           </p>
           <div>
-            <h1 className="text-[26px] font-bold tracking-[-0.3px] lg:text-[30px]">Registar organização</h1>
+            <h1 className="text-[26px] font-bold tracking-[-0.3px] lg:text-[30px]">
+              Registar organização
+            </h1>
             <p className="mt-2 text-[15px] text-ink-secondary">
               Só organizações verificadas podem publicar informação oficial e alertas.
             </p>
@@ -150,7 +177,11 @@ export function RegisterPage({ onSubmit }: { onSubmit: (form: RegistrationForm) 
             help="Certidão permanente, declaração de início de atividade ou documento equivalente."
             error={errors.document}
           />
-          <Checkbox checked={form.confirmed} onChange={(v) => set('confirmed', v)} error={errors.confirmed}>
+          <Checkbox
+            checked={form.confirmed}
+            onChange={(v) => set('confirmed', v)}
+            error={errors.confirmed}
+          >
             Confirmo que represento esta organização e que os dados são verdadeiros.
           </Checkbox>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -159,7 +190,10 @@ export function RegisterPage({ onSubmit }: { onSubmit: (form: RegistrationForm) 
             </Button>
             <p className="text-xs text-ink-secondary">Normalmente demora até 2 dias úteis.</p>
           </div>
-          <Link to="/organizacao/eventos" className="text-center text-sm font-medium text-primary lg:hidden">
+          <Link
+            to="/organizacao/eventos"
+            className="text-center text-sm font-medium text-primary lg:hidden"
+          >
             Já tens conta de organização? Entrar
           </Link>
         </form>
@@ -175,9 +209,24 @@ export function RegistrationPendingPage() {
   const at = state?.at ? new Date(state.at) : undefined
   const time = at?.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
   const steps: { icon: Icon; className: string; title: string; text: string }[] = [
-    { icon: CircleCheck, className: 'text-success', title: 'Pedido submetido', text: time ? `Hoje · ${time}` : 'Recebido' },
-    { icon: Clock, className: 'text-warning', title: 'Em análise por um administrador', text: 'Verificamos o NIPC, o site e o documento' },
-    { icon: ShieldCheck, className: 'text-ink-secondary', title: 'Organização verificada', text: 'Podes publicar eventos, alertas e informação oficial' },
+    {
+      icon: CircleCheck,
+      className: 'text-success',
+      title: 'Pedido submetido',
+      text: time ? `Hoje · ${time}` : 'Recebido',
+    },
+    {
+      icon: Clock,
+      className: 'text-warning',
+      title: 'Em análise por um administrador',
+      text: 'Verificamos o NIPC, o site e o documento',
+    },
+    {
+      icon: ShieldCheck,
+      className: 'text-ink-secondary',
+      title: 'Organização verificada',
+      text: 'Podes publicar eventos, alertas e informação oficial',
+    },
   ]
 
   return (
@@ -210,9 +259,7 @@ export function RegistrationPendingPage() {
         <ButtonLink to="/organizacao/eventos/novo" size="lg" icon={Plus}>
           Criar evento em rascunho
         </ButtonLink>
-        <p className="text-center text-sm text-ink-secondary">
-          Vais receber a decisão por email.
-        </p>
+        <p className="text-center text-sm text-ink-secondary">Vais receber a decisão por email.</p>
       </div>
     </main>
   )

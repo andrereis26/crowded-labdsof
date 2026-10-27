@@ -54,7 +54,11 @@ export function EventFormPage({
   }
 
   const save = (publish: boolean) => {
-    const found = publish ? validateEvent(event) : event.name.trim() ? {} : { name: 'Escreve o nome do evento.' }
+    const found = publish
+      ? validateEvent(event)
+      : event.name.trim()
+        ? {}
+        : { name: 'Escreve o nome do evento.' }
     setErrors(found)
     if (Object.keys(found).length) return
 
@@ -117,7 +121,11 @@ export function EventFormPage({
           <Panel title="Informação básica" titleClassName="text-base" className="gap-3.5">
             <Field label="Nome do evento" error={errors.name}>
               {(p) => (
-                <TextInput {...p} value={event.name} onChange={(e) => set('name', e.target.value)} />
+                <TextInput
+                  {...p}
+                  value={event.name}
+                  onChange={(e) => set('name', e.target.value)}
+                />
               )}
             </Field>
             <Field label="Descrição">
@@ -143,17 +151,35 @@ export function EventFormPage({
               </Field>
               <Field label="Abertura de portas">
                 {(p) => (
-                  <TextInput {...p} type="time" icon={Clock} value={event.doors} onChange={(e) => set('doors', e.target.value)} />
+                  <TextInput
+                    {...p}
+                    type="time"
+                    icon={Clock}
+                    value={event.doors}
+                    onChange={(e) => set('doors', e.target.value)}
+                  />
                 )}
               </Field>
               <Field label="Início" error={errors.start}>
                 {(p) => (
-                  <TextInput {...p} type="time" icon={Clock} value={event.start} onChange={(e) => set('start', e.target.value)} />
+                  <TextInput
+                    {...p}
+                    type="time"
+                    icon={Clock}
+                    value={event.start}
+                    onChange={(e) => set('start', e.target.value)}
+                  />
                 )}
               </Field>
               <Field label="Fim" className="max-sm:hidden">
                 {(p) => (
-                  <TextInput {...p} type="time" icon={Clock} value={event.end} onChange={(e) => set('end', e.target.value)} />
+                  <TextInput
+                    {...p}
+                    type="time"
+                    icon={Clock}
+                    value={event.end}
+                    onChange={(e) => set('end', e.target.value)}
+                  />
                 )}
               </Field>
             </div>
@@ -162,10 +188,18 @@ export function EventFormPage({
           <Panel title="Local e entradas" titleClassName="text-base" className="gap-3.5">
             <Field label="Local" error={errors.venue}>
               {(p) => (
-                <TextInput {...p} icon={MapPin} value={event.venue} onChange={(e) => set('venue', e.target.value)} />
+                <TextInput
+                  {...p}
+                  icon={MapPin}
+                  value={event.venue}
+                  onChange={(e) => set('venue', e.target.value)}
+                />
               )}
             </Field>
-            <Entrances value={event.entrances} onChange={(entrances) => set('entrances', entrances)} />
+            <Entrances
+              value={event.entrances}
+              onChange={(entrances) => set('entrances', entrances)}
+            />
             <Field
               label="Capacidade"
               error={errors.capacity}
@@ -252,7 +286,10 @@ export function EventFormPage({
             />
           </Panel>
 
-          <ImagePanel event={event} onChange={(image, imageName) => setEvent((e) => ({ ...e, image, imageName }))} />
+          <ImagePanel
+            event={event}
+            onChange={(image, imageName) => setEvent((e) => ({ ...e, image, imageName }))}
+          />
         </div>
       </div>
     </form>
@@ -282,7 +319,10 @@ function Entrances({ value, onChange }: { value: string[]; onChange: (value: str
       <legend className="mb-1.5 text-[13px] font-medium">Entradas e pontos de fila</legend>
       <ul className="flex flex-wrap items-center gap-2">
         {value.map((name) => (
-          <li key={name} className="flex items-center gap-1.5 rounded-full bg-background py-[7px] pr-2.5 pl-3 text-[13px] font-medium">
+          <li
+            key={name}
+            className="flex items-center gap-1.5 rounded-full bg-background py-[7px] pr-2.5 pl-3 text-[13px] font-medium"
+          >
             {name}
             <button
               type="button"
@@ -339,7 +379,12 @@ function ImagePanel({
   return (
     <Panel title="Imagem do evento" className="max-lg:hidden">
       <div className="flex items-center gap-3">
-        <EventThumb image={event.image} gradient={event.gradient} size={56} rounded="rounded-[10px]" />
+        <EventThumb
+          image={event.image}
+          gradient={event.gradient}
+          size={56}
+          rounded="rounded-[10px]"
+        />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold">{event.imageName ?? 'Sem imagem'}</p>
           <p className="text-xs text-ink-secondary">1600 × 900 recomendado</p>
