@@ -1,7 +1,7 @@
 # ADR 0006: Technology stack
 
 - Status: accepted
-- Date: 2026-10-11
+- Date: 2026-10-11 (versions and build tool added 2026-10-27, #98)
 - Deciders: Crowded team
 
 ## Context
@@ -17,6 +17,8 @@ We need a backend stack for three services, a participant app that runs on mobil
 ## Decision
 
 - **Backend: Java + Spring Boot.** It covers everything we need with mature libraries: Spring AMQP (RabbitMQ), Spring Data JPA (PostgreSQL), Spring Security (JWT), Micrometer (Prometheus metrics) and scheduling for Jobs. Team has experience with it.
+  - Java 25 (JDK 25, the current LTS) and the latest stable Spring Boot release (4.1.2 when the services were created).
+  - Maven as the build tool, through a committed wrapper (`mvnw`) in each service, because the team knows it better than Gradle.
 - **Participant app: Flutter.** One codebase builds the Android, iOS and web versions, so screens, models and the API client are written once. Push on mobile uses `firebase_messaging` ([ADR 0010](0010-external-integrations.md)).
 - **Backoffice: React + Vite + TailwindCSS.** Built as a static bundle served by the `web-app` container; many dashboard and chart libraries.
 
