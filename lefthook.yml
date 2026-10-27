@@ -1,5 +1,6 @@
 # Git hooks for the whole repository, run by Lefthook (https://lefthook.dev).
 # Install them once after cloning: lefthook install
+# The backend jobs need JAVA_HOME set to a JDK 25.
 # See "Contributing" in README.md. Hooks can be skipped with --no-verify; the
 # pipeline (#69) runs the same checks.
 
@@ -11,19 +12,19 @@ pre-commit:
     - name: format core
       root: core/
       glob: "core/**/*.java"
-      run: for f in {staged_files}; do ./gradlew -q spotlessApply -PspotlessIdeHook="$(pwd)/${f#./}" || exit 1; done
+      run: files=""; for f in {staged_files}; do files="$files,.*${f#./}"; done; ./mvnw -B -ntp -q spotless:apply -DspotlessFiles="${files#,}"
       stage_fixed: true
 
     - name: format jobs
       root: jobs/
       glob: "jobs/**/*.java"
-      run: for f in {staged_files}; do ./gradlew -q spotlessApply -PspotlessIdeHook="$(pwd)/${f#./}" || exit 1; done
+      run: files=""; for f in {staged_files}; do files="$files,.*${f#./}"; done; ./mvnw -B -ntp -q spotless:apply -DspotlessFiles="${files#,}"
       stage_fixed: true
 
     - name: format notifications
       root: notifications/
       glob: "notifications/**/*.java"
-      run: for f in {staged_files}; do ./gradlew -q spotlessApply -PspotlessIdeHook="$(pwd)/${f#./}" || exit 1; done
+      run: files=""; for f in {staged_files}; do files="$files,.*${f#./}"; done; ./mvnw -B -ntp -q spotless:apply -DspotlessFiles="${files#,}"
       stage_fixed: true
 
     - name: format backoffice
@@ -48,17 +49,17 @@ pre-push:
     - name: lint core
       root: core/
       glob: "core/**"
-      run: ./gradlew -q lint
+      run: ./mvnw -B -ntp test-compile
 
     - name: lint jobs
       root: jobs/
       glob: "jobs/**"
-      run: ./gradlew -q lint
+      run: ./mvnw -B -ntp test-compile
 
     - name: lint notifications
       root: notifications/
       glob: "notifications/**"
-      run: ./gradlew -q lint
+      run: ./mvnw -B -ntp test-compile
 
     - name: lint backoffice
       root: backoffice/
