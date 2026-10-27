@@ -1,0 +1,26 @@
+# Settings come from environment variables. Hosts, users, passwords and keys
+# have no default, so nothing secret is committed and a missing variable fails
+# at startup instead of pointing at the wrong place. See README.md.
+spring:
+  application:
+    name: notifications
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Public key of the RSA key pair Core signs tokens with (ADR 0005).
+          public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
