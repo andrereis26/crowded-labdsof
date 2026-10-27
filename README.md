@@ -64,3 +64,35 @@ fix(#10): raccoon now steals food with success
 ### Naming Conventions
 
 - File names should be descriptive and use `kebab-case` and/or `camelCase`.
+
+### Git Hooks
+
+The repository has one set of Git hooks for all projects, configured in [`lefthook.yml`](/lefthook.yml) and run by [Lefthook](https://lefthook.dev). Set them up once after cloning:
+
+1. Install [Lefthook](https://lefthook.dev/installation/) 2.x, for example `npm install -g lefthook`, `brew install lefthook` or `winget install evilmartians.lefthook`.
+2. Install [gitleaks 8.30.1](https://github.com/gitleaks/gitleaks#installing), or have Docker running: [`scripts/gitleaks.sh`](/scripts/gitleaks.sh) uses the `zricethezav/gitleaks:v8.30.1` image, the one the Security workflow uses, when gitleaks 8.30.1 is not installed.
+3. Install each project's own tools (JDK 17 or later for Gradle, Node.js, Flutter) and dependencies (`npm install` in `backoffice/`, `flutter pub get` in `participant-app/`).
+4. Run `lefthook install` at the repository root.
+
+| Hook | What it does |
+|---|---|
+| `pre-commit` | Formats the staged files of each project with its formatter and stages the result, then runs `gitleaks git --pre-commit --staged --redact` on the staged changes. |
+| `pre-push` | Runs the lint command of each project changed in the pushed commits, then gitleaks on those commits. Any failure blocks the push. |
+
+`git commit --no-verify` and `git push --no-verify` skip the hooks. The pipeline (#69) runs the same checks, so skipping them only delays the failure.
+
+### Format and Lint Commands
+
+Run them from the project's folder. The format check fails and names the unformatted files.
+
+| Project | Format | Format check | Lint | Tests |
+|---|---|---|---|---|
+| `core/`, `jobs/`, `notifications/` | `./gradlew spotlessApply` | `./gradlew spotlessCheck` | `./gradlew lint` | `./gradlew test` |
+| `backoffice/` | `npm run format` | `npm run format:check` | `npm run lint` | `npm test` |
+| `participant-app/` | `dart format lib test` | `dart format --output=none --set-exit-if-changed lib test` | `flutter analyze --fatal-infos` | `flutter test` |
+
+- Backend: Spotless with google-java-format, and the compiler with `-Xlint:all -Werror` as lint. `./gradlew build` runs the tests and `spotlessCheck` together.
+- Backoffice: Prettier and oxlint (`.oxlintrc.json`).
+- Participant app: `dart format` and `flutter analyze` (`analysis_options.yaml`).
+- Secret scan of the whole history, as the Security workflow does it: `scripts/gitleaks.sh git --redact --verbose` from the repository root.
+- [`.editorconfig`](/.editorconfig) sets UTF-8, LF line endings and indentation for editors, and [`.gitattributes`](/.gitattributes) keeps LF line endings in the repository.
