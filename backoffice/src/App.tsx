@@ -23,9 +23,7 @@ const titles: Record<string, string> = {
 
 /** `now` is fixed at start-up so demo times stay stable between renders. */
 export default function App({ now }: { now: Date }) {
-  const [requests, setRequests] = useState<VerificationRequest[]>(() =>
-    demoRequests(now),
-  )
+  const [requests, setRequests] = useState<VerificationRequest[]>(() => demoRequests(now))
 
   const update = (updated: VerificationRequest) =>
     setRequests((all) => all.map((r) => (r.id === updated.id ? updated : r)))
@@ -78,9 +76,7 @@ function AdminArea({
     ? 'Verificações'
     : (titles[location.pathname] ?? 'Crowded')
 
-  const verifications = (
-    <Verifications requests={requests} now={now} onChange={onChange} />
-  )
+  const verifications = <Verifications requests={requests} now={now} onChange={onChange} />
 
   return (
     <AdminLayout

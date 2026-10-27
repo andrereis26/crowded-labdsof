@@ -322,11 +322,56 @@ export function demoLive(now: Date): Record<string, LiveState> {
         { hour: '23h', count: 105 },
       ],
       queues: [
-        { id: 'porta-a', name: 'Porta A', kind: 'entrance', source: 'counter', minutes: 10, open: true, rising: false, updatedAt: minAgo(1) },
-        { id: 'porta-b', name: 'Porta B', kind: 'entrance', source: 'manual', minutes: 0, open: false, rising: false, updatedAt: minAgo(3) },
-        { id: 'porta-c', name: 'Porta C', kind: 'entrance', source: 'counter', minutes: 25, open: true, rising: true, updatedAt: minAgo(1) },
-        { id: 'bar-principal', name: 'Bar principal', kind: 'service', source: 'manual', minutes: 5, open: true, rising: false, updatedAt: minAgo(9) },
-        { id: 'wc-norte', name: 'WC Norte', kind: 'service', source: 'manual', minutes: 8, open: true, rising: false, updatedAt: minAgo(24) },
+        {
+          id: 'porta-a',
+          name: 'Porta A',
+          kind: 'entrance',
+          source: 'counter',
+          minutes: 10,
+          open: true,
+          rising: false,
+          updatedAt: minAgo(1),
+        },
+        {
+          id: 'porta-b',
+          name: 'Porta B',
+          kind: 'entrance',
+          source: 'manual',
+          minutes: 0,
+          open: false,
+          rising: false,
+          updatedAt: minAgo(3),
+        },
+        {
+          id: 'porta-c',
+          name: 'Porta C',
+          kind: 'entrance',
+          source: 'counter',
+          minutes: 25,
+          open: true,
+          rising: true,
+          updatedAt: minAgo(1),
+        },
+        {
+          id: 'bar-principal',
+          name: 'Bar principal',
+          kind: 'service',
+          source: 'manual',
+          minutes: 5,
+          open: true,
+          rising: false,
+          updatedAt: minAgo(9),
+        },
+        {
+          id: 'wc-norte',
+          name: 'WC Norte',
+          kind: 'service',
+          source: 'manual',
+          minutes: 8,
+          open: true,
+          rising: false,
+          updatedAt: minAgo(24),
+        },
       ],
       services: [
         { name: 'Contador de entradas', detail: 'Ligado · há 1 min', ok: true },
@@ -378,7 +423,11 @@ export const categories: Record<
   queue: { label: 'Fila', example: 'Ex.: espera longa numa porta' },
   accessibility: { label: 'Acessibilidade', example: 'Ex.: rampa ou elevador bloqueado' },
   venue: { label: 'Problema no recinto', example: 'Ex.: falta de água, avaria' },
-  lost: { label: 'Perdidos e achados', example: 'Nunca pede confirmação nem é público.', personal: true },
+  lost: {
+    label: 'Perdidos e achados',
+    example: 'Nunca pede confirmação nem é público.',
+    personal: true,
+  },
 }
 
 export const team = [
@@ -397,7 +446,10 @@ export const incidentStatusTag: Record<
 }
 
 /** Urgent open incidents show "Urgente" instead of their status. */
-export function incidentTag(i: Incident): { label: string; tone: 'danger' | 'neutral' | 'info' | 'success' } {
+export function incidentTag(i: Incident): {
+  label: string
+  tone: 'danger' | 'neutral' | 'info' | 'success'
+} {
   if (i.urgent && i.status !== 'resolved') return { label: 'Urgente', tone: 'danger' }
   return incidentStatusTag[i.status]
 }
@@ -472,7 +524,8 @@ export function demoIncidents(now: Date): Incident[] {
       status: 'in-progress',
       urgent: false,
       confidence: 'medium',
-      summary: 'Participantes relatam muita gente e dificuldade em sair da zona em frente ao palco principal.',
+      summary:
+        'Participantes relatam muita gente e dificuldade em sair da zona em frente ao palco principal.',
       reports: [
         { id: 'r1', text: 'Muito apertado junto às grades.', at: minAgo(18) },
         { id: 'r2', text: 'Difícil sair da frente do palco.', at: minAgo(17) },
@@ -577,12 +630,60 @@ export function demoAlerts(now: Date): SentAlert[] {
   const minAgo = (m: number) => new Date(now.getTime() - m * 60000)
   const base = { importance: 'info' as const, message: '' }
   return [
-    { ...base, id: 'a1', eventId: 'festival-margens-2026', title: 'Água disponível no bar principal', sentAt: minAgo(3), delivered: 1240, seconds: 0.8 },
-    { ...base, id: 'a2', eventId: 'festival-margens-2026', title: 'Portas abertas', sentAt: minAgo(140), delivered: 1180, seconds: 0.9 },
-    { ...base, id: 'a3', eventId: 'festival-margens-2026', title: 'Bilhetes disponíveis na bilheteira', sentAt: minAgo(26 * 60), delivered: 1100, seconds: 0.9 },
-    { ...base, id: 'a4', eventId: 'festival-margens-2026', title: 'Horários dos palcos publicados', sentAt: minAgo(2 * 24 * 60), delivered: 1050, seconds: 1.1 },
-    { ...base, id: 'a5', eventId: 'jazz-no-parque', title: 'Entrada pelo portão norte', sentAt: minAgo(3 * 24 * 60), delivered: 290, seconds: 0.7 },
-    { ...base, id: 'a6', eventId: 'margens-inverno', title: 'Primeiros artistas anunciados', sentAt: minAgo(5 * 24 * 60), delivered: 120, seconds: 0.6 },
+    {
+      ...base,
+      id: 'a1',
+      eventId: 'festival-margens-2026',
+      title: 'Água disponível no bar principal',
+      sentAt: minAgo(3),
+      delivered: 1240,
+      seconds: 0.8,
+    },
+    {
+      ...base,
+      id: 'a2',
+      eventId: 'festival-margens-2026',
+      title: 'Portas abertas',
+      sentAt: minAgo(140),
+      delivered: 1180,
+      seconds: 0.9,
+    },
+    {
+      ...base,
+      id: 'a3',
+      eventId: 'festival-margens-2026',
+      title: 'Bilhetes disponíveis na bilheteira',
+      sentAt: minAgo(26 * 60),
+      delivered: 1100,
+      seconds: 0.9,
+    },
+    {
+      ...base,
+      id: 'a4',
+      eventId: 'festival-margens-2026',
+      title: 'Horários dos palcos publicados',
+      sentAt: minAgo(2 * 24 * 60),
+      delivered: 1050,
+      seconds: 1.1,
+    },
+    {
+      ...base,
+      id: 'a5',
+      eventId: 'jazz-no-parque',
+      title: 'Entrada pelo portão norte',
+      sentAt: minAgo(3 * 24 * 60),
+      delivered: 290,
+      seconds: 0.7,
+    },
+    {
+      ...base,
+      id: 'a6',
+      eventId: 'margens-inverno',
+      title: 'Primeiros artistas anunciados',
+      sentAt: minAgo(5 * 24 * 60),
+      delivered: 120,
+      seconds: 0.6,
+    },
   ]
 }
 
@@ -690,10 +791,38 @@ export interface CatalogEvent {
 
 /** Events synced from ticketing that the organization does not manage yet. */
 export const catalog: CatalogEvent[] = [
-  { id: 'jazz-no-parque-sabado', name: 'Jazz no Parque', date: '2026-10-18', start: '19:00', venue: 'Jardim do Palácio, Porto', gradient: ['rgb(51,140,128)', 'rgb(13,46,51)'] },
-  { id: 'jazz-no-parque-domingo', name: 'Jazz no Parque · Sessão de domingo', date: '2026-10-25', start: '18:00', venue: 'Jardim do Palácio, Porto', gradient: ['rgb(51,140,128)', 'rgb(13,46,51)'] },
-  { id: 'noite-fado', name: 'Noite de Fado na Ribeira', date: '2026-11-07', start: '21:30', venue: 'Cais da Ribeira, Porto', gradient: ['rgb(140,90,51)', 'rgb(46,26,13)'] },
-  { id: 'porto-electronic', name: 'Porto Electronic Weekend', date: '2026-11-20', start: '23:00', venue: 'Alfândega do Porto', gradient: ['rgb(51,64,140)', 'rgb(13,13,46)'] },
+  {
+    id: 'jazz-no-parque-sabado',
+    name: 'Jazz no Parque',
+    date: '2026-10-18',
+    start: '19:00',
+    venue: 'Jardim do Palácio, Porto',
+    gradient: ['rgb(51,140,128)', 'rgb(13,46,51)'],
+  },
+  {
+    id: 'jazz-no-parque-domingo',
+    name: 'Jazz no Parque · Sessão de domingo',
+    date: '2026-10-25',
+    start: '18:00',
+    venue: 'Jardim do Palácio, Porto',
+    gradient: ['rgb(51,140,128)', 'rgb(13,46,51)'],
+  },
+  {
+    id: 'noite-fado',
+    name: 'Noite de Fado na Ribeira',
+    date: '2026-11-07',
+    start: '21:30',
+    venue: 'Cais da Ribeira, Porto',
+    gradient: ['rgb(140,90,51)', 'rgb(46,26,13)'],
+  },
+  {
+    id: 'porto-electronic',
+    name: 'Porto Electronic Weekend',
+    date: '2026-11-20',
+    start: '23:00',
+    venue: 'Alfândega do Porto',
+    gradient: ['rgb(51,64,140)', 'rgb(13,13,46)'],
+  },
 ]
 
 export const relations = ['Organizador', 'Promotor', 'Gestor do recinto', 'Outra'] as const
@@ -741,9 +870,28 @@ export const summaries: Record<string, EventSummary> = {
       { name: 'WC Norte', minutes: 12, peakAt: '00:30', tone: 'muted' },
     ],
     incidentList: [
-      { title: 'Fila longa na Porta C', category: 'queue', reports: 9, resolvedIn: 18, confidence: 'high' },
-      { title: 'Rampa da entrada Norte bloqueada', category: 'accessibility', reports: 3, resolvedIn: 42, confidence: 'medium' },
-      { title: 'Falta de água no bar principal', category: 'venue', icon: 'water', reports: 2, resolvedIn: 25, confidence: 'medium' },
+      {
+        title: 'Fila longa na Porta C',
+        category: 'queue',
+        reports: 9,
+        resolvedIn: 18,
+        confidence: 'high',
+      },
+      {
+        title: 'Rampa da entrada Norte bloqueada',
+        category: 'accessibility',
+        reports: 3,
+        resolvedIn: 42,
+        confidence: 'medium',
+      },
+      {
+        title: 'Falta de água no bar principal',
+        category: 'venue',
+        icon: 'water',
+        reports: 2,
+        resolvedIn: 25,
+        confidence: 'medium',
+      },
     ],
     alertList: [
       { title: 'Porta B fechada', sentAt: '22:41', resolvedAt: '23:05' },

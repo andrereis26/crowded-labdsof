@@ -86,24 +86,17 @@ export function VerificationsPage({
             Verificação de organizações
           </h2>
           <p className="text-sm text-ink-secondary">
-            Só organizações verificadas podem publicar informação oficial e
-            alertas.
+            Só organizações verificadas podem publicar informação oficial e alertas.
           </p>
         </div>
         <div className="flex gap-2.5" role="group" aria-label="Filtrar pedidos">
           <Chip selected={filter === 'open'} onClick={() => setFilter('open')}>
             Pendentes · {counts.open}
           </Chip>
-          <Chip
-            selected={filter === 'approved'}
-            onClick={() => setFilter('approved')}
-          >
+          <Chip selected={filter === 'approved'} onClick={() => setFilter('approved')}>
             Aprovadas
           </Chip>
-          <Chip
-            selected={filter === 'rejected'}
-            onClick={() => setFilter('rejected')}
-          >
+          <Chip selected={filter === 'rejected'} onClick={() => setFilter('rejected')}>
             Rejeitadas
           </Chip>
         </div>
@@ -119,9 +112,7 @@ export function VerificationsPage({
           className={`flex w-full flex-col gap-1.5 rounded-[14px] bg-surface p-2.5 lg:w-[380px] lg:shrink-0 ${selectedId ? 'max-lg:hidden' : ''}`}
         >
           {visible.length === 0 && (
-            <li className="p-3 text-sm text-ink-secondary">
-              Sem pedidos nesta lista.
-            </li>
+            <li className="p-3 text-sm text-ink-secondary">Sem pedidos nesta lista.</li>
           )}
           {visible.map((r) => (
             <li key={r.id}>
@@ -149,9 +140,7 @@ export function VerificationsPage({
                 {r.kind === 'management' && isOpen(r) ? (
                   <Tag tone="info">Gestão</Tag>
                 ) : (
-                  <Tag tone={statusTag[r.status].tone}>
-                    {statusTag[r.status].label}
-                  </Tag>
+                  <Tag tone={statusTag[r.status].tone}>{statusTag[r.status].label}</Tag>
                 )}
               </Link>
             </li>
@@ -214,9 +203,7 @@ function RequestDetail({
   ]
 
   return (
-    <div
-      className={`flex min-w-0 flex-1 flex-col gap-4 ${hiddenOnMobile ? 'max-lg:hidden' : ''}`}
-    >
+    <div className={`flex min-w-0 flex-1 flex-col gap-4 ${hiddenOnMobile ? 'max-lg:hidden' : ''}`}>
       <Link
         to="/verificacoes"
         className="-ml-1.5 flex items-center text-[17px] text-primary lg:hidden"
@@ -231,9 +218,7 @@ function RequestDetail({
           <div className="min-w-0 flex-1">
             <h2 className="text-lg leading-tight font-bold lg:text-xl">{r.organization}</h2>
             <p className="text-[13px] text-ink-secondary">
-              {r.kind === 'management'
-                ? `Pedido de gestão de “${r.event}” · `
-                : ''}
+              {r.kind === 'management' ? `Pedido de gestão de “${r.event}” · ` : ''}
               Submetido {submittedLabel(r.submittedAt, now)} por {r.submittedBy}
             </p>
           </div>
@@ -266,7 +251,11 @@ function RequestDetail({
                 {c.passed ? (
                   <CircleCheck size={20} className="shrink-0 text-success" aria-label="Passou" />
                 ) : (
-                  <TriangleAlert size={20} className="shrink-0 text-warning" aria-label="A confirmar" />
+                  <TriangleAlert
+                    size={20}
+                    className="shrink-0 text-warning"
+                    aria-label="A confirmar"
+                  />
                 )}
                 {c.label}
               </li>
@@ -281,9 +270,7 @@ function RequestDetail({
           >
             <FileText size={22} className="shrink-0 text-danger" aria-hidden />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold">
-                {r.document.name}
-              </span>
+              <span className="block truncate text-sm font-semibold">{r.document.name}</span>
               <span className="block text-xs text-ink-secondary">
                 {r.document.size} · {r.document.pages} páginas
               </span>
@@ -297,8 +284,7 @@ function RequestDetail({
       {isOpen(r) ? (
         <Panel title="Decisão" className="gap-3">
           <label htmlFor={noteId} className="text-[13px] font-medium">
-            Nota para a organização (obrigatória se pedires mais informação ou
-            rejeitares)
+            Nota para a organização (obrigatória se pedires mais informação ou rejeitares)
           </label>
           <textarea
             id={noteId}

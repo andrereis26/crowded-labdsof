@@ -44,9 +44,7 @@ describe('A1 verification queue', () => {
     const list = screen.getByRole('list', { name: 'Pedidos' })
     expect(within(list).getAllByRole('listitem')).toHaveLength(3)
     expect(within(list).getByText('Pedido de gestão · A Tempestade')).toBeInTheDocument()
-    expect(
-      screen.getByText('Submetido hoje às 10:42 por Miguel Sousa'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Submetido hoje às 10:42 por Miguel Sousa')).toBeInTheDocument()
     expect(screen.getByText('500 •••• 123')).toBeInTheDocument()
   })
 
@@ -56,15 +54,11 @@ describe('A1 verification queue', () => {
 
     await user.click(screen.getByRole('button', { name: 'Aprovar' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Organização Margens aprovada.',
-    )
+    expect(screen.getByRole('status')).toHaveTextContent('Organização Margens aprovada.')
     expect(screen.getByRole('button', { name: 'Pendentes · 2' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Aprovadas' }))
     expect(
-      within(screen.getByRole('list', { name: 'Pedidos' })).getByText(
-        'Organização Margens',
-      ),
+      within(screen.getByRole('list', { name: 'Pedidos' })).getByText('Organização Margens'),
     ).toBeInTheDocument()
   })
 
@@ -80,9 +74,7 @@ describe('A1 verification queue', () => {
       'O documento não corresponde à associação.',
     )
     await user.click(screen.getByRole('button', { name: 'Rejeitar' }))
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Associação Cultural do Bonfim rejeitada.',
-    )
+    expect(screen.getByRole('status')).toHaveTextContent('Associação Cultural do Bonfim rejeitada.')
   })
 
   it('shows a placeholder for sections not built yet', () => {

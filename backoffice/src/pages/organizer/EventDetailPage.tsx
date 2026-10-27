@@ -134,7 +134,11 @@ export function EventDetailPage({
           <Detail
             icon={Clock}
             label="Horário"
-            value={[event.doors && `Portas ${event.doors}`, event.start && `Início ${event.start}`, event.end && `Fim ${event.end}`]
+            value={[
+              event.doors && `Portas ${event.doors}`,
+              event.start && `Início ${event.start}`,
+              event.end && `Fim ${event.end}`,
+            ]
               .filter(Boolean)
               .join(' · ')}
           />
@@ -142,24 +146,48 @@ export function EventDetailPage({
         </dl>
         <div className="flex flex-wrap gap-2.5 pt-1">
           {event.status === 'live' && (
-            <ButtonLink to="/organizacao/ao-vivo" variant="secondary" size="sm" icon={ChartNoAxesColumn}>
+            <ButtonLink
+              to="/organizacao/ao-vivo"
+              variant="secondary"
+              size="sm"
+              icon={ChartNoAxesColumn}
+            >
               Ver ao vivo
             </ButtonLink>
           )}
           {event.status === 'ended' && (
-            <ButtonLink to={`/organizacao/eventos/${event.id}/resumo`} variant="secondary" size="sm">
+            <ButtonLink
+              to={`/organizacao/eventos/${event.id}/resumo`}
+              variant="secondary"
+              size="sm"
+            >
               Resumo pós-evento
             </ButtonLink>
           )}
         </div>
       </Panel>
 
-      {changing && <ChangeEventDialog event={event} now={now} onClose={() => setChanging(false)} onApply={applied} />}
+      {changing && (
+        <ChangeEventDialog
+          event={event}
+          now={now}
+          onClose={() => setChanging(false)}
+          onApply={applied}
+        />
+      )}
     </div>
   )
 }
 
-function Detail({ icon: Icon, label, value }: { icon: typeof Calendar; label: string; value: string }) {
+function Detail({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Calendar
+  label: string
+  value: string
+}) {
   return (
     <div className="flex flex-col gap-1 rounded-[10px] bg-background px-3 py-2.5">
       <dt className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.44px] text-ink-secondary uppercase">
@@ -222,21 +250,49 @@ function ChangeEventDialog({
           <span className="text-[15px] font-semibold">{event.name}</span>
           <span className="text-xs text-ink-secondary">{eventDateLabel(event, now)}</span>
         </div>
-        <SegmentedControl label="Tipo de alteração" options={kinds} value={kind} onChange={setKind} />
+        <SegmentedControl
+          label="Tipo de alteração"
+          options={kinds}
+          value={kind}
+          onChange={setKind}
+        />
 
         {kind === 'postpone' && (
           <div className="grid grid-cols-2 gap-3.5">
             <Field label="Nova data" error={errors.date}>
-              {(p) => <TextInput {...p} type="date" icon={Calendar} value={date} onChange={(e) => setDate(e.target.value)} />}
+              {(p) => (
+                <TextInput
+                  {...p}
+                  type="date"
+                  icon={Calendar}
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              )}
             </Field>
             <Field label="Nova hora">
-              {(p) => <TextInput {...p} type="time" icon={Clock} value={start} onChange={(e) => setStart(e.target.value)} />}
+              {(p) => (
+                <TextInput
+                  {...p}
+                  type="time"
+                  icon={Clock}
+                  value={start}
+                  onChange={(e) => setStart(e.target.value)}
+                />
+              )}
             </Field>
           </div>
         )}
         {kind === 'venue' && (
           <Field label="Novo local" error={errors.venue} help={`Local atual: ${event.venue}`}>
-            {(p) => <TextInput {...p} icon={MapPin} value={venue} onChange={(e) => setVenue(e.target.value)} />}
+            {(p) => (
+              <TextInput
+                {...p}
+                icon={MapPin}
+                value={venue}
+                onChange={(e) => setVenue(e.target.value)}
+              />
+            )}
           </Field>
         )}
         {kind === 'cancel' && (
@@ -274,7 +330,12 @@ function ChangeEventDialog({
           <Button variant="secondary" size="lg" onClick={onClose} className="max-sm:hidden">
             Voltar
           </Button>
-          <Button type="submit" size="lg" icon={Send} variant={kind === 'cancel' ? 'danger' : 'primary'}>
+          <Button
+            type="submit"
+            size="lg"
+            icon={Send}
+            variant={kind === 'cancel' ? 'danger' : 'primary'}
+          >
             {submitLabel[kind]}
           </Button>
         </div>

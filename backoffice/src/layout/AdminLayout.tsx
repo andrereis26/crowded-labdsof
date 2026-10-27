@@ -1,10 +1,4 @@
-import {
-  Building2,
-  History,
-  Link as LinkIcon,
-  Settings,
-  ShieldCheck,
-} from 'lucide-react'
+import { Building2, History, Link as LinkIcon, Settings, ShieldCheck } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Avatar } from '../ui/components'
 import { Sidebar, TopBar, type NavItem } from './Shell'
@@ -52,9 +46,7 @@ export function AdminLayout({
             <Avatar initials="CR" size={30} className="bg-primary text-white" />
             <div className="min-w-0">
               <p className="text-xs font-semibold text-white">Administração</p>
-              <p className="text-[11px] font-medium text-sidebar-accent">
-                Plataforma Crowded
-              </p>
+              <p className="text-[11px] font-medium text-sidebar-accent">Plataforma Crowded</p>
             </div>
           </>
         }
@@ -64,9 +56,7 @@ export function AdminLayout({
         <h1 className="text-base font-semibold">{title}</h1>
       </TopBar>
 
-      <main className="mx-auto max-w-[1176px] px-4 py-4 lg:px-8 lg:py-9">
-        {children}
-      </main>
+      <main className="mx-auto max-w-[1176px] px-4 py-4 lg:px-8 lg:py-9">{children}</main>
     </div>
   )
 }

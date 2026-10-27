@@ -42,9 +42,7 @@ export function IncidentsPage({ incidents, now }: { incidents: Incident[]; now: 
 
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
-      <PageHeader
-        title="Incidentes"
-      />
+      <PageHeader title="Incidentes" />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-2 overflow-x-auto" role="group" aria-label="Filtrar incidentes">
@@ -77,8 +75,13 @@ export function IncidentsPage({ incidents, now }: { incidents: Incident[]; now: 
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-        <ul aria-label="Grupos de reportes" className="flex min-w-0 flex-1 flex-col gap-1.5 rounded-[14px] bg-surface p-2.5">
-          {visible.length === 0 && <li className="p-3 text-sm text-ink-secondary">Sem incidentes nesta lista.</li>}
+        <ul
+          aria-label="Grupos de reportes"
+          className="flex min-w-0 flex-1 flex-col gap-1.5 rounded-[14px] bg-surface p-2.5"
+        >
+          {visible.length === 0 && (
+            <li className="p-3 text-sm text-ink-secondary">Sem incidentes nesta lista.</li>
+          )}
           {visible.map((i) => {
             const isSelected = selected?.id === i.id
             const row = 'flex w-full items-center gap-3 rounded-xl border px-4 py-3.5 text-left'
@@ -90,12 +93,17 @@ export function IncidentsPage({ incidents, now }: { incidents: Incident[]; now: 
                   aria-pressed={isSelected}
                   onClick={() => setSelectedId(i.id)}
                   className={`${row} max-lg:hidden ${
-                    isSelected ? 'border-primary-border bg-primary-soft' : 'border-transparent hover:bg-background'
+                    isSelected
+                      ? 'border-primary-border bg-primary-soft'
+                      : 'border-transparent hover:bg-background'
                   }`}
                 >
                   <IncidentSummary incident={i} now={now} />
                 </button>
-                <Link to={`/organizacao/incidentes/${i.id}`} className={`${row} border-transparent lg:hidden`}>
+                <Link
+                  to={`/organizacao/incidentes/${i.id}`}
+                  className={`${row} border-transparent lg:hidden`}
+                >
                   <IncidentSummary incident={i} now={now} />
                 </Link>
               </li>

@@ -3,11 +3,7 @@
 
 export type RequestKind = 'registration' | 'management'
 
-export type VerificationStatus =
-  | 'pending'
-  | 'info-requested'
-  | 'approved'
-  | 'rejected'
+export type VerificationStatus = 'pending' | 'info-requested' | 'approved' | 'rejected'
 
 export type Decision = 'approve' | 'request-info' | 'reject'
 
@@ -194,7 +190,12 @@ export interface RegistrationForm {
 }
 
 const domain = (value: string) =>
-  value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split(/[/?#]/)[0]
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .split(/[/?#]/)[0]
 
 /** Checks an organization registration (O1) before it reaches A1. */
 export function validateRegistration(
@@ -203,9 +204,11 @@ export function validateRegistration(
   const errors: Partial<Record<keyof RegistrationForm, string>> = {}
   if (!form.organization.trim()) errors.organization = 'Escreve o nome da organização.'
   if (!/^\d{9}$/.test(form.nipc.replace(/\s/g, ''))) errors.nipc = 'O NIPC tem 9 algarismos.'
-  if (!/^[^\s.]+(\.[^\s.]+)+$/.test(domain(form.website))) errors.website = 'Indica o site da organização.'
+  if (!/^[^\s.]+(\.[^\s.]+)+$/.test(domain(form.website)))
+    errors.website = 'Indica o site da organização.'
   if (!form.responsible.trim()) errors.responsible = 'Indica quem é o responsável.'
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = 'Indica um email válido.'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+    errors.email = 'Indica um email válido.'
   if (!form.document) errors.document = 'Carrega um comprovativo da organização.'
   if (!form.confirmed) errors.confirmed = 'Confirma que representas esta organização.'
   return errors
@@ -227,7 +230,10 @@ export function registrationRequest(form: RegistrationForm, now: Date): Verifica
       { label: 'Formato do NIPC válido', passed: /^\d{9}$/.test(nipc) },
       {
         label: 'Domínio do email igual ao do site',
-        passed: form.email.trim().toLowerCase().endsWith(`@${domain(form.website)}`),
+        passed: form.email
+          .trim()
+          .toLowerCase()
+          .endsWith(`@${domain(form.website)}`),
       },
       { label: 'Documento carregado', passed: !!form.document },
     ],

@@ -37,4 +37,3 @@ export const crowdLevels: Record<
   high: { label: 'Elevada', hint: 'Filas longas', color: 'bg-crowd-high', segments: 3 },
   full: { label: 'Lotado', hint: 'Entradas fechadas', color: 'bg-crowd-full', segments: 4 },
 }
-

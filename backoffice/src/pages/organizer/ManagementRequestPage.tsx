@@ -1,12 +1,7 @@
 import { ChevronLeft, CircleCheck, Clock, Info, RefreshCw, Search, Send } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import {
-  catalog,
-  eventDateLabel,
-  relations,
-  type CatalogEvent,
-} from '../../data/organizer'
+import { catalog, eventDateLabel, relations, type CatalogEvent } from '../../data/organizer'
 import {
   Breadcrumb,
   Button,
@@ -16,7 +11,15 @@ import {
   SuccessBanner,
   Tag,
 } from '../../ui/components'
-import { Field, FileInput, RadioDot, RadioOption, Select, TextArea, TextInput } from '../../ui/forms'
+import {
+  Field,
+  FileInput,
+  RadioDot,
+  RadioOption,
+  Select,
+  TextArea,
+  TextInput,
+} from '../../ui/forms'
 
 const steps = [
   { icon: Clock, text: 'Um administrador revê o pedido, normalmente em até 2 dias úteis.' },
@@ -24,7 +27,10 @@ const steps = [
     icon: RefreshCw,
     text: 'O evento continua sincronizado: datas e cancelamentos vêm sempre da bilheteira oficial.',
   },
-  { icon: CircleCheck, text: 'Depois de aprovado, podes publicar alertas, lotação, filas e pedidos.' },
+  {
+    icon: CircleCheck,
+    text: 'Depois de aprovado, podes publicar alertas, lotação, filas e pedidos.',
+  },
 ]
 
 /** O13 · Pedir gestão de evento sincronizado. */
@@ -33,7 +39,11 @@ export function ManagementRequestPage({
   onSubmit,
 }: {
   now: Date
-  onSubmit: (event: CatalogEvent, relation: string, document: { name: string; size: number }) => void
+  onSubmit: (
+    event: CatalogEvent,
+    relation: string,
+    document: { name: string; size: number },
+  ) => void
 }) {
   const [query, setQuery] = useState('Jazz no Parque')
   const [eventId, setEventId] = useState<string>('jazz-no-parque-sabado')
@@ -43,9 +53,7 @@ export function ManagementRequestPage({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [sent, setSent] = useState('')
 
-  const results = catalog.filter((e) =>
-    e.name.toLowerCase().includes(query.trim().toLowerCase()),
-  )
+  const results = catalog.filter((e) => e.name.toLowerCase().includes(query.trim().toLowerCase()))
   const chosen = catalog.find((e) => e.id === eventId)
 
   const submit = (e: FormEvent) => {
@@ -61,12 +69,17 @@ export function ManagementRequestPage({
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4 lg:gap-5">
-      <Link to="/organizacao/eventos" className="-ml-1.5 flex items-center text-[17px] text-primary lg:hidden">
+      <Link
+        to="/organizacao/eventos"
+        className="-ml-1.5 flex items-center text-[17px] text-primary lg:hidden"
+      >
         <ChevronLeft size={26} aria-hidden />
         Eventos
       </Link>
       <div className="max-lg:hidden">
-        <Breadcrumb items={[{ label: 'Eventos', to: '/organizacao/eventos' }, { label: 'Pedir gestão' }]} />
+        <Breadcrumb
+          items={[{ label: 'Eventos', to: '/organizacao/eventos' }, { label: 'Pedir gestão' }]}
+        />
       </div>
       <PageHeader
         title="Pedir gestão de um evento"
@@ -84,7 +97,11 @@ export function ManagementRequestPage({
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <Panel title="1. Encontra o evento" titleClassName="text-base" className="gap-3 max-sm:[&>div:first-child]:hidden">
+          <Panel
+            title="1. Encontra o evento"
+            titleClassName="text-base"
+            className="gap-3 max-sm:[&>div:first-child]:hidden"
+          >
             <Field label={<span className="sr-only">Procurar no catálogo</span>}>
               {(p) => (
                 <TextInput
@@ -97,9 +114,15 @@ export function ManagementRequestPage({
                 />
               )}
             </Field>
-            <div role="radiogroup" aria-label="Eventos encontrados" className="flex flex-col gap-2.5">
+            <div
+              role="radiogroup"
+              aria-label="Eventos encontrados"
+              className="flex flex-col gap-2.5"
+            >
               {results.length === 0 && (
-                <p className="text-sm text-ink-secondary">Nenhum evento sincronizado com esse nome.</p>
+                <p className="text-sm text-ink-secondary">
+                  Nenhum evento sincronizado com esse nome.
+                </p>
               )}
               {results.map((e) => (
                 <RadioOption
@@ -142,7 +165,12 @@ export function ManagementRequestPage({
           >
             <Field label="Relação">
               {(p) => (
-                <Select {...p} value={relation} onChange={(e) => setRelation(e.target.value)} options={relations} />
+                <Select
+                  {...p}
+                  value={relation}
+                  onChange={(e) => setRelation(e.target.value)}
+                  options={relations}
+                />
               )}
             </Field>
             <FileInput

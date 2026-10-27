@@ -48,7 +48,9 @@ export function Field({
       <div className="flex items-center gap-1">
         <label htmlFor={id} className="text-[13px] font-medium">
           {label}
-          {optional && <span className="ml-1.5 text-xs font-normal text-ink-secondary">(opcional)</span>}
+          {optional && (
+            <span className="ml-1.5 text-xs font-normal text-ink-secondary">(opcional)</span>
+          )}
         </label>
         {hint && <InfoTip id={helpId}>{hint}</InfoTip>}
       </div>
@@ -135,7 +137,10 @@ export function TextInput({
   )
 }
 
-export function TextArea({ className = '', ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function TextArea({
+  className = '',
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
       rows={2}
@@ -389,7 +394,11 @@ export function SegmentedControl<T extends string>({
 }) {
   const name = useId()
   return (
-    <div role="radiogroup" aria-label={label} className="flex gap-0.5 rounded-[10px] bg-segment-track p-[3px]">
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className="flex gap-0.5 rounded-[10px] bg-segment-track p-[3px]"
+    >
       {options.map((o) => (
         <label
           key={o.value}

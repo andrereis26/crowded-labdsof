@@ -51,7 +51,11 @@ export function OrganizerApp({
 }: {
   now: Date
   /** Sends a management request to the administrators' queue (A1). */
-  onManagementRequest: (event: CatalogEvent, relation: string, document: { name: string; size: number }) => void
+  onManagementRequest: (
+    event: CatalogEvent,
+    relation: string,
+    document: { name: string; size: number },
+  ) => void
 }) {
   const [events, setEvents] = useState<OrgEvent[]>(demoEvents)
   const [live, setLive] = useState<Record<string, LiveState>>(() => demoLive(now))
@@ -67,7 +71,9 @@ export function OrganizerApp({
   const eventMatch = useMatch('/organizacao/eventos/:id/*')
   const routeEventId = eventMatch?.params.id
   const isEvent = (id?: string): id is string => !!id && events.some((e) => e.id === id)
-  const [currentId, setCurrentId] = useState(isEvent(routeEventId) ? routeEventId : 'festival-margens-2026')
+  const [currentId, setCurrentId] = useState(
+    isEvent(routeEventId) ? routeEventId : 'festival-margens-2026',
+  )
   const [seenRouteId, setSeenRouteId] = useState(routeEventId)
   if (routeEventId !== seenRouteId) {
     setSeenRouteId(routeEventId)
@@ -83,7 +89,12 @@ export function OrganizerApp({
   const scope: OrganizerScope =
     path.startsWith('/organizacao/eventos') && !onEventPage
       ? { kind: 'organization', title: 'Eventos' }
-      : { kind: 'event', title: onEventPage ? current.name : (titles.find(([p]) => path.startsWith(p))?.[1] ?? 'Crowded') }
+      : {
+          kind: 'event',
+          title: onEventPage
+            ? current.name
+            : (titles.find(([p]) => path.startsWith(p))?.[1] ?? 'Crowded'),
+        }
   const focused =
     path === '/organizacao/eventos/novo' ||
     path.endsWith('/editar') ||
@@ -97,7 +108,9 @@ export function OrganizerApp({
 
   const saveEvent = (event: OrgEvent) =>
     setEvents((all) =>
-      all.some((e) => e.id === event.id) ? all.map((e) => (e.id === event.id ? event : e)) : [event, ...all],
+      all.some((e) => e.id === event.id)
+        ? all.map((e) => (e.id === event.id ? event : e))
+        : [event, ...all],
     )
 
   const updateIncident = (updated: Incident) =>
@@ -116,10 +129,7 @@ export function OrganizerApp({
       <Routes>
         <Route index element={<Navigate to="eventos" replace />} />
         <Route path="eventos" element={<EventsPage events={events} alerts={alerts} now={now} />} />
-        <Route
-          path="eventos/novo"
-          element={<EventFormPage events={events} onSave={saveEvent} />}
-        />
+        <Route path="eventos/novo" element={<EventFormPage events={events} onSave={saveEvent} />} />
         <Route
           path="eventos/pedir-gestao"
           element={<ManagementRequestPage now={now} onSubmit={onManagementRequest} />}
@@ -136,7 +146,12 @@ export function OrganizerApp({
         <Route
           path="ao-vivo"
           element={
-            <LivePage event={current} live={live[current.id]} incidents={eventIncidents} now={now} />
+            <LivePage
+              event={current}
+              live={live[current.id]}
+              incidents={eventIncidents}
+              now={now}
+            />
           }
         />
         <Route
@@ -150,10 +165,7 @@ export function OrganizerApp({
             />
           }
         />
-        <Route
-          path="incidentes"
-          element={<IncidentsPage incidents={eventIncidents} now={now} />}
-        />
+        <Route path="incidentes" element={<IncidentsPage incidents={eventIncidents} now={now} />} />
         <Route
           path="incidentes/:id"
           element={<IncidentDetailPage incidents={incidents} now={now} onChange={updateIncident} />}

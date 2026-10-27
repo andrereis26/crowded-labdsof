@@ -16,7 +16,9 @@ export interface NavItem {
 export function Logo({ dark = false }: { dark?: boolean }) {
   return (
     <div className="flex items-center gap-2">
-      <span className={`inline-flex rounded-lg p-1.5 ${dark ? 'bg-ink text-white' : 'bg-white text-ink'}`}>
+      <span
+        className={`inline-flex rounded-lg p-1.5 ${dark ? 'bg-ink text-white' : 'bg-white text-ink'}`}
+      >
         <Users size={18} aria-hidden />
       </span>
       <span className={`text-lg font-bold tracking-[-0.36px] ${dark ? 'text-ink' : 'text-white'}`}>
@@ -98,7 +100,11 @@ export function TopBar({ children, actions }: { children: ReactNode; actions?: R
       {children}
       <span className="flex-1" />
       {actions}
-      <button type="button" aria-label="Notificações" className="rounded-[10px] p-2 hover:bg-background">
+      <button
+        type="button"
+        aria-label="Notificações"
+        className="rounded-[10px] p-2 hover:bg-background"
+      >
         <Bell size={20} aria-hidden />
       </button>
     </header>

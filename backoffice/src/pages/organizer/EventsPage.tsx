@@ -60,7 +60,12 @@ export function EventsPage({
             >
               Pedir gestão de evento
             </ButtonLink>
-            <ButtonLink to="/organizacao/eventos/novo" size="lg" icon={Plus} className="max-sm:hidden">
+            <ButtonLink
+              to="/organizacao/eventos/novo"
+              size="lg"
+              icon={Plus}
+              className="max-sm:hidden"
+            >
               Criar evento
             </ButtonLink>
             <Link
@@ -80,7 +85,11 @@ export function EventsPage({
           iconClassName="text-success"
           label="A decorrer agora"
           value={liveEvents.length}
-          note={<span className="max-lg:hidden">{liveEvents.map((e) => e.name).join(' · ') || '—'}</span>}
+          note={
+            <span className="max-lg:hidden">
+              {liveEvents.map((e) => e.name).join(' · ') || '—'}
+            </span>
+          }
         />
         <StatCard
           icon={Calendar}
@@ -144,7 +153,9 @@ export function EventsPage({
                       {tag.label}
                     </Tag>
                   </td>
-                  <td className="py-3.5">{e.status === 'ended' ? '—' : formatNumber(connected(e))}</td>
+                  <td className="py-3.5">
+                    {e.status === 'ended' ? '—' : formatNumber(connected(e))}
+                  </td>
                   <td className="py-3.5">
                     {e.source === 'ticketing' ? 'Bilheteira · sincronizado' : 'Criado no Crowded'}
                   </td>
@@ -167,7 +178,12 @@ export function EventsPage({
                 to={linkTo(e)}
                 className="flex items-center gap-3 rounded-[14px] bg-surface p-2.5 pr-3.5"
               >
-                <EventThumb image={e.image} gradient={e.gradient} size={56} rounded="rounded-[10px]" />
+                <EventThumb
+                  image={e.image}
+                  gradient={e.gradient}
+                  size={56}
+                  rounded="rounded-[10px]"
+                />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-semibold">{e.name}</span>
                   <span className="block text-xs text-ink-secondary">{eventDateLabel(e, now)}</span>
@@ -190,7 +206,12 @@ export function EventsPage({
         title="O teu evento já está no catálogo?"
         className="max-lg:hidden"
         action={
-          <ButtonLink to="/organizacao/eventos/pedir-gestao" variant="secondary" size="sm" icon={LinkIcon}>
+          <ButtonLink
+            to="/organizacao/eventos/pedir-gestao"
+            variant="secondary"
+            size="sm"
+            icon={LinkIcon}
+          >
             Pedir gestão
           </ButtonLink>
         }
