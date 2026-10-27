@@ -2,14 +2,20 @@
 
 ## Agent playbook
 
-- Base branch: `main`. Work happens on `<type>/<slug>` branches (`feature/`, `fix/`,
-  `docs/`, `ci/`) and goes into `main` by pull request using
+- Base branch: `main`. Work goes into `main` by pull request using
   `.github/pull_request_template.md`. There are no release branches.
+- Branch names: a user story uses `feature/us-<issue number>`, e.g. `feature/us-98`
+  for issue #98. Other work uses `<type>/<slug>` (`fix/`, `docs/`, `ci/`). Name the
+  branch before pushing: renaming a pushed branch on GitHub closes the pull requests
+  opened from it. Worktree branches created as `claude/...` must be renamed first.
+- When in doubt, ask André (Scrum Master and Product Owner) instead of guessing:
+  tools, versions, names, conventions and any decision that the issue, the docs and
+  the ADRs do not settle. Ask before implementing, and list what you decided.
 - Gates, narrowest first (run only for the app you changed):
-  - Backend services (`core/`, `jobs/`, `notifications/`), from the service folder:
-    `./gradlew spotlessCheck`, `./gradlew lint` (`-Xlint:all -Werror`), then
-    `./gradlew build` (unit tests plus `spotlessCheck`). Format with
-    `./gradlew spotlessApply`.
+  - Backend services (`core/`, `jobs/`, `notifications/`), from the service folder
+    with `JAVA_HOME` set to a JDK 25: `./mvnw spotless:check`, `./mvnw test-compile`
+    (lint: `-Xlint:all`, warnings fail), then `./mvnw verify` (unit tests plus
+    `spotless:check`). Format with `./mvnw spotless:apply`.
   - Backoffice unit tests: `npm --prefix backoffice test` (Vitest).
   - Backoffice format, lint and build: `npm --prefix backoffice run format:check`,
     `npm --prefix backoffice run lint`, then `npm --prefix backoffice run build`
@@ -42,10 +48,10 @@
 - Pitfalls:
   - The backoffice and the backend services have no CI workflow yet (#69); only the
     Security workflow touches them. Run their gates locally before opening a PR.
-  - The backend compiles with Java 25 and runs Gradle on a JDK 25 daemon
-    (`gradle/gradle-daemon-jvm.properties`), downloading it when missing:
-    google-java-format 1.36.1 needs JVM 21 or later. The services do not start
-    without PostgreSQL, RabbitMQ and Redis until the walking skeleton (#11).
+  - Stack: Java 25, the latest stable Spring Boot (4.1.2) and Maven (ADR 0006).
+    Maven must run on JDK 25 (`JAVA_HOME`); the enforcer plugin stops the build
+    otherwise, and google-java-format 1.36.1 needs JVM 21 or later. The services do
+    not start without PostgreSQL, RabbitMQ and Redis until the walking skeleton (#11).
   - `participant-gallery` serves a stale build unless you rebuild the web app.
   - PRs that change the UI need mobile and desktop screenshots (PR template). UI copy
     is in European Portuguese (`participant-app/README.md`).

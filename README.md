@@ -30,6 +30,17 @@ Crowded keeps people informed when something changes or goes wrong at the events
 - [API Outline](/docs/deliverables/api-outline.md)
 - [Asynchronous Flows](/docs/deliverables/asynchronous-flows.md)
 
+## Tech Stack
+
+| Part | Technology |
+|---|---|
+| Backend services (`core/`, `jobs/`, `notifications/`) | Java 25 (JDK 25), latest stable Spring Boot (4.1.2), Maven |
+| Data and messaging | PostgreSQL, RabbitMQ, Redis |
+| Participant app (`participant-app/`) | Flutter |
+| Backoffice (`backoffice/`) | React, Vite and Tailwind CSS |
+
+The reasons are in [ADR 0006](/docs/deliverables/adr/0006-technology-stack.md) and the other [Architecture Decision Records](/docs/deliverables/adr/).
+
 ## Domain Model
 
 ![Crowded — Domain Model](/docs/deliverables/diagrams/domain-model.svg)
@@ -71,7 +82,7 @@ The repository has one set of Git hooks for all projects, configured in [`leftho
 
 1. Install [Lefthook](https://lefthook.dev/installation/) 2.x, for example `npm install -g lefthook`, `brew install lefthook` or `winget install evilmartians.lefthook`.
 2. Install [gitleaks 8.30.1](https://github.com/gitleaks/gitleaks#installing), or have Docker running: [`scripts/gitleaks.sh`](/scripts/gitleaks.sh) uses the `zricethezav/gitleaks:v8.30.1` image, the one the Security workflow uses, when gitleaks 8.30.1 is not installed.
-3. Install each project's own tools (JDK 17 or later for Gradle, Node.js, Flutter) and dependencies (`npm install` in `backoffice/`, `flutter pub get` in `participant-app/`).
+3. Install each project's own tools (JDK 25 as `JAVA_HOME` for the backend, Node.js, Flutter) and dependencies (`npm install` in `backoffice/`, `flutter pub get` in `participant-app/`).
 4. Run `lefthook install` at the repository root.
 
 | Hook | What it does |
@@ -87,11 +98,11 @@ Run them from the project's folder. The format check fails and names the unforma
 
 | Project | Format | Format check | Lint | Tests |
 |---|---|---|---|---|
-| `core/`, `jobs/`, `notifications/` | `./gradlew spotlessApply` | `./gradlew spotlessCheck` | `./gradlew lint` | `./gradlew test` |
+| `core/`, `jobs/`, `notifications/` | `./mvnw spotless:apply` | `./mvnw spotless:check` | `./mvnw test-compile` | `./mvnw test` |
 | `backoffice/` | `npm run format` | `npm run format:check` | `npm run lint` | `npm test` |
 | `participant-app/` | `dart format lib test` | `dart format --output=none --set-exit-if-changed lib test` | `flutter analyze --fatal-infos` | `flutter test` |
 
-- Backend: Spotless with google-java-format, and the compiler with `-Xlint:all -Werror` as lint. `./gradlew build` runs the tests and `spotlessCheck` together.
+- Backend: Spotless with google-java-format, and the compiler with `-Xlint:all` and `failOnWarning` as lint, so any warning fails. `./mvnw verify` runs the tests and `spotless:check` together. Maven must run on JDK 25 (`JAVA_HOME`).
 - Backoffice: Prettier and oxlint (`.oxlintrc.json`).
 - Participant app: `dart format` and `flutter analyze` (`analysis_options.yaml`).
 - Secret scan of the whole history, as the Security workflow does it: `scripts/gitleaks.sh git --redact --verbose` from the repository root.
