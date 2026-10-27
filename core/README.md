@@ -8,21 +8,21 @@ Core service of Crowded ([Technical Design](../docs/deliverables/technical-desig
 
 ## Stack
 
-Same for `core/`, `jobs/` and `notifications/`:
+Same for `core/`, `jobs/` and `notifications/` ([ADR 0006](../docs/deliverables/adr/0006-technology-stack.md)):
 
-- Java 25 (LTS) and Spring Boot 4.1.2, built with Gradle 9.8.2 (Kotlin DSL) through the committed wrapper (`./gradlew`).
-- Gradle needs a JDK 17 or later to start. It downloads JDK 25 itself (into `~/.gradle/jdks`) if it is not installed, for compiling and for running the build (`gradle/gradle-daemon-jvm.properties`).
-- Base package: `pt.ipp.isep.crowded.core`.
-- Formatting: Spotless with google-java-format. Lint: the compiler with `-Xlint:all -Werror`, so any warning fails the build.
+- Java 25 (JDK 25, LTS) and Spring Boot 4.1.2, the latest stable release when the project was created.
+- Maven 3.10.0 through the committed wrapper (`./mvnw`, or `mvnw.cmd` on Windows). Maven must run on JDK 25: set `JAVA_HOME` to a JDK 25 installation, or the build stops with a message saying so.
+- groupId `com.crowded`, base package `com.crowded.core`.
+- Formatting: Spotless with google-java-format. Lint: the compiler with `-Xlint:all` and `failOnWarning`, so any warning fails the build.
 
 ## Commands
 
 ```bash
-./gradlew build           # compile, unit tests and spotlessCheck
-./gradlew test            # unit tests only
-./gradlew spotlessApply   # format the code
-./gradlew spotlessCheck   # fail on unformatted files, naming them
-./gradlew lint            # compile main and test code; warnings fail
+./mvnw verify             # compile, unit tests and spotless:check
+./mvnw test               # unit tests only
+./mvnw spotless:apply     # format the code
+./mvnw spotless:check     # fail on unformatted files, naming them
+./mvnw test-compile       # lint: compile main and test code; warnings fail
 ```
 
 The application does not start yet without PostgreSQL, RabbitMQ and Redis; running it against them comes with the walking skeleton (#11).
