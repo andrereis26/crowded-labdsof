@@ -10,6 +10,7 @@ Needs Node.js 20.19 or later.
 npm install
 npm run dev
 npm test
+npm run format:check
 npm run lint
 npm run build
 ```
