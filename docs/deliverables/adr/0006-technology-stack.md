@@ -1,7 +1,7 @@
 # ADR 0006: Technology stack
 
 - Status: accepted
-- Date: 2026-10-11 (versions and build tool added 2026-10-27, #98)
+- Date: 2026-10-11
 - Deciders: Crowded team
 
 ## Context
