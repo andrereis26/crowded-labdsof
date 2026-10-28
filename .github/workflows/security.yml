@@ -1,11 +1,12 @@
 # Repository-wide security checks: committed secrets (SR-008) and known
 # vulnerabilities or misconfigurations in dependencies and Dockerfiles.
+# Pull requests and a weekly run, not pushes to main: a merged branch was
+# scanned as a pull request, and the release on main scans its images
+# (ADR 0011).
 name: Security
 
 on:
   pull_request:
-  push:
-    branches: [main]
   schedule:
     # Mondays at 06:00 UTC, to catch new vulnerabilities in unchanged code.
     - cron: "0 6 * * 1"

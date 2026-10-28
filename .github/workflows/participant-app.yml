@@ -1,7 +1,9 @@
-# CI for the Flutter participant app: formatting, static analysis, tests
-# with a coverage threshold, then the image (web build, scan, smoke test),
-# pushed to Docker Hub on main (ADR 0011). "Participant app result" is the
-# required check.
+# CI for the Flutter participant app (ADR 0011). Pull requests: formatting,
+# static analysis and tests with a coverage threshold, then the image (web
+# build, scan, smoke test). Pushes to main are the release: the checks are
+# skipped, because the ruleset only merges branches that are up to date and
+# green, and only the image runs, pushed to Docker Hub. "Participant app
+# result" is the required check.
 name: Participant app
 
 on:
@@ -42,7 +44,8 @@ jobs:
   analyze-and-test:
     name: Analyze and test
     needs: changes
-    if: needs.changes.outputs.app == 'true'
+    # The release on main skips the checks the pull request already passed.
+    if: github.event_name != 'push' && needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -85,7 +88,8 @@ jobs:
   image:
     name: Image
     needs: [changes, analyze-and-test]
-    if: needs.changes.outputs.app == 'true'
+    # Runs after the checks pass, or without them on main, where they are skipped.
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && needs.changes.outputs.app == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

@@ -1,6 +1,9 @@
-# CI for the React backoffice, in the order of ADR 0011: Lint first; then unit
-# tests and the build in parallel; then the image, pushed to Docker Hub on
-# main. "Backoffice result" is the required check.
+# CI for the React backoffice, in the order of ADR 0011. Pull requests: Lint
+# first; then unit tests and the build in parallel; then the image (build,
+# scan, smoke test). Pushes to main are the release: the checks are skipped,
+# because the ruleset only merges branches that are up to date and green, and
+# only the image runs, pushed to Docker Hub. "Backoffice result" is the
+# required check.
 name: Backoffice
 
 on:
@@ -38,7 +41,8 @@ jobs:
   lint:
     name: Lint
     needs: changes
-    if: needs.changes.outputs.app == 'true'
+    # The release on main skips the checks the pull request already passed.
+    if: github.event_name != 'push' && needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -104,7 +108,9 @@ jobs:
 
   image:
     name: Image
-    needs: [changes, unit-tests, build]
+    needs: [changes, lint, unit-tests, build]
+    # Runs after the checks pass, or without them on main, where they are skipped.
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && needs.changes.outputs.app == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
