@@ -1,0 +1,115 @@
+# Dependabot pull requests merge themselves once CI is green (ADR 0011).
+# Pull requests opened by Dependabot are approved and get auto-merge (rebase)
+# from the crowded-bot GitHub App, whose merges, unlike those of GITHUB_TOKEN,
+# start the workflows on main. The ruleset only merges branches that are up
+# to date, and Dependabot rebases on its own only on conflicts, so after
+# every push to main the oldest pull request that fell behind is asked to
+# rebase. When Dependabot does not answer, the collaborators are tagged.
+#
+# The app's client ID and private key are the secrets CROWDED_BOT_CLIENT_ID
+# and CROWDED_BOT_PRIVATE_KEY, in both the Actions and the Dependabot secret
+# stores: runs that Dependabot starts only see the Dependabot ones.
+name: Dependabot
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  auto-merge:
+    name: Approve and auto-merge
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.CROWDED_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.CROWDED_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      # Every update merges, majors included: the required checks are the
+      # gate. The approval is the one the ruleset requires.
+      - env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          if [ "$(gh pr view "$PR_URL" --json reviewDecision --jq .reviewDecision)" != APPROVED ]; then
+            gh pr review "$PR_URL" --approve --body "Dependency update: merges itself once the required checks pass."
+          fi
+          gh pr merge "$PR_URL" --auto --rebase
+
+  rebase:
+    name: Ask Dependabot to rebase
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # A newer push to main makes this run's choice outdated.
+    concurrency:
+      group: dependabot-rebase
+      cancel-in-progress: true
+    env:
+      # Collaborators who are not tagged when Dependabot does not rebase.
+      NOT_TAGGED: PauloGandraSousa
+      WAIT_SECONDS: 300
+    steps:
+      - id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.CROWDED_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.CROWDED_BOT_PRIVATE_KEY }}
+          permission-contents: read
+          permission-pull-requests: write
+      - env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          # One pull request at a time: every merge puts the others behind
+          # again, and each rebase costs a CI run. Its merge pushes to main and
+          # starts this job for the next one. Pull requests whose checks failed
+          # are left to a person; conflicts are rebased by Dependabot itself.
+          pr=""
+          while read -r number head; do
+            behind=$(gh api "repos/$REPO/compare/$GITHUB_SHA...$head" --jq .behind_by)
+            failed=$(gh pr view "$number" --repo "$REPO" --json statusCheckRollup \
+              --jq '[.statusCheckRollup[] | select(.conclusion == "FAILURE")] | length')
+            if [ "$behind" -gt 0 ] && [ "$failed" -eq 0 ]; then
+              pr=$number
+              break
+            fi
+          done < <(gh pr list --repo "$REPO" --author app/dependabot --state open --limit 100 \
+            --json number,headRefOid,createdAt,autoMergeRequest \
+            --jq 'map(select(.autoMergeRequest != null)) | sort_by(.createdAt) | .[] | "\(.number) \(.headRefOid)"')
+          if [ -z "$pr" ]; then
+            echo "No Dependabot pull request is behind main."
+            exit 0
+          fi
+
+          head=$(gh pr view "$pr" --repo "$REPO" --json headRefOid --jq .headRefOid)
+          echo "Asking Dependabot to rebase #$pr ($head)."
+          gh pr comment "$pr" --repo "$REPO" --body "@dependabot rebase"
+
+          for _ in $(seq $((WAIT_SECONDS / 30))); do
+            sleep 30
+            if [ "$(gh pr view "$pr" --repo "$REPO" --json headRefOid --jq .headRefOid)" != "$head" ]; then
+              echo "Dependabot rebased #$pr."
+              exit 0
+            fi
+          done
+
+          # One comment per head commit, so later pushes to main do not repeat it.
+          marker="<!-- crowded-rebase-help:$head -->"
+          if gh pr view "$pr" --repo "$REPO" --json comments --jq '.comments[].body' | grep -qF "$marker"; then
+            echo "The collaborators were already asked to rebase #$pr."
+            exit 0
+          fi
+          mentions=$(gh api "repos/$REPO/collaborators" --paginate --jq '.[] | select(.type == "User") | .login' \
+            | grep -vxF -f <(tr ' ' '\n' <<< "$NOT_TAGGED") | sed 's/^/@/' | paste -sd ' ' -)
+          gh pr comment "$pr" --repo "$REPO" --body "$marker
+          $mentions Dependabot did not rebase this pull request within $((WAIT_SECONDS / 60)) minutes of being asked, so it is behind main and auto-merge cannot merge it. Please comment \`@dependabot rebase\` or rebase it with *Update branch*."
+          echo "Asked the collaborators to rebase #$pr."
