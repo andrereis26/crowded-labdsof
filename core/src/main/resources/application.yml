@@ -29,3 +29,11 @@ crowded:
   jwt:
     # Private key Core signs tokens with. Only Core gets it.
     private-key-location: ${JWT_PRIVATE_KEY_LOCATION}
+
+management:
+  endpoint:
+    health:
+      # /actuator/health/liveness and /readiness: the container health check
+      # calls readiness (ADR 0011). #70 adds the dependencies' details.
+      probes:
+        enabled: true

@@ -1,0 +1,61 @@
+package com.crowded.jobs;
+
+import static org.junit.jupiter.api.parallel.ResourceAccessMode.READ;
+
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.lifecycle.Startables;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.rabbitmq.RabbitMQContainer;
+
+/**
+ * Base class of every integration test (ADR 0011). All of them share one set of containers, started
+ * once per test run, and one Spring context:
+ *
+ * <ul>
+ *   <li>Do not add {@code @MockitoBean}, {@code @TestPropertySource} or {@code @DirtiesContext} to
+ *       a subclass: each one starts another context.
+ *   <li>Tests run in parallel. A test that only reads the shared state inherits the {@link
+ *       #SHARED_STATE} read lock and runs alongside the other readers.
+ *   <li>A test that changes the shared state (database, broker or cache) declares
+ *       {@code @ResourceLock(SHARED_STATE)}, so it runs alone. It creates its own data with unique
+ *       ids and never assumes an empty table.
+ * </ul>
+ */
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@ResourceLock(value = IntegrationTest.SHARED_STATE, mode = READ)
+public abstract class IntegrationTest {
+
+  /** Lock on the database, the broker and the cache that every integration test shares. */
+  public static final String SHARED_STATE = "shared-state";
+
+  // Same versions as deployment/docker-compose.swarm.yml.
+  private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:18-alpine");
+  private static final RabbitMQContainer RABBITMQ = new RabbitMQContainer("rabbitmq:4.1-alpine");
+  private static final GenericContainer<?> REDIS =
+      new GenericContainer<>("redis:8.2-alpine").withExposedPorts(6379);
+  private static final TestJwtKeys JWT_KEYS = TestJwtKeys.generate();
+
+  static {
+    // Stopped by Testcontainers when the test JVM exits.
+    Startables.deepStart(POSTGRES, RABBITMQ, REDIS).join();
+  }
+
+  @DynamicPropertySource
+  static void connectToContainers(DynamicPropertyRegistry registry) {
+    registry.add("DB_URL", POSTGRES::getJdbcUrl);
+    registry.add("DB_USERNAME", POSTGRES::getUsername);
+    registry.add("DB_PASSWORD", POSTGRES::getPassword);
+    registry.add("RABBITMQ_HOST", RABBITMQ::getHost);
+    registry.add("RABBITMQ_PORT", RABBITMQ::getAmqpPort);
+    registry.add("RABBITMQ_USERNAME", RABBITMQ::getAdminUsername);
+    registry.add("RABBITMQ_PASSWORD", RABBITMQ::getAdminPassword);
+    registry.add("REDIS_HOST", REDIS::getHost);
+    registry.add("REDIS_PORT", () -> REDIS.getMappedPort(6379));
+    registry.add("JWT_PUBLIC_KEY_LOCATION", JWT_KEYS::publicKeyLocation);
+  }
+}

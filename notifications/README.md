@@ -18,14 +18,19 @@ Same for `core/`, `jobs/` and `notifications/` ([ADR 0006](../docs/deliverables/
 ## Commands
 
 ```bash
-./mvnw verify             # compile, unit tests and spotless:check
+./mvnw verify             # everything CI checks: unit tests with 80% line coverage (JaCoCo),
+                          # integration tests, SpotBugs and spotless:check
+./mvnw verify -DskipITs   # without the integration tests (no Docker needed)
 ./mvnw test               # unit tests only
 ./mvnw spotless:apply     # format the code
 ./mvnw spotless:check     # fail on unformatted files, naming them
 ./mvnw test-compile       # lint: compile main and test code; warnings fail
+./mvnw compile spotbugs:check  # static analysis; false positives go in spotbugs-exclude.xml
 ```
 
-The application does not start yet without PostgreSQL, RabbitMQ and Redis; running it against them comes with the walking skeleton (#11).
+Unit tests are `*Test` classes; integration tests are `*IT` classes that extend `IntegrationTest`, which starts PostgreSQL, RabbitMQ and Redis with Testcontainers (Docker must be running). Read the rules in `IntegrationTest` before adding one: all of them share one Spring context, and a test that changes the database, broker or cache takes the `SHARED_STATE` lock ([ADR 0011](../docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md#integration-tests)).
+
+The `Dockerfile` builds the service and runs it on a JRE as a non-root user; its health check calls `/actuator/health/readiness`, the only endpoint that needs no token. The application does not start without PostgreSQL, RabbitMQ and Redis; [`deployment/`](../deployment/README.md) runs it with them.
 
 ## Configuration
 

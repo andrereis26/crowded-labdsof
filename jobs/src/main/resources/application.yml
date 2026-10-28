@@ -24,3 +24,11 @@ spring:
         jwt:
           # Public key of the RSA key pair Core signs tokens with (ADR 0005).
           public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
+
+management:
+  endpoint:
+    health:
+      # /actuator/health/liveness and /readiness: the container health check
+      # calls readiness (ADR 0011). #70 adds the dependencies' details.
+      probes:
+        enabled: true
