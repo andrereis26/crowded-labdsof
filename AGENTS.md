@@ -31,7 +31,8 @@
   - Full: an app's image job (`.github/actions/build-image`): `docker build`, the
     Trivy image scan (`.github/actions/trivy-scan`) and the smoke test in
     `scripts/ci/` (the participant app needs `flutter build web --release` first).
-    Run it only when that app's `Dockerfile`, `nginx.conf` or build changes.
+    Pull requests build no images (only the release on main does), so run it
+    locally whenever that app's `Dockerfile`, `nginx.conf` or build changes.
   - Deployment scripts: `shellcheck -x` on `deployment/*.sh` and
     `docker stack config` on `deployment/docker-compose.swarm.yml`.
 - Deliverable and commits: a commit on a feature branch. Messages follow
