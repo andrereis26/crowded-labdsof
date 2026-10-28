@@ -1,0 +1,82 @@
+# Trivy scan with the gate of ADR 0011: fixable HIGH and CRITICAL
+# vulnerabilities, and HIGH and CRITICAL misconfigurations, fail the step.
+# Every finding, of any severity, goes in the job summary and a JSON report.
+# Accepted findings are listed in .trivyignore.yaml, each with an expiry date.
+name: Trivy scan
+description: Scans a directory or an image, reports every finding and fails on the gate.
+
+inputs:
+  type:
+    description: "'fs' (a directory of the repository) or 'image' (a local image)."
+    required: true
+  target:
+    description: Directory relative to the repository root, or the image reference.
+    required: true
+  report-name:
+    description: Name of the uploaded JSON report.
+    required: true
+  args:
+    description: Extra Trivy arguments, such as --skip-dirs.
+    default: ""
+  trivy-image:
+    description: Trivy container image.
+    default: aquasec/trivy:0.75.0
+
+runs:
+  using: composite
+  steps:
+    - name: Scan
+      shell: bash
+      env:
+        TYPE: ${{ inputs.type }}
+        TARGET: ${{ inputs.target }}
+        ARGS: ${{ inputs.args }}
+        TRIVY_IMAGE: ${{ inputs.trivy-image }}
+        REPORT: ${{ runner.temp }}/${{ inputs.report-name }}.json
+      run: |
+        cache="$RUNNER_TEMP/trivy-cache"
+        mkdir -p "$cache" "$HOME/.m2"
+        # The Maven repository lets Trivy read the backend's dependencies
+        # without asking Maven Central for every POM.
+        volumes=(-v "$GITHUB_WORKSPACE:/src:ro" -v "$cache:/root/.cache/trivy" -v "$HOME/.m2:/root/.m2:ro" -v "$RUNNER_TEMP:/out")
+        flags=(--no-progress --ignorefile /src/.trivyignore.yaml)
+        case "$TYPE" in
+          fs) command=fs; flags+=(--scanners "vuln,misconfig"); subject="/src/$TARGET" ;;
+          image) command=image; volumes+=(-v /var/run/docker.sock:/var/run/docker.sock); subject="$TARGET" ;;
+          *) echo "Unknown scan type: $TYPE" >&2; exit 1 ;;
+        esac
+        # shellcheck disable=SC2206 # ARGS is a list of flags
+        flags+=($ARGS)
+        run_trivy() { docker run --rm "${volumes[@]}" "$TRIVY_IMAGE" "$command" "${flags[@]}" "$@" "$subject"; }
+
+        # 1. Every finding, for the summary and the report.
+        run_trivy --format json --output "/out/$(basename "$REPORT")"
+
+        {
+          echo "### Trivy: $TARGET"
+          echo
+          echo "| Severity | Fixable | Not fixable yet | Misconfigurations |"
+          echo "|---|---|---|---|"
+          jq -r '
+            [.Results[]?] as $r
+            | ["CRITICAL","HIGH","MEDIUM","LOW","UNKNOWN"][] as $s
+            | [$s,
+               ([$r[].Vulnerabilities[]? | select(.Severity == $s and (.FixedVersion // "") != "")] | length),
+               ([$r[].Vulnerabilities[]? | select(.Severity == $s and (.FixedVersion // "") == "")] | length),
+               ([$r[].Misconfigurations[]? | select(.Severity == $s and .Status == "FAIL")] | length)]
+            | "| \(.[0]) | \(.[1]) | \(.[2]) | \(.[3]) |"' "$REPORT"
+          echo
+          echo "Fails on fixable CRITICAL or HIGH vulnerabilities and CRITICAL or HIGH misconfigurations (ADR 0011). Full list in the \`$(basename "$REPORT" .json)\` artifact."
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        # 2. The gate. The vulnerability database is already in the cache.
+        run_trivy --skip-db-update --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed
+
+    - name: Upload report
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.report-name }}
+        path: ${{ runner.temp }}/${{ inputs.report-name }}.json
+        retention-days: 14
+        if-no-files-found: ignore

@@ -1,0 +1,39 @@
+# Whether a pull request or a push changed any file matching a pattern. Other
+# events (schedule, manual run) count as changed. Needs a checkout with the
+# full history (fetch-depth: 0).
+name: Detect changes
+description: Tells whether the event changed files that match a pattern.
+
+inputs:
+  paths:
+    description: Extended regular expression matched against changed file paths.
+    required: true
+
+outputs:
+  changed:
+    description: "'true' or 'false'"
+    value: ${{ steps.diff.outputs.changed }}
+
+runs:
+  using: composite
+  steps:
+    - id: diff
+      shell: bash
+      env:
+        EVENT: ${{ github.event_name }}
+        PATTERN: ${{ inputs.paths }}
+        PR_BASE: ${{ github.event.pull_request.base.sha }}
+        PUSH_BEFORE: ${{ github.event.before }}
+      run: |
+        case "$EVENT" in
+          pull_request) range="$PR_BASE...HEAD" ;;
+          # A new branch has no previous commit: everything counts as changed.
+          push) [[ "$PUSH_BEFORE" =~ ^0+$ ]] || range="$PUSH_BEFORE..HEAD" ;;
+        esac
+        if [[ -z "${range:-}" ]] || git diff --name-only "$range" | grep -qE "$PATTERN"; then
+          changed=true
+        else
+          changed=false
+        fi
+        echo "changed=$changed" >> "$GITHUB_OUTPUT"
+        echo "Changed (${range:-$EVENT}): $changed"

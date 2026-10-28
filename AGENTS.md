@@ -14,9 +14,11 @@
 - Gates, narrowest first (run only for the app you changed):
   - Backend services (`core/`, `jobs/`, `notifications/`), from the service folder
     with `JAVA_HOME` set to a JDK 25: `./mvnw spotless:check`, `./mvnw test-compile`
-    (lint: `-Xlint:all`, warnings fail), then `./mvnw verify` (unit tests plus
-    `spotless:check`). Format with `./mvnw spotless:apply`.
-  - Backoffice unit tests: `npm --prefix backoffice test` (Vitest).
+    (lint: `-Xlint:all`, warnings fail), then `./mvnw verify` (unit tests with the
+    80% JaCoCo check, Testcontainers integration tests, SpotBugs and
+    `spotless:check`; Docker must be running). Format with `./mvnw spotless:apply`.
+  - Backoffice unit tests: `npm --prefix backoffice run test:coverage` (Vitest,
+    fails below 80% line coverage).
   - Backoffice format, lint and build: `npm --prefix backoffice run format:check`,
     `npm --prefix backoffice run lint`, then `npm --prefix backoffice run build`
     (`tsc -b` plus Vite). Format with `npm --prefix backoffice run format`.
@@ -26,9 +28,13 @@
     CI fails below 80% line coverage of `coverage/lcov.info`.
   - Secret scan: `scripts/gitleaks.sh git --redact --verbose` (gitleaks v8.30.1,
     local binary or Docker image, as in `.github/workflows/security.yml`).
-  - Full: the participant image job (`flutter build web --release`, then
-    `docker build` and the Trivy scan in `.github/workflows/participant-app.yml`).
-    Run it only when `Dockerfile`, `nginx.conf` or the web build changes.
+  - Full: an app's image job (`.github/actions/build-image`): `docker build`, the
+    Trivy image scan (`.github/actions/trivy-scan`) and the smoke test in
+    `scripts/ci/` (the participant app needs `flutter build web --release` first).
+    Pull requests build no images (only the release on main does), so run it
+    locally whenever that app's `Dockerfile`, `nginx.conf` or build changes.
+  - Deployment scripts: `shellcheck -x` on `deployment/*.sh` and
+    `docker stack config` on `deployment/docker-compose.swarm.yml`.
 - Deliverable and commits: a commit on a feature branch. Messages follow
   `type(#issue): message` with type `feat|fix|docs|chore|ci` (README, DoD-03).
 - Worktrees: use one for parallel or delegated work, at `.claude/worktrees/<name>`.
@@ -46,12 +52,13 @@
   lints changed projects and runs gitleaks). `lefthook install` writes to the
   shared `.git/hooks`, so it applies to every worktree of the clone.
 - Pitfalls:
-  - The backoffice and the backend services have no CI workflow yet (#69); only the
-    Security workflow touches them. Run their gates locally before opening a PR.
+  - Every app has a CI workflow (ADR 0011). The ruleset requires one result job
+    per app (`Backend result`, `Backoffice result`, `Participant app result`) plus
+    the two Security checks; renaming those jobs breaks the merge gate.
   - Stack: Java 25, the latest stable Spring Boot (4.1.2) and Maven (ADR 0006).
     Maven must run on JDK 25 (`JAVA_HOME`); the enforcer plugin stops the build
     otherwise, and google-java-format 1.36.1 needs JVM 21 or later. The services do
-    not start without PostgreSQL, RabbitMQ and Redis until the walking skeleton (#11).
+    not start without PostgreSQL, RabbitMQ and Redis (`deployment/` runs them).
   - `participant-gallery` serves a stale build unless you rebuild the web app.
   - PRs that change the UI need mobile and desktop screenshots (PR template). UI copy
     is in European Portuguese (`participant-app/README.md`).

@@ -12,8 +12,36 @@ updates:
       pub-minor-and-patch:
         update-types: [minor, patch]
 
+  - package-ecosystem: maven
+    directories: [/core, /jobs, /notifications]
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    groups:
+      maven-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /backoffice
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
   - package-ecosystem: docker
-    directory: /participant-app
+    directories: [/participant-app, /backoffice, /core, /jobs, /notifications]
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+
+  # Images pinned in the Swarm stack (PostgreSQL, RabbitMQ, Redis, router).
+  - package-ecosystem: docker-compose
+    directory: /deployment
     schedule:
       interval: weekly
     commit-message:

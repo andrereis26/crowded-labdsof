@@ -1,0 +1,12 @@
+# Trivy findings accepted for now (ADR 0011). Each entry needs:
+#   - an expired_at date at most 90 days away: the finding fails the scan again after it;
+#   - a statement saying why it does not affect Crowded;
+#   - the issue that tracks the fix.
+# Example:
+#   vulnerabilities:
+#     - id: CVE-2026-12345
+#       paths: ["core/pom.xml"]
+#       statement: "Only reachable through X, which Crowded does not use. Tracked in #123."
+#       expired_at: 2027-01-31
+vulnerabilities: []
+misconfigurations: []

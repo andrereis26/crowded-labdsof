@@ -98,12 +98,13 @@ Run them from the project's folder. The format check fails and names the unforma
 
 | Project | Format | Format check | Lint | Tests |
 |---|---|---|---|---|
-| `core/`, `jobs/`, `notifications/` | `./mvnw spotless:apply` | `./mvnw spotless:check` | `./mvnw test-compile` | `./mvnw test` |
-| `backoffice/` | `npm run format` | `npm run format:check` | `npm run lint` | `npm test` |
+| `core/`, `jobs/`, `notifications/` | `./mvnw spotless:apply` | `./mvnw spotless:check` | `./mvnw test-compile` | `./mvnw verify` |
+| `backoffice/` | `npm run format` | `npm run format:check` | `npm run lint` | `npm run test:coverage` |
 | `participant-app/` | `dart format lib test` | `dart format --output=none --set-exit-if-changed lib test` | `flutter analyze --fatal-infos` | `flutter test` |
 
-- Backend: Spotless with google-java-format, and the compiler with `-Xlint:all` and `failOnWarning` as lint, so any warning fails. `./mvnw verify` runs the tests and `spotless:check` together. Maven must run on JDK 25 (`JAVA_HOME`).
-- Backoffice: Prettier and oxlint (`.oxlintrc.json`).
+- Backend: Spotless with google-java-format, and the compiler with `-Xlint:all` and `failOnWarning` as lint, so any warning fails. `./mvnw verify` runs the unit tests with the JaCoCo coverage check, the integration tests (Testcontainers, so Docker must be running), SpotBugs and `spotless:check`. Maven must run on JDK 25 (`JAVA_HOME`).
+- Backoffice: Prettier and oxlint (`.oxlintrc.json`). `npm run test:coverage` fails below 80% line coverage.
 - Participant app: `dart format` and `flutter analyze` (`analysis_options.yaml`).
+- CI runs the same checks per app (`.github/workflows/`), in the order and with the vulnerability policy of [ADR 0011](/docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md).
 - Secret scan of the whole history, as the Security workflow does it: `scripts/gitleaks.sh git --redact --verbose` from the repository root.
 - [`.editorconfig`](/.editorconfig) sets UTF-8, LF line endings and indentation for editors, and [`.gitattributes`](/.gitattributes) keeps LF line endings in the repository.

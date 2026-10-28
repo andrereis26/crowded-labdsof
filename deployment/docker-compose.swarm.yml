@@ -1,0 +1,238 @@
+# Crowded on a single-node Docker Swarm (ADR 0008). Deployed by
+# remote-deploy.sh, never by hand with `docker compose up`: Swarm needs the
+# `deploy` sections, and the variables below come from a release's release.env
+# (images by digest, versioned secret and config names, Doppler configuration).
+#
+# Only the router publishes a port. The data stores are reachable only on the
+# internal `backend` network; the router reaches the applications on `edge`.
+# Observability (ADR 0009) and the simulators are added by their own stories.
+
+x-backend-environment: &backend-environment
+  DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}
+  DB_USERNAME: ${POSTGRES_USER:?POSTGRES_USER is required}
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?RABBITMQ_USERNAME is required}
+  REDIS_HOST: redis
+  JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt_public_key
+  # Every file in /run/secrets becomes a property named after the file, so the
+  # secrets mounted as DB_PASSWORD, RABBITMQ_PASSWORD and REDIS_PASSWORD fill
+  # the placeholders of the same name in application.yml.
+  SPRING_CONFIG_IMPORT: optional:configtree:/run/secrets/
+  JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75.0
+
+# Stateless services: start the new task before stopping the old one, and go
+# back to the previous image by themselves if the new one does not get healthy.
+x-app-deploy: &app-deploy
+  update_config:
+    parallelism: 1
+    order: start-first
+    failure_action: rollback
+    monitor: 30s
+  rollback_config:
+    parallelism: 1
+    order: start-first
+  restart_policy:
+    condition: any
+    delay: 5s
+
+# Stateful services: one task at a time on their volume, so stop first.
+x-data-deploy: &data-deploy
+  update_config:
+    order: stop-first
+    failure_action: rollback
+    monitor: 30s
+  rollback_config:
+    order: stop-first
+  restart_policy:
+    condition: any
+    delay: 5s
+
+services:
+  router:
+    image: nginxinc/nginx-unprivileged:1.31.7-alpine
+    configs:
+      - source: router_conf
+        target: /etc/nginx/conf.d/default.conf
+    ports:
+      # Host mode keeps the client's address, which the per-IP rate limit
+      # needs; the ingress mesh would replace it with its own.
+      - target: 8080
+        published: 80
+        protocol: tcp
+        mode: host
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks: [edge]
+    deploy:
+      <<: *data-deploy # A host port cannot be bound twice: stop first.
+      resources:
+        limits: { cpus: "0.25", memory: 64M }
+
+  core:
+    image: ${CORE_IMAGE:?CORE_IMAGE is required}
+    environment:
+      <<: *backend-environment
+      JWT_PRIVATE_KEY_LOCATION: file:/run/secrets/jwt_private_key
+    secrets:
+      - { source: postgres_password, target: DB_PASSWORD }
+      - { source: rabbitmq_password, target: RABBITMQ_PASSWORD }
+      - { source: redis_password, target: REDIS_PASSWORD }
+      - jwt_public_key
+      - jwt_private_key
+    networks: [edge, backend]
+    deploy:
+      <<: *app-deploy
+      resources:
+        limits: { cpus: "1", memory: 640M }
+        reservations: { memory: 320M }
+
+  jobs:
+    image: ${JOBS_IMAGE:?JOBS_IMAGE is required}
+    environment: *backend-environment
+    secrets: &backend-secrets
+      - { source: postgres_password, target: DB_PASSWORD }
+      - { source: rabbitmq_password, target: RABBITMQ_PASSWORD }
+      - { source: redis_password, target: REDIS_PASSWORD }
+      - jwt_public_key
+    # No route to the internet yet: the ticketing simulator will run in this
+    # stack. Add `edge` when Jobs calls an external system.
+    networks: [backend]
+    deploy:
+      <<: *app-deploy
+      resources:
+        limits: { cpus: "0.5", memory: 448M }
+        reservations: { memory: 224M }
+
+  notifications:
+    image: ${NOTIFICATIONS_IMAGE:?NOTIFICATIONS_IMAGE is required}
+    environment: *backend-environment
+    secrets: *backend-secrets
+    networks: [edge, backend]
+    deploy:
+      <<: *app-deploy
+      resources:
+        limits: { cpus: "0.5", memory: 448M }
+        reservations: { memory: 224M }
+
+  backoffice:
+    image: ${BACKOFFICE_IMAGE:?BACKOFFICE_IMAGE is required}
+    networks: [edge]
+    deploy:
+      <<: *app-deploy
+      resources:
+        limits: { cpus: "0.25", memory: 32M }
+
+  participant-app:
+    image: ${PARTICIPANT_APP_IMAGE:?PARTICIPANT_APP_IMAGE is required}
+    networks: [edge]
+    deploy:
+      <<: *app-deploy
+      resources:
+        limits: { cpus: "0.25", memory: 32M }
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [backend]
+    deploy:
+      <<: *data-deploy
+      resources:
+        limits: { cpus: "1", memory: 384M }
+        reservations: { memory: 128M }
+
+  rabbitmq:
+    image: rabbitmq:4.1-alpine
+    # RabbitMQ names its data after the host name: keep it stable across tasks.
+    hostname: rabbitmq
+    secrets:
+      - source: rabbitmq_conf
+        target: /etc/rabbitmq/conf.d/20-crowded.conf
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks: [backend]
+    deploy:
+      <<: *data-deploy
+      resources:
+        limits: { cpus: "0.5", memory: 384M }
+        reservations: { memory: 128M }
+
+  redis:
+    image: redis:8.2-alpine
+    # The password goes in a config file, not on the command line, where any
+    # process listing would show it.
+    command:
+      - sh
+      - -c
+      - printf 'requirepass %s\nappendonly yes\n' "$$(cat /run/secrets/redis_password)" > /tmp/redis.conf && exec redis-server /tmp/redis.conf
+    secrets: [redis_password]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$$(cat /run/secrets/redis_password)" redis-cli ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend]
+    deploy:
+      <<: *data-deploy
+      resources:
+        limits: { cpus: "0.25", memory: 96M }
+
+networks:
+  edge:
+    driver: overlay
+  backend:
+    driver: overlay
+    internal: true
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  redis-data:
+
+# Created by remote-deploy.sh from Doppler, named after a hash of their value.
+secrets:
+  postgres_password:
+    external: true
+    name: ${POSTGRES_PASSWORD_SECRET:?POSTGRES_PASSWORD_SECRET is required}
+  rabbitmq_password:
+    external: true
+    name: ${RABBITMQ_PASSWORD_SECRET:?RABBITMQ_PASSWORD_SECRET is required}
+  rabbitmq_conf:
+    external: true
+    name: ${RABBITMQ_CONF_SECRET:?RABBITMQ_CONF_SECRET is required}
+  redis_password:
+    external: true
+    name: ${REDIS_PASSWORD_SECRET:?REDIS_PASSWORD_SECRET is required}
+  jwt_public_key:
+    external: true
+    name: ${JWT_PUBLIC_KEY_SECRET:?JWT_PUBLIC_KEY_SECRET is required}
+  jwt_private_key:
+    external: true
+    name: ${JWT_PRIVATE_KEY_SECRET:?JWT_PRIVATE_KEY_SECRET is required}
+
+configs:
+  router_conf:
+    file: ./router/nginx.conf
+    name: crowded_router_${ROUTER_CONF_VERSION:?ROUTER_CONF_VERSION is required}

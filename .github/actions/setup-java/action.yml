@@ -1,0 +1,13 @@
+# JDK 25 (ADR 0006) with the Maven repository cached across runs.
+name: Set up Java
+description: Installs Temurin 25 and restores the Maven cache.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: "25"
+        cache: maven
+        cache-dependency-path: "*/pom.xml"
