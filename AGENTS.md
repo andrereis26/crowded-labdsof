@@ -28,6 +28,12 @@
     `dart format --output=none --set-exit-if-changed lib test`,
     `flutter analyze --fatal-infos`, then `flutter test --coverage`.
     CI fails below 80% line coverage of `coverage/lcov.info`.
+  - Database (`database/`): `docker build -t crowded/database database`, then
+    `bash scripts/ci/test-database.sh crowded/database` (migrations with and without
+    the seed, a second run that changes nothing, each service user's rights). A
+    migration also runs in every service's integration tests, so run `./mvnw verify`
+    in the services that use the changed tables. `database/README.md` explains how to
+    add a migration (forward-only, compatible with the previous release).
   - Secret scan: `scripts/gitleaks.sh git --redact --verbose` (gitleaks v8.30.1,
     local binary or Docker image, as in `.github/workflows/security.yml`).
   - Full: an app's image job (`.github/actions/build-image`): `docker build`, the
@@ -47,6 +53,8 @@
     ready at `http://localhost:5173`.
   - `participant-gallery`: serves `participant-app/build/web` on
     `http://localhost:8765`, so run `flutter build web --release` first.
+  - Database: `docker compose -f database/compose.yaml up --build --detach` starts a
+    throwaway PostgreSQL on `127.0.0.1:5432`, migrated and seeded (`database/README.md`).
   - Local identity: none. Both apps use demo data (`backoffice/src/data/`,
     `participant-app/lib/data/`) until the Core API exists.
 - Graph: auto
@@ -55,8 +63,12 @@
   shared `.git/hooks`, so it applies to every worktree of the clone.
 - Pitfalls:
   - Every app has a CI workflow (ADR 0011). The ruleset requires one result job
-    per app (`Backend result`, `Backoffice result`, `Participant app result`) plus
-    the two Security checks; renaming those jobs breaks the merge gate.
+    per app (`Backend result`, `Backoffice result`, `Participant app result`,
+    `Database result`) plus the two Security checks; renaming those jobs breaks the
+    merge gate.
+  - The services connect as their own database users (`crowded_core`, ...), which
+    cannot change the schema and write only their own tables (ADR 0012). A new table
+    needs its writer in `database/migrations/R__grants.sql`.
   - Stack: Java 25, the latest stable Spring Boot (4.1.2) and Maven (ADR 0006).
     Maven must run on JDK 25 (`JAVA_HOME`); the enforcer plugin stops the build
     otherwise, and google-java-format 1.36.1 needs JVM 21 or later. The services do

@@ -1,0 +1,76 @@
+# CI for the database project (database/, ADR 0012). Pull requests and pushes
+# to main build the crowded-database image, scan it with Trivy and test it
+# against throwaway PostgreSQL databases, with and without the demo data
+# (scripts/ci/test-database.sh). Pushes to main are also the release: once
+# those checks passed, the image is pushed (ADR 0011). Only runs when the
+# database project changed. "Database result" is the required check.
+#
+# The image is built in pull requests too, unlike the apps' images: it is
+# what applies the migrations, so testing them means building it.
+name: Database
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.database.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: database
+        uses: ./.github/actions/detect-changes
+        with:
+          paths: ^(database/|scripts/ci/test-database\.sh|\.github/(workflows/database\.yml|actions/))
+
+  # Build, Trivy image scan, migrations with and without the seed; on main,
+  # then the push of crowded-database tagged with the commit SHA and `main`.
+  migrations:
+    name: Migrations and image
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-image
+        with:
+          name: crowded-database
+          context: database
+          smoke-test: scripts/ci/test-database.sh "$IMAGE"
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          dockerhub-namespace: ${{ vars.DOCKERHUB_NAMESPACE }}
+          dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  # The one check the main ruleset requires for the database: it passes when
+  # every job passed or was skipped because nothing changed.
+  result:
+    name: Database result
+    if: always()
+    needs: [changes, migrations]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          for result in $RESULTS; do
+            [[ "$result" == success || "$result" == skipped ]] || exit 1
+          done

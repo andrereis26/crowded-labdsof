@@ -35,7 +35,7 @@ Crowded keeps people informed when something changes or goes wrong at the events
 | Part | Technology |
 |---|---|
 | Backend services (`core/`, `jobs/`, `notifications/`) | Java 25 (JDK 25), latest stable Spring Boot (4.1.2), Maven |
-| Data and messaging | PostgreSQL, RabbitMQ, Redis |
+| Data and messaging | PostgreSQL with Flyway migrations (`database/`), RabbitMQ, Redis |
 | Participant app (`participant-app/`) | Flutter |
 | Backoffice (`backoffice/`) | React, Vite and Tailwind CSS |
 

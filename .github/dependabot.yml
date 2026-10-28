@@ -33,7 +33,7 @@ updates:
         update-types: [minor, patch]
 
   - package-ecosystem: docker
-    directories: [/participant-app, /backoffice, /core, /jobs, /notifications]
+    directories: [/participant-app, /backoffice, /core, /jobs, /notifications, /database]
     schedule:
       interval: weekly
     commit-message:

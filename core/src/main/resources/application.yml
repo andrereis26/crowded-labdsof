@@ -8,6 +8,11 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      # The schema belongs to database/ (ADR 0012): the service never changes
+      # it, and fails at startup when its entities do not match it.
+      ddl-auto: validate
   rabbitmq:
     host: ${RABBITMQ_HOST}
     port: ${RABBITMQ_PORT:5672}

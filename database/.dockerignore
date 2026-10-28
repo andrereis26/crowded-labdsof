@@ -1,0 +1,6 @@
+# Only the Dockerfile, the entrypoint, migrations/ and seed/ go in the image.
+*
+!Dockerfile
+!docker-entrypoint.sh
+!migrations/
+!seed/
