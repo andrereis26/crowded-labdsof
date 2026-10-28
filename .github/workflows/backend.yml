@@ -1,9 +1,9 @@
 # CI for the backend services (core, jobs, notifications), in the order of
-# ADR 0011. Pull requests: Lint first; then unit tests, integration tests and
-# SpotBugs in parallel; then the image (build, scan, smoke test). Pushes to
-# main are the release: the ruleset only merges branches that are up to date
-# and green, so the checks are skipped and only the image runs, pushed to
-# Docker Hub. Only the services that changed run. "Backend result" is the
+# ADR 0011. Pull requests run the checks: Lint first; then unit tests,
+# integration tests and SpotBugs in parallel. Pushes to main are the release:
+# the ruleset only merges branches that are up to date and green, so the
+# checks are skipped and only the image runs (build, scan, smoke test, push to
+# Docker Hub). Only the services that changed run. "Backend result" is the
 # required check.
 name: Backend
 
@@ -142,9 +142,9 @@ jobs:
 
   image:
     name: Image (${{ matrix.service }})
-    needs: [changes, lint, unit-tests, integration-tests, spotbugs]
-    # Runs after the checks pass, or without them on main, where they are skipped.
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && needs.changes.outputs.services != '[]' }}
+    needs: changes
+    # The release: only on main, never in pull requests.
+    if: github.event_name == 'push' && needs.changes.outputs.services != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
