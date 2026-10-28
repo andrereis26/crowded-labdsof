@@ -20,11 +20,11 @@ Everything needed to run Crowded on the Docker Swarm host ([ADR 0008](../docs/de
    2. pulls each image and pins it by digest;
    3. reads the secrets from Doppler and stores each one as a Swarm secret named after a hash of its value: a changed secret becomes a new secret, an unchanged one is reused;
    4. writes a **release** to `/opt/crowded/releases/<time>-<sha>/`: a copy of the stack file and router config, and `release.env` with every image digest, secret name and configuration value;
-   5. runs `docker stack deploy` with that release and waits until every service runs all its replicas with the release's image, then requests `/` through the router.
+   5. runs `docker stack deploy` with that release and waits until every service runs all its replicas with the release's image and every update it started has `completed`, which Swarm reports once the new task has stayed healthy for the monitor period (30 seconds). Then it requests `/` through the router.
 4. If any of this fails, the release is renamed to `<release>.failed` and the previous release is deployed again. The script still exits with an error, so the pipeline run fails.
 5. On success, `/opt/crowded/current` points at the new release. The newest 5 releases, and the secrets they use, are kept for rollback.
 
-Each service also rolls itself back when its new task does not become healthy (`update_config.failure_action: rollback`). The script notices because the service no longer runs the release's image.
+Each service also rolls itself back when its new task does not become healthy (`update_config.failure_action: rollback`). The script notices at once, because the service no longer runs the release's image, and deploys the previous release. Tested on a single-node Swarm (Docker 29): a release whose `core` never became healthy was detected in about 20 seconds and the previous release was live again 5 seconds later.
 
 ### Rolling Back
 

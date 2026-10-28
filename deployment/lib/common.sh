@@ -14,6 +14,7 @@ SMOKE_URL="${SMOKE_URL:-http://127.0.0.1/}"
 
 # Application services: their image comes from a release; the rest of the
 # stack (data stores, router) is pinned in the stack file.
+# shellcheck disable=SC2034 # used by remote-deploy.sh
 APP_SERVICES=(core jobs notifications backoffice participant-app)
 
 # Messages go to stderr, so functions can print their result on stdout.
@@ -67,18 +68,22 @@ current_release() {
   [[ -L "${CURRENT_LINK}" ]] && basename "$(readlink -f "${CURRENT_LINK}")"
 }
 
-# Deploys the stack exactly as recorded in a release directory.
+# Deploys the stack exactly as recorded in a release directory, and records
+# when in DEPLOY_STARTED for wait_for_release.
 deploy_release() {
   local release_dir="$1"
+  DEPLOY_STARTED="$(date +%s)"
   (
     set -a
     # shellcheck source=/dev/null
     source "${release_dir}/release.env"
     set +a
     # Callers run this inside `if`, where set -e does not apply: chain explicitly.
+    # Detached: wait_for_release waits, with a timeout. `--detach=false` can
+    # keep waiting after every service has converged (seen on Docker 29).
     cd "${release_dir}" \
       && docker stack config --compose-file "${STACK_FILE_NAME}" >/dev/null \
-      && docker stack deploy --compose-file "${STACK_FILE_NAME}" --prune --detach=false "${STACK_NAME}"
+      && docker stack deploy --compose-file "${STACK_FILE_NAME}" --prune "${STACK_NAME}"
   )
 }
 
@@ -89,11 +94,18 @@ expected_digest() {
   sed -n "s/^${var}=.*@\(sha256:[0-9a-f]*\).*/\1/p" "${release_dir}/release.env"
 }
 
-# Waits until every service runs all its replicas and every application service
-# runs the image of the release. Swarm rolls a service back by itself when its
-# update fails (update_config.failure_action), which shows here as a wrong image.
+# Waits until every service runs all its replicas, every application service
+# runs the image of the release, and every update this deployment started has
+# completed. Updates start the new task first (start-first), so the new image
+# and a full replica count show before the new task is healthy; only the
+# update state says it was. When an update fails, Swarm rolls the service back
+# by itself (update_config.failure_action): the service leaves the release's
+# image, and the wait fails at once. A Swarm rollback that lands on the
+# release's image (while rolling back to an earlier release) is fine.
+# Usage: wait_for_release <release dir>, right after deploy_release.
 wait_for_release() {
-  local release_dir="$1" deadline pending service replicas running desired image expected
+  local release_dir="$1" since="${DEPLOY_STARTED:?deploy_release sets DEPLOY_STARTED}"
+  local deadline pending service replicas running desired state started image expected
   deadline=$(( $(date +%s) + WAIT_TIMEOUT_SECONDS ))
 
   while true; do
@@ -104,15 +116,34 @@ wait_for_release() {
       desired="${replicas#*/}"
       desired="${desired%% *}"
       [[ "${running}" == "${desired}" && "${desired}" != "0" ]] || pending+=("${service} ${replicas}")
-    done < <(docker stack services "${STACK_NAME}" --format '{{.Name}} {{.Replicas}}')
 
-    for service in "${APP_SERVICES[@]}"; do
-      expected="$(expected_digest "${release_dir}" "${service}")"
-      image="$(docker service inspect "${STACK_NAME}_${service}" \
-        --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' 2>/dev/null || true)"
-      [[ -n "${expected}" && "${image}" == *"${expected}"* ]] \
-        || pending+=("${service} image ${image:-missing}")
-    done
+      # Application services must run the release's image; the others have
+      # no expected digest.
+      expected="$(expected_digest "${release_dir}" "${service#"${STACK_NAME}"_}")"
+      read -r image state started < <(docker service inspect "${service}" --format \
+        '{{.Spec.TaskTemplate.ContainerSpec.Image}} {{if .UpdateStatus}}{{.UpdateStatus.State}} {{if .UpdateStatus.StartedAt}}{{.UpdateStatus.StartedAt.Unix}}{{end}}{{end}}')
+      if [[ -n "${expected}" && "${image}" != *"${expected}"* ]]; then
+        if [[ "${state:-}" == rollback_* || "${state:-}" == *paused ]]; then
+          log "${service}: update ${state}; Swarm could not start ${expected}."
+          return 1
+        fi
+        pending+=("${service} image ${image}")
+        continue
+      fi
+
+      # The last update, if this deployment started it, must have finished.
+      if [[ -n "${state:-}" && "${started:-0}" -ge "${since}" ]]; then
+        case "${state}" in
+          completed) ;;
+          rollback_completed) [[ -n "${expected}" ]] || { log "${service}: update ${state}."; return 1; } ;;
+          *paused)
+            log "${service}: update ${state}."
+            return 1
+            ;;
+          *) pending+=("${service} update ${state}") ;;
+        esac
+      fi
+    done < <(docker stack services "${STACK_NAME}" --format '{{.Name}} {{.Replicas}}')
 
     if (( ${#pending[@]} == 0 )); then
       return 0
