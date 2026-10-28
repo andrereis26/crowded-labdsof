@@ -1,5 +1,7 @@
 # CI for the Flutter participant app: formatting, static analysis, tests
-# with a coverage threshold, web build and container image scan.
+# with a coverage threshold, then the image (web build, scan, smoke test),
+# pushed to Docker Hub on main (ADR 0011). "Participant app result" is the
+# required check.
 name: Participant app
 
 on:
@@ -18,33 +20,24 @@ concurrency:
 env:
   FLUTTER_VERSION: 3.47.7
   COVERAGE_MIN: 80
-  TRIVY_IMAGE: aquasec/trivy:0.75.0
 
 jobs:
   # Pull requests that do not touch the app skip the other jobs. Skipped
-  # jobs count as passed, so they can still be required checks.
+  # jobs count as passed in "Participant app result".
   changes:
     name: Detect changes
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
-      app: ${{ steps.diff.outputs.app }}
+      app: ${{ steps.diff.outputs.changed }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - id: diff
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          if [ "$EVENT" != "pull_request" ]; then
-            echo "app=true" >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "$BASE_SHA" HEAD \
-              | grep -qE '^(participant-app/|\.github/workflows/participant-app\.yml$)'; then
-            echo "app=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "app=false" >> "$GITHUB_OUTPUT"
-          fi
+        uses: ./.github/actions/detect-changes
+        with:
+          paths: ^(participant-app/|scripts/ci/|\.github/(workflows/participant-app\.yml|actions/))
 
   analyze-and-test:
     name: Analyze and test
@@ -57,7 +50,7 @@ jobs:
         working-directory: participant-app
     steps:
       - uses: actions/checkout@v7
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
@@ -90,48 +83,45 @@ jobs:
           if-no-files-found: ignore
 
   image:
-    name: Build and scan image
+    name: Image
     needs: [changes, analyze-and-test]
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: participant-app
     steps:
       - uses: actions/checkout@v7
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-      - name: Install dependencies
-        run: flutter pub get --enforce-lockfile
+      # The Dockerfile copies the web build, so it is built first.
       - name: Build web
-        run: flutter build web --release
-      - name: Build image
-        run: docker build --tag "crowded/participant-app:${GITHUB_SHA}" .
-      - name: Scan image
+        working-directory: participant-app
         run: |
-          docker run --rm \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            "$TRIVY_IMAGE" image \
-            --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress \
-            "crowded/participant-app:${GITHUB_SHA}"
-      - name: Check the container serves the app
-        run: |
-          docker run --detach --name participant-app --publish 8080:8080 \
-            "crowded/participant-app:${GITHUB_SHA}"
-          for _ in $(seq 1 10); do
-            curl --silent --fail http://localhost:8080/healthz && break
-            sleep 1
-          done
-          curl --silent --fail http://localhost:8080/ | grep -q '<title>'
-          curl --silent --fail http://localhost:8080/evento/qualquer | grep -q '<title>'
-      - name: Upload web build
-        if: github.event_name == 'push'
-        uses: actions/upload-artifact@v7
+          flutter pub get --enforce-lockfile
+          flutter build web --release
+      - uses: ./.github/actions/build-image
         with:
-          name: participant-app-web
-          path: participant-app/build/web
-          retention-days: 14
+          name: crowded-participant-app
+          context: participant-app
+          smoke-test: scripts/ci/smoke-web.sh "$IMAGE" / /evento/qualquer
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          dockerhub-namespace: ${{ vars.DOCKERHUB_NAMESPACE }}
+          dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  result:
+    name: Participant app result
+    if: always()
+    needs: [changes, analyze-and-test, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          for result in $RESULTS; do
+            [[ "$result" == success || "$result" == skipped ]] || exit 1
+          done

@@ -1,0 +1,175 @@
+# CI for the backend services (core, jobs, notifications), in the order of
+# ADR 0011: Lint first; then unit tests, integration tests and SpotBugs in
+# parallel; then the image, pushed to Docker Hub on main. Only the services a
+# pull request or push changed run. "Backend result" is the required check.
+name: Backend
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      services: ${{ steps.matrix.outputs.services }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # Shared CI files change every service.
+      - id: core
+        uses: ./.github/actions/detect-changes
+        with:
+          paths: ^(core/|scripts/ci/|\.github/(workflows/backend\.yml|actions/))
+      - id: jobs
+        uses: ./.github/actions/detect-changes
+        with:
+          paths: ^(jobs/|scripts/ci/|\.github/(workflows/backend\.yml|actions/))
+      - id: notifications
+        uses: ./.github/actions/detect-changes
+        with:
+          paths: ^(notifications/|scripts/ci/|\.github/(workflows/backend\.yml|actions/))
+      - id: matrix
+        env:
+          CORE: ${{ steps.core.outputs.changed }}
+          JOBS: ${{ steps.jobs.outputs.changed }}
+          NOTIFICATIONS: ${{ steps.notifications.outputs.changed }}
+        run: |
+          services=$(jq -cn --arg c "$CORE" --arg j "$JOBS" --arg n "$NOTIFICATIONS" \
+            '[if $c == "true" then "core" else empty end,
+              if $j == "true" then "jobs" else empty end,
+              if $n == "true" then "notifications" else empty end]')
+          echo "services=$services" >> "$GITHUB_OUTPUT"
+          echo "Services to check: $services"
+
+  lint:
+    name: Lint (${{ matrix.service }})
+    needs: changes
+    if: needs.changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-java
+      # Formatting, then compiling main and test code with -Xlint:all, where
+      # any warning fails.
+      - run: ./mvnw -B -ntp spotless:check test-compile
+
+  unit-tests:
+    name: Unit tests (${{ matrix.service }})
+    needs: [changes, lint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-java
+      # Surefire, then JaCoCo's check of 80% line coverage.
+      - run: ./mvnw -B -ntp verify -DskipITs -Dspotbugs.skip
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.service }}
+          path: ${{ matrix.service }}/target/site/jacoco/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  integration-tests:
+    name: Integration tests (${{ matrix.service }})
+    needs: [changes, lint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-java
+      # Failsafe runs the *IT classes against Testcontainers (PostgreSQL,
+      # RabbitMQ, Redis), using the runner's Docker.
+      - run: ./mvnw -B -ntp verify -DskipUTs -Dspotbugs.skip
+
+  spotbugs:
+    name: SpotBugs (${{ matrix.service }})
+    needs: [changes, lint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-java
+      - run: ./mvnw -B -ntp compile spotbugs:check
+
+  image:
+    name: Image (${{ matrix.service }})
+    needs: [changes, unit-tests, integration-tests, spotbugs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-image
+        with:
+          name: crowded-${{ matrix.service }}
+          context: ${{ matrix.service }}
+          smoke-test: scripts/ci/smoke-backend.sh "$IMAGE"
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          dockerhub-namespace: ${{ vars.DOCKERHUB_NAMESPACE }}
+          dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  # The one check the main ruleset requires for the backend: it passes when
+  # every job passed or was skipped because nothing changed.
+  result:
+    name: Backend result
+    if: always()
+    needs: [changes, lint, unit-tests, integration-tests, spotbugs, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          for result in $RESULTS; do
+            [[ "$result" == success || "$result" == skipped ]] || exit 1
+          done

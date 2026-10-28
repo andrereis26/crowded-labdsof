@@ -1,0 +1,87 @@
+# Builds an app's image, scans it with Trivy, smoke-tests it and, on main,
+# pushes it to Docker Hub tagged with the commit SHA and `main` (ADR 0011).
+# A composite action rather than a reusable workflow, so the calling job can
+# prepare the build context first (the participant app builds Flutter web).
+name: Build image
+description: Builds, scans, smoke-tests and optionally pushes an app's container image.
+
+inputs:
+  name:
+    description: Image repository name, e.g. crowded-core.
+    required: true
+  context:
+    description: Build context, relative to the repository root.
+    required: true
+  smoke-test:
+    description: Command that tests the image, which it receives in $IMAGE.
+    required: true
+  push:
+    description: "'true' to push the image to Docker Hub."
+    default: "false"
+  dockerhub-namespace:
+    description: Docker Hub user or organization that owns the repository.
+    default: ""
+  dockerhub-username:
+    description: Docker Hub account that pushes.
+    default: ""
+  dockerhub-token:
+    description: Docker Hub access token with read and write scope.
+    default: ""
+
+outputs:
+  image:
+    description: The pushed image with its SHA tag, or the local tag when not pushed.
+    value: ${{ steps.push.outputs.image || steps.build.outputs.image }}
+
+runs:
+  using: composite
+  steps:
+    - id: build
+      name: Build
+      shell: bash
+      env:
+        IMAGE: local/${{ inputs.name }}:${{ github.sha }}
+        CONTEXT: ${{ inputs.context }}
+      run: |
+        docker build --tag "$IMAGE" \
+          --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+          --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+          "$CONTEXT"
+        echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+    - name: Scan
+      uses: ./.github/actions/trivy-scan
+      with:
+        type: image
+        target: ${{ steps.build.outputs.image }}
+        report-name: trivy-${{ inputs.name }}
+
+    - name: Smoke test
+      shell: bash
+      env:
+        IMAGE: ${{ steps.build.outputs.image }}
+        SMOKE_TEST: ${{ inputs.smoke-test }}
+      run: bash -c "$SMOKE_TEST"
+
+    - id: push
+      name: Push
+      if: inputs.push == 'true'
+      shell: bash
+      env:
+        LOCAL: ${{ steps.build.outputs.image }}
+        REPOSITORY: ${{ inputs.dockerhub-namespace }}/${{ inputs.name }}
+        DOCKERHUB_USERNAME: ${{ inputs.dockerhub-username }}
+        DOCKERHUB_TOKEN: ${{ inputs.dockerhub-token }}
+      run: |
+        if [[ -z "$DOCKERHUB_USERNAME" || -z "$DOCKERHUB_TOKEN" || "$REPOSITORY" == /* ]]; then
+          echo "Set the DOCKERHUB_NAMESPACE variable and the DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets (deployment/README.md)." >&2
+          exit 1
+        fi
+        echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+        trap 'docker logout' EXIT
+        for tag in "$GITHUB_SHA" main; do
+          docker tag "$LOCAL" "$REPOSITORY:$tag"
+          docker push --quiet "$REPOSITORY:$tag"
+        done
+        echo "image=$REPOSITORY:$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+        echo "Pushed \`$REPOSITORY:$GITHUB_SHA\` and \`$REPOSITORY:main\`." >> "$GITHUB_STEP_SUMMARY"
