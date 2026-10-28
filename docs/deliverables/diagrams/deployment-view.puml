@@ -48,7 +48,8 @@ node "AWS" <<cloud provider>> as AWS {
           node "core" <<container>> as Core
           node "notifications" <<container>> as Notifications
           node "jobs" <<container>> as Jobs
-          node "web-app" <<container>> as WebApp
+          node "participant-app\n(NGINX)" <<container>> as ParticipantApp
+          node "backoffice\n(NGINX)" <<container>> as Backoffice
         }
 
         node "Simulators" as SimGroup {
@@ -84,7 +85,8 @@ EIP -down- Nginx : HTTPS 443
 
 Nginx -down- Core : HTTP / SSE
 Nginx -down- Notifications : HTTP
-Nginx -down- WebApp : HTTP
+Nginx -down- ParticipantApp : HTTP
+Nginx -down- Backoffice : HTTP (/backoffice)
 Nginx -down- Grafana : HTTP (/grafana)
 
 AppGroup -down- DataGroup : SQL 5432\nAMQP 5672\nRedis 6379
