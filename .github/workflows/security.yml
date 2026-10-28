@@ -1,12 +1,13 @@
 # Repository-wide security checks: committed secrets (SR-008) and known
 # vulnerabilities or misconfigurations in dependencies and Dockerfiles.
-# Pull requests and a weekly run, not pushes to main: a merged branch was
-# scanned as a pull request, and the release on main scans its images
-# (ADR 0011).
+# Pull requests, pushes to main (the merged code is checked again, ADR 0011)
+# and a weekly run.
 name: Security
 
 on:
   pull_request:
+  push:
+    branches: [main]
   schedule:
     # Mondays at 06:00 UTC, to catch new vulnerabilities in unchanged code.
     - cron: "0 6 * * 1"
@@ -36,11 +37,15 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
         run: |
-          # Pull requests: only their own commits. Otherwise: the whole history.
+          # Pull requests: only their own commits. Pushes to main: the pushed
+          # commits. Otherwise (and for a new branch): the whole history.
           range=""
           if [ "$EVENT" = "pull_request" ]; then
             range="--log-opts=${BASE_SHA}..${HEAD_SHA}"
+          elif [ "$EVENT" = "push" ] && ! [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then
+            range="--log-opts=${PUSH_BEFORE}..${GITHUB_SHA}"
           fi
           docker run --rm -v "$GITHUB_WORKSPACE:/repo" "$GITLEAKS_IMAGE" \
             git --redact --verbose --exit-code 1 $range /repo
