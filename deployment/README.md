@@ -71,6 +71,10 @@ Secrets live in the CI secret store, never in the repository (SR-008).
 | `DOCKERHUB_USERNAME` | Secret | Image push | Docker Hub account that pushes |
 | `DOCKERHUB_TOKEN` | Secret | Image push | Docker Hub personal access token with *Read & Write* scope. The host pulls the public images without one |
 | `DOPPLER_TOKEN` | Secret | Deploy | Doppler **service token** with read access to the production config only |
+| `CROWDED_BOT_CLIENT_ID` | Secret (Actions **and** Dependabot) | Dependabot auto-merge | Client ID of the crowded-bot GitHub App |
+| `CROWDED_BOT_PRIVATE_KEY` | Secret (Actions **and** Dependabot) | Dependabot auto-merge | A private key (`.pem` contents) of the crowded-bot GitHub App |
+
+The crowded-bot app approves, auto-merges and asks Dependabot to rebase its pull requests ([ADR 0011](../docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md#dependabot)). To create it, the repository owner opens *Settings → Developer settings → GitHub Apps → New GitHub App*, names it `crowded-bot`, turns off the webhook, grants the repository permissions *Contents: Read and write* and *Pull requests: Read and write* (*Metadata: Read* is added automatically), and chooses *Only on this account*. Then: generate a private key, install the app on this repository only, and add its client ID and private key as both Actions and Dependabot secrets (*Settings → Secrets and variables*). The repository settings allow auto-merge and *Allow GitHub Actions to create and approve pull requests* stays off, because the app, not `GITHUB_TOKEN`, approves.
 
 The deploy job also needs SSH access to the host (address, user, private key and known-hosts entry). The infrastructure story adds those secrets, because they come from the provisioned instance.
 
