@@ -4,7 +4,7 @@ Everything needed to run Crowded on the Docker Swarm host ([ADR 0008](../docs/de
 
 | Path | What it is |
 |---|---|
-| `docker-compose.swarm.yml` | The Swarm stack: router, `core`, `jobs`, `notifications`, `backoffice`, `participant-app`, PostgreSQL, RabbitMQ and Redis |
+| `docker-compose.swarm.yml` | The Swarm stack: router, the `database` migration job, `core`, `jobs`, `notifications`, `backoffice`, `participant-app`, PostgreSQL, RabbitMQ and Redis |
 | `remote-deploy.sh` | Prepares the host, deploys a release, checks it and rolls back if it fails |
 | `remote-rollback.sh` | Deploys an earlier release again |
 | `lib/common.sh` | Functions both scripts share |
@@ -20,11 +20,14 @@ Everything needed to run Crowded on the Docker Swarm host ([ADR 0008](../docs/de
    2. pulls each image and pins it by digest;
    3. reads the secrets from Doppler and stores each one as a Swarm secret named after a hash of its value: a changed secret becomes a new secret, an unchanged one is reused;
    4. writes a **release** to `/opt/crowded/releases/<time>-<sha>/`: a copy of the stack file and router config, and `release.env` with every image digest, secret name and configuration value;
-   5. runs `docker stack deploy` with that release and waits until every service runs all its replicas with the release's image and every update it started has `completed`, which Swarm reports once the new task has stayed healthy for the monitor period (30 seconds). Then it requests `/` through the router.
+   5. migrates the database ([ADR 0012](../docs/deliverables/adr/0012-database-migrations-with-flyway.md)): deploys the release with `core`, `jobs` and `notifications` still on the images they run now (with no replicas on the very first deployment), and waits until the `database` job, a one-shot `replicated-job` running the release's `crowded-database` image, has completed. A failed migration fails the deployment here, before any service gets a new image;
+   6. runs `docker stack deploy` with the whole release and waits until every service runs all its replicas with the release's image and every update it started has `completed`, which Swarm reports once the new task has stayed healthy for the monitor period (30 seconds). Then it requests `/` through the router.
 4. If any of this fails, the release is renamed to `<release>.failed` and the previous release is deployed again. The script still exits with an error, so the pipeline run fails.
 5. On success, `/opt/crowded/current` points at the new release. The newest 5 releases, and the secrets they use, are kept for rollback.
 
 Each service also rolls itself back when its new task does not become healthy (`update_config.failure_action: rollback`). The script notices at once, because the service no longer runs the release's image, and deploys the previous release. Tested on a single-node Swarm (Docker 29): a release whose `core` never became healthy was detected in about 20 seconds and the previous release was live again 5 seconds later.
+
+The migration step was tested on a single-node Swarm (Docker 27, in Docker) with stub images for the services: on an empty database, `core` got its first task only after the job had completed; a release whose migration failed stopped there, with `core` still on the previous image; and the next good release, and a rollback to the first one, each ran the job again before updating the services.
 
 ### Rolling Back
 
@@ -34,7 +37,7 @@ bash /opt/crowded/deployment/remote-rollback.sh                      # the relea
 bash /opt/crowded/deployment/remote-rollback.sh 20261027T181500Z-2617d73e  # a specific release
 ```
 
-A rollback deploys the whole recorded release again: the stack file, every image by digest and the secrets as they were. It needs no Doppler token. Database migrations are not undone, so a migration must stay compatible with the previous release's code.
+A rollback deploys the whole recorded release again: the stack file, every image by digest and the secrets as they were. It needs no Doppler token. Database migrations are not undone: the older `crowded-database` image ignores the newer migrations, and the older services run against the newer schema. So every migration stays compatible with the previous release's code, adding first and removing in a later release ([ADR 0012](../docs/deliverables/adr/0012-database-migrations-with-flyway.md#compatible-with-the-previous-release)).
 
 ### Running a Deployment by Hand
 
@@ -53,7 +56,7 @@ bash /opt/crowded/deployment/remote-deploy.sh
 | `RELEASE_ID` | required | Commit SHA being deployed |
 | `DOCKERHUB_NAMESPACE` | required | Docker Hub user or organization of the images |
 | `DOPPLER_TOKEN` | required | Doppler service token of the environment's config |
-| `CORE_IMAGE`, `JOBS_IMAGE`, `NOTIFICATIONS_IMAGE`, `BACKOFFICE_IMAGE`, `PARTICIPANT_APP_IMAGE` | the current release's, else `<namespace>/crowded-<service>:main` | Image for that service, by tag or digest |
+| `DATABASE_IMAGE`, `CORE_IMAGE`, `JOBS_IMAGE`, `NOTIFICATIONS_IMAGE`, `BACKOFFICE_IMAGE`, `PARTICIPANT_APP_IMAGE` | the current release's, else `<namespace>/crowded-<service>:main` | Image for that service, by tag or digest |
 | `STACK_NAME` | `crowded` | Swarm stack name |
 | `DEPLOY_ROOT` | `/opt/crowded` | Where releases are kept |
 | `KEEP_RELEASES` | `5` | Releases kept for rollback |
@@ -85,8 +88,10 @@ Project `crowded`, config `prd`. The service token in `DOPPLER_TOKEN` already id
 | Key | Secret | Meaning |
 |---|---|---|
 | `POSTGRES_DB` | No | Database name, e.g. `crowded` |
-| `POSTGRES_USER` | No | Database user of the services |
+| `POSTGRES_USER` | No | The migration user, which owns the schema. Only the `database` job uses it |
 | `POSTGRES_PASSWORD` | Yes | Password of that user |
+| `CORE_DB_PASSWORD`, `JOBS_DB_PASSWORD`, `NOTIFICATIONS_DB_PASSWORD` | Yes | Passwords of the database users `crowded_core`, `crowded_jobs` and `crowded_notifications`, which the `database` job creates. Letters and digits only. Each service gets only its own |
+| `SEED_DEMO_DATA` | No | `true` loads the demo data ([`database/`](../database/README.md#demo-accounts)). Optional, default `false`. Only the shared environment sets it |
 | `RABBITMQ_USERNAME` | No | RabbitMQ user of the services |
 | `RABBITMQ_PASSWORD` | Yes | Password of that user. Use letters and digits only: it is written into a RabbitMQ config file |
 | `REDIS_PASSWORD` | Yes | Redis password |

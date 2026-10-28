@@ -8,13 +8,15 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
 import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.rabbitmq.RabbitMQContainer;
 
 /**
  * Base class of every integration test (ADR 0011). All of them share one set of containers, started
- * once per test run, and one Spring context:
+ * once per test run, and one Spring context. PostgreSQL is migrated by the crowded-database image
+ * with the demo data, and the service connects as its own database user ({@link TestDatabase}):
  *
  * <ul>
  *   <li>Do not add {@code @MockitoBean}, {@code @TestPropertySource} or {@code @DirtiesContext} to
@@ -34,22 +36,28 @@ public abstract class IntegrationTest {
   public static final String SHARED_STATE = "shared-state";
 
   // Same versions as deployment/docker-compose.swarm.yml.
-  private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:18-alpine");
+  private static final Network NETWORK = Network.newNetwork();
+  private static final PostgreSQLContainer POSTGRES =
+      new PostgreSQLContainer("postgres:18-alpine")
+          .withNetwork(NETWORK)
+          .withNetworkAliases(TestDatabase.POSTGRES_HOST);
   private static final RabbitMQContainer RABBITMQ = new RabbitMQContainer("rabbitmq:4.1-alpine");
   private static final GenericContainer<?> REDIS =
       new GenericContainer<>("redis:8.2-alpine").withExposedPorts(6379);
   private static final TestJwtKeys JWT_KEYS = TestJwtKeys.generate();
+  private static final TestDatabase DATABASE;
 
   static {
     // Stopped by Testcontainers when the test JVM exits.
     Startables.deepStart(POSTGRES, RABBITMQ, REDIS).join();
+    DATABASE = TestDatabase.migrate(NETWORK, POSTGRES);
   }
 
   @DynamicPropertySource
   static void connectToContainers(DynamicPropertyRegistry registry) {
     registry.add("DB_URL", POSTGRES::getJdbcUrl);
-    registry.add("DB_USERNAME", POSTGRES::getUsername);
-    registry.add("DB_PASSWORD", POSTGRES::getPassword);
+    registry.add("DB_USERNAME", () -> TestDatabase.USERNAME);
+    registry.add("DB_PASSWORD", DATABASE::password);
     registry.add("RABBITMQ_HOST", RABBITMQ::getHost);
     registry.add("RABBITMQ_PORT", RABBITMQ::getAmqpPort);
     registry.add("RABBITMQ_USERNAME", RABBITMQ::getAdminUsername);

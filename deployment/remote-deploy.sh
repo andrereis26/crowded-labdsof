@@ -10,7 +10,8 @@
 #      their value, so a changed secret is a new secret and an unchanged one is
 #      reused.
 #   4. Records all of it as a release under $DEPLOY_ROOT/releases/<id>/ and
-#      deploys that release with `docker stack deploy`.
+#      deploys that release with `docker stack deploy`: first the database
+#      migration job, then, once it completed, the new images of the services.
 #   5. Waits until every service is running the release and the router answers.
 #      Otherwise it deploys the previous release again and fails.
 #
@@ -21,7 +22,7 @@
 #   RELEASE_ID            required, the commit SHA being deployed
 #   DOCKERHUB_NAMESPACE   required, Docker Hub user or organization of the images
 #   DOPPLER_TOKEN         required, Doppler service token of the environment's config
-#   CORE_IMAGE, JOBS_IMAGE, NOTIFICATIONS_IMAGE, BACKOFFICE_IMAGE,
+#   DATABASE_IMAGE, CORE_IMAGE, JOBS_IMAGE, NOTIFICATIONS_IMAGE, BACKOFFICE_IMAGE,
 #   PARTICIPANT_APP_IMAGE optional, image (tag or digest) for that service;
 #                         default: the current release's, else <namespace>/crowded-<service>:main
 #   STACK_NAME, DEPLOY_ROOT, KEEP_RELEASES, WAIT_TIMEOUT_SECONDS, SMOKE_URL,
@@ -35,9 +36,14 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 # Doppler key -> Swarm secret. The stack file reads the secret's versioned name
 # from <KEY>_SECRET.
-SECRET_KEYS=(POSTGRES_PASSWORD RABBITMQ_PASSWORD REDIS_PASSWORD JWT_PRIVATE_KEY JWT_PUBLIC_KEY)
+SECRET_KEYS=(POSTGRES_PASSWORD CORE_DB_PASSWORD JOBS_DB_PASSWORD NOTIFICATIONS_DB_PASSWORD
+  RABBITMQ_PASSWORD REDIS_PASSWORD JWT_PRIVATE_KEY JWT_PUBLIC_KEY)
 # Doppler keys that are configuration, not secrets: written to the release as is.
 CONFIG_KEYS=(POSTGRES_DB POSTGRES_USER RABBITMQ_USERNAME)
+# Configuration that may be missing from Doppler, and its default then.
+OPTIONAL_CONFIG_KEYS=(SEED_DEMO_DATA)
+# shellcheck disable=SC2034 # read through ${!default}
+SEED_DEMO_DATA_DEFAULT=false
 
 # --- 1. Host -----------------------------------------------------------------
 
@@ -192,7 +198,7 @@ write_release() {
       var="$(image_var "${service}")"
       printf '%s=%q\n' "${var}" "${!var}"
     done
-    for key in "${CONFIG_KEYS[@]}"; do
+    for key in "${CONFIG_KEYS[@]}" "${OPTIONAL_CONFIG_KEYS[@]}"; do
       printf '%s=%q\n' "${key}" "${!key}"
     done
     for key in "${SECRET_KEYS[@]}" RABBITMQ_CONF; do
@@ -262,6 +268,14 @@ main() {
     printf -v "${key}" '%s' "$(doppler_get "${key}")" || die "Doppler has no ${key}"
     [[ -n "${!key}" ]] || die "Doppler's ${key} is empty"
   done
+  local default
+  for key in "${OPTIONAL_CONFIG_KEYS[@]}"; do
+    default="${key}_DEFAULT"
+    printf -v "${key}" '%s' "$(doppler_get "${key}" 2>/dev/null || true)"
+    printf -v "${key}" '%s' "${!key:-${!default}}"
+  done
+  [[ "${SEED_DEMO_DATA}" == true || "${SEED_DEMO_DATA}" == false ]] \
+    || die "Doppler's SEED_DEMO_DATA must be true or false"
 
   previous="$(current_release || true)"
   release="$(date -u +%Y%m%dT%H%M%SZ)-${RELEASE_ID:0:12}"

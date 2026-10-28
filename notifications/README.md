@@ -39,7 +39,7 @@ The `Dockerfile` builds the service and runs it on a JRE as a non-root user; its
 | Variable | Used for | Default |
 |---|---|---|
 | `DB_URL` | PostgreSQL JDBC URL, e.g. `jdbc:postgresql://postgres:5432/crowded` | – |
-| `DB_USERNAME`, `DB_PASSWORD` | PostgreSQL user of this service | – |
+| `DB_USERNAME`, `DB_PASSWORD` | PostgreSQL user of this service, `crowded_notifications`. It writes only the tables this service owns and cannot change the schema ([`database/`](../database/README.md)) | – |
 | `RABBITMQ_HOST`, `RABBITMQ_PORT` | RabbitMQ broker | –, `5672` |
 | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` | RabbitMQ user | – |
 | `REDIS_HOST`, `REDIS_PORT` | Redis | –, `6379` |

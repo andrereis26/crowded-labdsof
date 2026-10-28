@@ -13,9 +13,14 @@ WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}"
 SMOKE_URL="${SMOKE_URL:-http://127.0.0.1/}"
 
 # Application services: their image comes from a release; the rest of the
-# stack (data stores, router) is pinned in the stack file.
+# stack (data stores, router) is pinned in the stack file. `database` is the
+# one-shot migration job (ADR 0012).
 # shellcheck disable=SC2034 # used by remote-deploy.sh
-APP_SERVICES=(core jobs notifications backoffice participant-app)
+APP_SERVICES=(database core jobs notifications backoffice participant-app)
+# The services that need the migrated database: during a deployment they keep
+# their current image until the migration has completed.
+DATABASE_CLIENTS=(core jobs notifications)
+MIGRATION_SERVICE=database
 
 # Messages go to stderr, so functions can print their result on stdout.
 log() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*" >&2; }
@@ -69,22 +74,105 @@ current_release() {
 }
 
 # Deploys the stack exactly as recorded in a release directory, and records
-# when in DEPLOY_STARTED for wait_for_release.
+# when in DEPLOY_STARTED for wait_for_release. In two steps (ADR 0012):
+#   1. the release with Core, Jobs and Notifications still on the image they
+#      run now (none yet on the first deployment), so the migration job runs
+#      while the previous release keeps serving; then it waits for the job;
+#   2. the whole release, once the database is migrated.
+# A failed migration stops at step 1: the services never get the new images.
 deploy_release() {
   local release_dir="$1"
   DEPLOY_STARTED="$(date +%s)"
+  # Callers run this inside `if`, where set -e does not apply: chain explicitly.
+  stack_deploy "${release_dir}" migration \
+    && wait_for_migration "${release_dir}" \
+    && stack_deploy "${release_dir}" all
+}
+
+# stack_deploy <release dir> <migration|all>
+stack_deploy() {
+  local release_dir="$1" step="$2"
   (
     set -a
     # shellcheck source=/dev/null
     source "${release_dir}/release.env"
+    # Marks the migration job with its release, so every deployment runs it.
+    # shellcheck disable=SC2034 # exported by set -a, read by the stack file
+    CROWDED_RELEASE="$(basename "${release_dir}")"
     set +a
-    # Callers run this inside `if`, where set -e does not apply: chain explicitly.
-    # Detached: wait_for_release waits, with a timeout. `--detach=false` can
-    # keep waiting after every service has converged (seen on Docker 29).
+
+    local prune=(--prune) service var current
+    if [[ "${step}" == migration ]]; then
+      prune=()
+      for service in "${DATABASE_CLIENTS[@]}"; do
+        var="$(image_var "${service}")"
+        current="$(docker service inspect --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' \
+          "${STACK_NAME}_${service}" 2>/dev/null || true)"
+        if [[ -n "${current}" ]]; then
+          printf -v "${var}" '%s' "${current}"
+        else
+          export "${service^^}_REPLICAS=0"
+        fi
+      done
+    fi
+
+    # Detached: the callers wait, with a timeout. `--detach=false` can keep
+    # waiting after every service has converged (seen on Docker 29).
     cd "${release_dir}" \
       && docker stack config --compose-file "${STACK_FILE_NAME}" >/dev/null \
-      && docker stack deploy --compose-file "${STACK_FILE_NAME}" --prune "${STACK_NAME}"
+      && docker stack deploy --compose-file "${STACK_FILE_NAME}" "${prune[@]}" "${STACK_NAME}"
   )
+}
+
+# The state (complete, failed, running...) of the newest migration task that
+# runs <release> and was created since <time>, or nothing while Swarm has not
+# created one. Older tasks of the same release, from an earlier deployment of
+# it, do not count.
+migration_state() {
+  local release="$1" since="$2" task created state newest=0 newest_state=""
+  for task in $(docker service ps --quiet --no-trunc "${STACK_NAME}_${MIGRATION_SERVICE}" 2>/dev/null); do
+    docker inspect --format '{{range .Spec.ContainerSpec.Env}}{{println .}}{{end}}' "${task}" \
+      | grep -qx "CROWDED_RELEASE=${release}" || continue
+    read -r created state < <(docker inspect --format '{{.CreatedAt.Unix}} {{.Status.State}}' "${task}")
+    if (( created >= since && created >= newest )); then
+      newest="${created}"
+      newest_state="${state}"
+    fi
+  done
+  printf '%s' "${newest_state}"
+}
+
+# Waits until the release's migration job, started by this deployment, has
+# completed, and fails as soon as it fails. A release from before the job
+# existed has nothing to wait for. Swarm may run the job once more when step 2
+# of deploy_release deploys the stack again; that run finds nothing left to
+# migrate.
+wait_for_migration() {
+  local release_dir="$1" since="${DEPLOY_STARTED:?deploy_release sets DEPLOY_STARTED}"
+  local release state deadline
+  grep -q '^DATABASE_IMAGE=' "${release_dir}/release.env" || return 0
+  release="$(basename "${release_dir}")"
+  deadline=$(( $(date +%s) + WAIT_TIMEOUT_SECONDS ))
+
+  while true; do
+    state="$(migration_state "${release}" "${since}")"
+    case "${state}" in
+      complete)
+        log "Database migrated."
+        return 0
+        ;;
+      failed | rejected | shutdown | orphaned | remove)
+        log "The database migration ended in state '${state}'. Its log:"
+        docker service logs --raw --tail 60 "${STACK_NAME}_${MIGRATION_SERVICE}" >&2 || true
+        return 1
+        ;;
+    esac
+    if (( $(date +%s) >= deadline )); then
+      log "Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for the database migration (${state:-not started})."
+      return 1
+    fi
+    sleep 3
+  done
 }
 
 # The image digest an application service should run in a release.
@@ -111,6 +199,8 @@ wait_for_release() {
   while true; do
     pending=()
     while read -r service replicas; do
+      # The migration job completed before this wait started.
+      [[ "${service}" == "${STACK_NAME}_${MIGRATION_SERVICE}" ]] && continue
       # "2/2" or "1/1 (max 1 per node)": running equals desired, and not 0/0.
       running="${replicas%%/*}"
       desired="${replicas#*/}"
