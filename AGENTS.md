@@ -3,7 +3,9 @@
 ## Agent playbook
 
 - Base branch: `main`. Work goes into `main` by pull request using
-  `.github/pull_request_template.md`. There are no release branches.
+  `.github/pull_request_template.md`, merged by rebase only (merge commits and
+  squash are off) and deleted after the merge. There are no release branches.
+  Dependabot pull requests approve and merge themselves (ADR 0011).
 - Branch names: a user story uses `feature/us-<issue number>`, e.g. `feature/us-98`
   for issue #98. Other work uses `<type>/<slug>` (`fix/`, `docs/`, `ci/`). Name the
   branch before pushing: renaming a pushed branch on GitHub closes the pull requests

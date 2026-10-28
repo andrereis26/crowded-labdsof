@@ -92,6 +92,12 @@ The repository has one set of Git hooks for all projects, configured in [`leftho
 
 `git commit --no-verify` and `git push --no-verify` skip the hooks. The pipeline (#69) runs the same checks, so skipping them only delays the failure.
 
+### Pull Requests
+
+Every change reaches `main` through a pull request that follows the [template](.github/pull_request_template.md), passes the required checks and is approved by another team member (DoD-02). Pull requests are merged by **rebase** only, the branch must be up to date with `main`, and the merged branch is deleted. After the merge, `main` runs the checks again and only then builds and pushes the images ([ADR 0011](docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md#images-on-main)).
+
+Dependabot's pull requests approve and merge themselves once their checks pass, and are asked to rebase when they fall behind `main`. If Dependabot does not respond, the workflow tags the team in the pull request: comment `@dependabot rebase` there ([ADR 0011](docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md#dependabot)).
+
 ### Format and Lint Commands
 
 Run them from the project's folder. The format check fails and names the unformatted files.
