@@ -1,9 +1,9 @@
 @startuml deployment-view
 ' Crowded - Deployment View
-' Three environments (development, staging, production), each one EC2 instance
+' Three environments (development, staging, production), each one Azure VM
 ' running a single-node Docker Swarm, provisioned with Terraform. Production is
 ' shown in full; development and staging are copies of it. In practice only
-' production is deployed and simulates the other two (ADR 0008).
+' production is deployed and simulates the other two (ADR 0013).
 ' Shows only Crowded's own runtime; external systems are in the logical view.
 ' Sources: logical-view-level-2.puml, requirements.md (NFR-010..NFR-016, SR-008)
 
@@ -19,7 +19,7 @@ skinparam node {
   BackgroundColor #FFFFFF
   BorderColor #333333
   BackgroundColor<<cloud provider>> #FFF6E5
-  BackgroundColor<<EC2 instance>> #FFFFC0
+  BackgroundColor<<virtual machine>> #FFFFC0
   BackgroundColor<<Docker Swarm>> #EAF4FF
   BackgroundColor<<container>> #BFEFFF
   BackgroundColor<<environment>> #FFFFFF
@@ -32,11 +32,11 @@ skinparam queue {
 }
 
 ' ---------------------------------------------------------------------
-' AWS
+' Azure
 ' ---------------------------------------------------------------------
 node "Docker Hub\n(crowded-* images, built once by GitHub Actions)" as Registry
 
-node "AWS" <<cloud provider>> as AWS {
+node "Microsoft Azure - Azure for Students subscription" <<cloud provider>> as Azure {
 
   node "development\nDoppler config dev, demo data\nsame topology as production\n(simulated by production)" <<environment>> as Dev #line.dashed
 
@@ -44,11 +44,11 @@ node "AWS" <<cloud provider>> as AWS {
 
   node "production - Doppler config prd" <<environment>> as Prod {
 
-    node "VPC - public subnet" as VPC {
+    node "Virtual network - subnet" as VNet {
 
-      node "Elastic IP\n+ Security Group" as EIP
+      node "Static public IP\n+ Network security group" as PublicIP
 
-      node "EC2 t3.micro - Ubuntu" <<EC2 instance>> as EC2 {
+      node "Virtual machine B2s - Ubuntu" <<virtual machine>> as VM {
 
         node "Docker Engine - Swarm (single manager node)" <<Docker Swarm>> as Swarm {
 
@@ -83,7 +83,7 @@ node "AWS" <<cloud provider>> as AWS {
           }
         }
 
-        database "EBS volume\n(postgres, rabbitmq, redis,\nprometheus, loki, grafana data;)" as EBS
+        database "Managed data disk\n(postgres, rabbitmq, redis,\nprometheus, loki, grafana data;)" as Disk
       }
     }
   }
@@ -94,7 +94,7 @@ node "AWS" <<cloud provider>> as AWS {
 ' Group-level links keep the view readable; which service uses which
 ' store is shown in the logical view.
 ' ---------------------------------------------------------------------
-EIP -down- Nginx : HTTPS 443
+PublicIP -down- Nginx : HTTPS 443
 
 Nginx -down- Core : HTTP / SSE
 Nginx -down- Notifications : HTTP
@@ -124,11 +124,11 @@ Dev -[hidden]right- Stg
 
 legend bottom left
   Only production is deployed for now. It receives every merge to main
-  and simulates development and staging (ADR 0008).
+  and simulates development and staging (ADR 0013).
 endlegend
 
 ' --- Storage
-DataGroup -down- EBS : Docker volumes
-ObsGroup -down- EBS : Docker volumes
+DataGroup -down- Disk : Docker volumes
+ObsGroup -down- Disk : Docker volumes
 
 @enduml

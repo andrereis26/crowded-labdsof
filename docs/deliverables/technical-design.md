@@ -148,14 +148,14 @@ Planned after the MVP (FR-012, TR-004). It uses the same adapter and rules as th
 
 ![Crowded — Deployment View](diagrams/deployment-view.svg)
 
-- The design has three deployed environments, **development**, **staging** and **production**, each a copy of this view with its own Doppler config. Every merge to `main` goes to development, a release tag promotes the same images to staging, and a manual approval promotes them to production. In practice only production is deployed and it simulates the other two ([ADR 0008](adr/0008-single-ec2-docker-swarm-with-terraform.md#environments)). Local development and CI are not environments.
-- Everything runs on **one AWS EC2 instance** inside a VPC, provisioned with **Terraform**. The instance type is a variable, so it can grow without redesign.
+- The design has three deployed environments, **development**, **staging** and **production**, each a copy of this view with its own Doppler config. Every merge to `main` goes to development, a release tag promotes the same images to staging, and a manual approval promotes them to production. In practice only production is deployed and it simulates the other two ([ADR 0013](adr/0013-single-azure-vm-docker-swarm-with-terraform.md#environments)). Local development and CI are not environments.
+- Everything runs on **one Azure virtual machine** (Ubuntu) inside a virtual network, provisioned with **Terraform** on the Azure for Students subscription ([ADR 0013](adr/0013-single-azure-vm-docker-swarm-with-terraform.md)). The VM size is a variable (a B2s, 4 GB, is assumed), so it can grow without redesign.
 - The instance runs a **single-node Docker Swarm**. Each box in the diagram is a container (Swarm service) with a health check; Swarm restarts failed containers.
 - Only the **router (NGINX)** publishes ports (443). All other containers are reachable only on internal overlay networks.
 - The **participant-app** and **backoffice** containers each serve their app's static bundle with NGINX; the router sends `/backoffice/` to the backoffice and every other page to the participant app ([ADR 0011](adr/0011-ci-pipeline-and-vulnerability-policy.md)).
 - The **simulators** (ticketing source, entrance counter) run in the same Swarm as separate services, so they can be deployed and replaced independently.
 - **Observability:** Prometheus scrapes the services and RabbitMQ; Alloy collects container logs (to Loki) and Postgres, Redis and host metrics (to Prometheus); Grafana shows both, behind the router at `/grafana`.
-- Stateful containers keep their data in Docker volumes on an **EBS volume**.
+- Stateful containers keep their data in Docker volumes on a **managed data disk**.
 - Images are built by GitHub Actions and pushed to Docker Hub ([ADR 0011](adr/0011-ci-pipeline-and-vulnerability-policy.md)); secrets come from Doppler and are mounted as Docker Swarm secrets. The stack, deploy and rollback scripts are in [`deployment/`](/deployment/README.md).
 
 ## Degraded Operation
