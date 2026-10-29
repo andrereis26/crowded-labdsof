@@ -1,6 +1,6 @@
 # Deployment
 
-Everything needed to run Crowded on the Docker Swarm host ([ADR 0013](../docs/deliverables/adr/0013-single-azure-vm-docker-swarm-with-terraform.md)) from the images the pipeline publishes ([ADR 0011](../docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md)). This README covers the CI/CD side: what the scripts do, and the GitHub and Doppler settings they need. Provisioning the host, and the workflow job that runs these scripts on it, come with the infrastructure story.
+Everything needed to run Crowded on the Docker Swarm host ([ADR 0013](../docs/deliverables/adr/0013-single-azure-vm-docker-swarm-with-terraform.md)) from the images the pipeline publishes ([ADR 0011](../docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md)). This README covers the CI/CD side: what the scripts do, and the GitHub and Doppler settings they need. Provisioning the host, and the workflow job that runs these scripts on it, come with the infrastructure story. To run the same stack on a development machine, use `scripts/local/stack-up.sh` instead ([Getting Started](../README.md#getting-started)): it deploys `docker-compose.swarm.yml` with the local override `scripts/local/stack.local.yml` and the configuration of `.env`.
 
 | Path | What it is |
 |---|---|

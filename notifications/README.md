@@ -15,6 +15,26 @@ Same for `core/`, `jobs/` and `notifications/` ([ADR 0006](../docs/deliverables/
 - groupId `com.crowded`, base package `com.crowded.notifications`.
 - Formatting: Spotless with google-java-format. Lint: the compiler with `-Xlint:all` and `failOnWarning`, so any warning fails the build.
 
+## Setup
+
+**Prerequisites:** JDK 25 as `JAVA_HOME` (Maven itself comes with the committed wrapper) and Docker, for the infrastructure and the integration tests. [`scripts/local/setup.sh`](../scripts/local/setup.sh) (`setup.ps1` on Windows) checks them and creates `.env` ([Getting Started](../README.md#getting-started)).
+
+**Configuration from `.env`:** `start` sets the variables of [Configuration](#configuration) for this service only: `DB_URL` from `DB_PORT` and `POSTGRES_DB`, `DB_USERNAME=crowded_notifications` with `DB_PASSWORD` from `NOTIFICATIONS_DB_PASSWORD`, `RABBITMQ_*` and `REDIS_*` on `127.0.0.1` with the ports and passwords of `.env`, `JWT_PUBLIC_KEY_LOCATION` pointing at the key of `JWT_PUBLIC_KEY_BASE64`, written to `.local/jwt/`, and `SERVER_PORT` from `NOTIFICATIONS_PORT` (8083).
+
+**Running it alone,** from source, without the whole Docker stack:
+
+| Step | Debian, macOS | Windows (PowerShell 7) |
+|---|---|---|
+| Start PostgreSQL (migrated, with the demo data), RabbitMQ and Redis | `scripts/local/infra-up.sh` | `scripts\local\infra-up.ps1` |
+| Run Notifications (`./mvnw spring-boot:run`) on `http://localhost:8083/` | `scripts/local/start.sh notifications` | `scripts\local\start.ps1 notifications` |
+| Follow its log | `scripts/local/logs.sh notifications` | `scripts\local\logs.ps1 notifications` |
+| Stop it | `scripts/local/stop.sh notifications` | `scripts\local\stop.ps1 notifications` |
+| Remove the infrastructure | `scripts/local/infra-down.sh` | `scripts\local\infra-down.ps1` |
+
+`start` also works against the data stores of `scripts/local/stack-up.sh`, next to the stack's own Notifications. To run it from an IDE instead, give it the same variables; `/actuator/health` answers `UP` once it reaches PostgreSQL, RabbitMQ and Redis.
+
+**Tests:** `./mvnw verify` from this folder (`mvnw.cmd verify` on Windows) runs everything CI checks; the integration tests need Docker running, and `./mvnw verify -DskipITs` skips them. See [Commands](#commands).
+
 ## Commands
 
 ```bash
