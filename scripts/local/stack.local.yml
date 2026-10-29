@@ -1,0 +1,18 @@
+# Local override of deployment/docker-compose.swarm.yml, deployed together
+# with it by scripts/local/stack-up.sh on a single-node Swarm.
+#
+# Swarm cannot bind a published port to 127.0.0.1 alone, so nothing here
+# publishes one: the router gets no replica, and stack-up starts the local
+# gateway instead (gateway.nginx.conf), a plain container that publishes its
+# ports on 127.0.0.1, serves the router's routes and forwards PostgreSQL,
+# RabbitMQ and Redis. It joins the stack's networks, so they are attachable.
+services:
+  router:
+    deploy:
+      replicas: 0
+
+networks:
+  edge:
+    attachable: true
+  backend:
+    attachable: true

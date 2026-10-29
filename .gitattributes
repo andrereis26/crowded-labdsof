@@ -1,9 +1,13 @@
 # Store text files with LF line endings, whatever the OS. See .editorconfig.
 * text=auto eol=lf
 
+# Shell scripts must keep LF on every OS, or bash fails on Windows checkouts.
+*.sh text eol=lf
+
 # Windows scripts need CRLF.
 *.bat text eol=crlf
 *.cmd text eol=crlf
+*.ps1 text eol=crlf
 
 *.jar binary
 *.png binary

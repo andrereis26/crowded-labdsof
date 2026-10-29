@@ -2,6 +2,7 @@
 # Pre-push hook: scans the commits being pushed for secrets.
 # Git passes the remote name as $1 and one line per pushed ref on stdin:
 #   <local ref> <local sha> <remote ref> <remote sha>
+# PowerShell twin (Windows): scripts/gitleaks-pre-push.ps1
 set -eu
 
 remote="$1"
