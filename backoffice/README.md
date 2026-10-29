@@ -10,11 +10,11 @@ Web app for organizers and administrators: React, Vite and Tailwind CSS ([ADR 00
 
 **Running it alone,** from source, without the whole Docker stack:
 
-| Step | Debian, macOS | Windows (PowerShell 7) |
-|---|---|---|
+| Step                                                                                     | Debian, macOS                       | Windows (PowerShell 7)               |
+| ---------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------ |
 | Run `npm run dev` on `http://localhost:5173/` (installs the dependencies the first time) | `scripts/local/start.sh backoffice` | `scripts\local\start.ps1 backoffice` |
-| Follow its log | `scripts/local/logs.sh backoffice` | `scripts\local\logs.ps1 backoffice` |
-| Stop it | `scripts/local/stop.sh backoffice` | `scripts\local\stop.ps1 backoffice` |
+| Follow its log                                                                           | `scripts/local/logs.sh backoffice`  | `scripts\local\logs.ps1 backoffice`  |
+| Stop it                                                                                  | `scripts/local/stop.sh backoffice`  | `scripts\local\stop.ps1 backoffice`  |
 
 Or in the foreground, from this folder, the same on every OS:
 
