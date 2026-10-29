@@ -148,6 +148,7 @@ Planned after the MVP (FR-012, TR-004). It uses the same adapter and rules as th
 
 ![Crowded — Deployment View](diagrams/deployment-view.svg)
 
+- This is the only deployed environment, **production**: there is no development or staging environment. Developers run the system on their machines and CI in throwaway containers ([ADR 0008](adr/0008-single-ec2-docker-swarm-with-terraform.md#environments)).
 - Everything runs on **one AWS EC2 instance** inside a VPC, provisioned with **Terraform**. The instance type is a variable, so it can grow without redesign.
 - The instance runs a **single-node Docker Swarm**. Each box in the diagram is a container (Swarm service) with a health check; Swarm restarts failed containers.
 - Only the **router (NGINX)** publishes ports (443). All other containers are reachable only on internal overlay networks.
@@ -168,4 +169,4 @@ A disruption can also affect Crowded itself. Each scenario below keeps the princ
 | Ticketing source | Jobs keeps the last valid data and rejects invalid data | The time of the last successful synchronization | NFR-005 |
 | AI service | Manual ticket entry, manually written alerts, rule-based grouping of reports | The manual form or editor instead of the AI suggestion | NFR-006, FR-053 |
 
-The final presentation demonstrates the **push provider failure**: with the provider switched off in the deployed environment, a change published by the ticketing simulator still reaches participants through the notification center and the live banner, and the failed push attempts appear in the logs and in the operational dashboard.
+The final presentation demonstrates the **push provider failure**: with the provider switched off in production, a change published by the ticketing simulator still reaches participants through the notification center and the live banner, and the failed push attempts appear in the logs and in the operational dashboard.

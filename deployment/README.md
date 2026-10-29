@@ -91,7 +91,7 @@ Project `crowded`, config `prd`. The service token in `DOPPLER_TOKEN` already id
 | `POSTGRES_USER` | No | The migration user, which owns the schema. Only the `database` job uses it |
 | `POSTGRES_PASSWORD` | Yes | Password of that user |
 | `CORE_DB_PASSWORD`, `JOBS_DB_PASSWORD`, `NOTIFICATIONS_DB_PASSWORD` | Yes | Passwords of the database users `crowded_core`, `crowded_jobs` and `crowded_notifications`, which the `database` job creates. Letters and digits only. Each service gets only its own |
-| `SEED_DEMO_DATA` | No | `true` loads the demo data ([`database/`](../database/README.md#demo-accounts)). Optional, default `false`. Only the shared environment sets it |
+| `SEED_DEMO_DATA` | No | `true` loads the demo data ([`database/`](../database/README.md#demo-accounts)). Optional, default `false`. Production sets it, for the demos |
 | `RABBITMQ_USERNAME` | No | RabbitMQ user of the services |
 | `RABBITMQ_PASSWORD` | Yes | Password of that user. Use letters and digits only: it is written into a RabbitMQ config file |
 | `REDIS_PASSWORD` | Yes | Redis password |

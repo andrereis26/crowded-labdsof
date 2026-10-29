@@ -1,6 +1,6 @@
 -- Demo data (ADR 0012): enough to walk every Sprint 2 journey from an empty
 -- database. Applied only when SEED_DEMO_DATA=true (local development and the
--- shared environment), after the migrations.
+-- production), after the migrations.
 --
 -- Every person, address and message is invented. The demo accounts all use
 -- the password in database/README.md, stored only as a bcrypt hash (SR-013),
