@@ -148,7 +148,7 @@ Planned after the MVP (FR-012, TR-004). It uses the same adapter and rules as th
 
 ![Crowded — Deployment View](diagrams/deployment-view.svg)
 
-- This is the only deployed environment, **production**: there is no development or staging environment. Developers run the system on their machines and CI in throwaway containers ([ADR 0008](adr/0008-single-ec2-docker-swarm-with-terraform.md#environments)).
+- The design has three deployed environments, **development**, **staging** and **production**, each a copy of this view with its own Doppler config. Every merge to `main` goes to development, a release tag promotes the same images to staging, and a manual approval promotes them to production. In practice only production is deployed and it simulates the other two ([ADR 0008](adr/0008-single-ec2-docker-swarm-with-terraform.md#environments)). Local development and CI are not environments.
 - Everything runs on **one AWS EC2 instance** inside a VPC, provisioned with **Terraform**. The instance type is a variable, so it can grow without redesign.
 - The instance runs a **single-node Docker Swarm**. Each box in the diagram is a container (Swarm service) with a health check; Swarm restarts failed containers.
 - Only the **router (NGINX)** publishes ports (443). All other containers are reachable only on internal overlay networks.

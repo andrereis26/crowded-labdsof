@@ -29,7 +29,7 @@ PostgreSQL 18 starts on `127.0.0.1:5432` (another port with `DB_PORT=55432`), an
 | `crowded_jobs` | `jobs` | Jobs |
 | `crowded_notifications` | `notifications` | Notifications |
 
-A service then runs with `DB_URL=jdbc:postgresql://localhost:5432/crowded` and its own user. These passwords are only for this throwaway database; production gets its own from Doppler (SR-008).
+A service then runs with `DB_URL=jdbc:postgresql://localhost:5432/crowded` and its own user. These passwords are only for this throwaway database; the deployed environments get theirs from Doppler (SR-008).
 
 ### Demo Accounts
 
@@ -73,4 +73,4 @@ docker run --rm --network <network> -e DB_URL=... -e DB_USERNAME=... ... crowded
 
 - **Integration tests:** each service's `IntegrationTest` builds this image from `../database` and runs it with the demo data against its PostgreSQL container, then connects as that service's user. A write to a table the service does not own fails there as it would in production.
 - **CI:** the Database workflow builds the image, scans it with Trivy and runs `scripts/ci/test-database.sh` on every change to this folder. On `main` it then pushes `<namespace>/crowded-database`. The Backend workflow also runs, because the services' integration tests use these migrations.
-- **Production:** the `database` job of the Swarm stack. `deployment/remote-deploy.sh` runs it before Core, Jobs and Notifications get their new images; a failed migration stops the deployment ([`deployment/`](../deployment/README.md)).
+- **Deployed environments** (development, staging and production; only production for now): the `database` job of the Swarm stack. `deployment/remote-deploy.sh` runs it before Core, Jobs and Notifications get their new images; a failed migration stops the deployment ([`deployment/`](../deployment/README.md)).

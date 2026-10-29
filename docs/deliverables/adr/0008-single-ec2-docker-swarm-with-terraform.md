@@ -21,11 +21,27 @@ Option 4. Terraform provisions the VPC, security group, Elastic IP, EC2 instance
 
 ### Environments
 
-There is **one deployed environment, production**, as the course professor advised: no development or staging environment. Every merge to `main` is deployed to it, and it is where each story is verified (DoD-10) and where the demos run, so it loads the demo data (`SEED_DEMO_DATA=true`, [ADR 0012](0012-database-migrations-with-flyway.md)). Doppler has one config, `prd`. Before a change reaches production it runs on the developer's machine, with its configuration in a git-ignored `.env`, and in CI, in throwaway containers; neither is a deployed environment. Environment-specific configuration (NFR-016) stays: the same images take every setting from the environment, so a second environment would need only another Doppler config and host, without a code change.
+The design has **three deployed environments**, each a copy of the deployment view (its own instance, Swarm stack and Doppler config) running the same images:
+
+| Environment | Doppler config | Receives a release | Demo data | Purpose |
+|---|---|---|---|---|
+| Development | `dev` | Every merge to `main` | Yes | First deployment of every change, integration of the team's work |
+| Staging | `stg` | A release tag on `main`: the same images, not rebuilt | Yes | Each story is verified here (DoD-10) before it reaches participants |
+| Production | `prd` | Manual approval of that release (GitHub environment protection) | No | Real participants and organizations |
+
+A release moves up only by changing which images an environment runs, never by building again, so what was verified in staging is what reaches production. The settings differ only in Doppler (NFR-016). Developers' machines (**local development**, configured from a git-ignored `.env`) and CI's throwaway containers are not deployed environments.
+
+**In practice only production is deployed**, as the course professor advised: three instances do not fit the AWS free student plan, and three environments add nothing the evaluation can see. The other two are simulated by production:
+
+- Every merge to `main` is deployed straight to production, which plays the three roles: there are no release tags or approvals yet, and only the `prd` Doppler config is used.
+- Stories are verified there (DoD-10 says staging).
+- Production loads the demo data (`SEED_DEMO_DATA=true`, [ADR 0012](0012-database-migrations-with-flyway.md)), as staging would, because the demos run on it. A real production would not.
+
+Adding development and staging later needs another instance and Doppler config each, and the promotion steps in the workflow, without a code change.
 
 ## Consequences
 
 - One instance is a single point of failure; acceptable for the MVP.
 - The 1 GB t3.micro is likely too small for the stack ([ADR 0006](0006-technology-stack.md)). This will be checked at the first deployment: a larger instance type, or another provider.
 - The infrastructure can be recreated from code.
-- With one environment, a change is first seen deployed in production. The checks on every pull request, the smoke test after each deployment and `deployment/remote-rollback.sh` make up for the missing staging.
+- While only production is deployed, a change is first seen deployed in production. The checks on every pull request, the smoke test after each deployment and `deployment/remote-rollback.sh` make up for the missing development and staging.
