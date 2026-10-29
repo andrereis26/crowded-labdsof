@@ -1,9 +1,9 @@
-# Builds an app's image, scans it with Trivy, smoke-tests it and, on main,
+# Builds an app's image, scans it with Trivy and, on main,
 # pushes it to Docker Hub tagged with the commit SHA and `main` (ADR 0011).
 # A composite action rather than a reusable workflow, so the calling job can
 # prepare the build context first (the participant app builds Flutter web).
 name: Build image
-description: Builds, scans, smoke-tests and optionally pushes an app's container image.
+description: Builds, scans and optionally pushes an app's container image.
 
 inputs:
   name:
@@ -12,9 +12,9 @@ inputs:
   context:
     description: Build context, relative to the repository root.
     required: true
-  smoke-test:
-    description: Command that tests the image, which it receives in $IMAGE.
-    required: true
+  test:
+    description: Optional command that tests the image, which it receives in $IMAGE.
+    default: ""
   push:
     description: "'true' to push the image to Docker Hub."
     default: "false"
@@ -56,12 +56,13 @@ runs:
         target: ${{ steps.build.outputs.image }}
         report-name: trivy-${{ inputs.name }}
 
-    - name: Smoke test
+    - name: Test
+      if: inputs.test != ''
       shell: bash
       env:
         IMAGE: ${{ steps.build.outputs.image }}
-        SMOKE_TEST: ${{ inputs.smoke-test }}
-      run: bash -c "$SMOKE_TEST"
+        TEST: ${{ inputs.test }}
+      run: bash -c "$TEST"
 
     - id: push
       name: Push

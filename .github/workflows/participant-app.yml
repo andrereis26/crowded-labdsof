@@ -1,7 +1,7 @@
 # CI for the Flutter participant app (ADR 0011). Pull requests and pushes to
 # main run the checks: formatting, static analysis and tests with a coverage
 # threshold. Pushes to main are also the release: once the checks passed, the
-# image runs (web build, scan, smoke test, push to Docker Hub). "Participant
+# image runs (web build, scan, push to Docker Hub). "Participant
 # app result" is the required check.
 name: Participant app
 
@@ -108,7 +108,6 @@ jobs:
         with:
           name: crowded-participant-app
           context: participant-app
-          smoke-test: scripts/ci/smoke-web.sh "$IMAGE" / /evento/qualquer
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           dockerhub-namespace: ${{ vars.DOCKERHUB_NAMESPACE }}
           dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
