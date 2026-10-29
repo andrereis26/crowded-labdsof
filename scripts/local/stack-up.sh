@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the whole system on this machine as the shared environment runs it
+# Runs the whole system on this machine as the production environment runs it
 # (#111): the Swarm stack of deployment/docker-compose.swarm.yml, with the
 # local override stack.local.yml. It
 #   1. turns on single-node Swarm if it is off, on 127.0.0.1;

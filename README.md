@@ -68,7 +68,7 @@ The scripts in [`scripts/local/`](/scripts/local/) prepare a clone and run Crowd
 
    It checks the other tools and versions the projects need (JDK 25 as `JAVA_HOME`, Node.js 22.12 or later, Flutter 3.47, Lefthook 2, and gitleaks 8.30.1 or Docker) and says how to install any that is missing. It creates `.env` from [`.env.example`](/.env.example), with a new random value for every secret, and installs the [Git hooks](#git-hooks). It never overwrites an existing `.env`, which is git-ignored.
 
-2. Run the whole system, as the shared environment runs it, or one app from source:
+2. Run the whole system, as the production environment runs it, or one app from source:
 
    ```bash
    scripts/local/stack-up.sh     # the whole system: http://localhost:8080/

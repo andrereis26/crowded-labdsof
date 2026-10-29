@@ -1,7 +1,7 @@
 #Requires -Version 7.4
 <#
 .SYNOPSIS
-Runs the whole system on this machine as the shared environment runs it (#111).
+Runs the whole system on this machine as the production environment runs it (#111).
 
 .DESCRIPTION
 The Swarm stack of deployment/docker-compose.swarm.yml, with the local
