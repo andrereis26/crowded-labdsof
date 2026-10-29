@@ -195,17 +195,19 @@ These cases come from news reports and complaint platforms, so they show the mos
 
 ## 5. Assumptions
 
-| ID | Assumption | Description |
-|---|---|---|
-| **A1** | **Users Want Event Changes in a Single Place** | We assume users value receiving changes for all the events they attend in one place, regardless of where the ticket was bought. |
-| **A2** | **Organizations Are Willing to Publish On-Site Conditions** | We assume organizations will publish crowd levels, queues and alerts if the backoffice is simple, or if the data can be sent automatically through an API. |
-| **A3** | **Organizers Need Interest Data Before Booking** | We assume organizers are interested in knowing how many people would attend before deciding whether to book an event, for how many nights and in which room, and before finalizing staff and entrances, and that participants will answer a short poll about an event they are interested in. |
-| **A4** | **Users Are Willing to Import Tickets** | We assume users are willing to import tickets bought elsewhere if the process is fast and gives them access to change notifications and on-site information. |
-| **A5** | **Event Disruptions Are Common Enough to Justify the Product** | We assume changes, overcrowding and on-site incidents occur frequently enough to justify a dedicated communication service. |
-| **A6** | **Official Event Data Can Be Obtained** | We assume official event changes can be obtained from ticketing platforms or public agendas. In the MVP, this source is simulated. |
-| **A7** | **Participants Will Report What They See On Site** | We assume participants will report incidents (e.g., lost and found, accessibility barriers) if reporting is fast and the organization responds. |
-| **A8** | **Participants Will Confirm Other Participants' Reports** | We assume participants connected to an event will answer a single-tap "Yes" or "No" confirmation about a report (e.g., "Is it very crowded?") if they are asked rarely, and that these answers are reliable enough to estimate on-site conditions when the organization publishes none. |
-| **A9** | **Participants Will Allow Location to Report** | We assume participants are willing to allow a one-time approximate location check when reporting or confirming, if Crowded explains that it is only used to ensure better report quality and does not store it. |
+Each assumption is something the product depends on but we have not yet proven. Each one has a way to test it during the course or right after the MVP, and a plan if it turns out false, so no single assumption can sink the product. They are reviewed at each sprint review. The professors' feedback and the usability tests of Sprint 3 are the first evidence.
+
+| ID | Assumption | Description | How and when we validate it | If it proves false |
+|---|---|---|---|---|
+| **A1** | **Users Want Event Changes in a Single Place** | We assume users value receiving changes for all the events they attend in one place, regardless of where the ticket was bought. | Usability tests of the wallet with the personas' tasks (Sprint 3); after the MVP, share of users with tickets from more than one platform. | The wallet loses its main reason; Crowded narrows to the events of partner organizers. |
+| **A2** | **Organizations Are Willing to Publish On-Site Conditions** | We assume organizations will publish crowd levels, queues and alerts if the backoffice is simple, or if the data can be sent automatically through an API. | Interviews with two or three venue or festival organizers before the end of Sprint 3, showing them the backoffice and the dashboard (#43); the entrance-counter simulator shows the automatic path. | Risk R1: official changes, weather and confirmed participant reports still work without the organization. |
+| **A3** | **Organizers Need Interest Data Before Booking** | We assume organizers are interested in knowing how many people would attend before deciding whether to book an event, for how many nights and in which room, and before finalizing staff and entrances, and that participants will answer a short poll about an event they are interested in. | Show the interest poll (#45, #46) to the same organizers; after the MVP, share of proposed events confirmed or withdrawn after their poll (success criteria). | Polls are dropped from the MVP scope; proposed events remain as a way to collect followers. |
+| **A4** | **Users Are Willing to Import Tickets** | We assume users are willing to import tickets bought elsewhere if the process is fast and gives them access to change notifications and on-site information. | Time to import a ticket in the AI evaluation (#72) against manual entry; usability test of the import flow. | Following an event (#25) becomes the main way to connect, and tickets are added later. |
+| **A5** | **Event Disruptions Are Common Enough to Justify the Product** | We assume changes, overcrowding and on-site incidents occur frequently enough to justify a dedicated communication service. | Already supported by documented cases (section 3.6); after the MVP, disruptions per event in the synchronized sources. | The product shifts weight to on-site information (crowds, queues, alerts), which happens at every event. |
+| **A6** | **Official Event Data Can Be Obtained** | We assume official event changes can be obtained from ticketing platforms or public agendas. In the MVP, this source is simulated. | The ticketing simulator reproduces the formats of real platforms (#68); after the MVP, a partnership or public API with one ticketing platform or municipal agenda. | Changes come only from organizations (FR-015, FR-016), which loses the coverage of events without one. |
+| **A7** | **Participants Will Report What They See On Site** | We assume participants will report incidents (e.g., lost and found, accessibility barriers) if reporting is fast and the organization responds. | Usability test of reporting (#53) on the demonstration; after the MVP, reports per connected participant per event. | Reporting stays limited to organizations and the entrance-counter API. |
+| **A8** | **Participants Will Confirm Other Participants' Reports** | We assume participants connected to an event will answer a single-tap "Yes" or "No" confirmation about a report (e.g., "Is it very crowded?") if they are asked rarely, and that these answers are reliable enough to estimate on-site conditions when the organization publishes none. | Usability test of the single-tap confirmation (#76); after the MVP, answer rate of confirmation prompts and agreement with the organization's own data. | Estimates rely on the organization's data; the confidence rules (FR-058) show fewer estimates. |
+| **A9** | **Participants Will Allow Location to Report** | We assume participants are willing to allow a one-time approximate location check when reporting or confirming, if Crowded explains that it is only used to ensure better report quality and does not store it. | Usability test of the location prompt and its explanation (FR-064); after the MVP, share of users who allow it. | Reports in non-personal categories become unavailable to those users, which lowers the volume of estimates; personal categories still work. |
 
 ---
 
@@ -317,3 +319,20 @@ Users can turn off every notification type, including official event changes and
     - Turn every notification type on by default, both overall and for each event
     - Ask for confirmation, with a warning, before official changes or operational alerts are turned off
     - Keep official changes and alerts visible in the ticket wallet and on the event page even when their notifications are off
+
+---
+
+## 7. Dependencies
+
+What Crowded depends on but does not control. Each dependency has an owner in the team and a way to keep the product working without it. The technical details are in the [Technical Design](technical-design.md#external-integrations) and the costs in [Operating Costs](operating-costs.md).
+
+| Dependency | Kind | Needed for | Risk | Mitigation | Owner |
+|---|---|---|---|---|---|
+| Ticketing platforms' event data | External data | Official changes (FR-011) | No public API or partnership (A6, R3) | A simulator in the MVP (#68); adapter to a real platform after it; changes published by the organization cover the gap | André |
+| Organizations | Business | On-site information, alerts, polls | Low adoption (A2, R1) | A simple backoffice, an API for automatic data, and participant reports confirmed by others | Guilherme |
+| AI provider (vendor open) | External service | Ticket extraction, alert drafts, report grouping | Outage, cost, wrong output (AI assessment R2–R4) | Behind an adapter with a fake; manual and rule-based fallbacks (NFR-006); rate limits; evaluation before use (NFR-015) | Margarida |
+| Weather provider (Open-Meteo) | External service | Forecasts, severe-weather alerts | Outage; free tier non-commercial only | Last known forecast with its time; a paid plan before a commercial launch | Acácio |
+| Firebase Cloud Messaging | External service | Push on the mobile app | Outage | In-app notification center and live banners (NFR-020) | Acácio |
+| Azure for Students | Infrastructure | The shared environment | The credit runs out (US$100 a year) | Stop the VM outside working hours; infrastructure as code recreates it elsewhere ([ADR 0013](adr/0013-single-azure-vm-docker-swarm-with-terraform.md)) | André |
+| GitHub, Docker Hub, Doppler | Delivery tools | CI/CD, images, secrets | Free-plan limits (Actions minutes) | Monitored at each sprint review ([Operating Costs](operating-costs.md#6-decisions-to-take)) | André |
+| Course calendar | Schedule | Sprint dates and reviews | Three fixed sprints | Scope cut by priority, never the quality bar ([Work Methodology](work-methodology.md#6-adapting-to-change)) | Guilherme |

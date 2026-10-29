@@ -28,6 +28,15 @@ Inês is the primary persona: the north star metric measures how early she learn
 about a disruption. Miguel and Rita are the two people at an organization who make
 that possible — one before the event, one on the night.
 
+**Why these three.** They cover the two sides of the stakeholder map
+([Problem and Opportunity Report, section 4](problem-and-opportunity-report.md#4-stakeholder-map)):
+the attendee, and the organization in its two moments, deciding before the event and
+operating it on the night. Each frustration comes from a documented problem or a
+user-research finding, cited under **Basis**. Organizers were not part of the user
+research ([its limitations](user-research.md#limitations)), so Miguel and Rita rest on
+the problem evidence and on assumptions A2 and A3. Interviews with organizers in
+Sprint 3 validate them ([Assumptions](problem-and-opportunity-report.md#5-assumptions)).
+
 ### Persona 1 — Inês, the Participant
 - **Age/context:** 24 years old, university student in Porto
 - **Goal:** keep track of the events she is going to — concerts bought on Ticketline,
@@ -40,6 +49,13 @@ that possible — one before the event, one on the night.
   event is confirmed or changes, and checks crowd levels, queues, and organizer
   alerts before leaving home — including estimates reported and confirmed by other
   participants when the organizer has published none
+- **Basis:**
+  - Changes spread across channels and arriving too late
+    ([Problem Evidence 3.1](problem-and-opportunity-report.md#31-fragmented-communication-of-changes)).
+  - Documented cases of audiences already at the venue when a show was cancelled, and of
+    queues of over an hour ([3.6](problem-and-opportunity-report.md#36-documented-disruptions-in-portugal-and-europe)).
+  - User research: alerts that never arrived, and tickets hard to reach while travelling
+    ([Findings](user-research.md#summary-of-findings)).
 
 ### Persona 2 — Miguel, the Booker
 - **Age/context:** 35 years old, programmer (booker) at a mid-size concert venue in
@@ -54,6 +70,12 @@ that possible — one before the event, one on the night.
   poll with his own options, shares it through a public link, sees the totals and how
   many people follow the event, then confirms or withdraws it and publishes any later
   change — all followers and ticket holders are notified once
+- **Basis:**
+  - Organizers plan capacity on intuition
+    ([3.4 Limited Capacity Planning](problem-and-opportunity-report.md#34-limited-capacity-planning)).
+  - Ticketing platforms stop at the purchase
+    ([3.2](problem-and-opportunity-report.md#32-ticketing-platforms-stop-at-the-purchase)).
+  - Validated by assumption A3.
 
 ### Persona 3 — Rita, the Front-of-House Manager
 - **Age/context:** 29 years old, front-of-house manager at the same venue
@@ -66,6 +88,12 @@ that possible — one before the event, one on the night.
   automatically through the API), sends alerts such as "Gate B closed, use Gate C" to
   everyone connected to the event from an AI-generated draft she reviews, and handles
   similar participant reports as a single incident
+- **Basis:**
+  - No direct organizer-to-audience channel during events
+    ([3.5](problem-and-opportunity-report.md#35-no-direct-organizer-to-audience-channel-during-events)).
+  - No real-time on-site awareness
+    ([3.3](problem-and-opportunity-report.md#33-lack-of-real-time-on-site-awareness)).
+  - Validated by assumption A2.
 
 Miguel and Rita are both members of the same organization in Crowded; they use the
 same backoffice with the same permissions.
