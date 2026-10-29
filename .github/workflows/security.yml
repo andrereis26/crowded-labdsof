@@ -1,5 +1,6 @@
-# Repository-wide security checks: committed secrets (SR-008) and known
-# vulnerabilities or misconfigurations in dependencies and Dockerfiles.
+# Repository-wide security checks: committed secrets (SR-008), known
+# vulnerabilities or misconfigurations in dependencies and Dockerfiles, and
+# lint of the shell and PowerShell scripts (#111).
 # Pull requests, pushes to main (the merged code is checked again, ADR 0011)
 # and a weekly run.
 name: Security
@@ -22,6 +23,8 @@ concurrency:
 
 env:
   GITLEAKS_IMAGE: zricethezav/gitleaks:v8.30.1
+  SHELLCHECK_IMAGE: koalaman/shellcheck:v0.11.0
+  PSSCRIPTANALYZER_VERSION: 1.24.0
 
 jobs:
   secrets:
@@ -73,3 +76,24 @@ jobs:
           target: .
           report-name: trivy-repository
           args: --skip-dirs participant-app/build --skip-dirs backoffice/node_modules
+
+  scripts:
+    name: Script lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      # Every shell script, including scripts/local/, which also runs on
+      # macOS (bash 3.2, BSD tools): see the comment at the top of its lib.sh.
+      - name: ShellCheck
+        run: |
+          git ls-files -z '*.sh' \
+            | xargs -0 docker run --rm -v "$GITHUB_WORKSPACE:/mnt" -w /mnt "$SHELLCHECK_IMAGE" -x
+      # Every PowerShell script: the Windows twins of the local scripts.
+      - name: PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -RequiredVersion $env:PSSCRIPTANALYZER_VERSION -Scope CurrentUser -Force
+          $findings = @(Invoke-ScriptAnalyzer -Path . -Recurse -Severity Information, Warning, Error)
+          $findings | Format-Table -AutoSize -Wrap RuleName, Severity, ScriptName, Line, Message
+          if ($findings.Count -gt 0) { exit 1 }
