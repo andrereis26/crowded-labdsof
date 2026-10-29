@@ -23,6 +23,10 @@ Crowded keeps people informed when something changes or goes wrong at the events
 - [Responsible AI Opportunity Assessment](/docs/deliverables/responsible-ai-opportunity-assessment.md)
 - [Ethical Engagement Design](/docs/deliverables/ethical-engagement-design.md)
 - [Requirements Specification](/docs/deliverables/requirements.md)
+- [Product Backlog](/docs/deliverables/product-backlog.md)
+- [Sprint 1 Scope](/docs/deliverables/sprint-1-scope.md)
+- [Work Methodology](/docs/deliverables/work-methodology.md)
+- [Operating Costs Estimation](/docs/deliverables/operating-costs.md)
 - [Security and Privacy Assessment](/docs/deliverables/security-and-privacy-assessment.md)
 - [Definition of Ready and Definition of Done](/docs/deliverables/definition-of-ready-and-done.md)
 - [Technical Design](/docs/deliverables/technical-design.md)
@@ -52,6 +56,20 @@ The domain model shows the main concepts of Crowded and how they relate, indepen
 - **Provenance** is attached to every piece of event information, so the product can always show where it came from and when it was last updated.
 - **Disruptions** take three forms: official changes (**EventChange**, published by the organization or detected in the ticketing source, and recorded once when both report it), organizer alerts (**Alert**) and incidents reported by participants (**Incident**). Changes and alerts share a **Severity** (critical, warning, information), alerts stay active until the organization resolves them, and every **Notification** points to the disruption that caused it.
 - Integration details (ticketing sync state, external providers) are kept out of the model; they belong to the services described in the [Technical Design](/docs/deliverables/technical-design.md).
+
+Why each aggregate root is a boundary, and which journey of the [Product Vision](/docs/deliverables/product-vision.md#principal-user-workflows) it serves:
+
+| Area | Aggregate root | Why it is its own consistency boundary | Workflow |
+|---|---|---|---|
+| Identity & Access | **User** | A person's account, role and location consent change together, and deleting it must remove their personal data in one step (FR-042) | All |
+| Identity & Access | **Organization** | Verification and API credentials decide what an organization may publish (SR-001, SR-002); members refer to it, not the reverse | 3 |
+| Event Catalog | **Event** | Its status, location and crowd status must always agree, and every change is recorded as an EventChange inside it, so the history cannot drift from the event | 1, 2, 3 |
+| Participation | **EventConnection** | A Ticket or a Follow belongs to one user and one event and is created or removed as a unit; the ticket's extraction and match candidates only exist through it | 1, 2 |
+| Organizer Communication | **Alert**, **EventSurvey**, **InterestPoll** | Each is drafted, published and closed on its own schedule, with its options and responses; an InterestPoll can exist before its event is confirmed | 3 |
+| Reports & Incidents | **Report**, **Incident** | A report and its confirmations decide its confidence together. An Incident groups many reports but is acknowledged and resolved separately, so reports are referenced, not owned. | 4 |
+| Notifications & Audit | **Notification** | Delivered once per user and cause (NFR-003), with its own read and delivery state, independent of the event that caused it | 2 |
+
+On-site information (crowd status, queue times, weather, provenance) are value objects: they are replaced, never edited, and have no identity of their own. The [Data Model](/docs/deliverables/technical-design.md#data-model) maps each concept to tables, and the [Asynchronous Flows](/docs/deliverables/asynchronous-flows.md) show how aggregates owned by different services stay consistent through messages.
 
 
 Note: everyone's role is flexible and can change according to the needs of the project and everyone's assumed as developer as well.
