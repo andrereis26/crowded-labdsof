@@ -43,10 +43,11 @@
     locally whenever that app's `Dockerfile`, `nginx.conf` or build changes.
   - Deployment scripts: `shellcheck -x` on `deployment/*.sh` and
     `docker stack config` on `deployment/docker-compose.swarm.yml`.
-  - Scripts (`*.sh`, `*.ps1`), as the Security workflow's `Script lint` job runs
-    them: `shellcheck -x` (koalaman/shellcheck:v0.11.0) on every tracked `.sh`, and
-    `Invoke-ScriptAnalyzer -Path . -Recurse` (PSScriptAnalyzer 1.24.0, no findings
-    at any severity). `scripts/local/` and the scripts Lefthook runs must work on
+  - Scripts (`*.sh`, `*.ps1`), locally only (no CI job): `shellcheck -x`
+    (koalaman/shellcheck:v0.11.0 image) on every tracked `.sh`, and
+    `Invoke-ScriptAnalyzer -Path . -Recurse` (PSScriptAnalyzer 1.24.0, in the
+    mcr.microsoft.com/powershell image when pwsh is missing; no findings at any
+    severity). `scripts/local/` and the scripts Lefthook runs must work on
     macOS's bash 3.2 with BSD tools (`scripts/local/lib.sh`); then run the changed
     script for real, e.g. `stack-up.sh` and `stack-down.sh` twice each.
 - Deliverable and commits: a commit on a feature branch. Messages follow
