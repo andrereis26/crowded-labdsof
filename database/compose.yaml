@@ -4,8 +4,8 @@
 #   docker compose -f database/compose.yaml up --build --detach
 #   docker compose -f database/compose.yaml down
 #
-# The passwords are for this throwaway database on 127.0.0.1 only; deployed
-# environments get theirs from Doppler (SR-008).
+# The passwords are for this throwaway database on 127.0.0.1 only;
+# production gets its own from Doppler (SR-008).
 name: crowded-database
 
 services:

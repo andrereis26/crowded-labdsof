@@ -6,7 +6,7 @@
 
 ## Context
 
-The three services share one PostgreSQL database in which each table has one owning service ([ADR 0002](0002-shared-database-with-table-ownership.md)). ADR 0002 leaves two things open: the ownership rule must be enforced with a database user per service, and schema changes must be coordinated between the services. Every environment (a developer's machine, the integration tests, CI and the shared environment) also needs the same schema, applied the same way, and the demo needs data from an empty database (Sprint 2 deliverable 3; NFR-013, NFR-016, SR-008, SR-013).
+The three services share one PostgreSQL database in which each table has one owning service ([ADR 0002](0002-shared-database-with-table-ownership.md)). ADR 0002 leaves two things open: the ownership rule must be enforced with a database user per service, and schema changes must be coordinated between the services. Every environment (a developer's machine, the integration tests, CI and production) also needs the same schema, applied the same way, and the demo needs data from an empty database (Sprint 2 deliverable 3; NFR-013, NFR-016, SR-008, SR-013).
 
 ## Options considered
 
@@ -46,7 +46,7 @@ Tables and columns are the [data model](../technical-design.md#data-model)'s nam
 
 The service users own nothing and cannot create objects, so a schema change from a service fails, and so does a write to another service's table. New tables are readable by every service through default privileges; their writer is added to `R__grants.sql` in the same pull request. Foreign keys from Notifications' tables to Core's (`app_user`, `event`, `event_connection`) cascade, so Core can delete a user or an event: the cascade runs with the table owner's rights.
 
-The passwords of the service users reach Flyway as placeholders filled from the environment, never from the repository (SR-008). In the shared environment they are Doppler secrets (`CORE_DB_PASSWORD`, `JOBS_DB_PASSWORD`, `NOTIFICATIONS_DB_PASSWORD`), stored as Swarm secrets and mounted as files in the migration job and in each service ([`deployment/`](../../../deployment/README.md)). They may hold only letters and digits, because they are written into an `ALTER ROLE` statement. Changing one in Doppler takes effect at the next deployment.
+The passwords of the service users reach Flyway as placeholders filled from the environment, never from the repository (SR-008). In production they are Doppler secrets (`CORE_DB_PASSWORD`, `JOBS_DB_PASSWORD`, `NOTIFICATIONS_DB_PASSWORD`), stored as Swarm secrets and mounted as files in the migration job and in each service ([`deployment/`](../../../deployment/README.md)). They may hold only letters and digits, because they are written into an `ALTER ROLE` statement. Changing one in Doppler takes effect at the next deployment.
 
 ### The services only validate
 
@@ -54,7 +54,7 @@ Each service sets `spring.jpa.hibernate.ddl-auto=validate`: it never creates or 
 
 ### Demo data behind a flag
 
-The demo data is a separate Flyway location, `seed/`, applied when **`SEED_DEMO_DATA=true`**. It is on locally, in the integration tests and in the shared environment; it is off by default, so no other environment gets demo accounts. It covers every Sprint 2 journey: verified, pending and rejected organizations, an event in every state, tickets, follows, alerts, reports, an incident and notifications. Every person in it is invented, its passwords are stored as bcrypt hashes (SR-013) and its rows have fixed ids. Reference data that every environment needs, such as the predefined report categories, is a versioned migration, not demo data.
+The demo data is a separate Flyway location, `seed/`, applied when **`SEED_DEMO_DATA=true`**. It is on locally, in the integration tests and in production, which serves the demos; it is off by default, so a database migrated without the flag gets no demo accounts. It covers every Sprint 2 journey: verified, pending and rejected organizations, an event in every state, tickets, follows, alerts, reports, an incident and notifications. Every person in it is invented, its passwords are stored as bcrypt hashes (SR-013) and its rows have fixed ids. Reference data that every environment needs, such as the predefined report categories, is a versioned migration, not demo data.
 
 ### Where it runs
 
@@ -63,7 +63,7 @@ The demo data is a separate Flyway location, `seed/`, applied when **`SEED_DEMO_
 | Local development | `database/compose.yaml`: a throwaway `postgres:18-alpine` on tmpfs, migrated and seeded on start, empty again after it stops. No H2: local runs, the tests and production use the same engine and SQL |
 | Integration tests | Each service's `IntegrationTest` builds the image from `../database` with Testcontainers, runs it with the seed against its PostgreSQL container and connects as that service's user |
 | CI | The Database workflow builds the image, scans it with Trivy and runs `scripts/ci/test-database.sh`: migrations with and without the seed, a second run that changes nothing, and each user's rights. `Database result` is the required check. On `main` it then pushes `crowded-database`, tagged like the apps' images |
-| Shared environment | The `database` service of the Swarm stack, a one-shot `replicated-job`. `remote-deploy.sh` deploys it first, with Core, Jobs and Notifications still on their previous images, waits for it to complete and only then deploys their new images. A failed migration fails the deployment, and the previous release keeps running |
+| Production | The `database` service of the Swarm stack, a one-shot `replicated-job`. `remote-deploy.sh` deploys it first, with Core, Jobs and Notifications still on their previous images, waits for it to complete and only then deploys their new images. A failed migration fails the deployment, and the previous release keeps running |
 
 ### Compatible with the previous release
 
