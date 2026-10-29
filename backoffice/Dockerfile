@@ -1,7 +1,7 @@
 # Builds the backoffice with Vite and serves it with NGINX as a non-root user.
 # The build uses base /backoffice/, the path the router serves it at.
 #   docker build -t crowded/backoffice .
-FROM node:24-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
