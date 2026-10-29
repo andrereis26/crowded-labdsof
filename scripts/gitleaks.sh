@@ -3,10 +3,17 @@
 # if it is that version, otherwise the official Docker image.
 # Usage: scripts/gitleaks.sh <gitleaks arguments>
 #   e.g. scripts/gitleaks.sh git --pre-commit --staged --redact
+# PowerShell twin (Windows): scripts/gitleaks.ps1
 set -eu
 
 version=8.30.1
 image="zricethezav/gitleaks:v$version"
+
+# Git for Windows' shell, which runs the Lefthook hooks there: Docker needs
+# Windows paths, which the PowerShell twin handles.
+case "$(uname -s)" in
+  MINGW* | MSYS* | CYGWIN*) exec pwsh -NoProfile -File "$(dirname "$0")/gitleaks.ps1" "$@" ;;
+esac
 
 if command -v gitleaks >/dev/null 2>&1 && [ "$(gitleaks version | sed 's/^v//')" = "$version" ]; then
   exec gitleaks "$@"
