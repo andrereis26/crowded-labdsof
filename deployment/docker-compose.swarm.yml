@@ -1,4 +1,4 @@
-# Crowded on a single-node Docker Swarm (ADR 0008). Deployed by
+# Crowded on a single-node Docker Swarm (ADR 0013). Deployed by
 # remote-deploy.sh, never by hand with `docker compose up`: Swarm needs the
 # `deploy` sections, and the variables below come from a release's release.env
 # (images by digest, versioned secret and config names, Doppler configuration).
