@@ -1,6 +1,6 @@
 # Crowded Database
 
-The schema of the one PostgreSQL database that Core, Jobs and Notifications share, the database user of each service, and the demo data ([ADR 0012](../docs/deliverables/adr/0012-database-migrations-with-flyway.md), [ADR 0002](../docs/deliverables/adr/0002-shared-database-with-table-ownership.md)). Flyway applies it from plain SQL files, packaged as the `crowded-database` image: the same image runs locally, in the services' integration tests, in CI and in the shared environment.
+The schema of the one PostgreSQL database that Core, Jobs and Notifications share, the database user of each service, and the demo data ([ADR 0012](../docs/deliverables/adr/0012-database-migrations-with-flyway.md), [ADR 0002](../docs/deliverables/adr/0002-shared-database-with-table-ownership.md)). Flyway applies it from plain SQL files, packaged as the `crowded-database` image: the same image runs locally, in the services' integration tests, in CI and in the production environment.
 
 | Path | What it is |
 |---|---|
