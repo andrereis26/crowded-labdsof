@@ -37,8 +37,9 @@
   - Secret scan: `scripts/gitleaks.sh git --redact --verbose` (gitleaks v8.30.1,
     local binary or Docker image, as in `.github/workflows/security.yml`).
   - Full: an app's image job (`.github/actions/build-image`): `docker build`, the
-    Trivy image scan (`.github/actions/trivy-scan`) and the smoke test in
-    `scripts/ci/` (the participant app needs `flutter build web --release` first).
+    Trivy image scan (`.github/actions/trivy-scan`) (the participant app needs
+    `flutter build web --release` first). Smoke tests run after the deployment, not
+    on the image.
     Pull requests build no images (only the release on main does), so run it
     locally whenever that app's `Dockerfile`, `nginx.conf` or build changes.
   - Deployment scripts: `shellcheck -x` on `deployment/*.sh` and

@@ -2,7 +2,7 @@
 # ADR 0011. Pull requests and pushes to main run the checks: Lint first; then
 # unit tests, integration tests and SpotBugs in parallel. Pushes to main are
 # also the release: once every check passed, the image runs (build, scan,
-# smoke test, push to Docker Hub). Only the services that changed run.
+# push to Docker Hub). Only the services that changed run.
 # "Backend result" is the required check.
 name: Backend
 
@@ -157,7 +157,6 @@ jobs:
         with:
           name: crowded-${{ matrix.service }}
           context: ${{ matrix.service }}
-          smoke-test: scripts/ci/smoke-backend.sh "$IMAGE"
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           dockerhub-namespace: ${{ vars.DOCKERHUB_NAMESPACE }}
           dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}

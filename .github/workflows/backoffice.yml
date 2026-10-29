@@ -1,7 +1,7 @@
 # CI for the React backoffice, in the order of ADR 0011. Pull requests and
 # pushes to main run the checks: Lint first; then unit tests and the build in
 # parallel. Pushes to main are also the release: once every check passed, the
-# image runs (build, scan, smoke test, push to Docker Hub). "Backoffice
+# image runs (build, scan, push to Docker Hub). "Backoffice
 # result" is the required check.
 name: Backoffice
 
@@ -118,7 +118,6 @@ jobs:
         with:
           name: crowded-backoffice
           context: backoffice
-          smoke-test: scripts/ci/smoke-web.sh "$IMAGE" / /organizacao/eventos
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           dockerhub-namespace: ${{ vars.DOCKERHUB_NAMESPACE }}
           dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
