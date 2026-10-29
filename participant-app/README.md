@@ -2,12 +2,33 @@
 
 Flutter app for participants, on mobile and the web ([ADR 0006](../docs/deliverables/adr/0006-technology-stack.md)).
 
-## Running
+## Setup
+
+**Prerequisites:** Flutter 3.47, the version CI pins (3.47.7), and Chrome for `flutter run -d chrome`. [`scripts/local/setup.sh`](../scripts/local/setup.sh) (`setup.ps1` on Windows) checks Flutter and creates `.env` ([Getting Started](../README.md#getting-started)). The app needs no backend yet: it runs on demo data.
+
+**Configuration from `.env`:** `PARTICIPANT_APP_PORT` (8090).
+
+**Running it alone,** from source, without the whole Docker stack:
+
+| Step | Debian, macOS | Windows (PowerShell 7) |
+|---|---|---|
+| Run `flutter run -d web-server` on `http://localhost:8090/` | `scripts/local/start.sh participant-app` | `scripts\local\start.ps1 participant-app` |
+| Follow its log | `scripts/local/logs.sh participant-app` | `scripts\local\logs.ps1 participant-app` |
+| Stop it | `scripts/local/stop.sh participant-app` | `scripts\local\stop.ps1 participant-app` |
+
+The web server compiles the app when the page first opens. For hot reload and the mobile targets, run it in the foreground from this folder instead, the same on every OS:
 
 ```bash
 flutter pub get
 flutter run -d chrome
-flutter test
+```
+
+**Tests and checks,** from this folder, the same on every OS:
+
+```bash
+flutter test --coverage    # CI fails below 80% line coverage
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze --fatal-infos
 ```
 
 ## Structure

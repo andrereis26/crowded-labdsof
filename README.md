@@ -56,6 +56,41 @@ The domain model shows the main concepts of Crowded and how they relate, indepen
 
 Note: everyone's role is flexible and can change according to the needs of the project and everyone's assumed as developer as well.
 
+## Getting Started
+
+The scripts in [`scripts/local/`](/scripts/local/) prepare a clone and run Crowded on your machine: each `.sh` script (Debian, macOS) has a `.ps1` twin with the same options (Windows 11, PowerShell 7.4 or later). They read their configuration from `.env`, never print a secret, and publish ports on `127.0.0.1` only.
+
+1. Install Docker (Docker Desktop on macOS and Windows) and Git, then run the setup once:
+
+   ```bash
+   scripts/local/setup.sh        # Windows: scripts\local\setup.ps1
+   ```
+
+   It checks the other tools and versions the projects need (JDK 25 as `JAVA_HOME`, Node.js 22.12 or later, Flutter 3.47, Lefthook 2, and gitleaks 8.30.1 or Docker) and says how to install any that is missing. It creates `.env` from [`.env.example`](/.env.example), with a new random value for every secret, and installs the [Git hooks](#git-hooks). It never overwrites an existing `.env`, which is git-ignored.
+
+2. Run the whole system, as the shared environment runs it, or one app from source:
+
+   ```bash
+   scripts/local/stack-up.sh     # the whole system: http://localhost:8080/
+   scripts/local/infra-up.sh     # or only PostgreSQL, RabbitMQ and Redis...
+   scripts/local/start.sh core   # ...and an app from source
+   ```
+
+| Script | What it does |
+|---|---|
+| `setup` | Checks the tools, creates `.env`, runs `lefthook install` |
+| `stack-up [--pull] [--with-observability]` | Turns on single-node Docker Swarm, builds every image from the working copy (`--pull`: the Docker Hub images tagged `main`), creates the secrets from `.env` and deploys [`deployment/docker-compose.swarm.yml`](/deployment/docker-compose.swarm.yml) with a local override: the database is migrated and seeded with the demo data. A gateway serves it on `http://localhost:8080/` (backoffice on `/backoffice/`, API on `/api/`) and forwards PostgreSQL, RabbitMQ and Redis. Waits until every service is healthy. `--with-observability` adds Prometheus, Loki, Alloy and Grafana once [#70](https://github.com/andrereis26/crowded-labdsof/issues/70) provides them. On Windows: `-Pull`, `-WithObservability` |
+| `stack-down` | Removes the stack, its data and its secrets. Swarm stays on |
+| `infra-up`, `infra-down` | Start or remove PostgreSQL (migrated and seeded, data in memory), RabbitMQ and Redis alone |
+| `start <app>`, `stop <app>` | Run `core`, `jobs`, `notifications`, `backoffice` or `participant-app` from source in the background, with its configuration from `.env`; its log goes to `.local/logs/<app>.log` |
+| `status` | The state and health of every service, of the infrastructure and of the apps run from source |
+| `logs <service>` | Follows one service's log, e.g. `logs core` |
+| `reset-db` | Drops the database and creates it again, migrated and seeded |
+
+The ports are in `.env`: `HTTP_PORT` (8080), `DB_PORT` (5432), `RABBITMQ_PORT` (5672), `REDIS_PORT` (6379), and for the apps run from source `CORE_PORT` (8081), `JOBS_PORT` (8082), `NOTIFICATIONS_PORT` (8083), `BACKOFFICE_PORT` (5173) and `PARTICIPANT_APP_PORT` (8090). The stack and the infrastructure use the same ports, so only one of them runs at a time; `start` works with either. Running any script twice in a row is safe.
+
+Each project's README has a **Setup** section: what it needs, what it reads from `.env`, how to run it alone and how to test it. See [`core/`](/core/README.md#setup), [`jobs/`](/jobs/README.md#setup), [`notifications/`](/notifications/README.md#setup), [`backoffice/`](/backoffice/README.md#setup), [`participant-app/`](/participant-app/README.md#setup) and [`database/`](/database/README.md#setup). Deployed environments take their configuration from Doppler instead of `.env` ([`deployment/`](/deployment/README.md)).
+
 ## Contributing
 
 ### Commit Messages
@@ -78,12 +113,14 @@ fix(#10): raccoon now steals food with success
 
 ### Git Hooks
 
-The repository has one set of Git hooks for all projects, configured in [`lefthook.yml`](/lefthook.yml) and run by [Lefthook](https://lefthook.dev). Set them up once after cloning:
+The repository has one set of Git hooks for all projects, configured in [`lefthook.yml`](/lefthook.yml) and run by [Lefthook](https://lefthook.dev). [`scripts/local/setup.sh`](#getting-started) checks these tools and installs the hooks; by hand:
 
 1. Install [Lefthook](https://lefthook.dev/installation/) 2.x, for example `npm install -g lefthook`, `brew install lefthook` or `winget install evilmartians.lefthook`.
 2. Install [gitleaks 8.30.1](https://github.com/gitleaks/gitleaks#installing), or have Docker running: [`scripts/gitleaks.sh`](/scripts/gitleaks.sh) uses the `zricethezav/gitleaks:v8.30.1` image, the one the Security workflow uses, when gitleaks 8.30.1 is not installed.
 3. Install each project's own tools (JDK 25 as `JAVA_HOME` for the backend, Node.js, Flutter) and dependencies (`npm install` in `backoffice/`, `flutter pub get` in `participant-app/`).
 4. Run `lefthook install` at the repository root.
+
+On Windows, Lefthook runs the hooks with the shell of Git for Windows, and `scripts/gitleaks.sh` hands over to its PowerShell twin, [`scripts/gitleaks.ps1`](/scripts/gitleaks.ps1), so PowerShell 7 must be on `PATH` as `pwsh`.
 
 | Hook | What it does |
 |---|---|
