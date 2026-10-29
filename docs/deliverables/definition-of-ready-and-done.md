@@ -50,7 +50,7 @@ A user story is **done** when **all** of the following criteria are met.
 | # | Criterion |
 |---|---|
 | DoD-09 | The CI/CD pipeline passes (build, tests, static analysis, dependency checks, container image). |
-| DoD-10 | The feature is deployed to production and verified there. |
+| DoD-10 | The feature is deployed to staging and verified there. |
 | DoD-11 | Relevant structured logs, metrics and trace identifiers are in place for the new functionality. |
 | DoD-12 | No secrets are committed to the repository. |
 
