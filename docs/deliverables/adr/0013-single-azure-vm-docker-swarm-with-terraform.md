@@ -1,4 +1,4 @@
-# ADR 0013: Deploy on a single Azure VM with Docker Swarm and Terraform
+# ADR 0013: Deploy on a single Azure VM with Docker Swarm and OpenTofu
 
 - Status: accepted
 - Date: 2026-10-29
@@ -18,7 +18,7 @@ The assignment requires containerized, reproducible deployment with environment-
 
 ## Decision
 
-Option 4. Terraform provisions, in one resource group, the virtual network and subnet, the network security group, a static public IP, the Linux (Ubuntu) virtual machine and a managed data disk. The VM size and the region are variables; the design assumes a **B2s** (2 vCPU, 4 GB), paid from the student credit. GitHub Actions builds the images, pushes them to **Docker Hub** and runs `docker stack deploy`. Secrets live in **Doppler** and are copied into Docker Swarm secrets at deploy time. NGINX is the only container that publishes ports. Docker Hub, Doppler, the Swarm stack and the scripts in `deployment/` do not change: they need only a Linux host with Docker, reachable over SSH.
+Option 4. OpenTofu provisions, in one resource group, the virtual network and subnet, the network security group, a static public IP, the Linux (Ubuntu) virtual machine and a managed data disk. The VM size and the region are variables; the design assumes a **B2s** (2 vCPU, 4 GB), paid from the student credit. GitHub Actions builds the images, pushes them to **Docker Hub** and runs `docker stack deploy`. Secrets live in **Doppler** and are copied into Docker Swarm secrets at deploy time. NGINX is the only container that publishes ports. Docker Hub, Doppler, the Swarm stack and the scripts in `deployment/` do not change: they need only a Linux host with Docker, reachable over SSH.
 
 | AWS (ADR 0008) | Azure |
 |---|---|

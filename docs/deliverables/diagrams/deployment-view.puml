@@ -1,7 +1,7 @@
 @startuml deployment-view
 ' Crowded - Deployment View
 ' Three environments (development, staging, production), each one Azure VM
-' running a single-node Docker Swarm, provisioned with Terraform. Production is
+' running a single-node Docker Swarm, provisioned with OpenTofu. Production is
 ' shown in full; development and staging are copies of it. In practice only
 ' production is deployed and simulates the other two (ADR 0013).
 ' Shows only Crowded's own runtime; external systems are in the logical view.
