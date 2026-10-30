@@ -30,7 +30,7 @@ Scenario A fits the student credit if the VM is stopped when nobody uses it. Two
 
 ### 2.1 Azure infrastructure
 
-Terraform provisions one resource group in `westeurope` ([ADR 0013](adr/0013-single-azure-vm-docker-swarm-with-terraform.md)):
+OpenTofu provisions one resource group in `westeurope` ([ADR 0013](adr/0013-single-azure-vm-docker-swarm-with-terraform.md)):
 
 | Item | Choice | Unit price | Per month | Why this size |
 |---|---|---|---|---|
