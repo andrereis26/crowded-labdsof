@@ -52,7 +52,7 @@ jobs:
         with:
           name: crowded-database
           context: database
-          smoke-test: scripts/ci/test-database.sh "$IMAGE"
+          test: scripts/ci/test-database.sh "$IMAGE"
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           dockerhub-namespace: ${{ vars.DOCKERHUB_NAMESPACE }}
           dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}

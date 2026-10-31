@@ -1,6 +1,6 @@
 # ADR 0008: Deploy on a single EC2 instance with Docker Swarm and Terraform
 
-- Status: accepted
+- Status: superseded by [ADR 0013](0013-single-azure-vm-docker-swarm-with-terraform.md) (2026-10-29)
 - Date: 2026-10-11
 - Deciders: Crowded team
 

@@ -2,14 +2,31 @@
 
 Web app for organizers and administrators: React, Vite and Tailwind CSS ([ADR 0006](../docs/deliverables/adr/0006-technology-stack.md)).
 
-## Running
+## Setup
 
-Needs Node.js 20.19 or later.
+**Prerequisites:** Node.js 22.12 or later (CI uses 24). [`scripts/local/setup.sh`](../scripts/local/setup.sh) (`setup.ps1` on Windows) checks it and creates `.env` ([Getting Started](../README.md#getting-started)). The backoffice needs no backend yet: it runs on demo data.
+
+**Configuration from `.env`:** `BACKOFFICE_PORT` (5173), and `VITE_PARTICIPANT_URL`, the address "Ver página pública" opens, from `PARTICIPANT_APP_PORT`.
+
+**Running it alone,** from source, without the whole Docker stack:
+
+| Step                                                                                     | Debian, macOS                       | Windows (PowerShell 7)               |
+| ---------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------ |
+| Run `npm run dev` on `http://localhost:5173/` (installs the dependencies the first time) | `scripts/local/start.sh backoffice` | `scripts\local\start.ps1 backoffice` |
+| Follow its log                                                                           | `scripts/local/logs.sh backoffice`  | `scripts\local\logs.ps1 backoffice`  |
+| Stop it                                                                                  | `scripts/local/stop.sh backoffice`  | `scripts\local\stop.ps1 backoffice`  |
+
+Or in the foreground, from this folder, the same on every OS:
 
 ```bash
 npm install
 npm run dev
-npm test
+```
+
+**Tests and checks,** from this folder, the same on every OS:
+
+```bash
+npm test               # unit tests (npm run test:coverage: fails below 80% line coverage)
 npm run format:check
 npm run lint
 npm run build

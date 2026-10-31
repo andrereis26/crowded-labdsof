@@ -15,7 +15,7 @@ For the **Definition of Done**, group the criteria into code and review, testing
 
 - acceptance criteria verified, a pull request reviewed and approved by at least one other team member, commits following our convention (`type(#issue): message`), and code that follows the coding standards and passes static analysis;
 - unit tests for new logic, integration or end-to-end tests when the item affects communication between components, external integrations or a principal user workflow, failure scenarios tested where relevant (unavailable external source, unavailable AI service, duplicate events), and an updated evaluation dataset for AI-assisted features;
-- a passing CI/CD pipeline (build, tests, static analysis, dependency checks, container image), deployment to the shared environment, structured logs, metrics and trace identifiers, and no secrets in the repository;
+- a passing CI/CD pipeline (build, tests, static analysis, dependency checks, container image), deployment to staging, structured logs, metrics and trace identifiers, and no secrets in the repository;
 - security and privacy requirements implemented, accessibility (WCAG 2.1 AA for the principal user journeys), updated API or architecture documentation and ADRs, acceptance by the Product Owner, and the issue closed with the board updated.
 
 Present each list as a numbered table (DoR-01, DoR-02, … and DoD-01, DoD-02, …), with one short and verifiable criterion per row. Keep it concise and avoid criteria we cannot check in practice.

@@ -1,6 +1,6 @@
 # Crowded Database
 
-The schema of the one PostgreSQL database that Core, Jobs and Notifications share, the database user of each service, and the demo data ([ADR 0012](../docs/deliverables/adr/0012-database-migrations-with-flyway.md), [ADR 0002](../docs/deliverables/adr/0002-shared-database-with-table-ownership.md)). Flyway applies it from plain SQL files, packaged as the `crowded-database` image: the same image runs locally, in the services' integration tests, in CI and in the shared environment.
+The schema of the one PostgreSQL database that Core, Jobs and Notifications share, the database user of each service, and the demo data ([ADR 0012](../docs/deliverables/adr/0012-database-migrations-with-flyway.md), [ADR 0002](../docs/deliverables/adr/0002-shared-database-with-table-ownership.md)). Flyway applies it from plain SQL files, packaged as the `crowded-database` image: the same image runs locally, in the services' integration tests, in CI and in the production environment.
 
 | Path | What it is |
 |---|---|
@@ -10,26 +10,48 @@ The schema of the one PostgreSQL database that Core, Jobs and Notifications shar
 | `seed/R__demo_data.sql` | Demo data, only with `SEED_DEMO_DATA=true` |
 | `docker-entrypoint.sh` | Reads the configuration below and runs Flyway |
 | `Dockerfile` | The `crowded-database` image |
-| `compose.yaml` | A throwaway database for local development |
+| `compose.yaml` | A throwaway database for local development ([Setup](#setup)) |
 
-## Running It Locally
+## Setup
 
-Docker is all it needs:
+**Prerequisites:** Docker, nothing else. [`scripts/local/setup.sh`](../scripts/local/setup.sh) (`setup.ps1` on Windows) checks it and creates `.env` ([Getting Started](../README.md#getting-started)).
+
+**Configuration from `.env`:** `POSTGRES_DB`, `POSTGRES_USER` and `POSTGRES_PASSWORD` (the migration user), `CORE_DB_PASSWORD`, `JOBS_DB_PASSWORD` and `NOTIFICATIONS_DB_PASSWORD` (the service users), `SEED_DEMO_DATA` and `DB_PORT`.
+
+**Running it alone,** without the whole Docker stack: a throwaway PostgreSQL 18 on `127.0.0.1:5432`, whose data lives in memory. The `migrate` container applies the migrations and the demo data, then exits.
+
+| Step | Debian, macOS | Windows (PowerShell 7) |
+|---|---|---|
+| Start it, with RabbitMQ and Redis, with the passwords of `.env` | `scripts/local/infra-up.sh` | `scripts\local\infra-up.ps1` |
+| Read the migration's log | `scripts/local/logs.sh migrate` | `scripts\local\logs.ps1 migrate` |
+| Drop the database and migrate it again | `scripts/local/reset-db.sh` | `scripts\local\reset-db.ps1` |
+| Remove it, data included | `scripts/local/infra-down.sh` | `scripts\local\infra-down.ps1` |
+
+`reset-db` works on the stack of `scripts/local/stack-up.sh` too. Without `.env`, [`compose.yaml`](compose.yaml) also runs alone, on any OS, with the fixed passwords below (another port with `DB_PORT=55432`):
 
 ```bash
 docker compose -f database/compose.yaml up --build --detach
+docker compose -f database/compose.yaml logs migrate
+docker compose -f database/compose.yaml down    # or any restart: an empty database again
 ```
 
-PostgreSQL 18 starts on `127.0.0.1:5432` (another port with `DB_PORT=55432`), and the `migrate` container applies the migrations and the demo data, then exits. Check it with `docker compose -f database/compose.yaml logs migrate`. The data lives in memory: `docker compose -f database/compose.yaml down` (or any restart of the container) leaves an empty database again.
-
-| User | Password | Use |
+| User | Password without `.env` | Use |
 |---|---|---|
 | `crowded` | `crowded` | Owns the schema; only Flyway uses it |
 | `crowded_core` | `core` | Core: `DB_USERNAME=crowded_core`, `DB_PASSWORD=core` |
 | `crowded_jobs` | `jobs` | Jobs |
 | `crowded_notifications` | `notifications` | Notifications |
 
-A service then runs with `DB_URL=jdbc:postgresql://localhost:5432/crowded` and its own user. These passwords are only for this throwaway database; deployed environments get theirs from Doppler (SR-008).
+A service then runs with `DB_URL=jdbc:postgresql://localhost:5432/crowded` and its own user. These passwords are only for this throwaway database; the deployed environments get theirs from Doppler (SR-008).
+
+**Tests:** what CI runs, on Linux (`scripts/ci/` is Linux-only; on macOS and Windows, rely on CI or WSL):
+
+```bash
+docker build -t crowded/database database
+bash scripts/ci/test-database.sh crowded/database
+```
+
+They apply the migrations with and without the seed, run them a second time, which must change nothing, and check each service user's rights. The services' integration tests also run these migrations ([Adding a Migration](#adding-a-migration)).
 
 ### Demo Accounts
 
@@ -73,4 +95,4 @@ docker run --rm --network <network> -e DB_URL=... -e DB_USERNAME=... ... crowded
 
 - **Integration tests:** each service's `IntegrationTest` builds this image from `../database` and runs it with the demo data against its PostgreSQL container, then connects as that service's user. A write to a table the service does not own fails there as it would in production.
 - **CI:** the Database workflow builds the image, scans it with Trivy and runs `scripts/ci/test-database.sh` on every change to this folder. On `main` it then pushes `<namespace>/crowded-database`. The Backend workflow also runs, because the services' integration tests use these migrations.
-- **Shared environment:** the `database` job of the Swarm stack. `deployment/remote-deploy.sh` runs it before Core, Jobs and Notifications get their new images; a failed migration stops the deployment ([`deployment/`](../deployment/README.md)).
+- **Deployed environments** (development, staging and production; only production for now): the `database` job of the Swarm stack. `deployment/remote-deploy.sh` runs it before Core, Jobs and Notifications get their new images; a failed migration stops the deployment ([`deployment/`](../deployment/README.md)).

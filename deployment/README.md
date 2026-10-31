@@ -1,6 +1,6 @@
 # Deployment
 
-Everything needed to run Crowded on the Docker Swarm host ([ADR 0008](../docs/deliverables/adr/0008-single-ec2-docker-swarm-with-terraform.md)) from the images the pipeline publishes ([ADR 0011](../docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md)). This README covers the CI/CD side: what the scripts do, and the GitHub and Doppler settings they need. Provisioning the host, and the workflow job that runs these scripts on it, come with the infrastructure story.
+Everything needed to run Crowded on the Docker Swarm host ([ADR 0013](../docs/deliverables/adr/0013-single-azure-vm-docker-swarm-with-terraform.md)) from the images the pipeline publishes ([ADR 0011](../docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md)). This README covers the CI/CD side: what the scripts do, and the GitHub and Doppler settings they need. Provisioning the host, and the workflow job that runs these scripts on it, come with the infrastructure story. To run the same stack on a development machine, use `scripts/local/stack-up.sh` instead ([Getting Started](../README.md#getting-started)): it deploys `docker-compose.swarm.yml` with the local override `scripts/local/stack.local.yml` and the configuration of `.env`.
 
 | Path | What it is |
 |---|---|
@@ -83,7 +83,7 @@ The deploy job also needs SSH access to the host (address, user, private key and
 
 ## Doppler Settings
 
-Project `crowded`, config `prd`. The service token in `DOPPLER_TOKEN` already identifies the project and config, so the scripts take no project or config name.
+Project `crowded`, config `prd`, the only environment deployed for now (the design also has `dev` and `stg`, [ADR 0013](../docs/deliverables/adr/0013-single-azure-vm-docker-swarm-with-terraform.md#environments)). The service token in `DOPPLER_TOKEN` already identifies the project and config, so the scripts take no project or config name.
 
 | Key | Secret | Meaning |
 |---|---|---|
@@ -91,7 +91,7 @@ Project `crowded`, config `prd`. The service token in `DOPPLER_TOKEN` already id
 | `POSTGRES_USER` | No | The migration user, which owns the schema. Only the `database` job uses it |
 | `POSTGRES_PASSWORD` | Yes | Password of that user |
 | `CORE_DB_PASSWORD`, `JOBS_DB_PASSWORD`, `NOTIFICATIONS_DB_PASSWORD` | Yes | Passwords of the database users `crowded_core`, `crowded_jobs` and `crowded_notifications`, which the `database` job creates. Letters and digits only. Each service gets only its own |
-| `SEED_DEMO_DATA` | No | `true` loads the demo data ([`database/`](../database/README.md#demo-accounts)). Optional, default `false`. Only the shared environment sets it |
+| `SEED_DEMO_DATA` | No | `true` loads the demo data ([`database/`](../database/README.md#demo-accounts)). Optional, default `false`. On in development and staging; production sets it too while it simulates them ([ADR 0013](../docs/deliverables/adr/0013-single-azure-vm-docker-swarm-with-terraform.md#environments)) |
 | `RABBITMQ_USERNAME` | No | RabbitMQ user of the services |
 | `RABBITMQ_PASSWORD` | Yes | Password of that user. Use letters and digits only: it is written into a RabbitMQ config file |
 | `REDIS_PASSWORD` | Yes | Redis password |

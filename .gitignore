@@ -1,0 +1,4 @@
+# Local configuration with generated secrets (scripts/local/setup.sh). Never commit it.
+/.env
+# Files the local scripts write: JWT keys, logs and process ids.
+/.local/

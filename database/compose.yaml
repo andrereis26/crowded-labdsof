@@ -4,23 +4,24 @@
 #   docker compose -f database/compose.yaml up --build --detach
 #   docker compose -f database/compose.yaml down
 #
-# The passwords are for this throwaway database on 127.0.0.1 only; deployed
-# environments get theirs from Doppler (SR-008).
+# The default passwords are for this throwaway database on 127.0.0.1 only.
+# scripts/local/infra-up.sh runs this file with the values of .env instead;
+# the deployed environments get theirs from Doppler (SR-008).
 name: crowded-database
 
 services:
   postgres:
     image: postgres:18-alpine
     environment:
-      POSTGRES_DB: crowded
-      POSTGRES_USER: crowded
-      POSTGRES_PASSWORD: crowded
+      POSTGRES_DB: ${POSTGRES_DB:-crowded}
+      POSTGRES_USER: ${POSTGRES_USER:-crowded}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crowded}
     tmpfs:
       - /var/lib/postgresql
     ports:
       - "127.0.0.1:${DB_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", 'pg_isready -U crowded -d crowded']
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 2s
       timeout: 3s
       retries: 15
@@ -31,11 +32,11 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/crowded
-      DB_USERNAME: crowded
-      DB_PASSWORD: crowded
-      CORE_DB_PASSWORD: core
-      JOBS_DB_PASSWORD: jobs
-      NOTIFICATIONS_DB_PASSWORD: notifications
-      SEED_DEMO_DATA: "true"
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-crowded}
+      DB_USERNAME: ${POSTGRES_USER:-crowded}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-crowded}
+      CORE_DB_PASSWORD: ${CORE_DB_PASSWORD:-core}
+      JOBS_DB_PASSWORD: ${JOBS_DB_PASSWORD:-jobs}
+      NOTIFICATIONS_DB_PASSWORD: ${NOTIFICATIONS_DB_PASSWORD:-notifications}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
     restart: "no"
