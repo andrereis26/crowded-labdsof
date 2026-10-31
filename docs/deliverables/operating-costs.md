@@ -8,7 +8,7 @@ What it costs to run Crowded each month: the infrastructure of the [Deployment V
 Team work is not an operating cost and is not included.
 
 Prices were collected on 29 October 2026:
-- **Azure:** from the [Azure Retail Prices API](https://prices.azure.com/api/retail/prices), region `westeurope` (the closest to Portugal), pay-as-you-go, in euros.
+- **Azure:** from the [Azure Retail Prices API](https://prices.azure.com/api/retail/prices), region `westeurope` (the closest to Portugal), pay-as-you-go, in euros. The Azure infrastructure of scenario B was also estimated with the Azure pricing calculator on 31 October 2026: [saved estimate](https://azure.com/e/7a339434ed97472e9ff661a265020d36).
 - **Other services:** from their own pricing pages, in US dollars, as they bill.
 
 A month is 730 hours.
@@ -17,7 +17,7 @@ A month is 730 hours.
 
 | | A. MVP (course) | B. Real launch |
 |---|---|---|
-| Azure infrastructure | **€40.35** always on, or **€18.82** stopped outside working hours | €152.03 |
+| Azure infrastructure | **€40.35** always on, or **€18.82** stopped outside working hours | €152.16 |
 | GitHub Actions (beyond the included minutes) | **US$11 to US$17** at the current pace, or **US$0** if the repository is public | US$0 to US$17 |
 | AI provider | US$0.60 to US$12 | US$7.50 to US$150 |
 | Everything else (Docker Hub, Doppler, Firebase, weather, maps, TLS, design) | US$0 | US$16 to US$58, plus a commercial weather plan |
@@ -102,8 +102,12 @@ The design of [ADR 0013](adr/0013-single-azure-vm-docker-swarm-with-terraform.md
 
 | Item | Per month | Change from scenario A |
 |---|---|---|
-| Production VM | €71.23 | `Standard_B2ms` (8 GB, €0.0845 per hour) for headroom under real load, with the same disks and IP as in A |
-| Development and staging | €80.70 | Two B2s VMs like scenario A, always on. Stopped outside working hours: €37.64 |
+| Production VM | €63.78 | `Standard_B2ms` (2 vCPU, 8 GB) for headroom under real load, with its E4 OS disk and 5 GB of outbound traffic |
+| Staging VM | €32.95 | `Standard_B2s` (2 vCPU, 4 GB) as in scenario A, with its E4 OS disk and 5 GB of outbound traffic |
+| Development VM | €32.95 | As staging. Both stopped outside working hours (about 220 hours a month): €37.84 for the two together, instead of €80.88 |
+| Data disks | €12.85 | One Standard SSD `E6` (64 GiB) per environment, three in all |
+| Public IPs | €9.64 | One static IPv4 per environment, three in all |
+| **Azure subtotal** | **€152.16** | The [Azure pricing calculator estimate](https://azure.com/e/7a339434ed97472e9ff661a265020d36), pay-as-you-go, `westeurope` |
 | Backups | under €0.10 | Daily `pg_dump` kept 30 days in Blob Storage (hot, LRS, €0.017 per GB) |
 | AI provider | US$7.50 (Haiku) to US$150 (Sonnet) | Ticket volume dominates: 10,000 × US$0.00075 or US$0.015 |
 | Weather | A commercial Open-Meteo plan (API Standard, 1 million calls a month; price on request) | The free API is non-commercial only |
@@ -118,7 +122,7 @@ The range comes mostly from the choice of AI model, which the evaluation decides
 
 | Estimate | Basis | Confidence |
 |---|---|---|
-| Azure prices | Official retail prices API, `westeurope`, pay-as-you-go | High. Prices change rarely; reservations would lower them, but they do not apply to the student credit. |
+| Azure prices | Official retail prices API, `westeurope`, pay-as-you-go; scenario B also in the [Azure pricing calculator](https://azure.com/e/7a339434ed97472e9ff661a265020d36) | High. The two agree within €0.13 a month. Prices change rarely; reservations would lower them, but they do not apply to the student credit. |
 | GitHub Actions minutes | Measured on the repository over one week | Medium. A setup-heavy week, so probably high. Recomputed at each sprint review (section 5). |
 | AI tokens per call | Typical ticket and prompt sizes | Medium. Replaced by the token counts of the evaluation runs (#72), which also measure latency and cost per ticket. |
 | Volumes in scenario B | Assumptions, not measurements | Low. A planning range, not a forecast. |
