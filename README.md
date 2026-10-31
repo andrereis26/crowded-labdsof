@@ -33,6 +33,7 @@ Crowded keeps people informed when something changes or goes wrong at the events
 - [Architecture Decision Records](/docs/deliverables/adr/)
 - [API Outline](/docs/deliverables/api-outline.md)
 - [Asynchronous Flows](/docs/deliverables/asynchronous-flows.md)
+- [AI Usage](/docs/deliverables/ai-usage.md)
 
 ## Tech Stack
 
