@@ -3,7 +3,7 @@
 ' Three environments (development, staging, production), each one Azure VM
 ' running a single-node Docker Swarm, provisioned with OpenTofu. Production is
 ' shown in full; development and staging are copies of it. In practice only
-' production is deployed and simulates the other two (ADR 0013).
+' production is deployed and simulates the other two (ADR 0013, ADR 0014).
 ' Shows only Crowded's own runtime; external systems are in the logical view.
 ' Sources: logical-view-level-2.puml, requirements.md (NFR-010..NFR-016, SR-008)
 
@@ -48,7 +48,7 @@ node "Microsoft Azure - Azure for Students subscription" <<cloud provider>> as A
 
       node "Static public IP\n+ Network security group" as PublicIP
 
-      node "Virtual machine B2s - Ubuntu" <<virtual machine>> as VM {
+      node "Virtual machine B2ls_v2 - Ubuntu" <<virtual machine>> as VM {
 
         node "Docker Engine - Swarm (single manager node)" <<Docker Swarm>> as Swarm {
 

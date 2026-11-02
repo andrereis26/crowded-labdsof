@@ -1,15 +1,15 @@
 # CI for the backend services (core, jobs, notifications), in the order of
 # ADR 0011. Pull requests and pushes to main run the checks: Lint first; then
-# unit tests, integration tests and SpotBugs in parallel. Pushes to main are
-# also the release: once every check passed, the image runs (build, scan,
-# push to Docker Hub). Only the services that changed run.
+# unit tests, integration tests and SpotBugs in parallel. On main the Release
+# workflow runs this one, and once every check passed the image runs (build,
+# scan, push to Docker Hub). Only the services that changed run.
 # "Backend result" is the required check.
 name: Backend
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  # On main, the Release workflow calls this one.
+  workflow_call:
   workflow_dispatch:
 
 permissions:

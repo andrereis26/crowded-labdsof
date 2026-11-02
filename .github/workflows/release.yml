@@ -1,0 +1,242 @@
+# The release of every push to main (ADR 0011, ADR 0014):
+#   1. the app workflows, called here: the checks of the merged code and the
+#      images of the apps that changed, pushed to Docker Hub;
+#   2. tofu apply of infra/ on the production environment;
+#   3. the deployment: copies deployment/ to the host over SSH, which the job
+#      opens to its own address only while it runs, runs remote-deploy.sh and
+#      checks the router from outside. If that check fails, it runs
+#      remote-rollback.sh; remote-deploy.sh rolls back its own failures.
+# Every app gets <namespace>/crowded-<app>:main, pinned by digest on the host,
+# so only the services whose image changed restart. A push that pushed no
+# image and did not change deployment/ is not deployed; a manual run always is.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One release at a time, never cancelled halfway.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  TOFU_VERSION: 1.13.2
+
+jobs:
+  backend:
+    name: Backend
+    uses: ./.github/workflows/backend.yml
+    secrets: inherit
+
+  backoffice:
+    name: Backoffice
+    uses: ./.github/workflows/backoffice.yml
+    secrets: inherit
+
+  participant-app:
+    name: Participant app
+    uses: ./.github/workflows/participant-app.yml
+    secrets: inherit
+
+  database:
+    name: Database
+    uses: ./.github/workflows/database.yml
+    secrets: inherit
+
+  infrastructure:
+    name: Apply infrastructure
+    needs: [backend, backoffice, participant-app, database]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # No required reviewers: the pull request showed the plan (ADR 0014).
+    environment: production
+    permissions:
+      contents: read
+      # OIDC sign-in to Azure as the crowded-github-deploy identity.
+      id-token: write
+    defaults:
+      run:
+        working-directory: infra
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_state_passphrase: ${{ secrets.TOFU_STATE_PASSPHRASE }}
+      TF_VAR_ssh_allowed_cidrs: ${{ vars.SSH_ALLOWED_CIDRS || '[]' }}
+    outputs:
+      host: ${{ steps.outputs.outputs.host }}
+      user: ${{ steps.outputs.outputs.user }}
+      resource-group: ${{ steps.outputs.outputs.resource-group }}
+      nsg: ${{ steps.outputs.outputs.nsg }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+          tofu_wrapper: false
+      - run: tofu init -input=false -backend-config=backend.hcl
+      # Changes nothing when main did not change infra/.
+      - run: tofu apply -input=false -auto-approve -no-color
+      - id: outputs
+        run: |
+          {
+            echo "host=$(tofu output -raw public_ip)"
+            echo "user=$(tofu output -raw admin_username)"
+            echo "resource-group=$(tofu output -raw resource_group_name)"
+            echo "nsg=$(tofu output -raw network_security_group_name)"
+          } >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy
+    needs: infrastructure
+    runs-on: ubuntu-latest
+    # remote-deploy.sh waits up to 10 minutes for the migration and again for
+    # the services.
+    timeout-minutes: 40
+    environment:
+      name: production
+      url: http://${{ needs.infrastructure.outputs.host }}/
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      HOST: ${{ needs.infrastructure.outputs.host }}
+      RESOURCE_GROUP: ${{ needs.infrastructure.outputs.resource-group }}
+      NSG: ${{ needs.infrastructure.outputs.nsg }}
+      NAMESPACE: ${{ vars.DOCKERHUB_NAMESPACE }}
+      SSH_RULE: github-actions-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: deployment
+        uses: ./.github/actions/detect-changes
+        with:
+          paths: ^deployment/
+
+      # The image jobs tag what they push with the commit SHA.
+      - id: release
+        name: Decide whether to deploy
+        env:
+          EVENT: ${{ github.event_name }}
+          DEPLOYMENT_CHANGED: ${{ steps.deployment.outputs.changed }}
+        run: |
+          pushed=()
+          for app in database core jobs notifications backoffice participant-app; do
+            if docker manifest inspect "$NAMESPACE/crowded-$app:$GITHUB_SHA" >/dev/null 2>&1; then
+              pushed+=("$app")
+            fi
+          done
+          echo "Images pushed by this run: ${pushed[*]:-none}; deployment/ changed: $DEPLOYMENT_CHANGED"
+          if [[ "$EVENT" == workflow_dispatch || "$DEPLOYMENT_CHANGED" == true || ${#pushed[@]} -gt 0 ]]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Nothing to deploy." >> "$GITHUB_STEP_SUMMARY"
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.release.outputs.deploy == 'true'
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Rules left by a cancelled run are removed first: they use the same priority.
+      - id: open-ssh
+        name: Open SSH to this runner
+        if: steps.release.outputs.deploy == 'true'
+        run: |
+          address="$(curl --fail --silent --show-error --retry 3 --ipv4 https://api.ipify.org)"
+          for stale in $(az network nsg rule list --resource-group "$RESOURCE_GROUP" --nsg-name "$NSG" \
+            --query "[?starts_with(name, 'github-actions-')].name" --output tsv); do
+            az network nsg rule delete --resource-group "$RESOURCE_GROUP" --nsg-name "$NSG" --name "$stale"
+          done
+          az network nsg rule create --resource-group "$RESOURCE_GROUP" --nsg-name "$NSG" \
+            --name "$SSH_RULE" --priority 300 --direction Inbound --access Allow --protocol Tcp \
+            --source-address-prefixes "$address/32" --destination-port-ranges 22 --output none
+          echo "SSH open to $address while this job runs."
+
+      - name: Set up SSH
+        if: steps.release.outputs.deploy == 'true'
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_USER: ${{ needs.infrastructure.outputs.user }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Pinned: the host key is never accepted on first use.
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host crowded
+            HostName $HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ConnectTimeout 10
+            ServerAliveInterval 30
+          EOF
+          # The new rule takes a few seconds to apply.
+          for attempt in $(seq 1 24); do
+            ssh crowded true && break
+            [[ "$attempt" -lt 24 ]] || exit 1
+            sleep 5
+          done
+          # On a new VM, the first boot may still be installing Docker. Exit
+          # status 2 is a warning (a recoverable error), not a failed boot.
+          ssh crowded 'cloud-init status --wait --long; status=$?; [ "$status" -eq 0 ] || [ "$status" -eq 2 ]'
+
+      - name: Copy deployment/
+        if: steps.release.outputs.deploy == 'true'
+        run: |
+          tar -C deployment -czf - . | ssh crowded \
+            'set -e; rm -rf /opt/crowded/deployment.new; mkdir -p /opt/crowded/deployment.new
+             tar -xzf - -C /opt/crowded/deployment.new
+             rm -rf /opt/crowded/deployment; mv /opt/crowded/deployment.new /opt/crowded/deployment'
+
+      # The settings go through stdin, so the Doppler token never appears in
+      # a command line on the host.
+      - id: deploy
+        name: Deploy
+        if: steps.release.outputs.deploy == 'true'
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          {
+            printf 'export RELEASE_ID=%q DOCKERHUB_NAMESPACE=%q DOPPLER_TOKEN=%q\n' "$GITHUB_SHA" "$NAMESPACE" "$DOPPLER_TOKEN"
+            for app in database core jobs notifications backoffice participant-app; do
+              var="$(tr 'a-z-' 'A-Z_' <<<"$app")_IMAGE"
+              printf 'export %s=%q\n' "$var" "$NAMESPACE/crowded-$app:main"
+            done
+            echo 'bash /opt/crowded/deployment/remote-deploy.sh'
+          } | ssh crowded bash -s
+
+      # From the internet, through the router, as a participant would.
+      - id: check
+        name: Check from outside
+        if: steps.deploy.outcome == 'success'
+        run: |
+          for path in /healthz / /backoffice/; do
+            curl --fail --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors \
+              --max-time 10 --output /dev/null "http://$HOST$path"
+            echo "http://$HOST$path answers."
+          done
+
+      - name: Roll back
+        if: failure() && steps.check.outcome == 'failure'
+        run: ssh crowded bash /opt/crowded/deployment/remote-rollback.sh
+
+      - name: Close SSH
+        if: always() && steps.open-ssh.outcome != 'skipped'
+        run: |
+          az network nsg rule delete --resource-group "$RESOURCE_GROUP" --nsg-name "$NSG" --name "$SSH_RULE"
+          rm -f ~/.ssh/deploy_key

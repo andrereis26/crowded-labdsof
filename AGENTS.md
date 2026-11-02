@@ -42,6 +42,10 @@
     on the image.
     Pull requests build no images (only the release on main does), so run it
     locally whenever that app's `Dockerfile`, `nginx.conf` or build changes.
+  - Infrastructure (`infra/`, OpenTofu 1.13): `tofu fmt -check -recursive`,
+    `tofu init -backend=false` and `tofu validate`, then the Trivy misconfiguration
+    scan of `infra/` (`.trivyignore.yaml`). `tofu plan` needs the state passphrase
+    and Azure access (`infra/README.md`); CI posts it in the pull request.
   - Deployment scripts: `shellcheck -x` on `deployment/*.sh` and
     `docker stack config` on `deployment/docker-compose.swarm.yml`.
   - Scripts (`*.sh`, `*.ps1`), locally only (no CI job): `shellcheck -x`
@@ -82,8 +86,10 @@
 - Pitfalls:
   - Every app has a CI workflow (ADR 0011). The ruleset requires one result job
     per app (`Backend result`, `Backoffice result`, `Participant app result`,
-    `Database result`) plus the two Security checks; renaming those jobs breaks the
-    merge gate.
+    `Database result`, `Infrastructure result`) plus the two Security checks;
+    renaming those jobs breaks the merge gate. On `main`, `release.yml` calls the
+    app workflows (`workflow_call`), then applies `infra/` and deploys: the app
+    workflows do not run on `push` themselves (ADR 0014).
   - The services connect as their own database users (`crowded_core`, ...), which
     cannot change the schema and write only their own tables (ADR 0012). A new table
     needs its writer in `database/migrations/R__grants.sql`.

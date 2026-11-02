@@ -1,8 +1,8 @@
 # CI for the database project (database/, ADR 0012). Pull requests and pushes
 # to main build the crowded-database image, scan it with Trivy and test it
 # against throwaway PostgreSQL databases, with and without the demo data
-# (scripts/ci/test-database.sh). Pushes to main are also the release: once
-# those checks passed, the image is pushed (ADR 0011). Only runs when the
+# (scripts/ci/test-database.sh). On main the Release workflow runs this one,
+# and once those checks passed the image is pushed (ADR 0011). Only runs when the
 # database project changed. "Database result" is the required check.
 #
 # The image is built in pull requests too, unlike the apps' images: it is
@@ -11,8 +11,8 @@ name: Database
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  # On main, the Release workflow calls this one.
+  workflow_call:
   workflow_dispatch:
 
 permissions:

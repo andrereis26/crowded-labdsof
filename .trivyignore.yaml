@@ -9,4 +9,9 @@
 #       statement: "Only reachable through X, which Crowded does not use. Tracked in #123."
 #       expired_at: 2027-01-31
 vulnerabilities: []
-misconfigurations: []
+misconfigurations:
+  - id: AZU-0047
+    # main.tf when the Infrastructure workflow scans infra/, infra/main.tf in the repository scan.
+    paths: ["infra/main.tf", "main.tf"]
+    statement: "The router's port is open to the internet on purpose: participants and organizations reach Crowded through it. SSH is not (ADR 0014). Reviewed with the router's ports in #101."
+    expired_at: 2027-01-29
