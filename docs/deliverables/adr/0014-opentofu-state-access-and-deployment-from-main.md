@@ -42,10 +42,10 @@ GitHub Actions signs in with **OIDC** as one of two **user-assigned managed iden
 
 | Identity | Federated subject | Roles | Used by |
 |---|---|---|---|
-| `crowded-github-deploy` | `repo:andrereis26/crowded-labdsof:environment:production` | Contributor on the subscription; Storage Blob Data Contributor on the state | The Release workflow on `main` |
-| `crowded-github-plan` | `repo:andrereis26/crowded-labdsof:pull_request` | Reader on the subscription; Storage Blob Data Reader on the state | `tofu plan` in pull requests, without the lock |
+| `crowded-github-deploy` | `<prefix>:environment:production` | Contributor on the subscription; Storage Blob Data Contributor on the state | The Release workflow on `main` |
+| `crowded-github-plan` | `<prefix>:pull_request` | Reader on the subscription; Storage Blob Data Reader on the state | `tofu plan` in pull requests, without the lock |
 
-Managed identities need no app registration, which a student tenant may forbid. Only jobs in the `production` environment, which only `main` can use, get write access. Rejected: a client secret (long-lived, rotated by hand).
+The repository uses GitHub's immutable subjects, so `<prefix>` holds the owner and repository IDs, `repo:andrereis26@40869036/crowded-labdsof@1436119196`, and survives a rename; `bootstrap.sh` reads it from GitHub. Managed identities need no app registration, which a student tenant may forbid. Only jobs in the `production` environment, which only `main` can use, get write access. Rejected: a client secret (long-lived, rotated by hand).
 
 ### Reaching the VM: SSH opened just in time
 

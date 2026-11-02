@@ -22,6 +22,10 @@
 #   AZURE_SUBSCRIPTION_ID  default: the az CLI's current subscription
 #   LOCATION               default: spaincentral
 #   GITHUB_REPOSITORY      default: andrereis26/crowded-labdsof
+#   OIDC_SUBJECT_PREFIX    default: read from GitHub with the gh CLI; the start of
+#                          the OIDC token's subject, which for this repository
+#                          holds the owner and repository IDs:
+#                          repo:<owner>@<owner id>/<repo>@<repo id>
 #   STATE_RESOURCE_GROUP   default: crowded-tfstate
 #   STATE_STORAGE_ACCOUNT  default: crowdedtf + the first 10 characters of the subscription ID
 
@@ -39,6 +43,14 @@ SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID:-$(az account show --query id --output 
 TENANT_ID="$(az account show --subscription "${SUBSCRIPTION_ID}" --query tenantId --output tsv)"
 LOCATION="${LOCATION:-spaincentral}"
 REPOSITORY="${GITHUB_REPOSITORY:-andrereis26/crowded-labdsof}"
+# GitHub's token subject is either repo:<owner>/<repo>:... or, with immutable
+# subjects, repo:<owner>@<id>/<repo>@<id>:...; GitHub tells which.
+if [[ -z "${OIDC_SUBJECT_PREFIX:-}" ]]; then
+  command -v gh >/dev/null 2>&1 \
+    || die "set OIDC_SUBJECT_PREFIX, or install the GitHub CLI (gh) to read it"
+  OIDC_SUBJECT_PREFIX="$(gh api "repos/${REPOSITORY}/actions/oidc/customization/sub" --jq .sub_claim_prefix)"
+fi
+[[ "${OIDC_SUBJECT_PREFIX}" == repo:* ]] || die "unexpected OIDC subject prefix '${OIDC_SUBJECT_PREFIX}'"
 STATE_RESOURCE_GROUP="${STATE_RESOURCE_GROUP:-crowded-tfstate}"
 subscription_hex="$(printf '%s' "${SUBSCRIPTION_ID}" | tr -d '-' | tr '[:upper:]' '[:lower:]')"
 STATE_STORAGE_ACCOUNT="${STATE_STORAGE_ACCOUNT:-crowdedtf${subscription_hex:0:10}}"
@@ -107,10 +119,17 @@ identity() {
     az identity create --name "${name}" --resource-group "${STATE_RESOURCE_GROUP}" \
       --location "${LOCATION}" --output none
   fi
-  if ! az identity federated-credential show --name "${credential}" --identity-name "${name}" \
-    --resource-group "${STATE_RESOURCE_GROUP}" --output none 2>/dev/null; then
+  local current
+  current="$(az identity federated-credential show --name "${credential}" --identity-name "${name}" \
+    --resource-group "${STATE_RESOURCE_GROUP}" --query subject --output tsv 2>/dev/null || true)"
+  if [[ -z "${current}" ]]; then
     log "Trusting GitHub Actions tokens with subject ${subject} for ${name}"
     az identity federated-credential create --name "${credential}" --identity-name "${name}" \
+      --resource-group "${STATE_RESOURCE_GROUP}" --issuer "${OIDC_ISSUER}" \
+      --subject "${subject}" --audiences api://AzureADTokenExchange --output none
+  elif [[ "${current}" != "${subject}" ]]; then
+    log "Changing the trusted subject of ${name} from ${current} to ${subject}"
+    az identity federated-credential update --name "${credential}" --identity-name "${name}" \
       --resource-group "${STATE_RESOURCE_GROUP}" --issuer "${OIDC_ISSUER}" \
       --subject "${subject}" --audiences api://AzureADTokenExchange --output none
   fi
@@ -119,9 +138,9 @@ identity() {
 }
 
 read -r DEPLOY_CLIENT_ID DEPLOY_PRINCIPAL_ID < <(identity "${DEPLOY_IDENTITY}" github-production \
-  "repo:${REPOSITORY}:environment:production")
+  "${OIDC_SUBJECT_PREFIX}:environment:production")
 read -r PLAN_CLIENT_ID PLAN_PRINCIPAL_ID < <(identity "${PLAN_IDENTITY}" github-pull-request \
-  "repo:${REPOSITORY}:pull_request")
+  "${OIDC_SUBJECT_PREFIX}:pull_request")
 
 assign_role "${DEPLOY_PRINCIPAL_ID}" ServicePrincipal Contributor "${SUBSCRIPTION_SCOPE}"
 assign_role "${DEPLOY_PRINCIPAL_ID}" ServicePrincipal "Storage Blob Data Contributor" "${STATE_CONTAINER_SCOPE}"
