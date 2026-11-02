@@ -1,0 +1,6 @@
+# Providers that tofu init downloads, and local plans. The state is in Azure.
+.terraform/
+*.tfplan
+*.tfstate
+*.tfstate.*
+crash.log

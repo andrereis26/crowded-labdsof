@@ -1,6 +1,6 @@
 # Deployment
 
-Everything needed to run Crowded on the Docker Swarm host ([ADR 0013](../docs/deliverables/adr/0013-single-azure-vm-docker-swarm-with-terraform.md)) from the images the pipeline publishes ([ADR 0011](../docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md)). This README covers the CI/CD side: what the scripts do, and the GitHub and Doppler settings they need. Provisioning the host, and the workflow job that runs these scripts on it, come with the infrastructure story. To run the same stack on a development machine, use `scripts/local/stack-up.sh` instead ([Getting Started](../README.md#getting-started)): it deploys `docker-compose.swarm.yml` with the local override `scripts/local/stack.local.yml` and the configuration of `.env`.
+Everything needed to run Crowded on the Docker Swarm host ([ADR 0013](../docs/deliverables/adr/0013-single-azure-vm-docker-swarm-with-terraform.md)) from the images the pipeline publishes ([ADR 0011](../docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md)). This README covers the CI/CD side: what the scripts do, and the GitHub and Doppler settings they need. The host itself is provisioned with OpenTofu in [`infra/`](../infra/README.md), and the Release workflow (`.github/workflows/release.yml`) runs these scripts on it after every merge to `main` ([ADR 0014](../docs/deliverables/adr/0014-opentofu-state-access-and-deployment-from-main.md)). To run the same stack on a development machine, use `scripts/local/stack-up.sh` instead ([Getting Started](../README.md#getting-started)): it deploys `docker-compose.swarm.yml` with the local override `scripts/local/stack.local.yml` and the configuration of `.env`.
 
 | Path | What it is |
 |---|---|
@@ -13,8 +13,8 @@ Everything needed to run Crowded on the Docker Swarm host ([ADR 0013](../docs/de
 
 ## How a Deployment Works
 
-1. The pipeline pushes the image of each changed app to Docker Hub, tagged with the commit SHA and `main`.
-2. The deploy job copies this folder to the host and runs `remote-deploy.sh`, passing `RELEASE_ID` (the commit SHA) and the image of each changed app, for example `CORE_IMAGE=<namespace>/crowded-core:<sha>`. A service without a new image keeps the image it runs now.
+1. The Release workflow runs the app workflows, which push the image of each changed app to Docker Hub, tagged with the commit SHA and `main`, and applies the infrastructure.
+2. Its deploy job opens SSH for its own address, copies this folder to `/opt/crowded/deployment` on the host and runs `remote-deploy.sh`, passing `RELEASE_ID` (the commit SHA) and `<namespace>/crowded-<app>:main` for every app, for example `CORE_IMAGE=<namespace>/crowded-core:main`. The script pins each to its digest, so a service whose image did not change keeps running untouched. A push that pushed no image and did not change this folder is not deployed.
 3. On the host, the script:
    1. installs Docker Engine and the Doppler CLI if they are missing, checks that Docker is rootful and `live-restore` is off, and initialises a single-node Swarm;
    2. pulls each image and pins it by digest;
@@ -24,6 +24,7 @@ Everything needed to run Crowded on the Docker Swarm host ([ADR 0013](../docs/de
    6. runs `docker stack deploy` with the whole release and waits until every service runs all its replicas with the release's image and every update it started has `completed`, which Swarm reports once the new task has stayed healthy for the monitor period (30 seconds). Then it requests `/` through the router.
 4. If any of this fails, the release is renamed to `<release>.failed` and the previous release is deployed again. The script still exits with an error, so the pipeline run fails.
 5. On success, `/opt/crowded/current` points at the new release. The newest 5 releases, and the secrets they use, are kept for rollback.
+6. The deploy job then requests `/healthz`, `/` and `/backoffice/` through the public IP, from outside. If that fails, it runs `remote-rollback.sh`, and the run fails.
 
 Each service also rolls itself back when its new task does not become healthy (`update_config.failure_action: rollback`). The script notices at once, because the service no longer runs the release's image, and deploys the previous release. Tested on a single-node Swarm (Docker 29): a release whose `core` never became healthy was detected in about 20 seconds and the previous release was live again 5 seconds later.
 
@@ -49,7 +50,7 @@ CORE_IMAGE=<namespace>/crowded-core:<commit sha> \
 bash /opt/crowded/deployment/remote-deploy.sh
 ```
 
-`remote-deploy.sh --bootstrap-only` only prepares the host (Docker, Doppler, Swarm), for example from the instance's first-boot script.
+`remote-deploy.sh --bootstrap-only` only prepares the host (Docker, Doppler, Swarm). The VM's first boot runs it ([`infra/`](../infra/README.md)).
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -74,12 +75,19 @@ Secrets live in the CI secret store, never in the repository (SR-008).
 | `DOCKERHUB_USERNAME` | Secret | Image push | Docker Hub account that pushes |
 | `DOCKERHUB_TOKEN` | Secret | Image push | Docker Hub personal access token with *Read & Write* scope. The host pulls the public images without one |
 | `DOPPLER_TOKEN` | Secret | Deploy | Doppler **service token** with read access to the production config only |
+| `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` | Secret | Plan, apply, deploy | The Azure for Students tenant and subscription |
+| `AZURE_CLIENT_ID` | Secret | Apply, deploy | Client ID of the managed identity `crowded-github-deploy` (OIDC, no secret), which `main` signs in as |
+| `AZURE_PLAN_CLIENT_ID` | Secret | Plan in pull requests | Client ID of the read-only managed identity `crowded-github-plan` |
+| `TOFU_STATE_PASSPHRASE` | Secret | Plan, apply | Passphrase of OpenTofu's state encryption. Also kept in the team's password manager: without it the state cannot be read |
+| `SSH_PRIVATE_KEY` | Secret | Deploy | Private key of the deploy key; its public key is in `infra/production.auto.tfvars` |
+| `SSH_KNOWN_HOSTS` | Secret | Deploy | `<public IP> ssh-ed25519 <host key>`: the VM's host key, pinned. Changes when the VM is replaced |
+| `SSH_ALLOWED_CIDRS` | Variable | Plan, apply | Optional. JSON list of the addresses allowed to SSH, e.g. `["203.0.113.10/32"]`. Default `[]`: only the deploy job, while it runs |
 | `CROWDED_BOT_CLIENT_ID` | Secret (Actions **and** Dependabot) | Dependabot auto-merge | Client ID of the crowded-bot GitHub App |
 | `CROWDED_BOT_PRIVATE_KEY` | Secret (Actions **and** Dependabot) | Dependabot auto-merge | A private key (`.pem` contents) of the crowded-bot GitHub App |
 
 The crowded-bot app approves, auto-merges and asks Dependabot to rebase its pull requests ([ADR 0011](../docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md#dependabot)). To create it, the repository owner opens *Settings → Developer settings → GitHub Apps → New GitHub App*, names it `crowded-bot`, turns off the webhook, grants the repository permissions *Contents: Read and write* and *Pull requests: Read and write* (*Metadata: Read* is added automatically), and chooses *Only on this account*. Then: generate a private key, install the app on this repository only, and add its client ID and private key as both Actions and Dependabot secrets (*Settings → Secrets and variables*). The repository settings allow auto-merge and *Allow GitHub Actions to create and approve pull requests* stays off, because the app, not `GITHUB_TOKEN`, approves.
 
-The deploy job also needs SSH access to the host (address, user, private key and known-hosts entry). The infrastructure story adds those secrets, because they come from the provisioned instance.
+The apply and deploy jobs run in the **`production` environment**, which only `main` can use and which has no required reviewers. The host's address and user come from OpenTofu's outputs, not from secrets. How to create the identities, the keys and the environment: [`infra/README.md`](../infra/README.md#setting-it-up).
 
 ## Doppler Settings
 

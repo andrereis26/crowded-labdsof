@@ -1,0 +1,23 @@
+#cloud-config
+# First boot of the Crowded host (ADR 0014), rendered by main.tf. Copies the
+# deployment scripts and runs first-boot.sh, which mounts the data disk and
+# runs remote-deploy.sh --bootstrap-only (Docker, Doppler CLI, Swarm).
+package_update: true
+package_upgrade: true
+
+write_files:
+  - path: /opt/crowded/first-boot.sh
+    encoding: gz+b64
+    permissions: "0755"
+    content: ${first_boot}
+  - path: /opt/crowded/deployment/remote-deploy.sh
+    encoding: gz+b64
+    permissions: "0755"
+    content: ${remote_deploy}
+  - path: /opt/crowded/deployment/lib/common.sh
+    encoding: gz+b64
+    permissions: "0644"
+    content: ${common}
+
+runcmd:
+  - [bash, /opt/crowded/first-boot.sh, "${admin_username}"]
