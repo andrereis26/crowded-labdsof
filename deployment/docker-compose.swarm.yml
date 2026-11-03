@@ -219,7 +219,7 @@ services:
         reservations: { memory: 128M }
 
   redis:
-    image: redis:8.2-alpine
+    image: redis:8.10-alpine
     # The password goes in a config file, not on the command line, where any
     # process listing would show it.
     command:
