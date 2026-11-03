@@ -197,7 +197,7 @@ services:
         reservations: { memory: 128M }
 
   rabbitmq:
-    image: rabbitmq:4.1-alpine
+    image: rabbitmq:4.4-alpine
     # RabbitMQ names its data after the host name: keep it stable across tasks.
     hostname: rabbitmq
     secrets:
