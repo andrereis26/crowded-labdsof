@@ -29,12 +29,15 @@ Closes #
 -
 
 ## Definition of Done
+<!-- The required checks enforce DoD-02, DoD-04, DoD-05, DoD-09 and DoD-12. Keep only the "When it applies" lines of the issue's labels (frontend, backend, ai, security) and of the kinds named in its notes. -->
 - [ ] Acceptance criteria met (DoD-01)
 - [ ] Commits follow `type(#issue): message` (DoD-03)
-- [ ] Static analysis passes with no new warnings (DoD-04)
-- [ ] Tests added and passing (DoD-05, DoD-06)
-- [ ] CI pipeline passes (DoD-09)
-- [ ] No secrets committed (DoD-12)
+
+When it applies:
+- [ ] Integration or end-to-end tests (DoD-06)
+- [ ] Failure scenarios handled and tested (DoD-07)
+- [ ] AI evaluation dataset updated (DoD-08)
+- [ ] Structured logs, metrics and trace identifiers (DoD-11)
 - [ ] Security and privacy requirements addressed (DoD-13)
 - [ ] UI meets WCAG 2.1 AA (DoD-14)
-- [ ] Documentation and ADRs updated where relevant (DoD-15)
+- [ ] Documentation and ADRs updated (DoD-15)
