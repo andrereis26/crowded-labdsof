@@ -29,7 +29,9 @@ Closes #
 -
 
 ## Definition of Done
-<!-- The required checks enforce DoD-02, DoD-04, DoD-05, DoD-09 and DoD-12. Keep only the "When it applies" lines of the issue's labels (frontend, backend, ai, security) and of the kinds named in its notes. -->
+**Enforced by the required checks:** review approval (DoD-02), static analysis (DoD-04), unit tests with 80% coverage (DoD-05), CI/CD pipeline (DoD-09), no secrets (DoD-12).
+
+<!-- Keep only the "When it applies" lines of the issue's labels (frontend, backend, ai, security) and of the kinds named in its notes. -->
 - [ ] Acceptance criteria met (DoD-01)
 - [ ] Commits follow `type(#issue): message` (DoD-03)
 
