@@ -43,3 +43,34 @@ We are working on a project called "Community Resilience and Everyday Services P
 ## Review
 
 After drawing the screens, check every frame for clipped text, overlapping elements and contrast, and fix them. Then ask me questions ("grill me") about open product decisions, update the screens with my answers, record the decisions on the cover page, and update `requirements.md` and the related issues when a decision changes a requirement.
+
+## Update for the narrowed MVP scope (#136)
+
+After the Sprint 1 review narrowed the MVP (the organization is the only source of event information, [ADR 0015](../deliverables/adr/0015-organization-as-the-only-event-source.md)), we asked for the Figma file to be updated with this prompt:
+
+Bring "Crowded — Mockups" to the MVP scope of issue #136 and the updated [requirements](../deliverables/requirements.md). Reuse the existing design system without restyling. Keep the copy rules above: European Portuguese, no privacy or AI disclaimers and no per-field AI badges. Draw mobile and desktop frames for every changed or new participant screen and desktop frames for the backoffice, and list the removed, changed and added frames at the end.
+
+- **Remove:** P3, P4, P9 and the Eventos tab, P16, O1, O11, O13, O14 and A1; the P19 variant for tickets without a code; the "Seguir" and "Vou" buttons, "Proposto" labels and follower counts; the ticketing source, corroborated changes and source conflicts; the API key screens; and the email (.eml) import.
+- **Change:**
+  - P1 lists ticketed and public events.
+  - P2 imports a PDF or an image of the ticket.
+  - P5 to P7 show the organization as the source, the refund information, and the IPMA warnings and forecast.
+  - P8 adds weather warnings and the state for an event the participant left.
+  - P18 shows the GTFS operator as the source.
+  - O3 chooses a ticketed or public event, with the event code or the access code, the district and a duplicate-code error.
+  - O4 covers the change types, ticket validity and refund.
+  - O12 drops the poll wording.
+- **Add:**
+  - P2a, the summary after an automatic import (FR-003).
+  - P2b, the event code fallback (FR-004), pre-filled with the code that was read. It has three errors: no QR code (FR-070), event not on Crowded (FR-083) and ticket already in another account (FR-084).
+  - P21, scan a QR code or type an access code, with "código não encontrado" (FR-085).
+  - A2, the platform admin page: organizations and members, temporary passwords shown once that expire in 7 days, deactivate and reactivate (FR-087).
+  - C4, set a new password at first sign-in, and the expired temporary password error (FR-088).
+
+The current screens are:
+
+- Participant: P1 My events (tickets and public events), P2 Import ticket (PDF or image), P2a Ticket added, P2b Ticket not matched (event code and errors), P5 Event page (with IPMA warnings), P6 Change history, P7 Official change detail (with refund), P8 Notification center, P10 Location request, P11 Report, P12 Report sent / refused, P13 Yes / No confirmation request, P14 Participant estimates, P15 Recognition, P17 Organization requests, P18 Directions to the venue, P19 Entry code, P20 Your contributions, P21 Enter access code.
+- Organization: O2 Event list, O3 Create / edit event (ticketed or public), O4 Change event (postpone, time and doors, venue, cancel), O5 Update crowd level and queues, O6 Send alert, O7 Live dashboard, O8 Incidents grouped by AI, O9 Incident detail, O10 Categories that ask for confirmation, O12 Publish request.
+- Admin and account: A2 Organizations and members, C1 Sign in, C2 Notification preferences, C3 Account, C4 New password at first sign-in.
+
+The product decisions above about P4, polls, the email import and the catalog no longer apply.
