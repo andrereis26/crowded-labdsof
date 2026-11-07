@@ -44,4 +44,3 @@ The mechanism encourages participants to **report disruptions accurately and ear
 - Confirmation prompts can be turned off for each event (FR-041).
 - The contribution history is private and is deleted with the account (FR-042).
 - Not reporting or confirming has no consequence for the user.
-- Answering an interest poll never follows the event or subscribes the user to anything: following is a separate button on the poll page (FR-027). Poll answers are never shown individually to the organization or to other users (SR-019).

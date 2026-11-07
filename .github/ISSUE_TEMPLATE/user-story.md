@@ -15,7 +15,7 @@ labels: feature
 
 - Requirements: <FR-…, NFR-…, SR-…> (`docs/deliverables/requirements.md`)
 - MoSCoW: <Must have 8–10 | Should/Could have 5–7 | Won't have 1–4> (priority <n>)
-- Dependencies: <stories, simulators, external services, or none>
+- Dependencies: <stories, external services, or none>
 - Mockup: <Figma frame, for UI items>
 - Security, privacy or AI concerns: <SR-…, NFR-007, NFR-015, or none>
 - Kinds without a label: <external integration, API or architecture change, or none>

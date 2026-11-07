@@ -24,6 +24,9 @@ entity "User" as User {
   email : TEXT [PERSONAL]
   passwordHash : TEXT [CREDENTIAL]
   role : role
+  active : BOOLEAN
+  mustChangePassword : BOOLEAN
+  temporaryPasswordExpiresAt : TIMESTAMPTZ [NULL]
   createdAt : TIMESTAMPTZ
   locationConsentGranted : BOOLEAN [NULL] [PERSONAL]
 }
@@ -34,44 +37,32 @@ end note
 
 entity "Organization" as Organization {
   * id : UUID <<PK>>
-  verifiedByUserId : UUID [NULL] <<FK>> [PERSONAL]
+  createdByUserId : UUID <<FK>> [PERSONAL]
   --
   name : TEXT
-  verificationStatus : verification_status
-  verifiedAt : TIMESTAMPTZ [NULL]
-}
-
-entity "ApiCredential" as ApiCredential {
-  * keyId : UUID <<PK>>
-  organizationId : UUID <<FK>>
-  --
-  secretHash : TEXT [CREDENTIAL]
-  scope : TEXT
   createdAt : TIMESTAMPTZ
-  revokedAt : TIMESTAMPTZ [NULL]
 }
 
 ' Event catalog
 entity "Event" as Event {
   * id : UUID <<PK>>
-  organizationId : UUID [NULL] <<FK>>
+  organizationId : UUID <<FK>>
   --
   name : TEXT
   description : TEXT
-  tentativePeriod : TEXT [NULL]
-  startDateTime : TIMESTAMPTZ [NULL]
+  type : event_type
+  ticketEventCode : TEXT [NULL]
+  accessCode : TEXT [NULL]
+  startDateTime : TIMESTAMPTZ
   doorsOpenAt : TIMESTAMPTZ [NULL]
-  endDateTime : TIMESTAMPTZ [NULL]
+  endDateTime : TIMESTAMPTZ
   status : event_status
   capacity : INTEGER [NULL]
-  visibility : event_visibility
-  origin : event_origin
-  ticketingSourceEventId : TEXT [NULL] <<UK>>
-  lastSyncedAt : TIMESTAMPTZ [NULL]
-  venueName : TEXT [NULL]
-  address : TEXT [NULL]
-  latitude : DOUBLE PRECISION [NULL]
-  longitude : DOUBLE PRECISION [NULL]
+  venueName : TEXT
+  address : TEXT
+  district : TEXT
+  latitude : DOUBLE PRECISION
+  longitude : DOUBLE PRECISION
   crowdLevel : crowd_level [NULL]
   headCount : INTEGER [NULL]
   crowdProvenanceSourceType : source_type [NULL]
@@ -84,10 +75,10 @@ note right of Event
   The composed EventLocation and optional CrowdStatus
   are flattened into Event columns. Provenance is
   flattened within CrowdStatus.
-  A PROPOSED event has only tentativePeriod: start time
-  and venue are NULL until it is confirmed (FR-076).
-  ticketingSourceEventId links an organization event to
-  the ticketing source (FR-079).
+  A TICKETED event has ticketEventCode, the code printed
+  on its tickets; a PUBLIC event has accessCode. Each code
+  is unique among upcoming events, checked by Core (FR-086).
+  district selects the IPMA warnings and forecast (FR-036).
 end note
 
 entity "EventChange" as EventChange {
@@ -99,13 +90,11 @@ entity "EventChange" as EventChange {
   previousValue : JSONB
   newValue : JSONB
   ticketStillValid : BOOLEAN [NULL]
-  refundInfoUrl : TEXT [NULL]
+  refundInfo : TEXT [NULL]
   provenanceSourceType : source_type
   provenanceSourceName : TEXT
   provenanceLastUpdatedAt : TIMESTAMPTZ
   provenanceConfirmed : BOOLEAN
-  corroboratingSourceType : source_type [NULL]
-  corroboratedAt : TIMESTAMPTZ [NULL]
 }
 
 note right of EventChange
@@ -113,21 +102,9 @@ note right of EventChange
   its old or new value (for example,
   {"status":"SCHEDULED"} to {"status":"POSTPONED"}).
   This supports changed attributes with different types.
-  When the organization and the ticketing source report
-  the same change, it is stored once and the second
-  source fills corroboratingSourceType (FR-078).
+  Every change is published by the owning organization
+  (ADR 0015).
 end note
-
-entity "OwnershipRequest" as OwnershipRequest {
-  * id : UUID <<PK>>
-  organizationId : UUID <<FK>>
-  eventId : UUID <<FK>>
-  decidedByUserId : UUID [NULL] <<FK>> [PERSONAL]
-  --
-  status : request_decision
-  requestedAt : TIMESTAMPTZ
-  decidedAt : TIMESTAMPTZ [NULL]
-}
 
 ' Participation
 entity "EventConnection\n<<Abstract>>" as EventConnection {
@@ -145,47 +122,41 @@ entity "Ticket" as Ticket {
   gate : TEXT [NULL]
   sector : TEXT [NULL]
   seat : TEXT [NULL]
-  entryCode : BYTEA [NULL] [CREDENTIAL, ENCRYPTED]
+  entryCode : BYTEA [CREDENTIAL, ENCRYPTED]
+  entryCodeHash : TEXT [CREDENTIAL]
   importMethod : import_method
-  status : ticket_status
+  matchMethod : match_method
 }
 
 note right of Ticket
-  entryCode is included to meet FR-070 and is
-  encrypted and treated as a credential per SR-018.
+  entryCode is the ticket's QR code (FR-070), encrypted
+  and treated as a credential per SR-018. entryCodeHash is
+  a keyed hash, unique per event, so one ticket links to
+  one account (FR-084). A ticket is stored only once it is
+  matched: an import waiting for the typed code is kept in
+  Redis for 30 minutes, not here (FR-004, FR-083).
 end note
 
-entity "Follow" as Follow {
+entity "AccessCodeConnection" as AccessCodeConnection {
   * id : UUID <<PK, FK>>
-  --
-  going : BOOLEAN
 }
 
 entity "TicketExtraction" as TicketExtraction {
   * id : UUID <<PK>>
   ticketId : UUID <<FK, UK>> [PERSONAL]
   --
+  extractedEventCode : TEXT [NULL]
   extractedFields : JSONB
-  fieldConfidence : JSONB
   aiGenerated : BOOLEAN
   createdAt : TIMESTAMPTZ
 }
 
 note right of TicketExtraction
-  JSONB keeps the named extracted fields grouped
-  together, with corresponding per-field confidence
-  scores in a second object. The stored data follows
+  JSONB keeps the extracted gate, sector and seat
+  grouped together. The stored data follows
   the validated extraction schema where personal data and
   entry codes are excluded (SR-004, SR-018).
 end note
-
-entity "EventMatchCandidate\n<<Dependent Value Object>>" as EventMatchCandidate {
-  * id : UUID <<PK>>
-  ticketExtractionId : UUID <<FK, UK>> [PERSONAL]
-  eventId : UUID <<FK, UK>>
-  --
-  confidence : DOUBLE PRECISION
-}
 
 ' On-site information
 entity "QueueTime\n<<Dependent Value Object>>" as QueueTime {
@@ -207,13 +178,35 @@ entity "WeatherForecast\n<<Dependent Value Object>>" as WeatherForecast {
   date : DATE <<UK>>
   --
   conditions : TEXT
-  temperature : DOUBLE PRECISION
-  severeWeather : BOOLEAN
+  minTemperature : DOUBLE PRECISION
+  maxTemperature : DOUBLE PRECISION
+  precipitationProbability : DOUBLE PRECISION
   provenanceSourceType : source_type
   provenanceSourceName : TEXT
   provenanceLastUpdatedAt : TIMESTAMPTZ
   provenanceConfirmed : BOOLEAN
 }
+
+entity "WeatherWarning" as WeatherWarning {
+  * id : UUID <<PK>>
+  eventId : UUID <<FK, UK>>
+  awarenessType : TEXT <<UK>>
+  startTime : TIMESTAMPTZ <<UK>>
+  --
+  level : warning_level
+  endTime : TIMESTAMPTZ
+  notifiedLevel : warning_level [NULL]
+  provenanceSourceType : source_type
+  provenanceSourceName : TEXT
+  provenanceLastUpdatedAt : TIMESTAMPTZ
+  provenanceConfirmed : BOOLEAN
+}
+
+note right of WeatherWarning
+  An IPMA warning for the event's district. notifiedLevel
+  records the highest level already notified, so a warning
+  is notified once per level (FR-036, NFR-003).
+end note
 
 ' Organizer communication
 entity "Alert" as Alert {
@@ -272,41 +265,6 @@ entity "SurveyResponse" as SurveyResponse {
   answer : TEXT
   respondedAt : TIMESTAMPTZ
 }
-
-entity "InterestPoll" as InterestPoll {
-  * id : UUID <<PK>>
-  organizationId : UUID <<FK>>
-  eventId : UUID <<FK>>
-  --
-  question : TEXT
-  publicSlug : TEXT <<UK>>
-  opensAt : TIMESTAMPTZ
-  closesAt : TIMESTAMPTZ
-}
-
-entity "PollOption\n<<Dependent Value Object>>" as PollOption {
-  * id : UUID <<PK>>
-  interestPollId : UUID <<FK, UK>>
-  label : TEXT <<UK>>
-  --
-  position : INTEGER
-}
-
-entity "PollResponse" as PollResponse {
-  * id : UUID <<PK>>
-  interestPollId : UUID <<FK, UK>>
-  userId : UUID <<FK, UK>> [PERSONAL, PRIVACY-SENSITIVE]
-  pollOptionId : UUID <<FK>>
-  --
-  respondedAt : TIMESTAMPTZ
-}
-
-note right of PollResponse
-  userId only enforces one answer per user per poll and
-  lets the user change it; organizations and other users
-  only see totals per option (SR-019). Answering does
-  not create a Follow (FR-027).
-end note
 
 ' Reports, confirmations and incidents
 entity "Report" as Report {
@@ -406,7 +364,8 @@ entity "AuditLogEntry" as AuditLogEntry {
 note right of AuditLogEntry
   JSONB stores structured details that vary by audit
   event type (event change, alert sent, incident status
-  change), as covered by SR-006.
+  change, an administrator's account action), as covered
+  by SR-006.
 end note
 
 }
@@ -432,7 +391,7 @@ note right of Notification
   causeId identifies the disruption that triggered the
   notification; the type says which table it refers to
   (OFFICIAL_CHANGE: EventChange, OPERATIONAL_ALERT: Alert,
-  INCIDENT_STATUS: Incident). It has no FK because those
+  WEATHER_WARNING: WeatherWarning, INCIDENT_STATUS: Incident). It has no FK because those
   tables belong to Core and the id arrives in the message
   (ADR 0002, ADR 0003). It links delivery to its cause
   for traceability and for measuring NFR-001.
@@ -464,14 +423,7 @@ enum "role" as role {
   ADMINISTRATOR
 }
 
-enum "verification_status" as verification_status {
-  PENDING
-  VERIFIED
-  REJECTED
-}
-
 enum "event_status" as event_status {
-  PROPOSED
   SCHEDULED
   POSTPONED
   RELOCATED
@@ -480,19 +432,12 @@ enum "event_status" as event_status {
   ENDED
 }
 
-enum "event_visibility" as event_visibility {
-  PUBLIC
+enum "event_type" as event_type {
   TICKETED
-}
-
-enum "event_origin" as event_origin {
-  ORGANIZATION
-  TICKETING_PLATFORM
-  MUNICIPAL_AGENDA
+  PUBLIC
 }
 
 enum "change_type" as change_type {
-  CONFIRMATION
   CANCELLATION
   POSTPONEMENT
   TIME_CHANGE
@@ -500,21 +445,20 @@ enum "change_type" as change_type {
   DETAILS_UPDATE
 }
 
-enum "request_decision" as request_decision {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
 enum "import_method" as import_method {
   PDF_UPLOAD
-  EMAIL_PASTE
-  MANUAL_ENTRY
+  IMAGE_UPLOAD
 }
 
-enum "ticket_status" as ticket_status {
-  PENDING_CONFIRMATION
-  CONFIRMED
+enum "match_method" as match_method {
+  EXTRACTED_CODE
+  TYPED_CODE
+}
+
+enum "warning_level" as warning_level {
+  YELLOW
+  ORANGE
+  RED
 }
 
 enum "crowd_level" as crowd_level {
@@ -592,7 +536,7 @@ enum "notification_type" as notification_type {
   OFFICIAL_CHANGE
   OPERATIONAL_ALERT
   ORGANIZATION_SURVEY
-  SEVERE_WEATHER
+  WEATHER_WARNING
   INCIDENT_STATUS
   RECOGNITION
   CONFIRMATION_REQUEST
@@ -601,28 +545,23 @@ enum "notification_type" as notification_type {
 
 ' Identity and access relationships
 Organization |o--|{ User : members
-Organization ||--o{ ApiCredential : credentials
-User |o--o{ Organization : verifies
+User ||--o{ Organization : creates (administrator)
 
 ' Event catalog relationships
-Organization |o--o{ Event : owns
+Organization ||--o{ Event : owns
 Event ||--o{ EventChange : change history
-Organization ||--o{ OwnershipRequest : submits
-Event ||--o{ OwnershipRequest : requested for
-User |o--o{ OwnershipRequest : decides
 
 ' Participation relationships
 User ||--o{ EventConnection : connects
 Event ||--o{ EventConnection : has participants
 EventConnection ||--o| Ticket : subtype
-EventConnection ||--o| Follow : subtype
+EventConnection ||--o| AccessCodeConnection : subtype
 Ticket ||--o| TicketExtraction : extraction
-TicketExtraction ||--o{ EventMatchCandidate : candidates
-Event ||--o{ EventMatchCandidate : candidate event
 
 ' On-site information relationships
 Event ||--o{ QueueTime : queues
 Event ||--o{ WeatherForecast : forecasts
+Event ||--o{ WeatherWarning : warnings
 
 ' Organizer communication relationships
 Event ||--o{ Alert : alerts
@@ -632,12 +571,6 @@ Event ||--o{ EventSurvey : surveys
 EventSurvey ||--o{ SurveyOption : options
 EventSurvey ||--o{ SurveyResponse : responses
 User ||--o{ SurveyResponse : responds
-Organization ||--o{ InterestPoll : launches
-Event ||--o{ InterestPoll : tests interest in
-InterestPoll ||--|{ PollOption : options
-InterestPoll ||--o{ PollResponse : responses
-PollOption ||--o{ PollResponse : chosen in
-User ||--o{ PollResponse : responds
 
 ' Reports, confirmations and incidents relationships
 Event ||--o{ Report : reports

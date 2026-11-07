@@ -77,7 +77,7 @@ The goals and deliverables of each sprint are the GitHub milestones *Sprint 1*, 
 | A requirement or priority changes | The Product Owner updates the requirement and the story. Stories outside the current sprint are re-ordered in the backlog. Inside the sprint, a story is swapped only if the sprint goal still holds. |
 | A story turns out bigger than estimated | It is split: what fits the sprint stays, the rest goes back to the backlog with its own acceptance criteria |
 | A decision proves wrong | A new ADR supersedes the old one, which stays for history. Example: ADR 0013 replaced the AWS deployment of ADR 0008 when the free instance was too small. |
-| An external dependency is late or unavailable | Adapters with fakes and simulators ([ADR 0010](adr/0010-external-integrations.md)) keep development going. The degraded modes of the [Technical Design](technical-design.md#degraded-operation) are part of the product. |
+| An external dependency is late or unavailable | Adapters with fakes ([ADR 0010](adr/0010-external-integrations.md)) keep development going. The degraded modes of the [Technical Design](technical-design.md#degraded-operation) are part of the product. |
 | Someone is unavailable | Roles are flexible and every story has acceptance criteria, so another member can take it over. Pull requests describe how to test them. |
 | The sprint goal is at risk | Raised at the weekly sync. The scope is cut by priority, lowest first, not the quality bar of the Definition of Done. |
 
