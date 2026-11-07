@@ -5,9 +5,10 @@ This document outlines the principal APIs between the client apps and the backen
 ## Conventions
 
 - **Format:** field names, enum values and ids (UUID) follow the [Data Model](diagrams/data-model.svg).
-- **Authentication:** Core registers users and issues short-lived JWTs; the services validate them and check the revocation list ([ADR 0005](adr/0005-authentication-in-core-with-jwt.md), [ADR 0004](adr/0004-redis-for-revocation-rate-limiting-and-cache.md)). Organization systems call the Organization API with API keys scoped to their organization and its events (SR-010).
+- **Authentication:** Core registers participants and issues short-lived JWTs; the services validate them and check the revocation list ([ADR 0005](adr/0005-authentication-in-core-with-jwt.md), [ADR 0004](adr/0004-redis-for-revocation-rate-limiting-and-cache.md)). Organization members get their accounts from a platform administrator.
+- **Access to an event:** every endpoint under `/events/{eventId}` that a participant can call requires a connection to that event, through a ticket or the access code (SR-020). Which event a ticket or an access code connects to is decided by Core from the code, never from an `eventId` sent by the client (SR-021).
 - **Provenance:** every piece of event information carries `provenance` {`sourceType`, `sourceName`, `lastUpdatedAt`, `confirmed`}, so the app can show its source and last-update time (FR-032) and flag or hide information that has not been updated within the configured period (FR-033).
-- **Rate limits:** unauthenticated requests (including public poll pages), reports, confirmation answers and poll answers (SR-011), and account creation and login (SR-015) are rate-limited. NGINX keeps a coarse per-IP limit; per-user limits run in Core ([ADR 0004](adr/0004-redis-for-revocation-rate-limiting-and-cache.md)).
+- **Rate limits:** unauthenticated requests, ticket imports, reports and confirmation answers (SR-011), and sign-in and participant registration (SR-015) are rate-limited. NGINX keeps a coarse per-IP limit; per-user limits run in Core ([ADR 0004](adr/0004-redis-for-revocation-rate-limiting-and-cache.md)).
 - **Correlation:** requests carry a correlation id that every service logs, so one request can be followed across services (NFR-010, [ADR 0009](adr/0009-observability-stack.md)).
 
 ## Roles
@@ -18,10 +19,9 @@ The **Role** column of every table uses these names:
 |---|---|---|
 | **Public** | Anyone, without an account | None; rate-limited (SR-011) |
 | **Signed-in** | Any user with an account, whatever their role | JWT |
-| **Participant** | User with role `PARTICIPANT`. *Connected* means they have a ticket for or follow the event; *owner* means the resource is theirs (SR-003) | JWT |
-| **Member** | `ORGANIZATION_MEMBER` of the organization that owns the event (SR-001). *Verified* means the organization must be `VERIFIED`, because the action publishes official information (SR-002) | JWT |
-| **Admin** | `ADMINISTRATOR` | JWT |
-| **Org system** | An organization's own system, such as an entrance counter | API key (SR-010) |
+| **Participant** | User with role `PARTICIPANT`. *Connected* means they have a connection to the event, through a ticket or the access code; *owner* means the resource is theirs (SR-003, SR-020) | JWT |
+| **Member** | Active `ORGANIZATION_MEMBER` of the organization that owns the event (SR-001, SR-002) | JWT |
+| **Admin** | `ADMINISTRATOR`, a member of the Crowded team | JWT |
 
 ## Shared Endpoints
 
@@ -31,20 +31,21 @@ These endpoints are used by several journeys and are described once.
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
-| POST | `/auth/register` | Create an account (FR-043). With `organizationName`, also create the organization, pending verification (FR-040). | `email`, `password`, `organizationName` | `userId`, `role` | Public |
-| POST | `/auth/login` | Sign in and get a short-lived JWT. | `email`, `password` | `accessToken`, `expiresAt`, `user` {`id`, `role`, `organizationId`} | Public |
-| POST | `/auth/logout` | Revoke the current token. | – | – | Signed-in |
+| POST | `/auth/register` | Create a participant account (FR-043). Organization members cannot register. | `email`, `password` | `userId`, `role` | Public |
+| POST | `/auth/login` | Sign in and get a short-lived JWT. With a temporary password, the token only allows `PUT /me/password` (FR-088, SR-022). | `email`, `password` | `accessToken`, `expiresAt`, `mustChangePassword`, `user` {`id`, `role`, `organizationId`} | Public |
+| PUT | `/me/password` | Set a new password; required after signing in with a temporary password (FR-088, SR-022). | `currentPassword`, `newPassword` | – | Signed-in |
+| POST | `/auth/logout` | Revoke the current token. The app deletes its cached event data and entry codes (SR-023). | – | – | Signed-in |
 | GET | `/me` | Current user. | – | `id`, `email`, `role`, `organizationId`, `locationConsentGranted` | Signed-in |
 | PUT | `/me/location-consent` | Grant or withdraw location consent (SR-009). | `granted` | `granted` | Participant |
-| DELETE | `/me` | Delete the account and its personal data, and publish `UserDeleted` (FR-042). | – | – | Signed-in |
+| DELETE | `/me` | Delete the account and its personal data, and publish `UserDeleted` (FR-042). | – | – | Participant |
 
 ### Event page (Core)
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
-| GET | `/events/{eventId}` | Event page for participants and live dashboard for the organization (FR-014, FR-023, FR-031, FR-035, FR-059, FR-072). On-site information carries `provenance`. Members also receive the dashboard fields. | – | `id`, `name`, `status`, `tentativePeriod`, `startDateTime`, `doorsOpenAt`, `endDateTime`, `venue`, `organization`, `lastSyncedAt`, `latestChange`, `activeAlerts[]`, `crowd` {`level`, `headCount`, `capacity`}, `queues[]`, `weather[]`, `estimates[]` {`categoryCode`, `confirmations` {`yes`, `no`, `lastConfirmedAt`}}, `connection`. Members: `openIncidents`, `alertsSent`, `connectedUsers`, `sourceConflicts[]` (FR-078) | Signed-in |
-| GET | `/events/{eventId}/changes` | Change history, newest first, with what each change means for the participant (FR-014, FR-075, FR-078). | – | List of {`id`, `type`, `severity`, `previousValue`, `newValue`, `ticketStillValid`, `refundInfoUrl`, `provenance`, `corroboratingSourceType`, `corroboratedAt`} | Signed-in |
-| GET | `/events/{eventId}/live` | Server-Sent Events stream: one event each time a part of the event page changes (details, changes, crowd, queues, alerts, estimates; incidents for Members), with the same shape as in `GET /events/{eventId}` ([ADR 0007](adr/0007-live-updates-with-server-sent-events.md), NFR-008, NFR-019). | – | Stream | Signed-in |
+| GET | `/events/{eventId}` | Event page for participants and live dashboard for the organization (FR-014, FR-023, FR-031, FR-035, FR-036, FR-059, FR-072). On-site information carries `provenance`. Members also receive the dashboard fields. | – | `id`, `name`, `type` (`TICKETED` or `PUBLIC`), `status`, `startDateTime`, `doorsOpenAt`, `endDateTime`, `venue`, `organization`, `latestChange`, `activeAlerts[]`, `crowd` {`level`, `headCount`, `capacity`}, `queues[]`, `weather` {`forecast[]`, `warnings[]`, `lastUpdatedAt`}, `estimates[]` {`categoryCode`, `confirmations` {`yes`, `no`, `lastConfirmedAt`}}, `connection`. Members: `ticketEventCode` or `accessCode`, `openIncidents`, `alertsSent`, `connectedUsers` | Participant (connected), Member |
+| GET | `/events/{eventId}/changes` | Change history, newest first, with what each change means for the participant (FR-014, FR-075). | – | List of {`id`, `type`, `severity`, `previousValue`, `newValue`, `ticketStillValid`, `refundInfo`, `provenance`} | Participant (connected), Member |
+| GET | `/events/{eventId}/live` | Server-Sent Events stream: one event each time a part of the event page changes (details, changes, crowd, queues, alerts, weather, estimates; incidents for Members), with the same shape as in `GET /events/{eventId}` ([ADR 0007](adr/0007-live-updates-with-server-sent-events.md), NFR-008, NFR-019). Closed when the connection is removed (SR-020). | – | Stream | Participant (connected), Member |
 
 Participant estimates never include the report description, which may contain personal data, or the confidence level, which only the organization sees (FR-058, FR-059).
 
@@ -52,74 +53,79 @@ Participant estimates never include the report description, which may contain pe
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
-| GET | `/notifications` | Notification center, newest first (FR-067). | – | `notifications[]` {`id`, `type`, `title`, `body`, `eventId`, `causeId`, `createdAt`, `readAt`}, `unreadCount` | Signed-in |
+| GET | `/notifications` | Notification center, newest first (FR-067). Opening one that belongs to an event the participant is no longer connected to shows that they left it, not the event page (SR-020). | – | `notifications[]` {`id`, `type`, `title`, `body`, `eventId`, `causeId`, `createdAt`, `readAt`}, `unreadCount` | Signed-in |
 | POST | `/notifications/{notificationId}/read` | Mark a notification as read (FR-067). | – | – | Signed-in (recipient) |
 | GET | `/notifications/stream` | SSE stream of new notifications, shown as a live banner, and of the unread count (FR-068). After reconnecting, the client fetches what it missed with `GET /notifications` ([ADR 0007](adr/0007-live-updates-with-server-sent-events.md)). | – | Stream | Signed-in |
 | GET | `/notifications/settings` | Overall preferences and per-event overrides. | – | `defaults[]` {`type`, `enabled`}, `overrides[]` {`connectionId`, `type`, `enabled`} | Signed-in |
 | PUT | `/notifications/settings` | Turn a notification type on or off, for every event (FR-065) or, with `connectionId`, for one event (FR-041). The client asks for confirmation before turning off official changes or operational alerts (FR-066). | `type`, `enabled`, `connectionId` | `type`, `enabled`, `connectionId` | Signed-in |
 | POST | `/notifications/devices` | Register the mobile app's push token. Added with push, after in-app notifications (FR-069, [ADR 0010](adr/0010-external-integrations.md)). | `token`, `platform` | – | Participant |
 
+### Administration (Core)
+
+A platform administrator creates each organization and its members' accounts in a page of the backoffice. Every action is audited (SR-006).
+
+| Method | Path | Purpose | Main request | Main response | Role |
+|---|---|---|---|---|---|
+| GET | `/admin/organizations` | Organizations and their members. | – | List of {`id`, `name`, `members[]` {`userId`, `email`, `active`, `mustChangePassword`}} | Admin |
+| POST | `/admin/organizations` | Create an organization (FR-087). | `name` | `organizationId` | Admin |
+| POST | `/admin/organizations/{organizationId}/members` | Create a member account with a temporary password, shown once (FR-087, SR-022). | `email` | `userId`, `temporaryPassword`, `expiresAt` | Admin |
+| PATCH | `/admin/members/{userId}` | Deactivate or reactivate a member, or issue a new temporary password (FR-087). A deactivated member's tokens are revoked. | `active`, `resetPassword` | `active`, `temporaryPassword`, `expiresAt` | Admin |
+
 ## Principal User Journeys
 
 Each journey lists the endpoints it uses. Endpoints from [Shared Endpoints](#shared-endpoints) or from an earlier journey are referenced by path.
 
-### 1. Test interest in an event
+### 1. Set up the event
 
-The organization publishes a proposed event with an interest poll; participants open the public link, answer and follow the event; the organization then confirms or withdraws it.
+A platform administrator has created the organization and its members (see [Administration](#administration-core)). A member signs in, sets a new password and registers the event.
 
-Also uses: `POST /events/{eventId}/follow` (journey 2), `POST /events/{eventId}/changes` with type `CONFIRMATION` or `CANCELLATION` (journey 3), and the notification center.
+Also uses: `POST /auth/login`, `PUT /me/password`.
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
-| POST | `/events` | Publish an event, proposed or scheduled (FR-015, FR-024, FR-076). A proposed event has a `tentativePeriod` and no date, time or venue. | `name`, `description`, `status` (`PROPOSED` or `SCHEDULED`), `tentativePeriod`, `startDateTime`, `doorsOpenAt`, `endDateTime`, `venue`, `capacity`, `visibility` | `eventId`, `status` | Member (verified) |
-| POST | `/events/{eventId}/polls` | Create an interest poll with the organization's own options (FR-026). | `question`, `options[]` (two or more labels), `opensAt`, `closesAt` | `pollId`, `publicSlug` | Member |
-| POST | `/polls/{pollId}/close` | Close a poll early (FR-026). | – | `closesAt` | Member |
-| GET | `/public/polls/{publicSlug}` | Public poll page, without an account (FR-080). | – | `pollId`, `question`, `options[]` {`id`, `label`}, `closesAt`, `event` {`id`, `name`, `status`, `tentativePeriod`} | Public |
-| PUT | `/polls/{pollId}/response` | Answer, or change the answer until the poll closes. Does not follow the event (FR-027, SR-019). | `optionId` | `totals[]` {`optionId`, `count`} | Signed-in |
-| GET | `/polls/{pollId}/results` | Totals per option, never who answered (FR-028, SR-019). Users see them only after answering. | – | `totals[]` {`optionId`, `count`}, `myOptionId` (answered), `followers` (Member) | Signed-in (answered), Member |
+| GET | `/organizations/me/events` | The organization's events (backoffice home). | – | List of {`id`, `name`, `type`, `status`, `startDateTime`, `connectedUsers`} | Member |
+| POST | `/events` | Create and publish an event (FR-015, FR-024). A `TICKETED` event has the event code printed on its tickets; a `PUBLIC` event has the access code that the organization gives out, and Core generates its QR code. A code that another upcoming event uses is refused (FR-086). | `name`, `description`, `type`, `ticketEventCode` or `accessCode`, `startDateTime`, `doorsOpenAt`, `endDateTime`, `venue` {`name`, `address`, `district`, `latitude`, `longitude`}, `capacity` | `eventId`, `status`, `accessQrCode` (`PUBLIC`) | Member |
+| PATCH | `/events/{eventId}` | Correct details that are not an official change: name, description, capacity, or the event or access code (FR-015, FR-086). Changing the access code keeps the participants already connected. Date, time, doors opening time, venue and cancellation go through `POST /events/{eventId}/changes`. | Changed fields | Updated event | Member |
 
 ### 2. Connect to an event
 
-The participant finds an event and follows it, or imports a ticket bought elsewhere and confirms the extracted details.
+The participant imports a ticket or enters a public event's access code. There is no list or search of events.
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
-| GET | `/events` | "Near me / today" list, including proposed events with an open poll (FR-009, FR-010). The location is approximate or chosen manually, and is not stored. | `latitude` and `longitude`, or `place`; `date` | List of {`id`, `name`, `status`, `tentativePeriod`, `startDateTime`, `venueName`, `distanceKm`, `openPollSlug`} | Participant |
-| POST | `/events/{eventId}/follow` | Follow a public or proposed event (FR-006). | `going` | `connectionId` | Participant |
-| POST | `/tickets` | Import a ticket from a PDF, `.eml` or screenshot, or from manually entered fields (FR-001, FR-002, FR-003). Core removes personal data before the AI extraction (SR-004), decodes the entry code without AI (FR-070) and returns candidate events, never proposed ones (FR-004). | `file`, or `eventName`, `startDateTime`, `venueName`, `gate`, `sector`, `seat` | `ticketId`, `status` (`PENDING_CONFIRMATION`), `extraction` {`extractedFields`, `fieldConfidence`, `aiGenerated`}, `candidates[]` {`eventId`, `confidence`}, `hasEntryCode` | Participant |
-| POST | `/tickets/{ticketId}/confirm` | Confirm the corrected fields and the chosen event (FR-003, FR-004, NFR-007). | `eventId`, `gate`, `sector`, `seat` | `ticketId`, `status` (`CONFIRMED`), `connectionId` | Participant (owner) |
-| GET | `/me/connections` | Ticket wallet and followed events, also cached on the device for offline use (FR-005, FR-037). | – | `connections[]` {`connectionId`, `type` (`TICKET` or `FOLLOW`), `event` {`id`, `name`, `status`, `startDateTime`, `doorsOpenAt`, `venueName`, `latestChange`, `activeAlerts[]`}, `ticket` {`gate`, `sector`, `seat`, `status`, `hasEntryCode`}}, `syncedAt` | Participant |
-| GET | `/tickets/{ticketId}/entry-code` | Entry code to show full screen and keep offline (FR-071, SR-018). | – | `format` (`QR`, `AZTEC` or `PDF417`), `value`, `importMethod` | Participant (owner) |
-| DELETE | `/me/connections/{connectionId}` | Remove a ticket, with its entry code, or stop following an event (FR-008, SR-018). | – | – | Participant (owner) |
+| POST | `/tickets` | Import a ticket from a PDF or an image (FR-001, FR-082). Core decodes the QR code without AI (FR-070) and refuses a file without one. It removes personal data before the AI extraction (SR-004). When the extracted event code matches a registered `TICKETED` event, it connects the participant at once (FR-003). Otherwise it keeps the import pending in Redis, not in the database, and asks for the code (FR-004). The same QR code cannot be imported by another account for that event (FR-084). | `file` | `status` (`CONNECTED` or `NEEDS_EVENT_CODE`), `importId` (pending), `ticketId`, `connectionId`, `event` {`id`, `name`, `startDateTime`, `doorsOpenAt`, `venueName`} (from the registered event), `ticket` {`gate`, `sector`, `seat`}. Errors: `QR_CODE_NOT_FOUND`, `TICKET_ALREADY_IMPORTED` | Participant |
+| POST | `/ticket-imports/{importId}/event-code` | Complete a pending import with the event code typed by the participant (FR-004). When no registered event has that code, the import and its entry code are deleted (FR-083). A pending import expires after 30 minutes. | `eventCode` | Same as `POST /tickets` with `status` `CONNECTED`. Errors: `EVENT_NOT_ON_CROWDED`, `TICKET_ALREADY_IMPORTED` | Participant (owner) |
+| POST | `/connections` | Connect to a public event with its access code, typed or read from its QR code (FR-085). | `accessCode` | `connectionId`, `event` {`id`, `name`, `startDateTime`, `doorsOpenAt`, `venueName`}. Error: `ACCESS_CODE_NOT_FOUND` | Participant |
+| GET | `/me/connections` | The participant's events, also cached on the device for offline use (FR-005, FR-037). | – | `connections[]` {`connectionId`, `type` (`TICKET` or `ACCESS_CODE`), `event` {`id`, `name`, `status`, `startDateTime`, `doorsOpenAt`, `venueName`, `latestChange`, `activeAlerts[]`}, `ticket` {`gate`, `sector`, `seat`, `hasEntryCode`}}, `syncedAt` | Participant |
+| GET | `/tickets/{ticketId}/entry-code` | The ticket's QR code to show full screen and keep offline (FR-071, SR-018). | – | `format` (`QR`), `value` | Participant (owner) |
+| DELETE | `/me/connections/{connectionId}` | Remove a ticket, with its entry code, or leave a public event (FR-008, SR-018). Ends access to the event and closes its live stream (SR-020). | – | – | Participant (owner) |
 
 ### 3. Get notified of changes
 
-A change reaches Crowded from the ticketing source (Jobs detects it) or from the organization (published in the backoffice). Core records it once, sets its severity and asks Notifications to notify the connected users (see [Messages](#messages)). The participant opens the notification and sees what changes for them.
+A change reaches Crowded from the organization, published in the backoffice, or as a weather warning from IPMA, detected by Jobs. Core records it, sets its severity and asks Notifications to notify the connected participants (see [Messages](#messages)). The participant opens the notification and sees what changes for them.
 
 Also uses: `GET /notifications`, `GET /notifications/stream`, `POST /notifications/{notificationId}/read`, `GET /events/{eventId}` and `GET /events/{eventId}/changes`.
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
-| POST | `/events/{eventId}/changes` | Publish a change: confirm or withdraw a proposed event, postpone, move, cancel, or change the time or doors opening time (FR-016, FR-072, FR-075, FR-076). Core sets the severity (FR-074) and, when the ticketing source already reported the same change, adds the organization as corroborating source without notifying again (FR-078). | `type`, `newValue` (changed fields, such as `startDateTime`, `doorsOpenAt` or `venue`), `ticketStillValid`, `refundInfoUrl` | `changeId`, `severity`, `corroborated` | Member (verified) |
-| GET | `/source-events` | Search the events synchronized from the ticketing source, to link one (FR-079). | `query` | List of {`ticketingSourceEventId`, `name`, `startDateTime`, `venueName`} | Member |
-| PUT | `/events/{eventId}/ticketing-link` | Link the event to its ticketing-source event, so changes and tickets apply to it (FR-079). | `ticketingSourceEventId` | `ticketingSourceEventId`, `lastSyncedAt` | Member |
+| POST | `/events/{eventId}/changes` | Publish a change: postpone, move, cancel, or change the time or doors opening time (FR-016, FR-072, FR-075). Core sets the severity (FR-074), stores the `EventChange`, updates the event and publishes `NotificationRequested` in one transaction ([Asynchronous Flows](asynchronous-flows.md)). | `type`, `newValue` (changed fields, such as `startDateTime`, `doorsOpenAt` or `venue`), `ticketStillValid`, `refundInfo` | `changeId`, `severity` | Member |
 
 ### 4. Check conditions and decide
 
 On the event day, the participant checks the event page, reports what they see and confirms other participants' reports.
 
-Also uses: `GET /events/{eventId}` and `GET /events/{eventId}/live`. Maps, transport and the displayed weather are called by the app directly from the providers ([Technical Design](technical-design.md#logical-view-level-2)).
+Also uses: `GET /events/{eventId}` and `GET /events/{eventId}/live`. Maps and transport are called by the app directly from the providers; the weather comes from IPMA through Jobs and Core ([Technical Design](technical-design.md#logical-view-level-2)).
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
-| GET | `/events/{eventId}/report-categories` | Report categories and whether they trigger confirmation prompts at this event (FR-034, FR-060). | – | List of {`code`, `name`, `personal`, `promptsEnabled`} | Signed-in |
-| POST | `/events/{eventId}/reports` | Report something at the event (FR-034). Non-personal categories need a location within the venue radius, checked once and not stored (FR-064, SR-017). Core publishes `ReportSubmitted` and, when prompts are enabled, asks a sample of connected users to confirm (FR-057). | `categoryCode`, `description`, `reportedCrowdLevel`, `reportedQueuePoint`, `reportedWaitMinutes`, `location` {`latitude`, `longitude`} | `reportId`, `locationVerified` | Participant (connected) |
-| PUT | `/reports/{reportId}/confirmation` | Answer a confirmation prompt with "Yes" or "No" (FR-057, FR-058, FR-064). One answer per user, never by the reporter, never revealed (SR-016). | `answer` (`YES` or `NO`), `location` {`latitude`, `longitude`} | – | Participant (asked) |
+| GET | `/events/{eventId}/report-categories` | Report categories and whether they trigger confirmation prompts at this event (FR-034, FR-060). | – | List of {`code`, `name`, `personal`, `promptsEnabled`} | Participant (connected), Member |
+| POST | `/events/{eventId}/reports` | Report something at the event (FR-034). Non-personal categories need a location within the venue radius, checked once and not stored (FR-064, SR-017). Core publishes `ReportSubmitted` and, when prompts are enabled, asks a sample of connected participants to confirm (FR-057). | `categoryCode`, `description`, `reportedCrowdLevel`, `reportedQueuePoint`, `reportedWaitMinutes`, `location` {`latitude`, `longitude`} | `reportId`, `locationVerified` | Participant (connected) |
+| PUT | `/reports/{reportId}/confirmation` | Answer a confirmation prompt with "Yes" or "No" (FR-057, FR-058, FR-064). One answer per participant, never by the reporter, never revealed (SR-016). | `answer` (`YES` or `NO`), `location` {`latitude`, `longitude`} | – | Participant (asked, connected) |
 | GET | `/me/contributions` | Private history of reports and confirmations, with their outcome and recognitions (FR-038, FR-054). | – | List of {`type` (`REPORT` or `CONFIRMATION`), `id`, `eventId`, `categoryCode`, `at`, `outcome`, `recognition` {`impact`, `reachedUsers`}} | Participant |
 
-### 5. Manage the event
+### 5. Manage the event on the day
 
-Before and during a confirmed event, the organization keeps on-site information up to date, sends and resolves alerts, handles incidents and publishes surveys; after it, it reviews the summary. The live dashboard is `GET /events/{eventId}` with `GET /events/{eventId}/live`.
+During the event, the organization keeps on-site information up to date, sends and resolves alerts, handles incidents and publishes surveys. The live dashboard is `GET /events/{eventId}` with `GET /events/{eventId}/live`.
 
 Also uses: `POST /events/{eventId}/changes` (journey 3).
 
@@ -127,19 +133,17 @@ Also uses: `POST /events/{eventId}/changes` (journey 3).
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
-| GET | `/organizations/me/events` | The organization's events (backoffice home). | – | List of {`id`, `name`, `status`, `startDateTime`, `connectedUsers`} | Member |
 | PUT | `/events/{eventId}/crowd` | Publish the crowd level (FR-018). | `level`, `headCount` | `crowd` {`level`, `headCount`, `provenance`} | Member |
 | PUT | `/events/{eventId}/queues` | Publish queue waiting times (FR-019). | `queues[]` {`kind`, `pointName`, `waitMinutes`} | `queues[]` with `provenance` | Member |
 | PUT | `/events/{eventId}/report-categories/{code}` | Choose whether a category triggers confirmation prompts (FR-060). | `promptsEnabled` | `code`, `promptsEnabled` | Member |
-| POST | `/events/{eventId}/ownership-requests` | Request ownership of a synchronized event (FR-017). | – | `requestId`, `status` (`PENDING`) | Member (verified) |
 
 **Alerts**
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
-| POST | `/events/{eventId}/alerts` | Create an alert as a draft. With `organizerInput`, Core asks the AI for a draft based on the event's current state (FR-021); when the AI is unavailable, the draft is empty and the organization writes the message (NFR-006). `incidentId` links an alert triggered by an incident. | `type`, `organizerInput`, `incidentId` | `alertId`, `status` (`DRAFT`), `draft` {`draftText`, `factsUsed`, `aiGenerated`} | Member (verified) |
-| POST | `/alerts/{alertId}/send` | Send the reviewed alert to connected users (FR-020, FR-021, SR-006). | `type`, `severity`, `message` | `status` (`SENT`), `sentAt`, `recipientsCount` | Member (verified) |
-| POST | `/alerts/{alertId}/resolve` | Mark the alert as resolved and tell connected users it has ended (FR-073). | – | `resolvedAt` | Member |
+| POST | `/events/{eventId}/alerts` | Create an alert as a draft. With `organizerInput`, Core asks the AI for a draft based on the event's current state (FR-021); when the AI is unavailable, the draft is empty and the organization writes the message (NFR-006). `incidentId` links an alert triggered by an incident. | `type`, `organizerInput`, `incidentId` | `alertId`, `status` (`DRAFT`), `draft` {`draftText`, `factsUsed`, `aiGenerated`} | Member |
+| POST | `/alerts/{alertId}/send` | Send the reviewed alert to connected participants (FR-020, FR-021, SR-006). | `type`, `severity`, `message` | `status` (`SENT`), `sentAt`, `recipientsCount` | Member |
+| POST | `/alerts/{alertId}/resolve` | Mark the alert as resolved and tell connected participants it has ended (FR-073). | – | `resolvedAt` | Member |
 
 **Incidents and reports**
 
@@ -154,48 +158,15 @@ Also uses: `POST /events/{eventId}/changes` (journey 3).
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
-| POST | `/events/{eventId}/surveys` | Publish a survey on a confirmed event; urgent surveys are notified (FR-051, FR-052). | `type`, `text`, `options[]`, `urgent`, `closesAt` | `surveyId`, `publishedAt` | Member |
-| GET | `/events/{eventId}/surveys` | Surveys of the event, with the user's own answer for participants and the totals or ideas, without names, for Members. | – | List of {`id`, `type`, `text`, `options[]`, `urgent`, `closesAt`, `myAnswer` (Participant), `results` (Member)} | Participant (connected), Member |
+| POST | `/events/{eventId}/surveys` | Publish a survey on the event page; urgent surveys are notified (FR-051, FR-052). | `type`, `text`, `options[]`, `urgent`, `closesAt` | `surveyId`, `publishedAt` | Member |
+| GET | `/events/{eventId}/surveys` | Surveys of the event, with the participant's own answer for participants and the totals or ideas, without names, for Members. | – | List of {`id`, `type`, `text`, `options[]`, `urgent`, `closesAt`, `myAnswer` (Participant), `results` (Member)} | Participant (connected), Member |
 | PUT | `/surveys/{surveyId}/response` | Answer a survey, or change the answer (FR-051). | `answer` | `respondedAt` | Participant (connected) |
-
-**After the event**
-
-| Method | Path | Purpose | Main request | Main response | Role |
-|---|---|---|---|---|---|
-| GET | `/events/{eventId}/summary` | Post-event summary (FR-030). | – | `crowdPeaks[]`, `incidents`, `alertsSent`, `connectedUsers`, `notifiedBeforeDoorsOpen` | Member |
-
-**Organization API credentials**
-
-| Method | Path | Purpose | Main request | Main response | Role |
-|---|---|---|---|---|---|
-| POST | `/organizations/me/api-credentials` | Create an API key for the organization's systems (SR-010). The secret is shown once. | – | `keyId`, `secret`, `scope` | Member |
-| DELETE | `/organizations/me/api-credentials/{keyId}` | Revoke an API key. | – | – | Member |
-
-**Organization API (Core)**
-
-Organization systems call the Organization API with an API key instead of a JWT ([ADR 0005](adr/0005-authentication-in-core-with-jwt.md), SR-010). The entrance-counter simulator submits its counts through it (TR-005).
-
-| Method | Path | Purpose | Main request | Main response | Role |
-|---|---|---|---|---|---|
-| PUT | `/events/{eventId}/crowd` | Submit a crowd count automatically (FR-025). Without `level`, Core derives it from `headCount` and the capacity (FR-024). | `headCount`, `level` | `level`, `headCount`, `provenance` | Org system |
-| PUT | `/events/{eventId}/queues` | Submit queue waiting times automatically (FR-025). | `queues[]` {`kind`, `pointName`, `waitMinutes`} | `queues[]` with `provenance` | Org system |
-
-### Administration
-
-An administrator verifies organizations before they publish official information and decides ownership requests.
-
-| Method | Path | Purpose | Main request | Main response | Role |
-|---|---|---|---|---|---|
-| GET | `/organizations` | Organizations, filtered by verification status (FR-040). | `verificationStatus` | List of {`id`, `name`, `verificationStatus`} | Admin |
-| PATCH | `/organizations/{organizationId}` | Verify or reject an organization (FR-040). | `verificationStatus` (`VERIFIED` or `REJECTED`) | `verificationStatus`, `verifiedAt` | Admin |
-| GET | `/ownership-requests` | Ownership requests, filtered by status (FR-017). | `status` | List of {`id`, `eventId`, `organizationId`, `requestedAt`} | Admin |
-| PATCH | `/ownership-requests/{requestId}` | Approve or reject a request; on approval, the organization owns the event (FR-017). | `status` (`APPROVED` or `REJECTED`) | `status`, `decidedAt` | Admin |
 
 ## Between Components
 
 ### Router
 
-The Router (NGINX) is the single entry point ([Technical Design](technical-design.md#logical-view-level-2)). It sends the requests for the endpoints marked Core, including the Organization API, to Core, and those marked Notifications to Notifications, keeping the SSE streams open without response buffering ([ADR 0007](adr/0007-live-updates-with-server-sent-events.md)). The services do not call each other: everything between them goes through the Message Broker, authenticated (SR-012).
+The Router (NGINX) is the single entry point ([Technical Design](technical-design.md#logical-view-level-2)). It sends the requests for the endpoints marked Core to Core, and those marked Notifications to Notifications, keeping the SSE streams open without response buffering ([ADR 0007](adr/0007-live-updates-with-server-sent-events.md)). The services do not call each other: everything between them goes through the Message Broker, authenticated (SR-012).
 
 ### Messages
 
@@ -203,20 +174,19 @@ Messages carry ids only; consumers read the current data from the database ([ADR
 
 | Message | Publisher | Consumer | Payload | Effect |
 |---|---|---|---|---|
-| `EventChangeDetected` | Jobs | Core | `snapshotId`, `ticketingSourceEventId` | A source event is new or has changed. Core adds it to the catalog or updates it, and records an `EventChange` or adds the ticketing source as corroborating source of an existing one (FR-011, FR-078). |
-| `WeatherForecastFetched` | Jobs | Core | `eventId`, `snapshotId` | Core stores the forecast (FR-035) and, when it meets the severe-weather threshold, notifies connected users (FR-036). |
+| `WeatherUpdated` | Jobs | Core | `district`, `snapshotId` | Core stores the forecast and warnings for the events in that district (FR-035) and, for a new or raised orange or red warning during an event, notifies its connected participants (FR-036). |
 | `ReportSubmitted` | Core | Jobs | `eventId`, `reportId` | Jobs groups the report with similar ones, by category and time window when the AI is unavailable (FR-053). |
 | `ReportsGrouped` | Jobs | Core | `eventId`, `groupingMethod`, `groups[]` {`reportIds[]`, `summary`} | Core creates or updates incidents; AI summaries are labelled until the organization acts on them (FR-053, NFR-007). |
-| `NotificationRequested` | Core | Notifications | `messageId`, `type`, `eventId`, `causeId`, `userIds[]` | Notifications notifies the users connected to the event or, when given, only `userIds`. |
+| `NotificationRequested` | Core | Notifications | `messageId`, `type`, `eventId`, `causeId`, `userIds[]` | Notifications notifies the participants connected to the event or, when given, only `userIds`. |
 | `UserDeleted` | Core | Notifications | `userId` | Notifications deletes the user's notifications, settings and device tokens (FR-042). |
 
 Core publishes `NotificationRequested` with the `type` and `causeId` that the `Notification` will have:
 
-- `OFFICIAL_CHANGE`: a recorded `EventChange` (FR-013); not when the change only gains a corroborating source (FR-078).
+- `OFFICIAL_CHANGE`: a recorded `EventChange` (FR-013).
 - `OPERATIONAL_ALERT`: an `Alert` sent or resolved (FR-020, FR-073).
 - `ORGANIZATION_SURVEY`: an urgent `EventSurvey` (FR-052).
-- `SEVERE_WEATHER`: a `WeatherForecast` that meets the threshold (FR-036).
-- `CONFIRMATION_REQUEST`: a `Report`, with the sampled users in `userIds` (FR-057).
+- `WEATHER_WARNING`: an orange or red `WeatherWarning` for the event's district (FR-036).
+- `CONFIRMATION_REQUEST`: a `Report`, with the sampled participants in `userIds` (FR-057).
 - `INCIDENT_STATUS`: an `Incident`, with its reporters in `userIds` (FR-029).
 - `RECOGNITION`: a `Recognition`, with the reporter in `userIds` (FR-054).
 
@@ -224,24 +194,25 @@ Notifications skips recipients who turned the type off (FR-041, FR-065), stores 
 
 ### External integrations
 
-The ticketing source is our simulator (TR-001), so its API is part of this outline. AI, weather, maps and transport, and push (Firebase Cloud Messaging) are called through adapters ([ADR 0010](adr/0010-external-integrations.md)).
+AI, IPMA, maps, transport and push (Firebase Cloud Messaging) are called through adapters with a fake for tests ([ADR 0010](adr/0010-external-integrations.md), [ADR 0015](adr/0015-organization-as-the-only-event-source.md), TR-008). The IPMA endpoints are public open data and need no key.
 
 | Endpoint | Caller | Purpose |
 |---|---|---|
-| `GET /events?updatedSince={time}` | Jobs | Periodic synchronization, returning a list of {`id`, `name`, `startDateTime`, `doorsOpenAt`, `endDateTime`, `status`, `venue`, `ticketStillValid`, `refundInfoUrl`, `updatedAt`}. Changes are detected within 5 minutes (NFR-002); invalid data is rejected and logged (NFR-005). |
-| `PUT /events/{id}` | Demo and tests | Change an event in the simulator, to trigger a detected change. |
+| IPMA `GET /open-data/forecast/warnings/warnings_www.json` | Jobs | Weather warnings by warning area and level (yellow, orange, red), polled every 5 minutes (NFR-021). |
+| IPMA `GET /open-data/forecast/meteorology/cities/daily/{globalIdLocal}.json` | Jobs | Five-day forecast for the district capital of each upcoming event's district (FR-035). |
+| GTFS feed of the transport operator | Participant app | Upcoming departures to the venue and disruptions when the feed reports them (FR-055). The operator is chosen in its story. |
 
-## Walking Skeleton
+## Vertical Slice
 
-The walking skeleton implements the core of journey 3 end to end: **a change made in the ticketing simulator reaches a participant who follows the event, in the notification center and as a live banner**. It crosses every backend component (Router, Core, Jobs, Notifications, Message Broker, Database and Cache) and the web-app container, and is the same path used in the push-failure demonstration ([Degraded Operation](technical-design.md#degraded-operation)). Ticket import, AI and push are added later.
+Sprint 2 implements journey 3 end to end on top of the walking skeleton: **a change published by the organization reaches a participant connected with their ticket, in the notification center and as a live banner**. It crosses every backend component (Router, Core, Jobs, Notifications, Message Broker, Database and Cache) and both clients, and is the same path used in the push-failure demonstration ([Degraded Operation](technical-design.md#degraded-operation)).
 
 | Step | Interface |
 |---|---|
-| 1. The participant signs up and signs in | `POST /auth/register`, `POST /auth/login` |
-| 2. The participant finds the event and follows it | `GET /events`, `GET /events/{eventId}`, `POST /events/{eventId}/follow` |
-| 3. The event changes in the simulator, and Jobs detects it | Simulator `PUT /events/{id}`, `GET /events?updatedSince={time}` |
-| 4. Core records the change | `EventChangeDetected` |
-| 5. Notifications notifies the follower | `NotificationRequested` (`OFFICIAL_CHANGE`) |
+| 1. The administrator creates the organization and a member, who sets a new password | `POST /admin/organizations`, `POST /admin/organizations/{organizationId}/members`, `POST /auth/login`, `PUT /me/password` |
+| 2. The member registers a ticketed event | `POST /events` |
+| 3. The participant signs up, signs in and imports a ticket | `POST /auth/register`, `POST /auth/login`, `POST /tickets` (and `POST /ticket-imports/{importId}/event-code` when the AI is unavailable) |
+| 4. The member publishes a change | `POST /events/{eventId}/changes` |
+| 5. Notifications notifies the participant | `NotificationRequested` (`OFFICIAL_CHANGE`) |
 | 6. The open app shows a live banner and updates the badge | `GET /notifications/stream` |
 | 7. The participant opens the notification center and the change | `GET /notifications`, `POST /notifications/{notificationId}/read`, `GET /events/{eventId}/changes` |
 | 8. Each service reports its health | Health check of each service (NFR-011) |

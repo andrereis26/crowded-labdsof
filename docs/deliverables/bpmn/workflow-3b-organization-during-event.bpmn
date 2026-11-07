@@ -33,7 +33,7 @@
       <bpmn:incoming>Flow_2</bpmn:incoming>
       <bpmn:outgoing>Flow_6</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:userTask id="upd" name="Update crowd level and queues (backoffice / API)">
+    <bpmn:userTask id="upd" name="Update crowd level and queues (backoffice)">
       <bpmn:incoming>Flow_3</bpmn:incoming>
       <bpmn:outgoing>Flow_4</bpmn:outgoing>
     </bpmn:userTask>

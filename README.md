@@ -2,7 +2,7 @@
 
 Project developed for the LABDSOF (Software Development Laboratory) course, part of the Master's Degree in Informatics Engineering – Software Engineering, during the first semester of the 2026/2027 academic year.
 
-Crowded keeps people informed when something changes or goes wrong at the events they attend, and gives organizations a direct channel to their audience: from testing interest in a proposed event, to announcing changes, to redirecting people on site. Crowded does not sell tickets; it works with tickets bought on any platform and with free public events.
+Crowded keeps people informed when something changes or goes wrong at the events they attend, and gives organizations an app for their audience without building one: they register their events, announce changes and redirect people on site. Participants connect with a ticket bought on any platform, or with the access code of a free public event. Crowded does not sell tickets.
 
 ## Team
 
@@ -52,25 +52,25 @@ The reasons are in [ADR 0006](/docs/deliverables/adr/0006-technology-stack.md) a
 
 The domain model shows the main concepts of Crowded and how they relate, independently of how they are stored or deployed.
 
-- **Event** is the centre of the model. It can start as a **proposed** event (no date or venue yet) whose **InterestPoll** tests demand before it is confirmed. Participants connect to it through a **Ticket** or a **Follow**, organizations own it and publish changes, on-site information, alerts and surveys about it, and participants report what they see.
+- **Event** is the centre of the model. Its organization registers it, owns it and is the only source of its changes, on-site information, alerts and surveys. Participants connect to it through a **Ticket** (for a ticketed event) or an **AccessCodeConnection** (for a public event), and only connected participants see it. Participants report what they see.
 - **Aggregate roots** (yellow) mark consistency boundaries: each one is created and changed as a unit, and other parts of the model refer to it rather than changing it directly.
 - **Provenance** is attached to every piece of event information, so the product can always show where it came from and when it was last updated.
-- **Disruptions** take three forms: official changes (**EventChange**, published by the organization or detected in the ticketing source, and recorded once when both report it), organizer alerts (**Alert**) and incidents reported by participants (**Incident**). Changes and alerts share a **Severity** (critical, warning, information), alerts stay active until the organization resolves them, and every **Notification** points to the disruption that caused it.
-- Integration details (ticketing sync state, external providers) are kept out of the model; they belong to the services described in the [Technical Design](/docs/deliverables/technical-design.md).
+- **Disruptions** take four forms: official changes (**EventChange**, published by the organization), organizer alerts (**Alert**), IPMA weather warnings (**WeatherWarning**) and incidents reported by participants (**Incident**). Changes, alerts and warnings share a **Severity** (critical, warning, information), alerts stay active until the organization resolves them, and every **Notification** points to the disruption that caused it.
+- Integration details (weather snapshots, external providers) are kept out of the model; they belong to the services described in the [Technical Design](/docs/deliverables/technical-design.md).
 
 Why each aggregate root is a boundary, and which journey of the [Product Vision](/docs/deliverables/product-vision.md#principal-user-workflows) it serves:
 
 | Area | Aggregate root | Why it is its own consistency boundary | Workflow |
 |---|---|---|---|
 | Identity & Access | **User** | A person's account, role and location consent change together, and deleting it must remove their personal data in one step (FR-042) | All |
-| Identity & Access | **Organization** | Verification and API credentials decide what an organization may publish (SR-001, SR-002); members refer to it, not the reverse | 3 |
+| Identity & Access | **Organization** | Created by a platform administrator with its members, it decides what they may publish (SR-001, SR-002); members refer to it, not the reverse | 3 |
 | Event Catalog | **Event** | Its status, location and crowd status must always agree, and every change is recorded as an EventChange inside it, so the history cannot drift from the event | 1, 2, 3 |
-| Participation | **EventConnection** | A Ticket or a Follow belongs to one user and one event and is created or removed as a unit; the ticket's extraction and match candidates only exist through it | 1, 2 |
-| Organizer Communication | **Alert**, **EventSurvey**, **InterestPoll** | Each is drafted, published and closed on its own schedule, with its options and responses; an InterestPoll can exist before its event is confirmed | 3 |
+| Participation | **EventConnection** | A Ticket or an access-code connection belongs to one participant and one event, is created or removed as a unit, and is what gives access to the event (SR-020); the ticket's extraction only exists through it | 1, 2 |
+| Organizer Communication | **Alert**, **EventSurvey** | Each is drafted, published and closed on its own schedule, with its options and responses | 3 |
 | Reports & Incidents | **Report**, **Incident** | A report and its confirmations decide its confidence together. An Incident groups many reports but is acknowledged and resolved separately, so reports are referenced, not owned. | 4 |
 | Notifications & Audit | **Notification** | Delivered once per user and cause (NFR-003), with its own read and delivery state, independent of the event that caused it | 2 |
 
-On-site information (crowd status, queue times, weather, provenance) are value objects: they are replaced, never edited, and have no identity of their own. The [Data Model](/docs/deliverables/technical-design.md#data-model) maps each concept to tables, and the [Asynchronous Flows](/docs/deliverables/asynchronous-flows.md) show how aggregates owned by different services stay consistent through messages.
+On-site information (crowd status, queue times, weather forecasts, provenance) are value objects: they are replaced, never edited, and have no identity of their own. The [Data Model](/docs/deliverables/technical-design.md#data-model) maps each concept to tables, and the [Asynchronous Flows](/docs/deliverables/asynchronous-flows.md) show how aggregates owned by different services stay consistent through messages.
 
 
 Note: everyone's role is flexible and can change according to the needs of the project and everyone's assumed as developer as well.

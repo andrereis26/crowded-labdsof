@@ -2,7 +2,7 @@
 
 Jobs service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). For now it is an empty skeleton: no endpoints, entities or queues yet.
 
-- **Responsibility:** background work: ticketing source synchronization, severe-weather checks and AI report grouping, on a schedule. It publishes what it detects to the broker; Core applies it.
+- **Responsibility:** background work: IPMA weather warnings and forecasts, AI report grouping and periodic tasks, on a schedule. It publishes what it fetches to the broker; Core applies it.
 - **Owns (writes):** sync snapshots.
 - **Dependencies:** Spring Web MVC, Spring Data JPA with the PostgreSQL driver, Spring AMQP, Spring Data Redis, Spring Security with OAuth2 Resource Server (JWT).
 

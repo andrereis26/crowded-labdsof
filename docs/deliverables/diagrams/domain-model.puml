@@ -27,6 +27,8 @@ package "Identity & Access" {
     email
     passwordHash
     role : Role
+    active : boolean
+    mustChangePassword : boolean
     createdAt
   }
 
@@ -39,28 +41,13 @@ package "Identity & Access" {
   class Organization <<Aggregate Root>> {
     id
     name
-    verificationStatus : VerificationStatus
-    verifiedAt [0..1]
-  }
-
-  class ApiCredential <<Entity>> {
-    keyId
-    secretHash
-    scope : events
     createdAt
-    revokedAt [0..1]
   }
 
   enum Role {
     PARTICIPANT
     ORGANIZATION_MEMBER
     ADMINISTRATOR
-  }
-
-  enum VerificationStatus {
-    PENDING
-    VERIFIED
-    REJECTED
   }
 }
 
@@ -72,21 +59,20 @@ package "Event Catalog" {
     id
     name
     description
-    tentativePeriod [0..1]
-    startDateTime [0..1]
+    type : EventType
+    ticketEventCode [0..1]
+    accessCode [0..1]
+    startDateTime
     doorsOpenAt [0..1]
-    endDateTime [0..1]
+    endDateTime
     status : EventStatus
     capacity : int [0..1]
-    visibility : PUBLIC | TICKETED
-    origin : EventOrigin
-    ticketingSourceEventId [0..1]
-    lastSyncedAt [0..1]
   }
 
   class EventLocation <<Value Object>> {
     venueName
     address
+    district
     coordinates : GeoLocation
   }
 
@@ -97,21 +83,16 @@ package "Event Catalog" {
     previousValue
     newValue
     ticketStillValid : boolean [0..1]
-    refundInfoUrl [0..1]
+    refundInfo [0..1]
     provenance : Provenance
-    corroboratingSource : SourceType [0..1]
-    corroboratedAt [0..1]
   }
 
-  class OwnershipRequest <<Entity>> {
-    id
-    status : RequestDecision
-    requestedAt
-    decidedAt [0..1]
+  enum EventType {
+    TICKETED
+    PUBLIC
   }
 
   enum EventStatus {
-    PROPOSED
     SCHEDULED
     POSTPONED
     RELOCATED
@@ -121,7 +102,6 @@ package "Event Catalog" {
   }
 
   enum ChangeType {
-    CONFIRMATION
     CANCELLATION
     POSTPONEMENT
     TIME_CHANGE
@@ -134,22 +114,10 @@ package "Event Catalog" {
     WARNING
     INFO
   }
-
-  enum EventOrigin {
-    ORGANIZATION
-    TICKETING_PLATFORM
-    MUNICIPAL_AGENDA
-  }
-
-  enum RequestDecision {
-    PENDING
-    APPROVED
-    REJECTED
-  }
 }
 
 ' =====================================================================
-' Participation (ticket wallet & following)
+' Participation (tickets & access codes)
 ' =====================================================================
 package "Participation" {
   abstract class EventConnection <<Aggregate Root>> {
@@ -162,35 +130,31 @@ package "Participation" {
     gate [0..1]
     sector [0..1]
     seat [0..1]
+    entryCode [encrypted]
+    entryCodeHash
     importMethod : ImportMethod
-    status : TicketStatus
+    matchMethod : MatchMethod
   }
 
-  class Follow <<Entity>> {
-    going : boolean
+  class AccessCodeConnection <<Entity>> {
   }
 
   class TicketExtraction <<Entity>> {
     id
+    extractedEventCode [0..1]
     extractedFields
-    fieldConfidence
     aiGenerated : boolean
     createdAt
   }
 
-  class EventMatchCandidate <<Value Object>> {
-    confidence : float
-  }
-
   enum ImportMethod {
     PDF_UPLOAD
-    EMAIL_PASTE
-    MANUAL_ENTRY
+    IMAGE_UPLOAD
   }
 
-  enum TicketStatus {
-    PENDING_CONFIRMATION
-    CONFIRMED
+  enum MatchMethod {
+    EXTRACTED_CODE
+    TYPED_CODE
   }
 }
 
@@ -214,9 +178,25 @@ package "On-Site Information" {
   class WeatherForecast <<Value Object>> {
     date
     conditions
-    temperature
-    severeWeather : boolean
+    minTemperature
+    maxTemperature
+    precipitationProbability
     provenance : Provenance
+  }
+
+  class WeatherWarning <<Entity>> {
+    id
+    awarenessType
+    level : WarningLevel
+    startTime
+    endTime
+    provenance : Provenance
+  }
+
+  enum WarningLevel {
+    YELLOW
+    ORANGE
+    RED
   }
 
   class Provenance <<Value Object>> {
@@ -287,22 +267,6 @@ package "Organizer Communication" {
 
   class SurveyResponse <<Entity>> {
     answer
-    respondedAt
-  }
-
-  class InterestPoll <<Aggregate Root>> {
-    id
-    question
-    publicLink
-    opensAt
-    closesAt
-  }
-
-  class PollOption <<Value Object>> {
-    label
-  }
-
-  class PollResponse <<Entity>> {
     respondedAt
   }
 
@@ -437,7 +401,7 @@ package "Notifications & Audit" {
     OFFICIAL_CHANGE
     OPERATIONAL_ALERT
     ORGANIZATION_SURVEY
-    SEVERE_WEATHER
+    WEATHER_WARNING
     INCIDENT_STATUS
     RECOGNITION
     CONFIRMATION_REQUEST
@@ -453,30 +417,25 @@ package "Notifications & Audit" {
 ' --- Identity & Access (above Event)
 User "1" *-down- "0..1" LocationConsent
 Organization "0..1" -up-> "1..*" User : has members
-Organization "1" *-right- "0..*" ApiCredential
-User "0..1" -[norank]-> "0..*" Organization : verifies\n(administrator)
+User "0..1" -[norank]-> "0..*" Organization : creates, with members\n(administrator)
 
 ' --- Event Catalog (centre)
-Organization "0..1" -down-> "0..*" Event : owns
-Event "1" *-left- "0..1" EventLocation : held at
+Organization "1" -down-> "0..*" Event : owns, the only source
+Event "1" *-left- "1" EventLocation : held at
 Event "1" *-left- "0..*" EventChange : change history
-Organization "1" -down-> "0..*" OwnershipRequest : submits
-OwnershipRequest "0..*" -down-> "1" Event : for
-User "0..1" -[norank]-> "0..*" OwnershipRequest : decides\n(administrator)
 
 ' --- Participation (right of Event)
 EventConnection <|-down- Ticket
-EventConnection <|-down- Follow
-User "1" *-right- "0..*" EventConnection : wallet / follows
-EventConnection "0..*" -left-> "1" Event : connects to
+EventConnection <|-down- AccessCodeConnection
+User "1" *-right- "0..*" EventConnection : my events
+EventConnection "0..*" -left-> "1" Event : gives access to
 Ticket "1" *-down- "0..1" TicketExtraction
-TicketExtraction "1" *-down- "0..*" EventMatchCandidate
-EventMatchCandidate "0..*" -[norank]-> "1" Event
 
 ' --- On-Site Information (below Event)
 Event "1" *-down- "0..1" CrowdStatus : current crowd
 Event "1" *-down- "0..*" QueueTime : current queues
 Event "1" -down- "0..*" WeatherForecast
+Event "1" -down- "0..*" WeatherWarning : for its district
 CrowdStatus .down.> Provenance
 QueueTime .down.> Provenance
 EventChange .[norank].> Provenance
@@ -491,13 +450,6 @@ Event "1" -down- "0..*" EventSurvey : event page
 EventSurvey "1" *-down- "0..*" SurveyOption
 EventSurvey "1" *-down- "0..*" SurveyResponse
 User "1" -[norank]- "0..*" SurveyResponse
-
-Organization "1" -[norank]-> "0..*" InterestPoll : launches
-InterestPoll "0..*" -up-> "1" Event : tests interest in
-InterestPoll "1" *-down- "2..*" PollOption
-InterestPoll "1" *-down- "0..*" PollResponse
-PollResponse "0..*" -right-> "1" PollOption : chooses
-User "1" -[norank]- "0..*" PollResponse : answers\n(totals only)
 
 ' --- Reports, confirmations & incidents (left of Event)
 Event "1" -left- "0..*" Report
@@ -536,7 +488,7 @@ note bottom of Notification
   (FR-041, FR-065). deduplicationKey = recipient + trigger,
   unique, so redelivered messages never notify twice (NFR-003).
   Each notification refers to the disruption that caused it
-  (EventChange, Alert or Incident), so delivery can be traced
+  (EventChange, Alert, WeatherWarning or Incident), so delivery can be traced
   and timed against NFR-001.
 end note
 
@@ -548,33 +500,34 @@ end note
 note bottom of Severity
   Disruptions are official changes (EventChange),
   organizer alerts (Alert) and reported incidents
-  (Incident). CRITICAL = cancellation, postponement,
-  venue or start-time change, entrance closure
-  (NFR-001); a doors-opening change is a WARNING
+  (Incident), and IPMA weather warnings. CRITICAL =
+  cancellation, postponement, venue or start-time change,
+  entrance closure, red warning (NFR-001); a doors-opening
+  change or an orange warning is a WARNING
   (FR-072, FR-074).
 end note
 
 note top of Event
-  PROPOSED: name and tentativePeriod only, no date
-  or venue; labelled "Proposed — not confirmed" and
-  never matched to tickets. Confirming it (CONFIRMATION
-  change) or withdrawing it (CANCELLATION) notifies
-  followers (FR-076, FR-013).
-end note
-
-note bottom of InterestPoll
-  Public link, options written by the organization
-  (FR-026, FR-080). One answer per user; organization
-  and voters see totals only (FR-028, SR-019).
-  Answering never creates a Follow (FR-027).
+  TICKETED: ticketEventCode is the code printed on its
+  tickets, matched from the extraction or typed (FR-003,
+  FR-004). PUBLIC: accessCode given out by the organization,
+  with a QR code (FR-085). Codes unique among upcoming
+  events (FR-086). Only connected participants and the
+  owning organization see the event (SR-020).
 end note
 
 note bottom of EventChange
-  Published by the organization or detected in the
-  ticketing source. When both report the same change
-  for a linked event, it is stored once and the second
-  source is the corroboratingSource; users are
-  notified once (FR-078, FR-079).
+  Published by the organization that owns the event,
+  its only source of official information (FR-016,
+  ADR 0015). Says what changes for the participant:
+  ticket validity and refund information (FR-075).
+end note
+
+note bottom of Ticket
+  entryCode is the ticket's QR code, decoded without AI
+  (FR-070) and stored encrypted (SR-018); entryCodeHash
+  is unique per event, so one ticket links to one
+  account (FR-084).
 end note
 
 note right of Alert

@@ -6,10 +6,10 @@ The backlog lives in GitHub Issues and on the [board](https://github.com/users/a
 
 | Level | Where | Example |
 |---|---|---|
-| Requirement | [Requirements Specification](requirements.md): 123 requirements (FR, NFR, SR, TR), each with a priority from 1 to 10 | FR-013: notify connected users of an official change, priority 10 |
+| Requirement | [Requirements Specification](requirements.md): 103 requirements (FR, NFR, SR, TR), each with a priority from 1 to 10 | FR-013: notify connected participants of a change published by the organization, priority 10 |
 | Epic | An issue per section of the requirements, linking its stories | #15 Official Event Changes |
-| User story | An issue: *As a <persona>, I want <goal>, so that <benefit>*, with *Given / When / Then* acceptance criteria, its requirements, MoSCoW, estimate and the DoR and DoD checklists | #33 Notify connected users of an official event change |
-| Technical item | An issue for the platform (CI/CD, database, observability, simulators), written the same way, with the team as the persona | #110 Database project |
+| User story | An issue: *As a <persona>, I want <goal>, so that <benefit>*, with *Given / When / Then* acceptance criteria, its requirements, MoSCoW, estimate and the DoR and DoD checklists | #33 Notify connected participants of an event change |
+| Technical item | An issue for the platform (CI/CD, database, observability, demonstration data), written the same way, with the team as the persona | #110 Database project |
 
 ## 2. How Items Are Prioritized
 
@@ -17,12 +17,14 @@ The backlog lives in GitHub Issues and on the [board](https://github.com/users/a
 
 | Priority | MoSCoW | Meaning | Requirements |
 |---|---|---|---|
-| 10 | Must have | Without it there is no MVP: the participant does not learn of the change, or the information cannot be trusted | 75 Must have (8–10) |
+| 10 | Must have | Without it there is no MVP: the participant cannot connect, does not learn of the change, or the information cannot be trusted | 81 Must have (8–10) |
 | 8–9 | Must have | Makes the core journeys complete, reliable or safe (security, failure handling, AI safeguards) | |
-| 5–7 | Should / Could have | Adds value to a journey that already works; first to move if a sprint is at risk | 33 |
-| 1–4 | Won't have in the MVP | Valuable later, or outside the product's focus (search and map, recommendations, social features, zone-level crowd, federated login) | 15 |
+| 5–7 | Should / Could have | Adds value to a journey that already works; first to move if a sprint is at risk | 20 |
+| 1–4 | Won't have in the MVP | Kept for a course deliverable or an optimization (operational dashboard, read cache) | 2 |
 
 A story takes the highest priority of its requirements. Selling tickets was removed rather than deferred: Crowded never sells or resells tickets (#30, closed), because the [market analysis](market-and-competitor-analysis-report.md#36-a-complement-to-ticketing-not-a-competitor) positions it as a complement to ticketing platforms, not a competitor.
+
+**Scope after the Sprint 1 review.** The professors found the scope too broad and the story hard to follow. The organization became the only source of event information, so the ticketing synchronization and the merging of the same change from two sources were removed. Discovery, the event catalog, pre-event interest polls, the post-event summary, the organization API, the verification of organizations and ownership requests were also removed. Their stories were closed as not planned: #21, #25, #27, #28, #29, #31, #32, #35, #38, #44, #45, #46, #50, #58, #61, #64, #68, #79, #80, #81, #95, #96 and #97.
 
 **Tie-breakers between items of equal priority:**
 1. Dependencies first. For example, accounts and roles (#59, #60) come before anything that stores user data.
@@ -31,37 +33,38 @@ A story takes the highest priority of its requirements. Selling tickets was remo
 
 ## 3. Epics
 
-Ordered by the value of their need. Numbers counted on 29 October 2026.
+Ordered by the value of their need. Numbers counted on 7 November 2026; the new stories are counted with the estimates given when they were created.
 
 | Order | Epic | Need it answers (persona) | Stories | Must / Should-Could / Won't | Points | Why in this position |
 |---|---|---|---|---|---|---|
-| 1 | **Official Event Changes** (#15) | Inês and Miguel learn of a change in time, once | 7 | 6 / 0 / 1 | 23 | The north star itself: detecting a change (FR-011) and notifying it (FR-013) are the reason the product exists |
-| 2 | **Connecting to Events** (#14) | Inês keeps all her events in one place | 13 | 6 / 2 / 5 | 21 | No one can be notified without first being connected to the event: tickets and follows feed epic 1 |
-| 3 | **Organization Backoffice** (#16) | Miguel and Rita test interest, manage the event and talk to their audience | 18 | 11 / 5 / 2 | 47 | Organizations publish changes, crowd levels and alerts, the second source of information. Their alerts are the second disruption type. |
-| 4 | **On-Site Information for Participants** (#17) | Inês checks conditions, reports and decides | 12 | 6 / 4 / 2 | 31 | Shows what epic 3 publishes. Reports and confirmations fill the gap when the organization publishes nothing (risk R1). |
-| 5 | **Accounts and Security** (#18) | Everyone trusts the data and controls their own | 11 | 6 / 3 / 2 | 22 | Enables all the others. Its Must items go first in Sprint 2 by the dependency rule. |
-| 6 | **Platform and Operations** (#19) | The team can deliver, operate and prove quality | 8 | 6 / 0 / 2 | 23 | Not user-facing, but the course evaluates it. CI/CD and observability go early (Sprint 2), evidence late (Sprint 3). |
+| 1 | **Official Event Changes** (#15) | Inês learns of a change in time, wherever she is | 4 | 4 / 0 / 0 | 13 | The north star itself: a change published by the organization (FR-016) reaches every connected participant (FR-013) |
+| 2 | **Connecting to Events** (#14) | Inês reaches her event's page with her ticket or an access code | 8 | 7 / 1 / 0 | 20 | No one can be notified without first being connected to the event |
+| 3 | **Organization Backoffice** (#16) | Miguel registers and changes the event; Rita operates it on the day | 11 | 11 / 0 / 0 | 34 | The organization is the customer and the only official source: every event, change and alert starts here |
+| 4 | **On-Site Information for Participants** (#17) | Inês checks conditions, weather and transport, reports and decides | 10 | 8 / 2 / 0 | 31 | Shows what epic 3 publishes, with IPMA warnings and participant reports filling the gaps (risk R1) |
+| 5 | **Accounts and Security** (#18) | Everyone trusts the data and controls their own; only connected participants see an event | 10 | 7 / 3 / 0 | 24 | Enables all the others. Its Must items go first in Sprint 2 by the dependency rule. |
+| 6 | **Platform and Operations** (#19) | The team can deliver, operate, demonstrate and prove quality | 9 | 6 / 1 / 2 | 25 | Not user-facing, but the course evaluates it. CI/CD and observability go early (Sprint 2), evidence late (Sprint 3). |
 
-Stories without a MoSCoW line are counted as Won't when they have no sprint. Points add the estimates on the board.
+Points add the estimates on the board, including the platform items already done.
 
 ## 4. Release Plan
 
 | Release | Sprint | Goal | Content (Must items first) | Points |
 |---|---|---|---|---|
 | **R0: Foundations** | 1, until 1 Nov 2026 | Meaningful problem and credible direction | Research, vision, backlog, design, ADRs, assessments, mockups, walking skeleton ([Sprint 1 Scope](sprint-1-scope.md)) | about 42 |
-| **R1: Vertical slice** | 2, until 6 Dec 2026 | The most important journey, end to end and operated: **a change in the ticketing source reaches the connected participant** | Import a ticket with AI and its manual fallback (#20–#23), wallet and follow (#24, #25); sync, change detection and notification (#32–#34, #92); event creation, changes, crowd, queues and alerts (#36, #37, #39–#41); event page with provenance (#51, #52); accounts, roles and organization verification (#59–#61); simulator, CI/CD, database, local setup, observability, infrastructure (#68–#70, #98, #101, #110, #111) | about 82 |
-| **R2: MVP** | 3, until 3 Jan 2027 | Refine and evaluate a credible, maintainable product | Complete the journeys: push, ownership, proposed events and polls, surveys, incidents and AI grouping, AI alert drafts, live dashboard, reports and confirmations, weather, offline access, preferences, account deletion. Plus the evidence: AI evaluation (#72), performance and accessibility (#74), operational dashboard (#71). | about 97 |
-| **Later** | After the MVP | Grow the audience | Municipal agenda (#35), search and map (#28), zone-level crowd (#58), custom report categories (#79), following organizations (#97), recommendations (#29), social features (#31) | – |
+| **R1: Vertical slice** | 2, until 6 Dec 2026 | The most important journey, end to end and operated: **a change published by the organization reaches the participant connected with their ticket** | Accounts, roles and access to event pages, organization accounts created by the administrator and the first sign-in (#59, #60, and the two new account stories); import a ticket with AI, match it by event code, the typed-code fallback, the participant's events and the access code of public events (#20, #22, #23, #24, and the access-code story); create and change an event, notify and the notification center (#36, #37, #33, #34, #92); crowd, queues and alerts on the event page with provenance (#39–#41, #51, #52); IPMA weather warnings, the first external integration (#55); the schema and demo data aligned with this scope; CI/CD, database, local setup, observability, infrastructure (#69, #70, #98, #101, #110, #111) | about 86 |
+| **R2: MVP** | 3, until 3 Jan 2027 | Refine and evaluate a credible, maintainable product | Complete the journeys: screenshots, entry code, offline access, push, AI alert drafts, live dashboard, surveys, incidents and AI grouping, reports and confirmations, recognition, transport and directions, preferences, account deletion, security hardening. Plus the evidence: AI evaluation (#72), performance and accessibility (#74), operational dashboard (#71), seed and demo script. | about 75 |
+| **Later** | After the MVP | Grow the audience | Discovery and following organizations, pre-event interest polls, ticketing integrations and ticket validation, an API for organizations' systems, zone-level crowd, custom report categories | – |
 
-**R2 is larger than R1 in a shorter sprint that includes the holidays.** The buffer is its Should/Could items: proposed events and polls (#45, #46, #95), ownership requests (#38), weather (#55), offline access (#56), directions (#57), the organization API (#44) and the security hardening items (#65–#67). They move to *Later*, lowest priority first, if Sprint 2's velocity shows R2 does not fit. The Must items and the course's Sprint 3 deliverables do not move.
+**R2 is smaller than before the review, but it falls in a shorter sprint that includes the holidays.** Its buffer is its Should/Could items: transport and directions (#57), recognition (#54), removing a ticket (#26), the audit log, rate limiting and service authentication (#65–#67), and the demo script. They move to *Later*, lowest priority first, if Sprint 2's velocity shows R2 does not fit. The Must items and the course's Sprint 3 deliverables do not move.
 
 ## 5. Roadmap
 
 ```
-Sprint 1 (Oct)        Sprint 2 (Nov)                    Sprint 3 (Dec)                      After the MVP
-Discover & design  →  Vertical slice: change → notify →  Organizer tools, reports, AI,     →  Discovery, real ticketing
-                      ticket wallet, event page,         push, offline; evaluation,          and agenda integrations,
-                      accounts, CI/CD, observability     dashboard, pitch                    partnerships with venues
+Sprint 1 (Oct)        Sprint 2 (Nov)                       Sprint 3 (Dec)                      After the MVP
+Discover & design  →  Vertical slice: organization       →  On-site tools, reports, AI,      →  Discovery, ticketing
+                      publishes a change → participant      push, offline, transport;           integrations, APIs for
+                      with a ticket is notified; IPMA,      evaluation, dashboard, pitch        organizations' systems
+                      accounts, CI/CD, observability
 ```
 
 ## 6. To Resolve in Sprint 2 Planning
@@ -70,8 +73,6 @@ These are inconsistencies between the issues and the requirements, found while w
 
 | Item | Inconsistency | Proposal |
 |---|---|---|
-| #50 Post-event summary | FR-030 has priority 8 and is in the MVP boundary, but the story has no sprint | Add it to Sprint 3 |
-| #64 Sign in with Google or Facebook | FR-044 has priority 2 (Won't have), but the story is in Sprint 3 | Move it to *Later* |
 | #71 Operational dashboard | NFR-012 has priority 4, but the course requires an operational dashboard in Sprint 3 | Raise NFR-012 to 8 |
-| #71, #73, #91 | No MoSCoW line (#91 also has no estimate) | Complete them before Sprint 3 planning (DoR-05, DoR-06) |
+| #71, #73 | No MoSCoW line | Complete them before Sprint 3 planning (DoR-05, DoR-06) |
 | #101, #110, #111 | Platform stories not linked from epic #19 | Link them |

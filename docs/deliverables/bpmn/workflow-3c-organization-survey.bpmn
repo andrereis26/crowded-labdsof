@@ -20,7 +20,7 @@
         <bpmn:flowNodeRef>resp</bpmn:flowNodeRef>
       </bpmn:lane>
     </bpmn:laneSet>
-    <bpmn:startEvent id="s" name="Event confirmed">
+    <bpmn:startEvent id="s" name="During the event">
       <bpmn:outgoing>Flow_1</bpmn:outgoing>
     </bpmn:startEvent>
     <bpmn:userTask id="req" name="Create survey: confirmation, choice or call for ideas">
@@ -36,7 +36,7 @@
       <bpmn:incoming>Flow_3</bpmn:incoming>
       <bpmn:outgoing>Flow_5</bpmn:outgoing>
     </bpmn:sendTask>
-    <bpmn:userTask id="resp" name="Open survey on event page and respond (connected users only)">
+    <bpmn:userTask id="resp" name="Open survey on event page and respond (connected participants only)">
       <bpmn:incoming>Flow_4</bpmn:incoming>
       <bpmn:incoming>Flow_5</bpmn:incoming>
       <bpmn:outgoing>Flow_6</bpmn:outgoing>

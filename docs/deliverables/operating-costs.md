@@ -20,8 +20,8 @@ A month is 730 hours.
 | Azure infrastructure | **€40.35** always on, or **€18.82** stopped outside working hours | €152.16 |
 | GitHub Actions (beyond the included minutes) | **US$11 to US$17** at the current pace, or **US$0** if the repository is public | US$0 to US$17 |
 | AI provider | US$0.60 to US$12 | US$7.50 to US$150 |
-| Everything else (Docker Hub, Doppler, Firebase, weather, maps, TLS, design) | US$0 | US$16 to US$58, plus a commercial weather plan |
-| **Total per month** | **about €19 to €70** | **about €175 to €350**, plus the weather plan |
+| Everything else (Docker Hub, Doppler, Firebase, weather, maps, transport, TLS, design) | US$0 | US$16 to US$58 |
+| **Total per month** | **about €19 to €70** | **about €175 to €350** |
 | Paid by | Azure for Students credit (US$100 a year); GitHub and the AI provider need a payment method | A real budget |
 
 Scenario A fits the student credit if the VM is stopped when nobody uses it. Two decisions follow from it (section 6): turn on the deallocation schedule, and decide what to do about GitHub Actions minutes.
@@ -67,10 +67,10 @@ OpenTofu provisions one resource group in `westeurope` ([ADR 0013](adr/0013-sing
 
 | Service | Choice in the MVP | Per month | Justification |
 |---|---|---|---|
-| Ticketing source, municipal agenda, entrance counters | Simulators in the Swarm stack (TR-001, TR-004, TR-005) | €0 | They run on the VM above |
 | Push notifications | Firebase Cloud Messaging ([ADR 0010](adr/0010-external-integrations.md)) | US$0 | FCM has no charge per message |
-| Weather | [Open-Meteo](https://open-meteo.com/en/pricing), free non-commercial API | US$0 | Limits: 10,000 calls a day and 300,000 a month. Jobs checks each upcoming event every 3 hours. 50 events need 400 calls a day, 4% of the limit. |
-| Maps and transport | No API in the MVP: the venue address and a link that opens the phone's maps app | US$0 | The live transport API is after the MVP ([Technical Design](technical-design.md#maps-and-transport)) |
+| Weather | [IPMA open data](https://api.ipma.pt/), public and without a key ([ADR 0015](adr/0015-organization-as-the-only-event-source.md)) | US$0 | Jobs fetches the warnings every 5 minutes and one forecast per district every hour, whatever the number of events: under 300 calls a day plus 24 per district. The terms of reuse must be confirmed before a commercial launch. |
+| Transport | An operator's open GTFS feed, for example Carris Metropolitana | US$0 | Read by the app ([Technical Design](technical-design.md#maps-and-transport)) |
+| Maps | Vendor still open ([ADR 0010](adr/0010-external-integrations.md)) | US$0 in the MVP | Within a free tier at the MVP's volume; to be checked when the vendor is chosen |
 | TLS certificate | Let's Encrypt, on Azure's free DNS name | US$0 | |
 | AI provider | Vendor still open ([ADR 0010](adr/0010-external-integrations.md)). Estimated with Anthropic's Claude prices, as an example of a provider that reads PDFs | **US$0.60 to US$12** | See 2.4 |
 
@@ -110,11 +110,10 @@ The design of [ADR 0013](adr/0013-single-azure-vm-docker-swarm-with-terraform.md
 | **Azure subtotal** | **€152.16** | The [Azure pricing calculator estimate](https://azure.com/e/7a339434ed97472e9ff661a265020d36), pay-as-you-go, `westeurope` |
 | Backups | under €0.10 | Daily `pg_dump` kept 30 days in Blob Storage (hot, LRS, €0.017 per GB) |
 | AI provider | US$7.50 (Haiku) to US$150 (Sonnet) | Ticket volume dominates: 10,000 × US$0.00075 or US$0.015 |
-| Weather | A commercial Open-Meteo plan (API Standard, 1 million calls a month; price on request) | The free API is non-commercial only |
 | Doppler | US$16 to US$58 | 2 people beyond the 3 free seats (US$8 each), or the Team plan (US$21 per user) when roles and audit logs are needed |
 | GitHub Actions | US$0 to US$17 | As in A |
 | Outbound traffic | €0 | Still under 100 GB: notifications are small, and push goes through Firebase |
-| **Total** | **about €175 to €350**, plus the weather plan | US dollars converted at about €0.9 |
+| **Total** | **about €175 to €350** | US dollars converted at about €0.9 |
 
 The range comes mostly from the choice of AI model, which the evaluation decides (#72).
 

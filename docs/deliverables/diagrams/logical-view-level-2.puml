@@ -1,6 +1,6 @@
 @startuml logical-view-level-2
 ' Crowded — Logical View, Level 2 (C4 container view in UML component notation)
-' Sources: requirements.md (TR-001..TR-005, NFR-001..NFR-008, SR-010..SR-012), domain-model.puml
+' Sources: requirements.md (TR-002, TR-003, TR-007, TR-008, NFR-001..NFR-008, SR-012, SR-020), domain-model.puml
 
 title Crowded — Logical View (Level 2)
 
@@ -31,13 +31,10 @@ skinparam port {
 ' ---------------------------------------------------------------------
 
 
-() "Ticketing Source API" as ITicketing
-() "Maps & Transport API" as IMaps
-() "Weather API" as IWeatherMobile
-() "Weather API" as IWeather
+() "Maps API &\nGTFS Transport Feed" as IMaps
+() "IPMA Open Data API" as IWeather
 () "AI API" as IAI
 () "Push API" as IPush
-() "Organization Integration API" as IOrgIntegration
 () "Participant UI" as MobileUI
 () "Backoffice UI" as BackofficeUI
 
@@ -48,11 +45,8 @@ component "Crowded" <<C4 Container>> as Crowded {
 
   portin "Participant UI" as pMobileUI
   portin "Backoffice UI" as pBackofficeUI
-  portin "Organization API" as pOrgApi
   portin "Maps & Transport" as pMaps
-  portin "Weather" as pMobileWeather
 
-  portout "Ticketing" as pTicketing
   portout "Weather" as pWeather
   portout "AI" as pAI
   portout "Push" as pPush
@@ -88,7 +82,6 @@ component "Crowded" <<C4 Container>> as Crowded {
   Router -up- IGateway
   Mobile -down-( IGateway
   Backoffice -down-( IGateway
-  pOrgApi -down-( IGateway
 
   ' --- Router routes to the public APIs
   Core -up- ICoreApi
@@ -118,13 +111,11 @@ component "Crowded" <<C4 Container>> as Crowded {
   Notifications -down-( IKeyValue
 
   ' --- Outbound integrations
-  Jobs -down---- pTicketing
   Jobs -down---- pWeather
   Core -down---- pAI
   Jobs -down---- pAI
   Notifications -down---- pPush
   Mobile -up- pMaps
-  Mobile -up- pMobileWeather
 
   ' --- Layout hints
   Jobs -[hidden]right- Core
@@ -136,13 +127,10 @@ component "Crowded" <<C4 Container>> as Crowded {
 ' --- Boundary wiring
 pMobileUI -up- MobileUI
 pBackofficeUI -up- BackofficeUI
-pOrgApi -up- IOrgIntegration
-pTicketing -down-( ITicketing
 pWeather -down-( IWeather
 pAI -down-( IAI
 pPush -down-( IPush
 pMaps -up-( IMaps
-pMobileWeather -up-( IWeatherMobile
 
 
 @enduml

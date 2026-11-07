@@ -3,7 +3,7 @@
 Core service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). For now it is an empty skeleton: no endpoints, entities or queues yet.
 
 - **Responsibility:** domain rules, authentication (issues JWTs), REST API, Organization API, live event-page updates (SSE), AI ticket extraction and alert drafts. Applies the changes detected by Jobs.
-- **Owns (writes):** users, organizations, events, connections, on-site information, alerts, surveys, polls, reports, incidents.
+- **Owns (writes):** users, organizations, events, connections, on-site information, weather, alerts, surveys, reports, incidents.
 - **Dependencies:** Spring Web MVC, Validation, Spring Data JPA with the PostgreSQL driver, Spring AMQP, Spring Data Redis, Spring Security with OAuth2 Resource Server (JWT).
 
 ## Stack
