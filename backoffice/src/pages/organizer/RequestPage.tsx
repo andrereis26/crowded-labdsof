@@ -21,7 +21,7 @@ import { PollIcon } from '../../ui/icons'
 
 const typeIcon: Record<RequestType, Icon> = {
   confirmation: CircleCheck,
-  poll: PollIcon,
+  choice: PollIcon,
   idea: Lightbulb,
 }
 
@@ -62,7 +62,7 @@ export function RequestPage({ event }: { event: OrgEvent }) {
   const answerButtons =
     type === 'confirmation'
       ? responses.split(' / ').reverse()
-      : type === 'poll'
+      : type === 'choice'
         ? ['Responder']
         : []
 

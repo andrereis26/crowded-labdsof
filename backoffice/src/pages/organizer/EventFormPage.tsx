@@ -2,12 +2,18 @@ import { Calendar, Clock, MapPin, Plus, X } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import {
+  accessCodeFor,
+  codeOwner,
+  districts,
+  duplicateCodeError,
   emptyEvent,
+  eventKinds,
   organization,
   shortDate,
   slug,
   statusTag,
   validateEvent,
+  type EventKind,
   type OrgEvent,
 } from '../../data/organizer'
 import {
@@ -20,7 +26,17 @@ import {
   TextLink,
   TicketCard,
 } from '../../ui/components'
-import { Field, Select, TextArea, TextInput, ToggleRow } from '../../ui/forms'
+import {
+  Field,
+  RadioDot,
+  RadioOption,
+  Select,
+  TextArea,
+  TextInput,
+  ToggleRow,
+} from '../../ui/forms'
+import { QrCode } from '../../ui/qr'
+import { downloadQrPng } from '../../ui/qrMatrix'
 
 /** O3 · Criar / editar evento. */
 export function EventFormPage({
@@ -54,17 +70,26 @@ export function EventFormPage({
   }
 
   const save = (publish: boolean) => {
+    const owner = codeOwner(event.code, event, events)
     const found = publish
-      ? validateEvent(event)
-      : event.name.trim()
-        ? {}
-        : { name: 'Escreve o nome do evento.' }
+      ? validateEvent(event, events)
+      : !event.name.trim()
+        ? { name: 'Escreve o nome do evento.' }
+        : owner
+          ? { code: duplicateCodeError(owner) }
+          : {}
     setErrors(found)
     if (Object.keys(found).length) return
 
     const newId = editing ? event.id : uniqueId(slug(event.name), events)
     const status = editing ? event.status : publish ? 'published' : 'draft'
-    onSave({ ...event, id: newId, name: event.name.trim(), status })
+    onSave({
+      ...event,
+      id: newId,
+      name: event.name.trim(),
+      code: event.code.trim().toUpperCase(),
+      status,
+    })
     const message = editing
       ? 'Alterações guardadas.'
       : publish
@@ -77,6 +102,20 @@ export function EventFormPage({
     e.preventDefault()
     save(true)
   }
+
+  const chooseKind = (kind: EventKind) => {
+    setEvent((e) => ({
+      ...e,
+      kind,
+      code: kind === 'public' && !e.code ? accessCodeFor(e.name, e.date) : e.code,
+    }))
+    setErrors((all) => ({ ...all, code: undefined }))
+  }
+
+  // A code in use by another upcoming event is shown while typing (O3).
+  const owner = codeOwner(event.code, event, events)
+  const codeError = errors.code ?? (owner ? duplicateCodeError(owner) : undefined)
+  const isPublic = event.kind === 'public'
 
   const cancelTo = editing ? `/organizacao/eventos/${event.id}` : '/organizacao/eventos'
   const tag = statusTag[event.status]
@@ -185,6 +224,52 @@ export function EventFormPage({
             </div>
           </Panel>
 
+          <Panel title="Tipo de evento" titleClassName="text-base" className="gap-3.5">
+            <div
+              role="radiogroup"
+              aria-label="Tipo de evento"
+              className="flex flex-col gap-2.5 sm:flex-row"
+            >
+              {(Object.keys(eventKinds) as EventKind[]).map((k) => (
+                <RadioOption
+                  key={k}
+                  name="event-kind"
+                  value={k}
+                  checked={event.kind === k}
+                  onChange={(v) => chooseKind(v as EventKind)}
+                  card
+                  className="min-w-0 flex-1 items-start"
+                >
+                  <RadioDot checked={event.kind === k} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold">{eventKinds[k].label}</span>
+                    <span className="block text-[13px] leading-[1.4] text-ink-secondary">
+                      {eventKinds[k].hint}
+                    </span>
+                  </span>
+                </RadioOption>
+              ))}
+            </div>
+            <Field
+              label={isPublic ? 'Código de acesso' : 'Código do evento impresso nos bilhetes'}
+              error={codeError}
+              help={
+                isPublic
+                  ? 'Divulga este código ou o código QR. Quem o inserir na app fica ligado ao evento.'
+                  : 'O código que aparece em todos os bilhetes deste evento. É assim que o Crowded associa cada bilhete importado.'
+              }
+            >
+              {(p) => (
+                <TextInput
+                  {...p}
+                  autoCapitalize="characters"
+                  value={event.code}
+                  onChange={(e) => set('code', e.target.value.toUpperCase().replace(/\s/g, ''))}
+                />
+              )}
+            </Field>
+          </Panel>
+
           <Panel title="Local e entradas" titleClassName="text-base" className="gap-3.5">
             <Field label="Local" error={errors.venue}>
               {(p) => (
@@ -193,6 +278,20 @@ export function EventFormPage({
                   icon={MapPin}
                   value={event.venue}
                   onChange={(e) => set('venue', e.target.value)}
+                />
+              )}
+            </Field>
+            <Field
+              label="Distrito"
+              error={errors.district}
+              help="Usado para os avisos e a previsão do IPMA."
+            >
+              {(p) => (
+                <Select
+                  {...p}
+                  value={event.district}
+                  onChange={(e) => set('district', e.target.value)}
+                  options={[{ value: '', label: 'Escolher distrito' }, ...districts]}
                 />
               )}
             </Field>
@@ -235,19 +334,6 @@ export function EventFormPage({
 
         <div className="flex flex-col gap-4 lg:w-[360px] lg:shrink-0">
           <Panel title="Publicação" titleClassName="text-base" className="gap-3">
-            <Field label="Visibilidade">
-              {(p) => (
-                <Select
-                  {...p}
-                  value={event.visibility}
-                  onChange={(e) => set('visibility', e.target.value as OrgEvent['visibility'])}
-                  options={[
-                    { value: 'public', label: 'Público' },
-                    { value: 'link', label: 'Só com link' },
-                  ]}
-                />
-              )}
-            </Field>
             {editing ? (
               <>
                 <Button type="submit" size="lg">
@@ -259,7 +345,7 @@ export function EventFormPage({
               </>
             ) : (
               <>
-                <Button type="submit" size="lg">
+                <Button type="submit" size="lg" disabled={!!owner}>
                   Publicar evento
                 </Button>
                 <Button variant="secondary" size="lg" onClick={() => save(false)}>
@@ -269,6 +355,28 @@ export function EventFormPage({
             )}
           </Panel>
 
+          {isPublic && event.code && (
+            <Panel title="Código QR do evento" className="gap-3">
+              <div className="flex items-center gap-3">
+                <QrCode text={event.code} />
+                <div className="flex min-w-0 flex-col gap-2">
+                  <p className="text-[13px] leading-[1.4] text-ink-secondary">
+                    Gerado a partir do código de acesso. Usa-o em cartazes e à entrada.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      downloadQrPng(event.code, `codigo-qr-${slug(event.name) || 'evento'}.png`)
+                    }
+                    className="text-left text-[13px] font-semibold text-primary hover:underline"
+                  >
+                    Descarregar código QR (PNG)
+                  </button>
+                </div>
+              </div>
+            </Panel>
+          )}
+
           <Panel title="Pré-visualização" className="max-lg:hidden">
             <TicketCard
               name={event.name}
@@ -276,8 +384,10 @@ export function EventFormPage({
               venue={event.venue}
               fields={[
                 { label: 'HORA', value: event.start || '—' },
-                { label: 'PORTA', value: event.entrances[0]?.replace(/^Porta /, '') ?? '—' },
-                { label: 'LUGAR', value: 'Geral' },
+                isPublic
+                  ? { label: 'ENTRADA', value: 'Código' }
+                  : { label: 'PORTA', value: event.entrances[0]?.replace(/^Porta /, '') ?? '—' },
+                { label: 'LUGAR', value: isPublic ? 'Livre' : 'Geral' },
               ]}
               status={event.status === 'draft' ? 'Publicado' : statusTag[event.status].label}
               source={organization.name}

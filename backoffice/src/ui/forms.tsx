@@ -1,14 +1,12 @@
-import { Check, ChevronDown, CircleCheck, FileText, Info, Minus, Plus } from 'lucide-react'
+import { Check, ChevronDown, Info, Minus, Plus } from 'lucide-react'
 import {
   useId,
-  useRef,
   useState,
   type ComponentProps,
   type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react'
-import { formatFileSize } from '../data/verifications'
 import type { Icon } from './components'
 
 /** Form controls shared by the backoffice screens, matching the Figma
@@ -420,86 +418,6 @@ export function SegmentedControl<T extends string>({
         </label>
       ))}
     </div>
-  )
-}
-
-/** Uploaded document: name, size and a check once loaded. */
-export function FileRow({ name, detail }: { name: string; detail: string }) {
-  return (
-    <div className="flex items-center gap-2.5 rounded-[10px] border border-border px-3.5 py-3">
-      <FileText size={20} className="shrink-0 text-danger" aria-hidden />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">{name}</p>
-        <p className="text-xs text-ink-secondary">{detail}</p>
-      </div>
-      <CircleCheck size={20} className="shrink-0 text-success" aria-label="Carregado" />
-    </div>
-  )
-}
-
-/** File picker that shows the chosen document as a FileRow. */
-export function FileInput({
-  label,
-  file,
-  onChange,
-  accept = '.pdf,.jpg,.jpeg,.png',
-  detail,
-  help,
-  error,
-}: {
-  label: string
-  file?: { name: string; size: number }
-  onChange: (file: { name: string; size: number }) => void
-  accept?: string
-  /** Text under the file name, e.g. "carregado". */
-  detail: string
-  help?: string
-  error?: string
-}) {
-  const input = useRef<HTMLInputElement>(null)
-  return (
-    <Field label={label} help={help} error={error}>
-      {(props) => (
-        <div className="flex flex-col gap-1.5">
-          <input
-            ref={input}
-            type="file"
-            accept={accept}
-            className="sr-only"
-            {...props}
-            onChange={(e) => {
-              const chosen = e.target.files?.[0]
-              if (chosen) onChange({ name: chosen.name, size: chosen.size })
-            }}
-          />
-          {file ? (
-            <div className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <FileRow name={file.name} detail={`${formatFileSize(file.size)} · ${detail}`} />
-              </div>
-              <button
-                type="button"
-                onClick={() => input.current?.click()}
-                className="text-[13px] font-semibold text-primary hover:underline"
-              >
-                Substituir
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => input.current?.click()}
-              className={`flex items-center justify-center gap-2 rounded-[10px] border border-dashed px-3.5 py-3 text-sm font-semibold text-primary hover:bg-primary-soft ${
-                error ? 'border-danger' : 'border-border-strong'
-              }`}
-            >
-              <Plus size={16} aria-hidden />
-              Carregar documento
-            </button>
-          )}
-        </div>
-      )}
-    </Field>
   )
 }
 

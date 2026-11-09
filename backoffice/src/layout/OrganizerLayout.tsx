@@ -2,7 +2,6 @@ import {
   Calendar,
   ChartNoAxesColumn,
   ChevronDown,
-  Code,
   ExternalLink,
   Megaphone,
   Menu,
@@ -15,7 +14,6 @@ import { NavLink, useLocation } from 'react-router'
 import { eventSubtitle, organization, statusTag, type OrgEvent } from '../data/organizer'
 import { Avatar, EventThumb, Tag } from '../ui/components'
 import { buttonClass } from '../ui/styles'
-import { PollIcon } from '../ui/icons'
 import { Sidebar, TopBar, type NavItem } from './Shell'
 
 /** Base address of the participant web app, for "Ver página pública". */
@@ -27,7 +25,7 @@ export type OrganizerScope =
   /** Pages about one event: the top bar shows the event selector. */
   | { kind: 'event'; title: string }
 
-/** Organizer area (O2–O14): dark side menu and top bar on desktop; on phones a
+/** Organizer area (O2–O12): dark side menu and top bar on desktop; on phones a
  * compact header and a tab bar. Focused pages (forms) hide the phone chrome
  * and show their own "Cancelar · Guardar" header. */
 export function OrganizerLayout({
@@ -59,10 +57,8 @@ export function OrganizerLayout({
       count: openIncidents,
     },
     { label: 'Alertas', to: '/organizacao/alertas', icon: Megaphone },
-    { label: 'Sondagens', to: '/organizacao/sondagens', icon: PollIcon },
     { label: 'Pedidos', to: '/organizacao/pedidos', icon: MessageSquare },
     { label: 'Definições', to: '/organizacao/definicoes', icon: Settings },
-    { label: 'API', to: '/organizacao/api', icon: Code },
   ]
   const tag = statusTag[currentEvent.status]
 
@@ -75,10 +71,7 @@ export function OrganizerLayout({
         identity={
           <>
             <Avatar initials={organization.initials} size={30} />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-white">{organization.name}</p>
-              <p className="text-[11px] font-medium text-sidebar-verified">Verificada</p>
-            </div>
+            <p className="min-w-0 flex-1 text-xs font-semibold text-white">{organization.name}</p>
             <ChevronDown size={16} className="text-sidebar-text" aria-hidden />
           </>
         }
@@ -120,10 +113,7 @@ export function OrganizerLayout({
           {scope.kind === 'organization' ? (
             <div className="flex min-w-0 flex-1 items-center gap-2.5">
               <Avatar initials={organization.initials} size={30} />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{organization.name}</p>
-                <p className="text-[11px] font-medium text-success">Verificada</p>
-              </div>
+              <p className="min-w-0 truncate text-sm font-semibold">{organization.name}</p>
             </div>
           ) : (
             <div className="min-w-0 flex-1">
@@ -246,13 +236,7 @@ const tabs = [
 ]
 
 /** Pages reached from "Mais" on phones. */
-const morePaths = [
-  '/organizacao/mais',
-  '/organizacao/sondagens',
-  '/organizacao/pedidos',
-  '/organizacao/definicoes',
-  '/organizacao/api',
-]
+const morePaths = ['/organizacao/mais', '/organizacao/pedidos', '/organizacao/definicoes']
 
 function TabBar({ openIncidents }: { openIncidents: number }) {
   const { pathname } = useLocation()

@@ -1,13 +1,10 @@
-import { ChevronRight, Code, LogOut, MessageSquare, Settings } from 'lucide-react'
+import { ChevronRight, LogOut, MessageSquare, Settings } from 'lucide-react'
 import { Link } from 'react-router'
 import { PageHeader, type Icon } from '../../ui/components'
-import { PollIcon } from '../../ui/icons'
 
 const items: { label: string; to: string; icon: Icon }[] = [
-  { label: 'Sondagens', to: '/organizacao/sondagens', icon: PollIcon },
   { label: 'Pedidos', to: '/organizacao/pedidos', icon: MessageSquare },
   { label: 'Definições', to: '/organizacao/definicoes', icon: Settings },
-  { label: 'API', to: '/organizacao/api', icon: Code },
 ]
 
 /** "Mais" tab on phones: the sections that do not fit in the tab bar. */

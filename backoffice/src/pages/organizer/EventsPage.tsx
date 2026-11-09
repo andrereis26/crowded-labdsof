@@ -1,24 +1,17 @@
-import {
-  Calendar,
-  ChartNoAxesColumn,
-  ChevronRight,
-  Link as LinkIcon,
-  Megaphone,
-  Plus,
-  Users,
-} from 'lucide-react'
+import { Calendar, ChartNoAxesColumn, ChevronRight, Megaphone, Plus, Users } from 'lucide-react'
 import { Link } from 'react-router'
 import {
   ago,
   connected,
   eventDateLabel,
+  eventKinds,
   formatNumber,
   organization,
   statusTag,
   type OrgEvent,
   type SentAlert,
 } from '../../data/organizer'
-import { ButtonLink, EventThumb, Notice, PageHeader, StatCard, Tag } from '../../ui/components'
+import { ButtonLink, EventThumb, PageHeader, StatCard, Tag } from '../../ui/components'
 
 const DAY = 24 * 3600000
 
@@ -41,8 +34,7 @@ export function EventsPage({
     undefined,
   )
 
-  const linkTo = (e: OrgEvent) =>
-    e.status === 'ended' ? `/organizacao/eventos/${e.id}/resumo` : `/organizacao/eventos/${e.id}`
+  const linkTo = (e: OrgEvent) => `/organizacao/eventos/${e.id}`
 
   return (
     <div className="flex flex-col gap-4 lg:gap-[22px]">
@@ -51,15 +43,6 @@ export function EventsPage({
         description={`${organization.name} · ${events.length} eventos`}
         actions={
           <>
-            <ButtonLink
-              to="/organizacao/eventos/pedir-gestao"
-              variant="secondary"
-              size="lg"
-              icon={LinkIcon}
-              className="max-sm:hidden"
-            >
-              Pedir gestão de evento
-            </ButtonLink>
             <ButtonLink
               to="/organizacao/eventos/novo"
               size="lg"
@@ -102,7 +85,7 @@ export function EventsPage({
           icon={Users}
           label="Pessoas ligadas"
           value={formatNumber(active.reduce((sum, e) => sum + connected(e), 0))}
-          note={<span className="max-lg:hidden">Bilhetes e seguidores</span>}
+          note={<span className="max-lg:hidden">Bilhetes e códigos de acesso</span>}
         />
         <StatCard
           icon={Megaphone}
@@ -122,7 +105,7 @@ export function EventsPage({
               <th className="w-[170px] py-2.5 font-semibold">Data</th>
               <th className="w-[130px] py-2.5 font-semibold">Estado</th>
               <th className="w-[90px] py-2.5 font-semibold">Ligados</th>
-              <th className="w-[190px] py-2.5 font-semibold">Origem</th>
+              <th className="w-[220px] py-2.5 font-semibold">Tipo</th>
               <th className="w-[60px] py-2.5">
                 <span className="sr-only">Abrir</span>
               </th>
@@ -156,9 +139,7 @@ export function EventsPage({
                   <td className="py-3.5">
                     {e.status === 'ended' ? '—' : formatNumber(connected(e))}
                   </td>
-                  <td className="py-3.5">
-                    {e.source === 'ticketing' ? 'Bilheteira · sincronizado' : 'Criado no Crowded'}
-                  </td>
+                  <td className="py-3.5">{eventKinds[e.kind].listLabel}</td>
                   <td className="py-3.5 pr-5 text-right">
                     <ChevronRight size={18} className="inline text-ink-secondary" aria-hidden />
                   </td>
@@ -189,7 +170,7 @@ export function EventsPage({
                   <span className="block text-xs text-ink-secondary">{eventDateLabel(e, now)}</span>
                   <span className="block text-xs text-ink-secondary">
                     {e.status === 'ended' ? 'Terminado' : `${formatNumber(connected(e))} ligados`}
-                    {e.source === 'ticketing' ? ' · sincronizado' : ''}
+                    {` · ${eventKinds[e.kind].label}`}
                   </span>
                 </span>
                 <Tag tone={tag.tone} dot={tag.dot}>
@@ -200,32 +181,6 @@ export function EventsPage({
           )
         })}
       </ul>
-
-      <Notice
-        icon={LinkIcon}
-        title="O teu evento já está no catálogo?"
-        className="max-lg:hidden"
-        action={
-          <ButtonLink
-            to="/organizacao/eventos/pedir-gestao"
-            variant="secondary"
-            size="sm"
-            icon={LinkIcon}
-          >
-            Pedir gestão
-          </ButtonLink>
-        }
-      >
-        Se foi sincronizado a partir da bilheteira, pede a gestão para publicares alertas e
-        informação no recinto.
-      </Notice>
-      <Link
-        to="/organizacao/eventos/pedir-gestao"
-        className="flex items-center justify-center gap-2 rounded-[14px] bg-primary-soft px-3.5 py-3 text-[13px] font-semibold text-primary lg:hidden"
-      >
-        <LinkIcon size={16} aria-hidden />
-        Evento sincronizado da bilheteira? Pedir gestão
-      </Link>
     </div>
   )
 }
