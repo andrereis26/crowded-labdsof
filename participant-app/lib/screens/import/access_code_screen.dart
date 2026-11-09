@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../data/app_store.dart';
 import '../../ui/ui.dart';
@@ -23,6 +24,14 @@ class _AccessCodeScreenState extends State<AccessCodeScreen> {
   void dispose() {
     _code.dispose();
     super.dispose();
+  }
+
+  /// A QR code read by the camera: the poster's QR code holds the access
+  /// code.
+  void _onScanned(String value) {
+    if (!mounted || _code.text == value) return;
+    _code.text = value;
+    _submit();
   }
 
   void _submit() {
@@ -60,7 +69,7 @@ class _AccessCodeScreenState extends State<AccessCodeScreen> {
           style: AppTextStyles.bodySecondary.copyWith(fontSize: 15),
         ),
         if (!isDesktopLayout(context)) ...[
-          const _QrViewfinder(),
+          _QrViewfinder(onCode: _onScanned),
           Text(
             'ou escreve o código',
             textAlign: TextAlign.center,
@@ -84,45 +93,95 @@ class _AccessCodeScreenState extends State<AccessCodeScreen> {
   }
 }
 
-/// Camera preview with a frame for the QR code. A placeholder until the
-/// camera plugin is added.
+/// Builds the camera preview that reads QR codes and calls `onCode` with
+/// the text of each one. Widget tests replace it, since they have no camera.
+typedef QrScannerBuilder = Widget Function(
+  BuildContext context,
+  ValueChanged<String> onCode,
+);
+
+QrScannerBuilder qrScannerBuilder = _cameraScanner;
+
+Widget _cameraScanner(BuildContext context, ValueChanged<String> onCode) =>
+    MobileScanner(
+      controller: MobileScannerController(
+        formats: const [BarcodeFormat.qrCode],
+      ),
+      onDetect: (capture) {
+        final value = capture.barcodes.firstOrNull?.rawValue;
+        if (value != null && value.isNotEmpty) onCode(value);
+      },
+      // The frame shows only while the camera is running.
+      overlayBuilder: (context, constraints) => const _ScanFrame(),
+      errorBuilder: (context, error) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            spacing: AppSpacing.md,
+            children: [
+              const Icon(Icons.no_photography_outlined, color: Colors.white),
+              Text(
+                'Não foi possível usar a câmara. Escreve o código abaixo.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.footnote.copyWith(color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+/// Frame and hint drawn over the camera preview.
+class _ScanFrame extends StatelessWidget {
+  const _ScanFrame();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacing.md,
+        children: [
+          Container(
+            width: 150,
+            height: 150,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.white, width: 3),
+              borderRadius: const BorderRadius.all(AppRadii.button),
+            ),
+          ),
+          ExcludeSemantics(
+            child: Text(
+              'Aponta a câmara ao código QR do cartaz',
+              style: AppTextStyles.footnote.copyWith(
+                color: Colors.white,
+                shadows: const [Shadow(blurRadius: 4)],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Camera preview that reads the QR code on the poster (P21).
 class _QrViewfinder extends StatelessWidget {
-  const _QrViewfinder();
+  const _QrViewfinder({required this.onCode});
+
+  final ValueChanged<String> onCode;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       label: 'Câmara para ler o código QR do cartaz',
-      child: Container(
-        height: 220,
-        decoration: const BoxDecoration(
+      child: ClipRRect(
+        borderRadius: const BorderRadius.all(AppRadii.card),
+        child: Container(
+          height: 240,
           color: AppColors.ink,
-          borderRadius: BorderRadius.all(AppRadii.card),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: AppSpacing.md,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white, width: 3),
-                borderRadius: const BorderRadius.all(AppRadii.button),
-              ),
-              child: const Icon(
-                Icons.qr_code_2,
-                size: 56,
-                color: Colors.white54,
-              ),
-            ),
-            ExcludeSemantics(
-              child: Text(
-                'Aponta a câmara ao código QR do cartaz',
-                style: AppTextStyles.footnote.copyWith(color: Colors.white),
-              ),
-            ),
-          ],
+          child: qrScannerBuilder(context, onCode),
         ),
       ),
     );

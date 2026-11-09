@@ -227,9 +227,10 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
           prefixIcon: Icons.tag,
           textInputAction: TextInputAction.done,
           errorText: _error,
-          onChanged: (_) {
-            if (_error != null) setState(() => _error = null);
-          },
+          borderColor: read != null && _code.text == read
+              ? AppColors.attention
+              : null,
+          onChanged: (_) => setState(() => _error = null),
           onSubmitted: (_) => _submit(),
         ),
         if (read != null && _error == null)

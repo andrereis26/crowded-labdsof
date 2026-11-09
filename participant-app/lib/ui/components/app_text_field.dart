@@ -49,6 +49,7 @@ class AppTextField extends StatelessWidget {
     this.enabled = true,
     this.onChanged,
     this.onSubmitted,
+    this.borderColor,
   }) : assert(controller == null || initialValue == null);
 
   /// Multi-line description box ("Descrição (opcional)").
@@ -72,7 +73,8 @@ class AppTextField extends StatelessWidget {
        inputFormatters = null,
        obscureText = false,
        autofillHints = null,
-       onSubmitted = null;
+       onSubmitted = null,
+       borderColor = null;
 
   final String label;
   final TextEditingController? controller;
@@ -94,6 +96,10 @@ class AppTextField extends StatelessWidget {
   final bool enabled;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+
+  /// Highlights the box when it is not focused, e.g. [AppColors.attention]
+  /// for a value the participant should check.
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +133,7 @@ class AppTextField extends StatelessWidget {
                     child: suffix,
                   ),
             errorText: errorText,
+            borderColor: borderColor,
           ),
         ),
       ],
@@ -141,6 +148,7 @@ InputDecoration appInputDecoration({
   IconData? prefixIcon,
   Widget? suffixIcon,
   String? errorText,
+  Color? borderColor,
 }) {
   OutlineInputBorder border(Color color, [double width = 1]) =>
       OutlineInputBorder(
@@ -174,7 +182,7 @@ InputDecoration appInputDecoration({
     suffixIcon: suffixIcon,
     suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
     border: border(AppColors.border),
-    enabledBorder: border(AppColors.border),
+    enabledBorder: border(borderColor ?? AppColors.border),
     disabledBorder: border(AppColors.border),
     focusedBorder: border(AppColors.primary, 1.5),
     errorBorder: border(AppColors.danger),
