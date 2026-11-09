@@ -2,11 +2,10 @@ import {
   Calendar,
   ChartNoAxesColumn,
   Clock,
+  KeyRound,
   MapPin,
   Pencil,
-  RefreshCw,
   Send,
-  Ticket,
   Users,
 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
@@ -15,6 +14,7 @@ import {
   applyChange,
   connected,
   eventDateLabel,
+  eventKinds,
   formatNumber,
   type ChangeKind,
   type EventChange,
@@ -24,7 +24,6 @@ import {
   Button,
   ButtonLink,
   Dialog,
-  Notice,
   PageHeader,
   Panel,
   StatCard,
@@ -32,8 +31,8 @@ import {
 } from '../../ui/components'
 import { Checkbox, Field, SegmentedControl, TextArea, TextInput } from '../../ui/forms'
 
-/** O4 · Página do evento, com o diálogo para adiar, mudar o local ou
- * cancelar. */
+/** O4 · Página do evento, com o diálogo "Alterar evento": adiar, mudar a hora
+ * e as portas, mudar o local ou cancelar. */
 export function EventDetailPage({
   events,
   now,
@@ -62,7 +61,6 @@ export function EventDetailPage({
     )
   }
 
-  const synced = event.source === 'ticketing'
   const closed = event.status === 'ended' || event.status === 'cancelled'
 
   const applied = (change: EventChange) => {
@@ -72,6 +70,7 @@ export function EventDetailPage({
     setMessage(
       {
         postpone: `Evento adiado. ${people}`,
+        time: `Horário alterado. ${people}`,
         venue: `Local alterado. ${people}`,
         cancel: `Evento cancelado. ${people}`,
       }[change.kind],
@@ -90,7 +89,6 @@ export function EventDetailPage({
                 variant="secondary"
                 size="lg"
                 icon={Calendar}
-                disabled={synced}
                 onClick={() => setChanging(true)}
               >
                 Alterar ou cancelar
@@ -105,20 +103,19 @@ export function EventDetailPage({
 
       <SuccessBanner>{message}</SuccessBanner>
 
-      {synced && (
-        <Notice icon={RefreshCw} title="Evento sincronizado da bilheteira">
-          A data, o local e os cancelamentos vêm sempre da bilheteira oficial.
-        </Notice>
-      )}
-
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 lg:gap-4">
         <StatCard
           icon={Users}
           label="Pessoas ligadas"
           value={formatNumber(connected(event))}
-          note="Bilhetes e seguidores"
+          note="Bilhetes e códigos de acesso"
         />
-        <StatCard icon={Ticket} label="Com bilhete" value={formatNumber(event.tickets)} />
+        <StatCard
+          icon={KeyRound}
+          label={event.kind === 'ticketed' ? 'Código do evento' : 'Código de acesso'}
+          value={event.code || '—'}
+          note={eventKinds[event.kind].listLabel}
+        />
         <StatCard
           icon={ChartNoAxesColumn}
           label="Capacidade"
@@ -142,7 +139,11 @@ export function EventDetailPage({
               .filter(Boolean)
               .join(' · ')}
           />
-          <Detail icon={MapPin} label="Local" value={event.venue || '—'} />
+          <Detail
+            icon={MapPin}
+            label="Local"
+            value={[event.venue, event.district].filter(Boolean).join(' · ') || '—'}
+          />
         </dl>
         <div className="flex flex-wrap gap-2.5 pt-1">
           {event.status === 'live' && (
@@ -153,15 +154,6 @@ export function EventDetailPage({
               icon={ChartNoAxesColumn}
             >
               Ver ao vivo
-            </ButtonLink>
-          )}
-          {event.status === 'ended' && (
-            <ButtonLink
-              to={`/organizacao/eventos/${event.id}/resumo`}
-              variant="secondary"
-              size="sm"
-            >
-              Resumo pós-evento
             </ButtonLink>
           )}
         </div>
@@ -201,12 +193,14 @@ function Detail({
 
 const kinds = [
   { value: 'postpone', label: 'Adiar' },
-  { value: 'venue', label: 'Mudar local' },
-  { value: 'cancel', label: 'Cancelar evento' },
+  { value: 'time', label: 'Hora e portas' },
+  { value: 'venue', label: 'Local' },
+  { value: 'cancel', label: 'Cancelar' },
 ] as const
 
 const submitLabel: Record<ChangeKind, string> = {
   postpone: 'Adiar e notificar',
+  time: 'Alterar hora e notificar',
   venue: 'Mudar local e notificar',
   cancel: 'Cancelar e notificar',
 }
@@ -225,26 +219,74 @@ function ChangeEventDialog({
   const [kind, setKind] = useState<ChangeKind>('postpone')
   const [date, setDate] = useState(event.date)
   const [start, setStart] = useState(event.start)
+  const [doors, setDoors] = useState(event.doors)
   const [venue, setVenue] = useState('')
   const [text, setText] = useState('')
+  const [ticketValid, setTicketValid] = useState(true)
+  const [refund, setRefund] = useState('')
   const [confirmed, setConfirmed] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const ticketed = event.kind === 'ticketed'
+  const showTicket = ticketed && (kind === 'postpone' || kind === 'cancel')
+
+  const choose = (k: ChangeKind) => {
+    setKind(k)
+    setTicketValid(k !== 'cancel')
+    setErrors({})
+  }
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const found: Record<string, string> = {}
-    if (kind === 'postpone' && date === event.date && start === event.start) {
-      found.date = 'Escolhe uma nova data ou hora.'
+    if (kind === 'postpone' && date === event.date) found.date = 'Escolhe uma nova data.'
+    if (kind === 'time' && start === event.start && doors === event.doors) {
+      found.start = 'Escolhe uma nova hora ou abertura de portas.'
     }
     if (kind === 'venue' && !venue.trim()) found.venue = 'Indica o novo local.'
     if (!confirmed) found.confirmed = 'Confirma que a alteração é oficial.'
     setErrors(found)
     if (Object.keys(found).length) return
-    onApply({ kind, date, start, venue: venue.trim(), message: text.trim() })
+    onApply({
+      kind,
+      date,
+      start,
+      doors,
+      venue: venue.trim(),
+      message: text.trim(),
+      ticketValid: showTicket ? ticketValid : undefined,
+      refund: showTicket ? refund.trim() : undefined,
+    })
   }
 
+  const timeFields = (
+    <>
+      <Field label="Nova hora" error={kind === 'time' ? errors.start : undefined}>
+        {(p) => (
+          <TextInput
+            {...p}
+            type="time"
+            icon={Clock}
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+          />
+        )}
+      </Field>
+      <Field label="Abertura de portas">
+        {(p) => (
+          <TextInput
+            {...p}
+            type="time"
+            icon={Clock}
+            value={doors}
+            onChange={(e) => setDoors(e.target.value)}
+          />
+        )}
+      </Field>
+    </>
+  )
+
   return (
-    <Dialog title="Alterar data, local ou cancelar" phoneTitle="Alterar evento" onClose={onClose}>
+    <Dialog title="Alterar evento" onClose={onClose}>
       <form onSubmit={submit} noValidate className="flex flex-col gap-4">
         <div className="flex items-center gap-3 sm:hidden">
           <span className="text-[15px] font-semibold">{event.name}</span>
@@ -254,11 +296,11 @@ function ChangeEventDialog({
           label="Tipo de alteração"
           options={kinds}
           value={kind}
-          onChange={setKind}
+          onChange={choose}
         />
 
         {kind === 'postpone' && (
-          <div className="grid grid-cols-2 gap-3.5">
+          <div className="grid gap-3.5 sm:grid-cols-3">
             <Field label="Nova data" error={errors.date}>
               {(p) => (
                 <TextInput
@@ -270,19 +312,10 @@ function ChangeEventDialog({
                 />
               )}
             </Field>
-            <Field label="Nova hora">
-              {(p) => (
-                <TextInput
-                  {...p}
-                  type="time"
-                  icon={Clock}
-                  value={start}
-                  onChange={(e) => setStart(e.target.value)}
-                />
-              )}
-            </Field>
+            {timeFields}
           </div>
         )}
+        {kind === 'time' && <div className="grid gap-3.5 sm:grid-cols-2">{timeFields}</div>}
         {kind === 'venue' && (
           <Field label="Novo local" error={errors.venue} help={`Local atual: ${event.venue}`}>
             {(p) => (
@@ -295,11 +328,6 @@ function ChangeEventDialog({
             )}
           </Field>
         )}
-        {kind === 'cancel' && (
-          <Notice tone="warning" icon={Calendar} title="O evento deixa de estar disponível">
-            Os participantes recebem a alteração oficial na carteira e por notificação.
-          </Notice>
-        )}
 
         <Field label="Mensagem para os participantes" optional>
           {(p) => (
@@ -307,18 +335,46 @@ function ChangeEventDialog({
               {...p}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Ex.: Os bilhetes continuam válidos."
+              placeholder={
+                kind === 'cancel'
+                  ? `Ex.: Lamentamos, mas o ${event.name} foi cancelado.`
+                  : 'Ex.: Por indisponibilidade do recinto, o concerto muda de data.'
+              }
             />
           )}
         </Field>
+
+        {showTicket && (
+          <>
+            <Checkbox checked={ticketValid} onChange={setTicketValid}>
+              {kind === 'postpone'
+                ? 'O bilhete continua válido para a nova data'
+                : 'O bilhete continua válido'}
+            </Checkbox>
+            <Field label="Reembolso" optional>
+              {(p) => (
+                <TextArea
+                  {...p}
+                  value={refund}
+                  onChange={(e) => setRefund(e.target.value)}
+                  placeholder="Ex.: Quem não puder ir pode pedir o reembolso até 5 DEZ."
+                />
+              )}
+            </Field>
+          </>
+        )}
 
         <div className="flex items-center gap-3 rounded-xl border border-warning-border bg-warning-soft px-3.5 py-3">
           <Users size={22} className="shrink-0 text-warning" aria-hidden />
           <div>
             <p className="text-sm font-semibold">
-              Vamos notificar {formatNumber(connected(event))} pessoas ligadas a este evento
+              {kind === 'cancel'
+                ? `Vamos notificar ${formatNumber(connected(event))} pessoas · alteração crítica`
+                : `Vamos notificar ${formatNumber(connected(event))} pessoas ligadas a este evento`}
             </p>
-            <p className="text-xs text-ink/80">Bilhetes e seguidores do evento.</p>
+            <p className="text-xs text-ink/80">
+              Participantes ligados ao evento, por bilhete ou código de acesso.
+            </p>
           </div>
         </div>
 
@@ -330,12 +386,7 @@ function ChangeEventDialog({
           <Button variant="secondary" size="lg" onClick={onClose} className="max-sm:hidden">
             Voltar
           </Button>
-          <Button
-            type="submit"
-            size="lg"
-            icon={Send}
-            variant={kind === 'cancel' ? 'danger' : 'primary'}
-          >
+          <Button type="submit" size="lg" icon={Send}>
             {submitLabel[kind]}
           </Button>
         </div>

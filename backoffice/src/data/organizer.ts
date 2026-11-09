@@ -1,4 +1,4 @@
-/** Organizer area (O1–O14), backed by demo data until the Core API exists.
+/** Organizer area (O2–O12), backed by demo data until the Core API exists.
  * Times are built from `now` so the demo always reads "há 3 min". */
 
 import type { Confidence } from '../ui/components'
@@ -8,16 +8,14 @@ import festivalImage from '../assets/festival-margens-2026.jpg'
 export const organization = {
   name: 'Organização Margens',
   initials: 'OM',
-  verified: true,
-  nipc: '500123123',
-  email: 'miguel@organizacaomargens.pt',
-  website: 'organizacaomargens.pt',
   user: { name: 'Miguel Sousa', initials: 'MS', role: 'Coordenador de operações' },
 }
 
 export type EventStatus = 'draft' | 'published' | 'live' | 'ended' | 'cancelled'
-export type EventSource = 'crowded' | 'ticketing'
-export type Visibility = 'public' | 'link'
+/** Ticketed events: participants import the ticket bought elsewhere, matched
+ * by the event code printed on it. Public events: no ticket, participants
+ * join with the access code or its QR code (FR-085). */
+export type EventKind = 'ticketed' | 'public'
 
 export interface OrgEvent {
   id: string
@@ -31,12 +29,15 @@ export interface OrgEvent {
   end: string
   venue: string
   entrances: string[]
+  /** District of the venue, for the IPMA weather warnings. */
+  district: string
   capacity: number
-  tickets: number
-  followers: number
+  /** People connected to the event, by ticket or access code. */
+  connected: number
   status: EventStatus
-  source: EventSource
-  visibility: Visibility
+  kind: EventKind
+  /** Event code printed on the tickets (ticketed) or access code (public). */
+  code: string
   askConfirmation: boolean
   showEstimates: boolean
   image?: string
@@ -55,7 +56,45 @@ export const statusTag: Record<
   cancelled: { label: 'Cancelado', tone: 'danger', dot: false },
 }
 
-export const connected = (e: OrgEvent) => e.tickets + e.followers
+export const connected = (e: OrgEvent) => e.connected
+
+export const eventKinds: Record<EventKind, { label: string; listLabel: string; hint: string }> = {
+  ticketed: {
+    label: 'Com bilhete',
+    listLabel: 'Com bilhete',
+    hint: 'Os participantes importam o bilhete que compraram noutra plataforma.',
+  },
+  public: {
+    label: 'Público',
+    listLabel: 'Público · código de acesso',
+    hint: 'Sem bilhete. Os participantes entram com o código de acesso ou o código QR.',
+  },
+}
+
+/** Districts of mainland Portugal and the autonomous regions, as in the IPMA
+ * weather warnings. */
+export const districts = [
+  'Aveiro',
+  'Beja',
+  'Braga',
+  'Bragança',
+  'Castelo Branco',
+  'Coimbra',
+  'Évora',
+  'Faro',
+  'Guarda',
+  'Leiria',
+  'Lisboa',
+  'Portalegre',
+  'Porto',
+  'Santarém',
+  'Setúbal',
+  'Viana do Castelo',
+  'Vila Real',
+  'Viseu',
+  'Região Autónoma dos Açores',
+  'Região Autónoma da Madeira',
+]
 
 const weekdays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
 const months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
@@ -131,12 +170,12 @@ export function demoEvents(): OrgEvent[] {
       end: '02:00',
       venue: 'Parque da Cidade, Porto',
       entrances: ['Porta A', 'Porta B', 'Porta C', 'Bar principal', 'WC Norte'],
+      district: 'Porto',
       capacity: 4500,
-      tickets: 930,
-      followers: 310,
+      connected: 1240,
       status: 'live',
-      source: 'crowded',
-      visibility: 'public',
+      kind: 'ticketed',
+      code: 'MARG2026',
       askConfirmation: true,
       showEstimates: true,
       image: festivalImage,
@@ -153,12 +192,12 @@ export function demoEvents(): OrgEvent[] {
       end: '22:00',
       venue: 'Jardim do Palácio, Porto',
       entrances: ['Entrada principal'],
+      district: 'Porto',
       capacity: 800,
-      tickets: 250,
-      followers: 62,
+      connected: 312,
       status: 'published',
-      source: 'ticketing',
-      visibility: 'public',
+      kind: 'public',
+      code: 'JAZZPARQUE26',
       askConfirmation: false,
       showEstimates: true,
       gradient: ['rgb(51,140,128)', 'rgb(13,46,51)'],
@@ -173,12 +212,12 @@ export function demoEvents(): OrgEvent[] {
       end: '02:00',
       venue: 'Pavilhão Municipal, Porto',
       entrances: ['Porta A', 'Porta B', 'Bar principal'],
+      district: 'Porto',
       capacity: 4500,
-      tickets: 96,
-      followers: 32,
+      connected: 128,
       status: 'published',
-      source: 'crowded',
-      visibility: 'public',
+      kind: 'ticketed',
+      code: 'MARGINV26',
       askConfirmation: true,
       showEstimates: true,
       imageName: 'inverno-2026.jpg',
@@ -194,12 +233,12 @@ export function demoEvents(): OrgEvent[] {
       end: '02:00',
       venue: 'Parque da Cidade, Porto',
       entrances: ['Porta A', 'Porta C', 'Bar principal', 'WC Norte'],
+      district: 'Porto',
       capacity: 4500,
-      tickets: 940,
-      followers: 300,
+      connected: 1240,
       status: 'ended',
-      source: 'crowded',
-      visibility: 'public',
+      kind: 'ticketed',
+      code: 'MARG2025',
       askConfirmation: true,
       showEstimates: true,
       gradient: ['rgb(217,107,77)', 'rgb(77,31,89)'],
@@ -218,44 +257,89 @@ export function emptyEvent(): OrgEvent {
     end: '',
     venue: '',
     entrances: ['Porta A'],
+    district: '',
     capacity: 0,
-    tickets: 0,
-    followers: 0,
+    connected: 0,
     status: 'draft',
-    source: 'crowded',
-    visibility: 'public',
+    kind: 'ticketed',
+    code: '',
     askConfirmation: true,
     showEstimates: true,
     gradient: ['rgb(64,51,128)', 'rgb(13,13,38)'],
   }
 }
 
+/** Access code suggested for a public event: the letters of its name and the
+ * last two digits of the year, e.g. "SAOJOAONOP26". */
+export function accessCodeFor(name: string, date: string): string {
+  const letters = slug(name).replace(/-/g, '').toUpperCase().slice(0, 10)
+  return `${letters || 'EVENTO'}${date ? date.slice(2, 4) : ''}`
+}
+
+/** Event and access codes are unique among the events that have not ended:
+ * returns the other event that already uses `code`. */
+export function codeOwner(code: string, event: OrgEvent, events: OrgEvent[]): OrgEvent | undefined {
+  const wanted = code.trim().toUpperCase()
+  if (!wanted) return undefined
+  return events.find(
+    (e) =>
+      e.id !== event.id &&
+      e.status !== 'ended' &&
+      e.status !== 'cancelled' &&
+      e.code.toUpperCase() === wanted,
+  )
+}
+
+export function duplicateCodeError(owner: OrgEvent): string {
+  return `Este código já é usado por outro evento futuro (${owner.name}). Escolhe outro código.`
+}
+
 /** Checks what an event needs before being published. */
-export function validateEvent(e: OrgEvent): Partial<Record<keyof OrgEvent, string>> {
+export function validateEvent(
+  e: OrgEvent,
+  events: OrgEvent[] = [],
+): Partial<Record<keyof OrgEvent, string>> {
   const errors: Partial<Record<keyof OrgEvent, string>> = {}
   if (!e.name.trim()) errors.name = 'Escreve o nome do evento.'
   if (!e.date) errors.date = 'Escolhe a data.'
   if (!e.start) errors.start = 'Indica a hora de início.'
   if (!e.venue.trim()) errors.venue = 'Indica o local.'
+  if (!e.district) errors.district = 'Escolhe o distrito.'
   if (!(e.capacity > 0)) errors.capacity = 'Indica a capacidade do recinto.'
+  const owner = codeOwner(e.code, e, events)
+  if (!e.code.trim()) {
+    errors.code =
+      e.kind === 'ticketed'
+        ? 'Indica o código impresso nos bilhetes.'
+        : 'Indica o código de acesso.'
+  } else if (owner) errors.code = duplicateCodeError(owner)
   return errors
 }
 
 // ——— Event changes (O4) ———
 
-export type ChangeKind = 'postpone' | 'venue' | 'cancel'
+export type ChangeKind = 'postpone' | 'time' | 'venue' | 'cancel'
 
 export interface EventChange {
   kind: ChangeKind
   date?: string
   start?: string
+  doors?: string
   venue?: string
   message: string
+  /** Ticketed events: whether the ticket stays valid. */
+  ticketValid?: boolean
+  refund?: string
 }
 
 export function applyChange(e: OrgEvent, change: EventChange): OrgEvent {
-  if (change.kind === 'postpone') {
-    return { ...e, date: change.date ?? e.date, start: change.start ?? e.start }
+  if (change.kind === 'postpone' || change.kind === 'time') {
+    return {
+      ...e,
+      date: change.kind === 'postpone' ? (change.date ?? e.date) : e.date,
+      start: change.start ?? e.start,
+      doors: change.doors ?? e.doors,
+    }
   }
   if (change.kind === 'venue') return { ...e, venue: change.venue ?? e.venue }
   return { ...e, status: 'cancelled' }
@@ -377,7 +461,6 @@ export function demoLive(now: Date): Record<string, LiveState> {
         { name: 'Contador de entradas', detail: 'Ligado · há 1 min', ok: true },
         { name: 'Notificações', detail: 'A funcionar · 0,8 s em média', ok: true },
         { name: 'Rascunhos com IA', detail: 'Lento', ok: false },
-        { name: 'Sincronização da bilheteira', detail: 'Há 4 min', ok: true },
       ],
     },
   }
@@ -606,8 +689,7 @@ export const demoConfirmationSettings = (): ConfirmationSettings => ({
 
 // ——— Alerts (O6) ———
 
-export type AlertImportance = 'info' | 'important' | 'urgent'
-export type Audience = 'all' | 'tickets' | 'followers'
+export type AlertImportance = 'info' | 'warning' | 'critical'
 
 export interface SentAlert {
   id: string
@@ -618,12 +700,6 @@ export interface SentAlert {
   sentAt: Date
   delivered: number
   seconds: number
-}
-
-export function audienceSize(e: OrgEvent, audience: Audience): number {
-  if (audience === 'tickets') return e.tickets
-  if (audience === 'followers') return e.followers
-  return connected(e)
 }
 
 export function demoAlerts(now: Date): SentAlert[] {
@@ -707,196 +783,18 @@ export function draftAlert(description: string): { title: string; message: strin
   return { title, message: `${sentences.join(' ')} Obrigado pela compreensão.`.trim() }
 }
 
-// ——— Polls (O11) ———
-
-export interface PollQuestion {
-  text: string
-  options: { label: string; votes: number; negative?: boolean }[]
-}
-
-export interface Poll {
-  id: string
-  eventId: string
-  questions: PollQuestion[]
-  closesAt: Date
-  /** People connected to the event when the poll was published. */
-  audience: number
-  insight?: { title: string; detail: string }
-}
-
-export function pollResponses(p: Poll): number {
-  return p.questions[0]?.options.reduce((sum, o) => sum + o.votes, 0) ?? 0
-}
-
-export function demoPolls(): Poll[] {
-  return [
-    {
-      id: 'presenca-inverno',
-      eventId: 'margens-inverno',
-      closesAt: new Date(2026, 11, 10, 23, 59),
-      audience: 1280,
-      questions: [
-        {
-          text: 'Vais ao Margens Inverno a 12 de dezembro?',
-          options: [
-            { label: 'Sim, vou', votes: 296 },
-            { label: 'Talvez', votes: 117 },
-            { label: 'Não vou', votes: 73, negative: true },
-          ],
-        },
-        {
-          text: 'A que horas pensas chegar?',
-          options: [
-            { label: 'Antes das 20h', votes: 76 },
-            { label: 'Entre as 20h e as 22h', votes: 269 },
-            { label: 'Depois das 22h', votes: 76 },
-          ],
-        },
-      ],
-      insight: {
-        title: 'Cerca de 2 em cada 3 pessoas pensam chegar entre as 20h e as 22h.',
-        detail:
-          'Considera reforçar as entradas nesse período. É uma indicação, não uma garantia de presença.',
-      },
-    },
-  ]
-}
-
 // ——— Requests to participants (O12) ———
 
-export type RequestType = 'confirmation' | 'poll' | 'idea'
+export type RequestType = 'confirmation' | 'choice' | 'idea'
 
 export const requestTypes: Record<RequestType, { label: string; hint: string }> = {
   confirmation: { label: 'Confirmação', hint: 'Sim ou Não, com prazo' },
-  poll: { label: 'Sondagem', hint: 'Várias opções, anónima' },
+  choice: { label: 'Escolha múltipla', hint: 'Várias opções' },
   idea: { label: 'Ideia', hint: 'Resposta livre' },
 }
 
 export const responseOptions: Record<RequestType, string[]> = {
   confirmation: ['Sim / Não', 'Sim / Não / Talvez'],
-  poll: ['Escolha única', 'Escolha múltipla'],
+  choice: ['Uma resposta', 'Várias respostas'],
   idea: [],
-}
-
-// ——— Management requests (O13) ———
-
-export interface CatalogEvent {
-  id: string
-  name: string
-  date: string
-  start: string
-  venue: string
-  gradient: [string, string]
-}
-
-/** Events synced from ticketing that the organization does not manage yet. */
-export const catalog: CatalogEvent[] = [
-  {
-    id: 'jazz-no-parque-sabado',
-    name: 'Jazz no Parque',
-    date: '2026-10-18',
-    start: '19:00',
-    venue: 'Jardim do Palácio, Porto',
-    gradient: ['rgb(51,140,128)', 'rgb(13,46,51)'],
-  },
-  {
-    id: 'jazz-no-parque-domingo',
-    name: 'Jazz no Parque · Sessão de domingo',
-    date: '2026-10-25',
-    start: '18:00',
-    venue: 'Jardim do Palácio, Porto',
-    gradient: ['rgb(51,140,128)', 'rgb(13,46,51)'],
-  },
-  {
-    id: 'noite-fado',
-    name: 'Noite de Fado na Ribeira',
-    date: '2026-11-07',
-    start: '21:30',
-    venue: 'Cais da Ribeira, Porto',
-    gradient: ['rgb(140,90,51)', 'rgb(46,26,13)'],
-  },
-  {
-    id: 'porto-electronic',
-    name: 'Porto Electronic Weekend',
-    date: '2026-11-20',
-    start: '23:00',
-    venue: 'Alfândega do Porto',
-    gradient: ['rgb(51,64,140)', 'rgb(13,13,46)'],
-  },
-]
-
-export const relations = ['Organizador', 'Promotor', 'Gestor do recinto', 'Outra'] as const
-
-// ——— Post-event summary (O14) ———
-
-export interface EventSummary {
-  window: string
-  warnedBeforeDoors: { reached: number; total: number }
-  peak: { ratio: number; at: string; people: number }
-  incidents: { total: number; minutesToAcknowledge: number }
-  alerts: { total: number; deliveries: number; push: number; appOnly: number }
-  hourly: { hour: string; count: number }[]
-  maxQueues: { name: string; minutes: number; peakAt?: string; tone: 'ok' | 'warning' | 'muted' }[]
-  incidentList: {
-    title: string
-    category: IncidentCategory
-    icon?: 'water'
-    reports: number
-    resolvedIn: number
-    confidence: Confidence
-  }[]
-  alertList: { title: string; sentAt: string; resolvedAt: string }[]
-}
-
-export const summaries: Record<string, EventSummary> = {
-  'festival-margens-2025': {
-    window: '18 out, 20:00–02:00',
-    warnedBeforeDoors: { reached: 1166, total: 1240 },
-    peak: { ratio: 0.92, at: '23:10', people: 4140 },
-    incidents: { total: 7, minutesToAcknowledge: 6 },
-    alerts: { total: 3, deliveries: 3720, push: 3610, appOnly: 110 },
-    hourly: [
-      { hour: '18h', count: 70 },
-      { hour: '19h', count: 190 },
-      { hour: '20h', count: 680 },
-      { hour: '21h', count: 830 },
-      { hour: '22h', count: 520 },
-      { hour: '23h', count: 105 },
-    ],
-    maxQueues: [
-      { name: 'Porta A', minutes: 15, tone: 'ok' },
-      { name: 'Porta C', minutes: 35, peakAt: '22:40', tone: 'warning' },
-      { name: 'Bar principal', minutes: 20, tone: 'ok' },
-      { name: 'WC Norte', minutes: 12, peakAt: '00:30', tone: 'muted' },
-    ],
-    incidentList: [
-      {
-        title: 'Fila longa na Porta C',
-        category: 'queue',
-        reports: 9,
-        resolvedIn: 18,
-        confidence: 'high',
-      },
-      {
-        title: 'Rampa da entrada Norte bloqueada',
-        category: 'accessibility',
-        reports: 3,
-        resolvedIn: 42,
-        confidence: 'medium',
-      },
-      {
-        title: 'Falta de água no bar principal',
-        category: 'venue',
-        icon: 'water',
-        reports: 2,
-        resolvedIn: 25,
-        confidence: 'medium',
-      },
-    ],
-    alertList: [
-      { title: 'Porta B fechada', sentAt: '22:41', resolvedAt: '23:05' },
-      { title: 'Fila longa na Porta C', sentAt: '22:50', resolvedAt: '23:08' },
-      { title: 'Chuva a partir da 01:00', sentAt: '00:15', resolvedAt: '01:30' },
-    ],
-  },
 }

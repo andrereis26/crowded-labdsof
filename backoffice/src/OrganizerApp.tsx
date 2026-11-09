@@ -6,13 +6,10 @@ import {
   demoEvents,
   demoIncidents,
   demoLive,
-  demoPolls,
-  type CatalogEvent,
   type ConfirmationSettings,
   type Incident,
   type LiveState,
   type OrgEvent,
-  type Poll,
   type SentAlert,
 } from './data/organizer'
 import { OrganizerLayout, type OrganizerScope } from './layout/OrganizerLayout'
@@ -25,11 +22,8 @@ import { EventsPage } from './pages/organizer/EventsPage'
 import { IncidentDetailPage } from './pages/organizer/IncidentDetailPage'
 import { IncidentsPage } from './pages/organizer/IncidentsPage'
 import { LivePage } from './pages/organizer/LivePage'
-import { ManagementRequestPage } from './pages/organizer/ManagementRequestPage'
 import { MorePage } from './pages/organizer/MorePage'
-import { PollsPage } from './pages/organizer/PollsPage'
 import { RequestPage } from './pages/organizer/RequestPage'
-import { SummaryPage } from './pages/organizer/SummaryPage'
 import { Panel } from './ui/components'
 
 const titles: [string, string][] = [
@@ -37,31 +31,17 @@ const titles: [string, string][] = [
   ['/organizacao/ao-vivo', 'Ao vivo'],
   ['/organizacao/incidentes', 'Incidentes'],
   ['/organizacao/alertas', 'Alertas'],
-  ['/organizacao/sondagens', 'Sondagens'],
   ['/organizacao/pedidos', 'Pedidos'],
   ['/organizacao/definicoes', 'Definições'],
-  ['/organizacao/api', 'API'],
   ['/organizacao/mais', 'Mais'],
 ]
 
-/** Organizer area: owns the demo state shared by O2–O14. */
-export function OrganizerApp({
-  now,
-  onManagementRequest,
-}: {
-  now: Date
-  /** Sends a management request to the administrators' queue (A1). */
-  onManagementRequest: (
-    event: CatalogEvent,
-    relation: string,
-    document: { name: string; size: number },
-  ) => void
-}) {
+/** Organizer area: owns the demo state shared by O2–O12. */
+export function OrganizerApp({ now }: { now: Date }) {
   const [events, setEvents] = useState<OrgEvent[]>(demoEvents)
   const [live, setLive] = useState<Record<string, LiveState>>(() => demoLive(now))
   const [incidents, setIncidents] = useState<Incident[]>(() => demoIncidents(now))
   const [alerts, setAlerts] = useState<SentAlert[]>(() => demoAlerts(now))
-  const [polls, setPolls] = useState<Poll[]>(demoPolls)
   const [settings, setSettings] = useState<ConfirmationSettings>(demoConfirmationSettings)
   const location = useLocation()
   const navigate = useNavigate()
@@ -98,7 +78,6 @@ export function OrganizerApp({
   const focused =
     path === '/organizacao/eventos/novo' ||
     path.endsWith('/editar') ||
-    path === '/organizacao/eventos/pedir-gestao' ||
     path === '/organizacao/pedidos'
 
   const selectEvent = (id: string) => {
@@ -131,10 +110,6 @@ export function OrganizerApp({
         <Route path="eventos" element={<EventsPage events={events} alerts={alerts} now={now} />} />
         <Route path="eventos/novo" element={<EventFormPage events={events} onSave={saveEvent} />} />
         <Route
-          path="eventos/pedir-gestao"
-          element={<ManagementRequestPage now={now} onSubmit={onManagementRequest} />}
-        />
-        <Route
           path="eventos/:id"
           element={<EventDetailPage events={events} now={now} onSave={saveEvent} />}
         />
@@ -142,7 +117,6 @@ export function OrganizerApp({
           path="eventos/:id/editar"
           element={<EventFormPage events={events} onSave={saveEvent} />}
         />
-        <Route path="eventos/:id/resumo" element={<SummaryPage events={events} />} />
         <Route
           path="ao-vivo"
           element={
@@ -178,17 +152,6 @@ export function OrganizerApp({
               alerts={alerts.filter((a) => a.eventId === current.id)}
               now={now}
               onSend={(alert) => setAlerts((all) => [alert, ...all])}
-            />
-          }
-        />
-        <Route
-          path="sondagens"
-          element={
-            <PollsPage
-              event={current}
-              polls={polls.filter((p) => p.eventId === current.id)}
-              now={now}
-              onPublish={(poll) => setPolls((all) => [poll, ...all])}
             />
           }
         />

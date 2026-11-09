@@ -1,23 +1,21 @@
 import { Megaphone, Send, Sparkles, TriangleAlert, Users } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import {
-  audienceSize,
   connected,
   draftAlert,
   formatNumber,
   formatTime,
   type AlertImportance,
-  type Audience,
   type OrgEvent,
   type SentAlert,
 } from '../../data/organizer'
 import { AiTag, Button, PageHeader, Panel, SuccessBanner } from '../../ui/components'
-import { Field, RadioDot, RadioOption, SegmentedControl, TextArea, TextInput } from '../../ui/forms'
+import { Field, RadioDot, SegmentedControl, TextArea, TextInput } from '../../ui/forms'
 
 const importanceOptions = [
   { value: 'info', label: 'Informação' },
-  { value: 'important', label: 'Importante' },
-  { value: 'urgent', label: 'Urgente' },
+  { value: 'warning', label: 'Aviso' },
+  { value: 'critical', label: 'Crítico' },
 ] as const
 
 /** O6 · Enviar alerta — manual e rascunho IA. */
@@ -36,8 +34,7 @@ export function AlertPage({
   const [draft, setDraft] = useState<'none' | 'ai' | 'manual'>('none')
   const [title, setTitle] = useState('')
   const [text, setText] = useState('')
-  const [importance, setImportance] = useState<AlertImportance>('important')
-  const [audience, setAudience] = useState<Audience>('all')
+  const [importance, setImportance] = useState<AlertImportance>('warning')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('')
 
@@ -66,7 +63,7 @@ export function AlertPage({
     }
     setErrors(found)
     if (Object.keys(found).length) return
-    const delivered = audienceSize(event, audience)
+    const delivered = people
     onSend({
       id: `alerta-${now.getTime()}-${alerts.length}`,
       eventId: event.id,
@@ -83,12 +80,6 @@ export function AlertPage({
     setText('')
     setDraft('none')
   }
-
-  const recipients: { value: Audience; label: string }[] = [
-    { value: 'all', label: `Todos os ligados ao evento · ${formatNumber(people)}` },
-    { value: 'tickets', label: `Só quem tem bilhete · ${formatNumber(event.tickets)}` },
-    { value: 'followers', label: `Só seguidores · ${formatNumber(event.followers)}` },
-  ]
 
   return (
     <form onSubmit={send} noValidate className="flex flex-col gap-4 lg:gap-5">
@@ -169,9 +160,9 @@ export function AlertPage({
                 {(p) => <TextArea {...p} value={text} onChange={(e) => setText(e.target.value)} />}
               </Field>
               <div className="flex flex-col gap-1.5">
-                <p className="text-[13px] font-medium">Importância</p>
+                <p className="text-[13px] font-medium">Gravidade</p>
                 <SegmentedControl
-                  label="Importância"
+                  label="Gravidade"
                   options={importanceOptions}
                   value={importance}
                   onChange={setImportance}
@@ -188,24 +179,10 @@ export function AlertPage({
             }
             titleClassName="text-base"
           >
-            <div role="radiogroup" aria-label="Destinatários" className="flex flex-col gap-2.5">
-              {recipients.map((r) => (
-                <RadioOption
-                  key={r.value}
-                  name="audience"
-                  value={r.value}
-                  checked={audience === r.value}
-                  onChange={(v) => setAudience(v as Audience)}
-                >
-                  <RadioDot checked={audience === r.value} />
-                  <span
-                    className={`text-sm ${audience === r.value ? 'font-semibold' : 'font-medium'}`}
-                  >
-                    {r.label}
-                  </span>
-                </RadioOption>
-              ))}
-            </div>
+            <p className="flex items-center gap-2.5 text-sm font-semibold">
+              <RadioDot checked />
+              Todos os ligados ao evento (bilhete ou código de acesso) · {formatNumber(people)}
+            </p>
           </Panel>
 
           <div className="flex flex-col gap-3 sm:flex-row">
