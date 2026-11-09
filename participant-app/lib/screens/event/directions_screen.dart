@@ -25,8 +25,8 @@ class DirectionsScreen extends StatelessWidget {
         children: [
           AppErrorState(
             message: 'Não encontrámos este evento',
-            retryLabel: 'Voltar à carteira',
-            onRetry: () => context.go('/carteira'),
+            retryLabel: 'Voltar aos meus eventos',
+            onRetry: () => context.go('/eventos'),
           ),
         ],
       );
@@ -78,7 +78,7 @@ class DirectionsScreen extends StatelessWidget {
                 ],
               ),
               SourceLabel(
-                source: 'operador de transportes',
+                source: '${directions.operators} (horários GTFS)',
                 updatedAt: directions.updatedAt,
                 now: store.now,
               ),
@@ -108,8 +108,8 @@ class DirectionsScreen extends StatelessWidget {
                       AppBreadcrumbs(
                         items: [
                           AppBreadcrumb(
-                            'Carteira',
-                            onTap: () => context.go('/carteira'),
+                            'Os meus eventos',
+                            onTap: () => context.go('/eventos'),
                           ),
                           AppBreadcrumb(
                             event.name,
@@ -166,6 +166,7 @@ class DirectionsScreen extends StatelessWidget {
 
     return AppPage(
       title: 'Como chegar',
+      showReportButton: true,
       children: [
         MapPreview(entranceLabel: entrance ?? event.venue),
         venue,

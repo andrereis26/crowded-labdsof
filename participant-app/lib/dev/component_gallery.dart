@@ -32,7 +32,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
               onNavigate: (i) => setState(() => _tab = i),
               userInitials: 'IM',
               unreadNotifications: 2,
-              onSearch: () {},
+              onReport: () {},
               onNotifications: () {},
             )
           : AppTopBar(
@@ -52,7 +52,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
           child: ListView(
             padding: const EdgeInsets.all(AppSpacing.screen),
             children: [
-              _section('Cartão da carteira', [
+              _section('Cartão de bilhete', [
                 WalletCard(
                   eventName: 'Festival Margens',
                   dateLabel: 'HOJE',
@@ -61,7 +61,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                   gate: 'A',
                   seat: 'Geral',
                   statusLabel: 'Confirmado',
-                  source: formatSource('bilheteira oficial', _ago(5)),
+                  source: formatSource('organização', _ago(5)),
                   onTap: () {},
                 ),
                 WalletCard(
@@ -72,7 +72,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                   seat: 'F-12',
                   statusLabel: 'Adiado · 8 Nov',
                   statusTone: WalletCardStatusTone.changed,
-                  source: formatSource('bilheteira oficial', _ago(120)),
+                  source: formatSource('organização', _ago(120)),
                 ),
               ]),
               _section('Banner de alerta', [
@@ -88,7 +88,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                 AlertBanner(
                   kind: AlertBannerKind.officialChange,
                   message: 'A Tempestade foi adiada para SÁB 8 NOV · 21:30',
-                  origin: formatSource('bilheteira oficial', _ago(120)),
+                  origin: formatSource('organização', _ago(120)),
                 ),
                 AlertBanner(
                   kind: AlertBannerKind.urgent,
@@ -144,9 +144,9 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                       icon: Icons.check,
                     ),
                     AppTag(
-                      label: 'Sondagem',
-                      tone: AppTagTone.poll,
-                      icon: Icons.poll_outlined,
+                      label: 'Aviso laranja',
+                      tone: AppTagTone.orange,
+                      icon: Icons.warning_amber_rounded,
                     ),
                   ],
                 ),
@@ -167,7 +167,7 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                 ),
                 AppBreadcrumbs(
                   items: [
-                    AppBreadcrumb('Carteira', onTap: () {}),
+                    AppBreadcrumb('Os meus eventos', onTap: () {}),
                     AppBreadcrumb('Festival Margens', onTap: () {}),
                     const AppBreadcrumb('Como chegar'),
                   ],
@@ -377,7 +377,8 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                 AppNavigationCard(
                   icon: Icons.description_outlined,
                   title: 'PDF do bilhete',
-                  subtitle: 'O ficheiro que recebeste da bilheteira.',
+                  subtitle:
+                      'O ficheiro que recebeste quando compraste o bilhete.',
                   onTap: () {},
                 ),
                 AppNavigationCard(

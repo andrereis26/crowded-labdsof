@@ -127,10 +127,18 @@ IconData weatherIcon(WeatherIcon icon) => switch (icon) {
 
 /// Crowd level and queue times on the event day ("Agora no recinto").
 class LiveVenuePanel extends StatelessWidget {
-  const LiveVenuePanel({super.key, required this.status, required this.now});
+  const LiveVenuePanel({
+    super.key,
+    required this.status,
+    required this.now,
+    this.footer,
+  });
 
   final VenueStatus status;
   final DateTime now;
+
+  /// Shown under a divider: the link to the participant estimates (P14).
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -164,6 +172,7 @@ class LiveVenuePanel extends StatelessWidget {
           '${formatTimeAgo(status.queuesUpdatedAt, now: now)}',
           style: AppTextStyles.source,
         ),
+        if (footer != null) ...[const Divider(), footer!],
       ],
     );
   }

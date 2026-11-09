@@ -72,7 +72,7 @@ The shared components follow the "0 · Componentes base" page and the participan
 | Colours, type, spacing, radii | `AppColors`, `AppTextStyles`, `AppSpacing`, `AppRadii`, `AppTheme.light()` |
 | Buttons | `AppButton` (primary), `AppButton.secondary`, `AppButton.link`, sizes small/regular/large, optional `trailingIcon`, `AppInlineLink`, `AppCircleButton`, `AppChip` |
 | Form fields | `AppTextField`, `AppTextField.multiline`, `AppSelectField`, `AppSegmentedControl`, `AppFieldLabel` |
-| Choices | `AppCategoryTile` (P11), `AppRadioCard` (P4), `AppOptionTile` (P16), `AppNavigationCard` (P2) |
+| Choices | `AppCategoryTile` (P11), `AppRadioCard`, `AppOptionTile`, `AppNavigationCard` (P2) |
 | Layout | `AppPanel`, `AppListGroup` / `AppListTile`, `AppIconBadge`, `AppStepHeading`, `showAppBottomSheet`, `showAppDialog` / `AppDialog` (desktop), `AppFloatingCard` |
 | Navigation | `AppTopBar`, `AppTabBar` (mobile), `AppWebHeader` and `AppBreadcrumbs` (desktop), `isDesktopLayout` |
 | Event information | `WalletCard`, `AlertBanner`, `CrowdLevelIndicator`, `ConfidenceIndicator`, `ConfirmationBar`, `EstimateNotice`, `SourceLabel` / `formatSource` |

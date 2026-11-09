@@ -107,7 +107,7 @@ class AppDialog extends StatelessWidget {
 }
 
 /// White card raised above the grey background, used by desktop pages that
-/// centre a single task (recognition P15, poll P16, entry code P19).
+/// centre a single task (recognition P15, entry code P19).
 class AppFloatingCard extends StatelessWidget {
   const AppFloatingCard({
     super.key,

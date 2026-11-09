@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/app_store.dart';
 import '../../ui/ui.dart';
+import '../report/report_flow.dart';
 
 /// Root sections, in the order of the tab bar.
 abstract final class Sections {
-  static const events = 0;
-  static const wallet = 1;
-  static const account = 2;
+  static const wallet = 0;
+  static const account = 1;
 
-  static const paths = ['/eventos', '/carteira', '/conta'];
+  static const paths = ['/eventos', '/conta'];
+}
+
+/// Opens the report form (P11) with the event in progress chosen, or null
+/// when the participant has no event today and "Reportar" is disabled.
+VoidCallback? reportAction(BuildContext context) {
+  final event = AppStore.of(context).eventsToday.firstOrNull;
+  if (event == null) return null;
+  return () => startReport(context, event);
 }
 
 /// Website header wired to the app routes.
@@ -28,9 +37,9 @@ class CrowdedWebHeader extends StatelessWidget implements PreferredSizeWidget {
     return AppWebHeader(
       currentIndex: currentIndex,
       onNavigate: (i) => context.go(Sections.paths[i]),
-      userInitials: 'IM',
+      userInitials: store.account?.initials ?? '',
       unreadNotifications: store.unreadCount,
-      onSearch: () => context.go(Sections.paths[Sections.events]),
+      onReport: reportAction(context),
       onNotifications: () => context.push('/notificacoes'),
       onAccount: () => context.go(Sections.paths[Sections.account]),
     );
@@ -38,31 +47,71 @@ class CrowdedWebHeader extends StatelessWidget implements PreferredSizeWidget {
 }
 
 /// Scaffold of the root sections: bottom tab bar on mobile, web header on
-/// desktop.
-class AppShell extends StatelessWidget {
+/// desktop. On mobile the bar hides while scrolling down; "Reportar" then
+/// floats in the corner until the bar comes back.
+class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
-  void _onTap(int index) => navigationShell.goBranch(
-    index,
-    initialLocation: index == navigationShell.currentIndex,
-  );
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  bool _barVisible = true;
+
+  void _onTap(int index) {
+    setState(() => _barVisible = true);
+    widget.navigationShell.goBranch(
+      index,
+      initialLocation: index == widget.navigationShell.currentIndex,
+    );
+  }
+
+  bool _onScroll(UserScrollNotification notification) {
+    if (notification.depth != 0) return false;
+    final visible = switch (notification.direction) {
+      ScrollDirection.reverse => false,
+      ScrollDirection.forward => true,
+      ScrollDirection.idle => _barVisible,
+    };
+    if (visible != _barVisible) setState(() => _barVisible = visible);
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final desktop = isDesktopLayout(context);
+    final shell = widget.navigationShell;
+    if (isDesktopLayout(context)) {
+      return Scaffold(
+        appBar: CrowdedWebHeader(currentIndex: shell.currentIndex),
+        body: shell,
+      );
+    }
+    final onReport = reportAction(context);
     return Scaffold(
-      appBar: desktop
-          ? CrowdedWebHeader(currentIndex: navigationShell.currentIndex)
-          : null,
-      body: navigationShell,
-      bottomNavigationBar: desktop
+      body: NotificationListener<UserScrollNotification>(
+        onNotification: _onScroll,
+        child: shell,
+      ),
+      floatingActionButton: _barVisible
           ? null
-          : AppTabBar(
-              currentIndex: navigationShell.currentIndex,
-              onTap: _onTap,
+          : AppReportButton(
+              key: const Key('floating-report'),
+              onPressed: onReport,
             ),
+      bottomNavigationBar: AnimatedSize(
+        duration: const Duration(milliseconds: 200),
+        child: _barVisible
+            ? AppTabBar(
+                currentIndex: shell.currentIndex,
+                onTap: _onTap,
+                onReport: onReport ?? () {},
+                reportEnabled: onReport != null,
+              )
+            : const SizedBox(width: double.infinity),
+      ),
     );
   }
 }
@@ -84,6 +133,7 @@ class AppPage extends StatelessWidget {
     this.background = AppColors.background,
     this.desktopBody,
     this.bottom,
+    this.showReportButton = false,
   });
 
   final String? title;
@@ -107,6 +157,10 @@ class AppPage extends StatelessWidget {
 
   /// Pinned under the content, e.g. a primary button.
   final Widget? bottom;
+
+  /// Shows the floating "Reportar" button on mobile. Off in task flows
+  /// (import, access code, the report form), the entry code and settings.
+  final bool showReportButton;
 
   static void goBack(BuildContext context) {
     if (context.canPop()) {
@@ -168,6 +222,9 @@ class AppPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: background,
+      floatingActionButton: showReportButton
+          ? AppReportButton(onPressed: reportAction(context))
+          : null,
       appBar: AppTopBar(
         title: title,
         leadingLabel: leadingLabel,
@@ -176,11 +233,12 @@ class AppPage extends StatelessWidget {
         actions: actions,
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
           AppSpacing.screen,
           AppSpacing.md,
           AppSpacing.screen,
-          AppSpacing.xl,
+          // Room for the floating "Reportar" over the last item.
+          showReportButton ? 96 : AppSpacing.xl,
         ),
         children: [
           Column(
@@ -205,7 +263,7 @@ class AppPage extends StatelessWidget {
   }
 }
 
-/// Large title header of a root section on mobile ("Carteira", "Eventos").
+/// Large title header of a root section on mobile ("Os meus eventos").
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
@@ -231,7 +289,10 @@ class SectionHeader extends StatelessWidget {
               children: [
                 Semantics(
                   header: true,
-                  child: Text(title, style: AppTextStyles.largeTitle),
+                  child: Text(
+                    title,
+                    style: AppTextStyles.largeTitle.copyWith(fontSize: 28),
+                  ),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 4),

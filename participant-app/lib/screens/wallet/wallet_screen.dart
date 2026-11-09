@@ -9,8 +9,8 @@ import '../event/event_widgets.dart';
 import '../shared/shell.dart';
 import '../shared/ticket_card.dart';
 
-/// P1 · Os meus eventos: the ticket wallet and the events the participant
-/// follows.
+/// P1 · Os meus eventos: the participant's tickets and the public events
+/// joined with an access code.
 class WalletScreen extends StatelessWidget {
   const WalletScreen({super.key});
 
@@ -34,7 +34,7 @@ class _MobileWallet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tickets = store.tickets;
-    final followed = store.followedEvents;
+    final publicEvents = store.publicEvents;
 
     return SafeArea(
       bottom: false,
@@ -47,7 +47,7 @@ class _MobileWallet extends StatelessWidget {
         ),
         children: [
           SectionHeader(
-            title: 'Carteira',
+            title: 'Os meus eventos',
             actions: [
               AppCircleButton(
                 icon: Icons.notifications_none,
@@ -55,42 +55,72 @@ class _MobileWallet extends StatelessWidget {
                 badgeCount: store.unreadCount,
                 onPressed: () => context.push('/notificacoes'),
               ),
-              AppCircleButton(
-                icon: Icons.add,
-                semanticLabel: 'Adicionar bilhete',
-                dark: true,
-                onPressed: () => context.push('/importar'),
-              ),
+              if (tickets.isNotEmpty || publicEvents.isNotEmpty)
+                AppCircleButton(
+                  icon: Icons.add,
+                  semanticLabel: 'Adicionar evento',
+                  dark: true,
+                  onPressed: () => context.push('/importar'),
+                ),
             ],
           ),
-          if (tickets.isEmpty)
-            AppEmptyState(
-              icon: Icons.credit_card,
-              message: 'Ainda sem bilhetes',
-              actionLabel: 'Importar',
-              onAction: () => context.push('/importar'),
-            )
-          else
+          if (tickets.isEmpty && publicEvents.isEmpty)
+            const NoEventsState()
+          else if (tickets.isNotEmpty)
             TicketStack(
               tickets: tickets,
               now: store.now,
               onOpen: (t) => _openEvent(context, t.event),
             ),
-          if (followed.isNotEmpty) ...[
+          if (publicEvents.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xxl),
             Text(
-              'A seguir',
+              'Eventos públicos',
               style: AppTextStyles.headline.copyWith(fontSize: 20),
             ),
             const SizedBox(height: AppSpacing.md),
-            for (final event in followed) ...[
-              FollowedEventRow(
+            for (final event in publicEvents) ...[
+              PublicEventRow(
                 event: event,
                 onTap: () => _openEvent(context, event),
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// P1 empty state: no tickets and no public events yet.
+class NoEventsState extends StatelessWidget {
+  const NoEventsState({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+      child: Column(
+        spacing: AppSpacing.md,
+        children: [
+          const AppResultHeader(
+            icon: Icons.confirmation_number_outlined,
+            title: 'Ainda não tens eventos',
+            message:
+                'Importa o bilhete que compraste ou insere o código de acesso '
+                'de um evento público.',
+            tone: AppTagTone.info,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: 'Importar bilhete',
+            onPressed: () => context.push('/importar'),
+          ),
+          AppButton.secondary(
+            label: 'Inserir código de acesso',
+            onPressed: () => context.push('/codigo-de-acesso'),
+          ),
         ],
       ),
     );
@@ -137,9 +167,9 @@ class TicketStack extends StatelessWidget {
   }
 }
 
-/// White row for an event followed without a ticket.
-class FollowedEventRow extends StatelessWidget {
-  const FollowedEventRow({
+/// White row for a public event joined with an access code.
+class PublicEventRow extends StatelessWidget {
+  const PublicEventRow({
     super.key,
     required this.event,
     required this.onTap,
@@ -181,7 +211,7 @@ class FollowedEventRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const AppTag(label: 'Sem bilhete'),
+              const AppTag(label: 'Público'),
               if (showThumbnail)
                 const Icon(
                   Icons.chevron_right,
@@ -210,7 +240,7 @@ class _DesktopWallet extends StatelessWidget {
     final changed = tickets
         .where((t) => t.event.status == EventStatus.postponed)
         .toList();
-    final followed = store.followedEvents;
+    final publicEvents = store.publicEvents;
 
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 40),
@@ -228,17 +258,17 @@ class _DesktopWallet extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          'Carteira',
+                          'Os meus eventos',
                           style: AppTextStyles.largeTitle.copyWith(
                             fontSize: 28,
                           ),
                         ),
                       ),
                       AppButton.secondary(
-                        label: 'Seguir um evento',
-                        icon: Icons.search,
+                        label: 'Inserir código de acesso',
+                        icon: Icons.qr_code_scanner,
                         expand: false,
-                        onPressed: () => context.go('/eventos'),
+                        onPressed: () => context.push('/codigo-de-acesso'),
                       ),
                       const SizedBox(width: AppSpacing.md),
                       AppButton(
@@ -254,7 +284,7 @@ class _DesktopWallet extends StatelessWidget {
                       kind: AlertBannerKind.officialChange,
                       message: postponedMessage(ticket.event),
                       origin: formatSource(
-                        'bilheteira oficial',
+                        'organização',
                         ticket.event.latestDateChange!.detectedAt,
                         now: now,
                       ),
@@ -263,12 +293,13 @@ class _DesktopWallet extends StatelessWidget {
                         '${ticket.event.latestDateChange!.id}',
                       ),
                     ),
-                  if (tickets.isEmpty)
-                    AppEmptyState(
-                      icon: Icons.credit_card,
-                      message: 'Ainda sem bilhetes',
-                      actionLabel: 'Importar',
-                      onAction: () => context.push('/importar'),
+                  if (tickets.isEmpty && publicEvents.isEmpty)
+                    const AppPanel(
+                      children: [
+                        Center(
+                          child: SizedBox(width: 360, child: NoEventsState()),
+                        ),
+                      ],
                     ),
                   for (final ticket in today) ...[
                     Text(
@@ -310,28 +341,16 @@ class _DesktopWallet extends StatelessWidget {
                       ],
                     ),
                   ],
-                  if (followed.isNotEmpty) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'A seguir',
-                            style: AppTextStyles.headline.copyWith(
-                              fontSize: 20,
-                            ),
-                          ),
-                        ),
-                        AppInlineLink(
-                          label: 'Ver eventos perto de ti',
-                          onPressed: () => context.go('/eventos'),
-                        ),
-                      ],
+                  if (publicEvents.isNotEmpty) ...[
+                    Text(
+                      'Eventos públicos',
+                      style: AppTextStyles.headline.copyWith(fontSize: 20),
                     ),
                     _Grid(
                       columns: 2,
                       children: [
-                        for (final event in followed)
-                          FollowedEventRow(
+                        for (final event in publicEvents)
+                          PublicEventRow(
                             event: event,
                             showThumbnail: true,
                             onTap: () => _openEvent(context, event),

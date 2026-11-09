@@ -37,9 +37,14 @@ abstract final class AppColors {
   /// Off track: dark enough that the white thumb stands out (3.3:1).
   static const switchOff = Color(0xFF8E8E93);
 
-  /// Organizer polls and their avatar (P16, P17).
-  static const pollSoft = Color(0xFFF2EBFF);
-  static const poll = Color(0xFF6B33BF);
+  /// IPMA orange warning (P5, P8). Yellow uses [warningSoft], red uses
+  /// [dangerSoft].
+  static const orangeSoft = Color(0xFFFFE6D1);
+  static const orangeBorder = Color(0xFFF2A66B);
+  static const orange = Color(0xFF9E3D00);
+
+  /// Disabled button fill ("Reportar" with no event that day).
+  static const disabled = Color(0xFFE3E3E8);
 
   /// Share of "Não" answers in a confirmation bar (P14).
   static const deniedSoft = Color(0xFFFADBDB);

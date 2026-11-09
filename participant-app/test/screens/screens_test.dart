@@ -14,7 +14,7 @@ const _desktop = Size(1440, 1000);
 
 Future<AppStore> _pump(
   WidgetTester tester, {
-  String location = '/carteira',
+  String location = '/eventos',
   Size size = _mobile,
   bool signedIn = true,
 }) async {
@@ -29,17 +29,19 @@ Future<AppStore> _pump(
 }
 
 void main() {
-  group('P1 wallet', () {
-    testWidgets('lists tickets, changes and followed events', (tester) async {
+  group('P1 os meus eventos', () {
+    testWidgets('lists tickets, changes and public events', (tester) async {
       await _pump(tester);
 
-      expect(find.text('Carteira'), findsWidgets);
+      expect(find.text('Os meus eventos'), findsWidgets);
       expect(find.text('HOJE'), findsOneWidget);
       expect(find.text('ADIADO · 8 NOV'), findsOneWidget);
       expect(find.text('Adiado'), findsOneWidget);
 
       await tester.scrollUntilVisible(find.text('Corrida de Natal'), 200);
+      expect(find.text('Eventos públicos'), findsOneWidget);
       expect(find.text('Feira Medieval de Gaia'), findsOneWidget);
+      expect(find.text('Público'), findsNWidgets(2));
     });
 
     testWidgets('opens the event page from the front card', (tester) async {
@@ -51,64 +53,139 @@ void main() {
       expect(find.text('Mostrar código de entrada'), findsOneWidget);
       expect(find.text('Porta B fechada. Use a Porta C.'), findsOneWidget);
     });
+
+    testWidgets('shows the empty state and a disabled Reportar', (
+      tester,
+    ) async {
+      final store = await _pump(tester);
+      for (final event in store.connectedEvents) {
+        store.leaveEvent(event.id);
+      }
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ainda não tens eventos'), findsOneWidget);
+      expect(find.text('Inserir código de acesso'), findsOneWidget);
+      final report = tester.widget<AppReportButton>(
+        find.byType(AppReportButton),
+      );
+      expect(report.onPressed, isNull);
+    });
+
+    testWidgets('hides the tab bar on scroll and floats Reportar', (
+      tester,
+    ) async {
+      await _pump(tester);
+      expect(find.byKey(const Key('floating-report')), findsNothing);
+
+      await tester.drag(find.byType(ListView).first, const Offset(0, -200));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('floating-report')), findsOneWidget);
+      expect(find.byType(AppTabBar), findsNothing);
+
+      await tester.drag(find.byType(ListView).first, const Offset(0, 100));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppTabBar), findsOneWidget);
+    });
   });
 
-  group('P2–P4 import', () {
-    testWidgets('imports a PDF and links it to the catalog event', (
+  group('P2 import', () {
+    testWidgets('adds a PDF ticket whose event code matches (P2a)', (
       tester,
     ) async {
       final store = await _pump(tester, location: '/importar');
 
       await tester.tap(find.text('PDF do bilhete'));
       await tester.pumpAndSettle();
-      expect(find.text('Confirma os dados do bilhete'), findsOneWidget);
-      expect(find.text('Código de entrada encontrado'), findsOneWidget);
-      expect(find.text('Festival Margens 2026'), findsOneWidget);
+      expect(find.text('Adicionaste o evento Noite de Fado'), findsOneWidget);
+      expect(find.text('Casa do Infante, Porto'), findsOneWidget);
+      expect(store.tickets, hasLength(5));
 
-      await tester.tap(find.text('Confirmar e continuar'));
+      await tester.ensureVisible(find.text('Não é o teu evento? Remover'));
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Não é o teu evento? Remover'));
+      await tester.pumpAndSettle();
+      expect(store.tickets, hasLength(4));
+    });
+
+    testWidgets('asks for the event code, pre-filled, for an image (P2b)', (
+      tester,
+    ) async {
+      final store = await _pump(tester, location: '/importar');
+
+      await tester.tap(find.text('Captura de ecrã ou foto'));
       await tester.pumpAndSettle();
       expect(
-        find.text('Qual destes eventos é o do teu bilhete?'),
+        find.text('O código lido não corresponde a nenhum evento'),
         findsOneWidget,
       );
-      expect(find.text('Correspondência alta'), findsOneWidget);
-      expect(find.text('Correspondência baixa'), findsOneWidget);
+      expect(find.text('FADO-2O26'), findsOneWidget);
 
-      await tester.tap(find.text('Associar e guardar'));
+      await tester.enterText(find.byType(TextField), 'fado-2026');
+      await tester.tap(find.text('Associar bilhete'));
       await tester.pumpAndSettle();
-      expect(find.text('Bilhete guardado na carteira.'), findsOneWidget);
-      expect(store.tickets, hasLength(4));
-      expect(store.importDraft, isNull);
+      expect(find.text('Adicionaste o evento Noite de Fado'), findsOneWidget);
+      expect(store.ticketFor('noite-de-fado'), isNotNull);
     });
 
-    testWidgets('manual entry validates required fields', (tester) async {
-      await _pump(tester, location: '/importar');
-
-      await tester.tap(find.text('Introduzir dados manualmente'));
-      await tester.pumpAndSettle();
-      expect(find.text('Introduz os dados do bilhete'), findsOneWidget);
-
-      await tester.ensureVisible(find.text('Confirmar e continuar'));
-      await tester.tap(find.text('Confirmar e continuar'));
-      await tester.pumpAndSettle();
-      expect(find.text('Indica o nome do evento.'), findsOneWidget);
-      expect(find.text('Usa o formato dd/mm/aaaa.'), findsOneWidget);
-    });
-
-    testWidgets('saves a ticket without linking it', (tester) async {
+    testWidgets('does not store a ticket for an event not on Crowded', (
+      tester,
+    ) async {
       final store = await _pump(tester, location: '/importar');
-      store.startImport(TicketOrigin.manual)
-        ..eventName = 'Noite de Fado'
-        ..date = DateTime(2026, 11, 2)
-        ..start = '21:00'
-        ..place = 'Casa do Fado, Porto';
-      final ticket = store.saveDraft(store.importDraft!);
 
-      expect(ticket.event.name, 'Noite de Fado');
-      expect(ticket.event.start, DateTime(2026, 11, 2, 21));
-      expect(ticket.event.changes, isEmpty);
-      expect(store.tickets, hasLength(5));
+      await tester.tap(find.text('Captura de ecrã ou foto'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Associar bilhete'));
+      await tester.pumpAndSettle();
+      expect(find.text('Este evento ainda não usa o Crowded'), findsOneWidget);
+      expect(store.tickets, hasLength(4));
+      expect(store.pendingImport, isNull);
     });
+
+    testWidgets('explains a ticket without a QR code', (tester) async {
+      await _pump(tester, location: '/importar/erro/sem-qr');
+      expect(
+        find.text('Não encontrámos o código QR do bilhete'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('explains a ticket linked to another account', (tester) async {
+      await _pump(tester, location: '/importar/erro/outra-conta');
+      expect(
+        find.text('Este bilhete já está ligado a outra conta'),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('P21 access code', () {
+    testWidgets('says when the code is not found', (tester) async {
+      await _pump(tester, location: '/codigo-de-acesso');
+
+      await tester.enterText(find.byType(TextField), 'SAOJOA024');
+      await tester.tap(find.text('Abrir evento'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Código não encontrado.'), findsOneWidget);
+    });
+
+    testWidgets('joins the public event and opens its page', (tester) async {
+      final store = await _pump(tester, location: '/codigo-de-acesso');
+
+      await tester.enterText(find.byType(TextField), 'saojoao24');
+      await tester.tap(find.text('Abrir evento'));
+      await tester.pumpAndSettle();
+      expect(store.isConnected('sao-joao'), isTrue);
+      expect(find.text('São João na Ribeira'), findsWidgets);
+    });
+  });
+
+  testWidgets('P8 shows a left event instead of its page', (tester) async {
+    await _pump(tester, location: '/evento/mercado-outono');
+
+    expect(find.text('Já não estás ligado a este evento'), findsOneWidget);
+    expect(find.textContaining('Mercado de Outono · saíste'), findsOneWidget);
+    expect(find.text('Inserir código de acesso'), findsOneWidget);
   });
 
   group('P5 event page', () {
@@ -116,6 +193,11 @@ void main() {
       await _pump(tester, location: '/evento/festival-margens');
 
       expect(find.text('Agora no recinto'), findsOneWidget);
+      expect(find.text('AVISO AMARELO · IPMA'), findsOneWidget);
+      expect(
+        find.textContaining('Previsão IPMA · distrito do Porto'),
+        findsOneWidget,
+      );
       expect(find.text('Lotação Moderada', findRichText: true), findsOneWidget);
       expect(find.text('~25 min'), findsOneWidget);
       expect(find.text('a aumentar'), findsOneWidget);
@@ -140,12 +222,32 @@ void main() {
       expect(find.text('Agora no recinto'), findsNothing);
     });
 
+    testWidgets('links to the participant estimates', (tester) async {
+      await _pump(tester, location: '/evento/festival-margens');
+
+      await tester.ensureVisible(find.text('Estimativas de participantes · 2'));
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Estimativas de participantes · 2'));
+      await tester.pumpAndSettle();
+      expect(find.text('9 confirmaram · 1 negou'), findsOneWidget);
+    });
+
+    testWidgets('removes the ticket from the event page', (tester) async {
+      final store = await _pump(tester, location: '/evento/a-tempestade');
+
+      await tester.tap(find.bySemanticsLabel('Mais opções'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(AppButton, 'Remover bilhete'));
+      await tester.pumpAndSettle();
+      expect(store.isConnected('a-tempestade'), isFalse);
+      expect(find.text('ADIADO · 8 NOV'), findsNothing);
+    });
+
     testWidgets('P10 asks for location before reporting', (tester) async {
       await _pump(tester, location: '/evento/festival-margens');
 
-      await tester.ensureVisible(find.text('Reportar algo no recinto'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Reportar algo no recinto'));
+      await tester.tap(find.byType(AppReportButton));
       await tester.pumpAndSettle();
       expect(find.text('Confirmar que estás no recinto'), findsOneWidget);
 
@@ -160,12 +262,13 @@ void main() {
 
     expect(find.text('ESTADO ATUAL'), findsOneWidget);
     expect(find.text('Data alterada'), findsOneWidget);
-    expect(find.text('Sala confirmada'), findsOneWidget);
+    expect(find.text('Evento publicado'), findsOneWidget);
 
     await tester.tap(find.text('Data alterada'));
     await tester.pumpAndSettle();
     expect(find.text('A Tempestade foi adiada'), findsOneWidget);
     expect(find.text('O teu bilhete continua válido'), findsOneWidget);
+    expect(find.text('Reembolso, se não puderes ir'), findsOneWidget);
     expect(find.text('Sem alteração'), findsNWidgets(2));
   });
 
@@ -174,6 +277,8 @@ void main() {
     expect(store.unreadCount, 2);
 
     await tester.ensureVisible(find.text('Pedidos'));
+
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Pedidos'));
     await tester.pumpAndSettle();
     expect(
@@ -186,23 +291,39 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Respondeste: Sim'), findsOneWidget);
     expect(store.unreadCount, 1);
-  });
 
-  testWidgets('P9 lists today\'s events and follows one', (tester) async {
-    final store = await _pump(tester, location: '/eventos');
-
-    expect(find.text('Tens bilhete'), findsOneWidget);
-    expect(find.text('A seguir'), findsOneWidget);
-    expect(store.isFollowing('mercado-outono'), isFalse);
-
-    await tester.tap(find.text('Seguir').first);
+    await tester.ensureVisible(find.text('Tempo'));
     await tester.pumpAndSettle();
-    expect(store.isFollowing('mercado-outono'), isTrue);
+    await tester.tap(find.text('Tempo'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Aviso laranja: chuva forte no Porto amanhã'),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(find.text('Todas'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Todas'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Abertura adiada para as 11:00'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Já não estás ligado a este evento.'), findsOneWidget);
+    // Tap the start of the line: the floating Reportar sits on the right.
+    await tester.tapAt(
+      tester.getTopLeft(find.text('Abertura adiada para as 11:00')) +
+          const Offset(4, 4),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Já não estás ligado a este evento'), findsOneWidget);
   });
 
   group('C1 sign in', () {
     testWidgets('signed-out users are sent to C1', (tester) async {
-      await _pump(tester, location: '/carteira', signedIn: false);
+      await _pump(tester, location: '/eventos', signedIn: false);
 
       expect(find.text('Sabe o que se passa nos teus eventos'), findsOneWidget);
       expect(find.text('Esqueci-me da palavra-passe'), findsOneWidget);
@@ -239,11 +360,14 @@ void main() {
     });
   });
 
-  testWidgets('Conta signs out to C1', (tester) async {
+  testWidgets('C0 lists the account menu and signs out to C1', (tester) async {
     final store = await _pump(tester, location: '/conta');
 
     expect(find.text('Inês Martins'), findsOneWidget);
+    expect(find.text('Contribuições'), findsOneWidget);
+    expect(find.text('Os teus reportes e confirmações'), findsOneWidget);
     await tester.ensureVisible(find.text('Terminar sessão'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Terminar sessão'));
     await tester.pumpAndSettle();
     expect(store.signedIn, isFalse);
@@ -254,7 +378,7 @@ void main() {
     final store = await _pump(tester, location: '/conta/notificacoes');
 
     expect(find.text('Só alterações oficiais'), findsOneWidget);
-    await tester.tap(find.text('Alertas de meteorologia'));
+    await tester.tap(find.text('Avisos meteorológicos'));
     await tester.pumpAndSettle();
     expect(store.preferences.weatherAlerts, isFalse);
 
@@ -278,6 +402,7 @@ void main() {
       find.text('4 bilhetes e os respetivos códigos de entrada'),
       findsOneWidget,
     );
+    expect(find.text('2 eventos públicos a que estás ligado'), findsOneWidget);
     final button = find.widgetWithText(
       AppButton,
       'Apagar conta definitivamente',
@@ -290,6 +415,8 @@ void main() {
     expect(tester.widget<AppButton>(button).onPressed, isNotNull);
 
     await tester.ensureVisible(button);
+
+    await tester.pumpAndSettle();
     await tester.tap(button);
     await tester.pumpAndSettle();
     expect(store.signedIn, isFalse);
@@ -299,9 +426,10 @@ void main() {
 
   group('P11–P12 report', () {
     Future<void> openReport(WidgetTester tester) async {
-      await tester.ensureVisible(find.text('Reportar algo no recinto'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Reportar algo no recinto'));
+      final floating = find.byType(AppReportButton);
+      await tester.tap(
+        floating.evaluate().isEmpty ? find.text('Reportar') : floating,
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Permitir localização'));
       await tester.pumpAndSettle();
@@ -330,6 +458,8 @@ void main() {
       expect(tester.widget<AppButton>(send).onPressed, isNotNull);
 
       await tester.ensureVisible(send);
+
+      await tester.pumpAndSettle();
       await tester.tap(send);
       await tester.pumpAndSettle();
       expect(find.text('Reporte enviado'), findsOneWidget);
@@ -413,32 +543,12 @@ void main() {
     expect(find.text('Alerta enviado a 1 240 pessoas'), findsOneWidget);
   });
 
-  testWidgets('P16 sends a poll answer once every question has one', (
-    tester,
-  ) async {
-    final store = await _pump(tester, location: '/sondagem/p-inverno');
-    final send = find.widgetWithText(AppButton, 'Enviar resposta');
-    expect(tester.widget<AppButton>(send).onPressed, isNull);
-
-    await tester.tap(find.text('Sim, vou'));
-    await tester.ensureVisible(find.text('Entre as 20h e as 22h'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Entre as 20h e as 22h'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(send);
-    await tester.tap(send);
-    await tester.pumpAndSettle();
-
-    expect(store.poll('p-inverno')!.answers, [0, 1]);
-    expect(store.isFollowing('margens-inverno'), isFalse);
-  });
-
   testWidgets('P17 answers a request and shares an idea', (tester) async {
     final store = await _pump(
       tester,
       location: '/evento/festival-margens/pedidos',
     );
-    expect(find.text('3 pedidos da organização · 1 urgente'), findsOneWidget);
+    expect(find.text('2 pedidos da organização · 1 urgente'), findsOneWidget);
 
     await tester.tap(find.text('Sim'));
     await tester.pumpAndSettle();
@@ -447,6 +557,7 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Mais casas de banho');
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Partilhar ideia'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Partilhar ideia'));
     await tester.pumpAndSettle();
     expect(store.ideasFor('festival-margens').single.ideasShared, 24);
@@ -459,6 +570,7 @@ void main() {
     expect(find.text('Parque da Cidade · Porta A'), findsOneWidget);
     expect(find.text('Autocarro 502'), findsOneWidget);
     expect(find.text('Perturbação'), findsOneWidget);
+    expect(find.textContaining('horários GTFS'), findsOneWidget);
   });
 
   group('P19 entry code', () {
@@ -468,13 +580,6 @@ void main() {
       expect(find.byType(EntryCodeImage), findsOneWidget);
       expect(find.text('Ref. •••• 4821'), findsOneWidget);
       expect(find.text('Inês Martins'), findsOneWidget);
-    });
-
-    testWidgets('explains when the ticket has no code', (tester) async {
-      await _pump(tester, location: '/evento/jazz-no-parque/codigo');
-
-      expect(find.text('Código de entrada não disponível'), findsOneWidget);
-      expect(find.byType(EntryCodeImage), findsNothing);
     });
 
     testWidgets('asks for the password on the web and hides after 2 min', (
@@ -521,13 +626,18 @@ void main() {
   for (final (name, size) in [('mobile', _mobile), ('desktop', _desktop)]) {
     testWidgets('every screen renders on $name', (tester) async {
       for (final location in [
-        '/carteira',
         '/eventos',
         '/conta',
         '/notificacoes',
         '/importar',
-        '/importar/rever',
-        '/importar/associar',
+        '/importar/codigo',
+        '/importar/adicionado',
+        '/importar/erro/sem-qr',
+        '/importar/erro/sem-crowded',
+        '/importar/erro/outra-conta',
+        '/codigo-de-acesso',
+        '/sem-ligacao/mercado-outono',
+        '/reportar',
         '/evento/festival-margens',
         '/evento/jazz-no-parque',
         '/evento/a-tempestade',
@@ -542,7 +652,6 @@ void main() {
         '/evento/festival-margens/reporte?estado=longe',
         '/evento/festival-margens/estimativas',
         '/reconhecimento/r-agua',
-        '/sondagem/p-inverno',
         '/evento/festival-margens/pedidos',
         '/evento/festival-margens/como-chegar',
         '/evento/feira-medieval/como-chegar',

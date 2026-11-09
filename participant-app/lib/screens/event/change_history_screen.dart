@@ -31,6 +31,7 @@ class ChangeHistoryScreen extends StatelessWidget {
     return AppPage(
       title: 'Histórico',
       leadingLabel: 'Evento',
+      showReportButton: true,
       maxWidth: 600,
       children: [
         AppPanel(
@@ -78,9 +79,7 @@ class ChangeHistoryScreen extends StatelessWidget {
                   now: now,
                   latest: index == 0 && change.kind != ChangeKind.published,
                   last: index == event.changes.length - 1,
-                  onTap:
-                      change.source == ChangeSource.official &&
-                          change.kind != ChangeKind.published
+                  onTap: change.kind != ChangeKind.published
                       ? () => context.push(
                           '/evento/${event.id}/alteracao/${change.id}',
                         )
@@ -88,25 +87,6 @@ class ChangeHistoryScreen extends StatelessWidget {
                 ),
             ],
           ),
-        if (event.sourceUpdatedAt != null)
-          Row(
-            spacing: AppSpacing.sm,
-            children: [
-              const Icon(Icons.sync, size: 16, color: AppColors.inkSecondary),
-              Expanded(
-                child: Text(
-                  'Sincronizado com a bilheteira '
-                  '${formatTimeAgo(event.sourceUpdatedAt!, now: now)}',
-                  style: AppTextStyles.caption,
-                ),
-              ),
-            ],
-          ),
-        AppButton.secondary(
-          label: 'Condições de troca e reembolso',
-          icon: Icons.open_in_new,
-          onPressed: () => showComingSoon(context),
-        ),
       ],
     );
   }
@@ -191,7 +171,7 @@ class _CurrentStatus extends StatelessWidget {
                     ),
                   ),
                 Text(
-                  'Fonte: ${change.sourceName} · detetado às '
+                  'Fonte: organização · publicado às '
                   '${formatTime(change.detectedAt)}',
                   style: AppTextStyles.source.copyWith(
                     color: AppColors.warning,
@@ -237,7 +217,6 @@ class _TimelineEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final official = change.source == ChangeSource.official;
     return InkWell(
       onTap: onTap,
       child: IntrinsicHeight(
@@ -290,9 +269,9 @@ class _TimelineEntry extends StatelessWidget {
                     Row(
                       spacing: AppSpacing.xs,
                       children: [
-                        AppTag(
-                          label: change.source.label,
-                          tone: official ? AppTagTone.info : AppTagTone.neutral,
+                        const AppTag(
+                          label: 'Organização',
+                          tone: AppTagTone.info,
                         ),
                         Flexible(
                           child: Text(

@@ -4,7 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
-enum AppTagTone { neutral, success, warning, danger, info, poll }
+enum AppTagTone { neutral, success, warning, danger, info, orange }
 
 enum AppTagSize {
   /// 11 px ("No recinto", "Desatualizado", "Correspondência alta").
@@ -40,7 +40,7 @@ class AppTag extends StatelessWidget {
         AppTagTone.warning => (AppColors.warningSoft, AppColors.warning),
         AppTagTone.danger => (AppColors.dangerSoft, AppColors.danger),
         AppTagTone.info => (AppColors.primarySoft, AppColors.primary),
-        AppTagTone.poll => (AppColors.pollSoft, AppColors.poll),
+        AppTagTone.orange => (AppColors.orangeSoft, AppColors.orange),
       };
 
   @override

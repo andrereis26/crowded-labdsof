@@ -66,8 +66,8 @@ class _EntryCodeScreenState extends State<EntryCodeScreen> {
         children: [
           AppErrorState(
             message: 'Não tens bilhete para este evento',
-            retryLabel: 'Voltar à carteira',
-            onRetry: () => context.go('/carteira'),
+            retryLabel: 'Voltar aos meus eventos',
+            onRetry: () => context.go('/eventos'),
           ),
         ],
       );
@@ -228,8 +228,7 @@ class _EntryCodeContent extends StatelessWidget {
 
   String get _origin {
     final label = ticket.origin.label;
-    final phrase = label[0].toLowerCase() + label.substring(1);
-    return ticket.origin == TicketOrigin.email ? '$phrase (.eml)' : phrase;
+    return label[0].toLowerCase() + label.substring(1);
   }
 
   @override
@@ -317,10 +316,7 @@ class _EntryCodeContent extends StatelessWidget {
                 ),
               ],
             ),
-          _OriginNote(
-            'Código da bilheteira · $_origin em $imported',
-            strong: true,
-          ),
+          _OriginNote('QR do bilhete · $_origin em $imported', strong: true),
         ] else ...[
           Container(
             padding: const EdgeInsets.symmetric(
@@ -345,36 +341,18 @@ class _EntryCodeContent extends StatelessWidget {
                   style: AppTextStyles.buttonLarge,
                 ),
                 Text(
-                  _missingCodeMessage(ticket.origin),
+                  'Sem o código QR, o bilhete não pode ser usado à entrada. '
+                  'Importa de novo o PDF original.',
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodySecondary.copyWith(height: 1.2),
                 ),
               ],
             ),
           ),
-          AppButton(
-            label: 'Carregar captura do código',
-            icon: Icons.file_upload_outlined,
-            onPressed: () => showComingSoon(context),
-          ),
-          AppButton.link(
-            label: 'Como encontrar o código no email ou na app da bilheteira?',
-            onPressed: () => showComingSoon(context),
-          ),
           _OriginNote('Bilhete $_origin em $imported · sem código'),
         ],
       ],
     );
-  }
-
-  static String _missingCodeMessage(TicketOrigin origin) {
-    final where = switch (origin) {
-      TicketOrigin.pdf => 'no PDF',
-      TicketOrigin.email => 'no email',
-      TicketOrigin.manual => 'nos dados',
-    };
-    return 'Não encontrámos um código $where que importaste. Usa o bilhete '
-        'original ou carrega uma captura de ecrã do código.';
   }
 }
 

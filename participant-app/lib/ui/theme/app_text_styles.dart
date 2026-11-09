@@ -12,7 +12,7 @@ abstract final class AppTextStyles {
     height: 1.2,
   );
 
-  /// Screen title on root tabs ("Carteira").
+  /// Screen title on root tabs ("Os meus eventos").
   static final largeTitle = _base.copyWith(
     fontSize: 34,
     fontWeight: FontWeight.w700,

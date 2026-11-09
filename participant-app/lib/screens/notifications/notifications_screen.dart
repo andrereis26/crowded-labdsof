@@ -48,8 +48,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     return AppPage(
-      leadingLabel: 'Carteira',
+      leadingLabel: 'Os meus eventos',
       maxWidth: 640,
+      showReportButton: true,
       children: [
         SectionHeader(
           title: 'Notificações',
@@ -105,6 +106,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   _NotificationTile(
                     notification: n,
                     now: now,
+                    connected:
+                        store.isConnected(n.eventId) ||
+                        store.eventById(n.eventId) == null,
                     onTap: () => _open(store, n),
                     onAnswer: (answer) => store.answerRequest(n, answer),
                   ),
@@ -123,12 +127,17 @@ class _NotificationTile extends StatelessWidget {
     required this.notification,
     required this.now,
     required this.onTap,
+    this.connected = true,
     required this.onAnswer,
   });
 
   final AppNotification notification;
   final DateTime now;
   final VoidCallback onTap;
+
+  /// False for events the participant left: shown muted, and opening it
+  /// explains that the page is no longer available (SR-020).
+  final bool connected;
   final ValueChanged<bool> onAnswer;
 
   (IconData, Color, Color) get _icon => switch (notification.kind) {
@@ -147,11 +156,6 @@ class _NotificationTile extends StatelessWidget {
       AppColors.primarySoft,
       AppColors.primary,
     ),
-    NotificationKind.poll => (
-      Icons.poll_outlined,
-      AppColors.pollSoft,
-      AppColors.poll,
-    ),
     NotificationKind.recognition => (
       Icons.workspace_premium_outlined,
       AppColors.successSoft,
@@ -163,9 +167,9 @@ class _NotificationTile extends StatelessWidget {
       AppColors.danger,
     ),
     NotificationKind.weather => (
-      Icons.water_drop_outlined,
-      AppColors.primarySoft,
-      AppColors.primary,
+      Icons.warning_amber_rounded,
+      AppColors.orangeSoft,
+      AppColors.orange,
     ),
   };
 
@@ -173,9 +177,11 @@ class _NotificationTile extends StatelessWidget {
   /// icon already shows the type.
   String? get _tag => notification.urgent
       ? 'Urgente'
-      : notification.kind == NotificationKind.officialChange
-      ? 'Oficial'
-      : null;
+      : switch (notification.kind) {
+          NotificationKind.officialChange => 'Organização',
+          NotificationKind.weather => 'IPMA',
+          _ => null,
+        };
 
   String get _when {
     final at = notification.receivedAt;
@@ -188,107 +194,115 @@ class _NotificationTile extends StatelessWidget {
     final n = notification;
     final (icon, background, foreground) = _icon;
     final isOpenRequest =
-        n.kind == NotificationKind.request && n.answer == null;
+        connected && n.kind == NotificationKind.request && n.answer == null;
 
     return Semantics(
       button: true,
       label: n.read ? null : 'Não lida',
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: AppSpacing.md,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: background,
-                  borderRadius: const BorderRadius.all(AppRadii.field),
+      child: Opacity(
+        opacity: connected ? 1 : 0.6,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: AppSpacing.md,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: background,
+                    borderRadius: const BorderRadius.all(AppRadii.field),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 18,
+                    color: foreground,
+                    semanticLabel: n.typeLabel,
+                  ),
                 ),
-                child: Icon(
-                  icon,
-                  size: 18,
-                  color: foreground,
-                  semanticLabel: n.typeLabel,
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: 3,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: AppSpacing.xs,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            [n.eventName, ?_tag].join(' · '),
-                            style: AppTextStyles.caption.copyWith(
-                              fontWeight: FontWeight.w500,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 3,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: AppSpacing.xs,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              [n.eventName, ?_tag].join(' · '),
+                              style: AppTextStyles.caption.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
-                        ),
-                        Text(_when, style: AppTextStyles.caption),
-                      ],
-                    ),
-                    Text(n.title, style: AppTextStyles.bodyStrong),
-                    if (n.body != null)
-                      Text(
-                        n.body!,
-                        style: AppTextStyles.footnote.copyWith(
-                          color: AppColors.ink,
-                          height: 1.4,
-                        ),
+                          Text(_when, style: AppTextStyles.caption),
+                        ],
                       ),
-                    if (isOpenRequest)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppSpacing.xs),
-                        child: Row(
-                          spacing: AppSpacing.sm,
-                          children: [
-                            AppButton.secondary(
-                              label: 'Não',
-                              size: AppButtonSize.small,
-                              expand: false,
-                              onPressed: () => onAnswer(false),
-                            ),
-                            AppButton(
-                              label: 'Sim',
-                              size: AppButtonSize.small,
-                              expand: false,
-                              onPressed: () => onAnswer(true),
-                            ),
-                          ],
+                      Text(n.title, style: AppTextStyles.bodyStrong),
+                      if (!connected)
+                        Text(
+                          'Já não estás ligado a este evento.',
+                          style: AppTextStyles.footnote,
+                        )
+                      else if (n.body != null)
+                        Text(
+                          n.body!,
+                          style: AppTextStyles.footnote.copyWith(
+                            color: AppColors.ink,
+                            height: 1.4,
+                          ),
                         ),
-                      ),
-                    if (n.answer != null)
-                      Text(
-                        'Respondeste: ${n.answer! ? 'Sim' : 'Não'}',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.success,
-                          fontWeight: FontWeight.w600,
+                      if (isOpenRequest)
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.xs),
+                          child: Row(
+                            spacing: AppSpacing.sm,
+                            children: [
+                              AppButton.secondary(
+                                label: 'Não',
+                                size: AppButtonSize.small,
+                                expand: false,
+                                onPressed: () => onAnswer(false),
+                              ),
+                              AppButton(
+                                label: 'Sim',
+                                size: AppButtonSize.small,
+                                expand: false,
+                                onPressed: () => onAnswer(true),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                  ],
+                      if (n.answer != null)
+                        Text(
+                          'Respondeste: ${n.answer! ? 'Sim' : 'Não'}',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              SizedBox(
-                width: 8,
-                child: n.read
-                    ? null
-                    : Container(
-                        margin: const EdgeInsets.only(top: 4),
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
+                SizedBox(
+                  width: 8,
+                  child: n.read
+                      ? null
+                      : Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                      ),
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

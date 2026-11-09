@@ -31,8 +31,8 @@ class EstimatesScreen extends StatelessWidget {
         children: [
           AppErrorState(
             message: 'Não encontrámos este evento',
-            retryLabel: 'Voltar à carteira',
-            onRetry: () => context.go('/carteira'),
+            retryLabel: 'Voltar aos meus eventos',
+            onRetry: () => context.go('/eventos'),
           ),
         ],
       );
@@ -70,8 +70,8 @@ class EstimatesScreen extends StatelessWidget {
                       AppBreadcrumbs(
                         items: [
                           AppBreadcrumb(
-                            'Carteira',
-                            onTap: () => context.go('/carteira'),
+                            'Os meus eventos',
+                            onTap: () => context.go('/eventos'),
                           ),
                           AppBreadcrumb(
                             event.name,
@@ -177,6 +177,7 @@ class EstimatesScreen extends StatelessWidget {
 
     return AppPage(
       title: 'Estimativas',
+      showReportButton: true,
       children: [
         EventContextRow(event: event),
         const EstimateNotice(

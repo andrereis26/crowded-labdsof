@@ -25,8 +25,8 @@ class RecognitionScreen extends StatelessWidget {
         children: [
           AppErrorState(
             message: 'Não encontrámos este reconhecimento',
-            retryLabel: 'Voltar à carteira',
-            onRetry: () => context.go('/carteira'),
+            retryLabel: 'Voltar aos meus eventos',
+            onRetry: () => context.go('/eventos'),
           ),
         ],
       );
