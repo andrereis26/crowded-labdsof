@@ -2,6 +2,7 @@ import 'package:crowded/app.dart';
 import 'package:crowded/data/app_store.dart';
 import 'package:crowded/data/models.dart';
 import 'package:crowded/screens/event/entry_code_screen.dart';
+import 'package:crowded/screens/import/access_code_screen.dart';
 import 'package:crowded/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -29,6 +30,16 @@ Future<AppStore> _pump(
 }
 
 void main() {
+  // No camera in widget tests: a button stands in for a scanned QR code.
+  setUpAll(() {
+    qrScannerBuilder = (context, onCode) => Center(
+      child: TextButton(
+        onPressed: () => onCode('SAOJOAO24'),
+        child: const Text('Ler código QR'),
+      ),
+    );
+  });
+
   group('P1 os meus eventos', () {
     testWidgets('lists tickets, changes and public events', (tester) async {
       await _pump(tester);
@@ -160,6 +171,17 @@ void main() {
   });
 
   group('P21 access code', () {
+    testWidgets('joins the event from the QR code on the poster', (
+      tester,
+    ) async {
+      final store = await _pump(tester, location: '/codigo-de-acesso');
+
+      await tester.tap(find.text('Ler código QR'));
+      await tester.pumpAndSettle();
+      expect(store.isConnected('sao-joao'), isTrue);
+      expect(find.text('São João na Ribeira'), findsWidgets);
+    });
+
     testWidgets('says when the code is not found', (tester) async {
       await _pump(tester, location: '/codigo-de-acesso');
 

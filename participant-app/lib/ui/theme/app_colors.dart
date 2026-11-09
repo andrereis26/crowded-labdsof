@@ -43,6 +43,10 @@ abstract final class AppColors {
   static const orangeBorder = Color(0xFFF2A66B);
   static const orange = Color(0xFF9E3D00);
 
+  /// Border of a field filled in for the participant that they should
+  /// check (the event code read from a ticket, P2b).
+  static const attention = Color(0xFFD97808);
+
   /// Disabled button fill ("Reportar" with no event that day).
   static const disabled = Color(0xFFE3E3E8);
 
