@@ -16,9 +16,6 @@ class DemoData {
 
   DateTime _ago(Duration d) => now.subtract(d);
 
-  /// Next Saturday (today when today is Saturday).
-  int get _daysToSaturday => (DateTime.saturday - now.weekday) % 7;
-
   late final festivalMargens = Event(
     id: 'festival-margens',
     name: 'Festival Margens',
@@ -29,13 +26,21 @@ class DemoData {
     end: _day(1, 2),
     art: const EventArt(Color(0xFF3C50AA), Color(0xFF14142D)),
     organizer: 'Organização Margens',
-    distanceKm: 5.4,
-    sourceUpdatedAt: _ago(const Duration(minutes: 5)),
+    eventCode: 'MARG-2026',
+    updatedAt: _ago(const Duration(minutes: 5)),
     alerts: [
       EventAlert(
         message: 'Porta B fechada. Use a Porta C.',
         publisher: 'Organização Margens',
         sentAt: _ago(const Duration(minutes: 3)),
+      ),
+    ],
+    warnings: [
+      WeatherWarning(
+        level: WarningLevel.yellow,
+        title: 'Vento forte no distrito do Porto',
+        issuedAt: _day(0, 14),
+        until: _day(0, 23, 59),
       ),
     ],
     venueStatus: VenueStatus(
@@ -83,18 +88,19 @@ class DemoData {
     directions: Directions(
       entrance: 'Porta A',
       entranceDetail: 'Entrada principal',
+      operators: 'Metro do Porto e STCP',
       updatedAt: _ago(const Duration(minutes: 1)),
       options: const [
         TransportOption(
           mode: TransportMode.metro,
           title: 'Metro + 8 min a pé',
-          detail: 'Próximo às 21:12 · depois às 21:24',
+          detail: 'Metro do Porto · linha D · 21:12 · 21:24',
           minutes: 26,
         ),
         TransportOption(
           mode: TransportMode.bus,
           title: 'Autocarro 502',
-          detail: 'Desvio na Av. da Boavista · próximo às 21:05',
+          detail: 'STCP: desvio na Av. da Boavista · próximo às 21:05',
           minutes: 25,
           disrupted: true,
         ),
@@ -117,10 +123,9 @@ class DemoData {
         id: 'margens-published',
         kind: ChangeKind.published,
         title: 'Evento publicado',
-        description: 'Bilhetes à venda na bilheteira oficial.',
+        description: 'Data, horário e local publicados pela organização.',
         detectedAt: _ago(const Duration(days: 40)),
-        source: ChangeSource.official,
-        publisher: 'Bilheteira oficial',
+        publisher: 'Organização Margens',
       ),
     ],
   );
@@ -134,7 +139,8 @@ class DemoData {
     art: const EventArt(Color(0xFF8C4D2E), Color(0xFF26140F)),
     status: EventStatus.postponed,
     organizer: 'Teatro Municipal',
-    sourceUpdatedAt: _ago(const Duration(minutes: 4)),
+    eventCode: 'TEMP-2026',
+    updatedAt: _ago(const Duration(hours: 2)),
     changes: [
       EventChange(
         id: 'tempestade-date',
@@ -142,28 +148,21 @@ class DemoData {
         title: 'Data alterada',
         description: 'Local sem alterações.',
         detectedAt: _ago(const Duration(hours: 2)),
-        source: ChangeSource.official,
-        publisher: 'Bilheteira oficial',
+        publisher: 'Teatro Municipal',
         previousStart: _day(8, 21, 30),
         newStart: _day(22, 21, 30),
-      ),
-      EventChange(
-        id: 'tempestade-venue',
-        kind: ChangeKind.venueConfirmed,
-        title: 'Sala confirmada',
-        description: 'Sala principal do Teatro Municipal.',
-        detectedAt: _ago(const Duration(days: 15)),
-        source: ChangeSource.organization,
-        publisher: 'Teatro Municipal',
+        refund: Refund(
+          until: _day(14, 23, 59),
+          where: 'teatromunicipal.pt/reembolsos',
+        ),
       ),
       EventChange(
         id: 'tempestade-published',
         kind: ChangeKind.published,
         title: 'Evento publicado',
-        description: 'Bilhetes à venda na bilheteira oficial.',
+        description: 'Data, horário e local publicados pela organização.',
         detectedAt: _ago(const Duration(days: 32)),
-        source: ChangeSource.official,
-        publisher: 'Bilheteira oficial',
+        publisher: 'Teatro Municipal',
       ),
     ],
   );
@@ -177,7 +176,18 @@ class DemoData {
     doorsOpen: _day(1, 18),
     end: _day(1, 23),
     art: const EventArt(Color(0xFF338C80), Color(0xFF0D2E33)),
-    sourceUpdatedAt: _ago(const Duration(minutes: 5)),
+    organizer: 'Jazz no Parque',
+    eventCode: 'JAZZ-2026',
+    updatedAt: _ago(const Duration(minutes: 5)),
+    warnings: [
+      WeatherWarning(
+        level: WarningLevel.orange,
+        title: 'Chuva forte no Porto',
+        detail: 'Das 18:00 às 23:59, no distrito do evento.',
+        issuedAt: _day(0, 9, 12),
+        until: _day(1, 23, 59),
+      ),
+    ],
     weather: WeatherInfo(
       summary: '16° · Chuva forte',
       detail: 'Chuva forte prevista a partir das 19h (80%)',
@@ -194,16 +204,25 @@ class DemoData {
     start: _day(28, 21),
     doorsOpen: _day(28, 20, 30),
     art: const EventArt(Color(0xFF596B9E), Color(0xFF1A1F38)),
-    sourceUpdatedAt: _ago(const Duration(minutes: 5)),
+    organizer: 'Auditório Municipal',
+    eventCode: 'ORQ-2026',
+    updatedAt: _ago(const Duration(minutes: 5)),
   );
 
-  late final margensAfterparty = Event(
-    id: 'margens-afterparty',
-    name: 'Margens Afterparty',
-    venue: 'Parque da Cidade',
+  /// Registered ticketed event that is not in the wallet yet: the demo
+  /// import adds it.
+  late final noiteFado = Event(
+    id: 'noite-de-fado',
+    name: 'Noite de Fado',
+    venue: 'Casa do Infante',
     city: 'Porto',
-    start: _day(1, 1),
-    art: const EventArt(Color(0xFF403380), Color(0xFF0D0D26)),
+    start: _day(9, 21, 30),
+    doorsOpen: _day(9, 21),
+    end: _day(9, 23, 30),
+    art: const EventArt(Color(0xFF8C4D2E), Color(0xFF26140F)),
+    organizer: 'Casa do Infante',
+    eventCode: 'FADO-2026',
+    updatedAt: _ago(const Duration(hours: 3)),
   );
 
   late final feiraMedieval = Event(
@@ -213,7 +232,9 @@ class DemoData {
     city: 'Vila Nova de Gaia',
     start: _day(16, 10),
     art: const EventArt(Color(0xFFE5B24D), Color(0xFF73331A)),
-    distanceKm: 3.2,
+    organizer: 'Câmara de Gaia',
+    accessCode: 'FEIRAGAIA',
+    updatedAt: _ago(const Duration(days: 1)),
   );
 
   late final corridaNatal = Event(
@@ -223,74 +244,50 @@ class DemoData {
     city: 'Porto',
     start: _day(64, 10),
     art: const EventArt(Color(0xFFE66E50), Color(0xFF5A286E)),
-    distanceKm: 0.6,
+    organizer: 'Porto Desporto',
+    accessCode: 'NATAL2026',
+    updatedAt: _ago(const Duration(days: 2)),
   );
 
+  /// Public event the participant can join with the code on its posters.
+  late final saoJoao = Event(
+    id: 'sao-joao',
+    name: 'São João na Ribeira',
+    venue: 'Cais da Ribeira',
+    city: 'Porto',
+    start: _day(5, 20),
+    end: _day(6, 4),
+    art: const EventArt(Color(0xFFE66E50), Color(0xFF5A286E)),
+    organizer: 'Associação da Ribeira',
+    accessCode: 'SAOJOAO24',
+    updatedAt: _ago(const Duration(days: 1)),
+  );
+
+  /// Public event the participant left: old notifications open P8's
+  /// "Já não estás ligado a este evento".
   late final mercadoOutono = Event(
     id: 'mercado-outono',
     name: 'Mercado de Outono',
     venue: 'Praça da Batalha',
     city: 'Porto',
-    start: _day(0, 10),
-    end: _day(0, 19),
+    start: _day(3, 10),
+    end: _day(3, 19),
     art: const EventArt(Color(0xFFE5B24D), Color(0xFF73331A)),
-    distanceKm: 0.8,
+    organizer: 'Mercado de Outono',
+    accessCode: 'OUTONO26',
   );
 
-  late final concertoOrgao = Event(
-    id: 'concerto-orgao',
-    name: 'Concerto de Órgão',
-    venue: 'Sé do Porto',
-    city: 'Porto',
-    start: _day(0, 18, 30),
-    art: const EventArt(Color(0xFF596B9E), Color(0xFF1A1F38)),
-    distanceKm: 1.1,
-  );
-
-  late final cinemaArLivre = Event(
-    id: 'cinema-ar-livre',
-    name: 'Cinema ao ar livre',
-    venue: "Jardim de Arca d'Água",
-    city: 'Porto',
-    start: _day(0, 21),
-    art: const EventArt(Color(0xFF403380), Color(0xFF0D0D26)),
-    distanceKm: 2.3,
-  );
-
-  late final feiraLivro = Event(
-    id: 'feira-livro',
-    name: 'Feira do Livro',
-    venue: 'Jardins do Palácio de Cristal',
-    city: 'Porto',
-    start: _day(_daysToSaturday, 11),
-    end: _day(_daysToSaturday, 20),
-    art: const EventArt(Color(0xFF338C80), Color(0xFF0D2E33)),
-    distanceKm: 1.9,
-  );
-
-  late final casaMusica = Event(
-    id: 'casa-da-musica',
-    name: 'Orquestra Jovem',
-    venue: 'Casa da Música',
-    city: 'Porto',
-    start: _day(_daysToSaturday + 1, 18),
-    art: const EventArt(Color(0xFF8C4D2E), Color(0xFF26140F)),
-    distanceKm: 2.7,
-  );
-
-  List<Event> get catalog => [
+  /// Every event registered by an organization.
+  List<Event> get registered => [
     festivalMargens,
     tempestade,
     jazzNoParque,
     orquestra,
-    margensAfterparty,
+    noiteFado,
     feiraMedieval,
     corridaNatal,
+    saoJoao,
     mercadoOutono,
-    concertoOrgao,
-    cinemaArLivre,
-    feiraLivro,
-    casaMusica,
   ];
 
   List<Ticket> get tickets => [
@@ -315,11 +312,11 @@ class DemoData {
     Ticket(
       id: 't-jazz',
       event: jazzNoParque,
-      origin: TicketOrigin.email,
+      origin: TicketOrigin.image,
       importedAt: _ago(const Duration(days: 5)),
       gate: 'Norte',
       seat: 'Livre',
-      hasEntryCode: false,
+      codeReference: '5512',
     ),
     Ticket(
       id: 't-orquestra',
@@ -332,10 +329,12 @@ class DemoData {
     ),
   ];
 
-  Set<String> get followedIds => {
-    feiraMedieval.id,
-    corridaNatal.id,
-    cinemaArLivre.id,
+  /// Public events joined with their access code.
+  Set<String> get publicIds => {feiraMedieval.id, corridaNatal.id};
+
+  /// Events the participant left, with when.
+  Map<String, DateTime> get leftEvents => {
+    mercadoOutono.id: _ago(const Duration(days: 5)),
   };
 
   List<AppNotification> get notifications => [
@@ -388,19 +387,6 @@ class DemoData {
       read: true,
     ),
     AppNotification(
-      id: 'n-poll',
-      kind: NotificationKind.poll,
-      eventId: festivalMargens.id,
-      eventName: 'Margens Inverno',
-      typeLabel: 'Sondagem',
-      title: 'Ajuda-nos a preparar o Margens Inverno',
-      body: '2 perguntas · menos de 1 minuto',
-      source: 'Organização Margens',
-      receivedAt: _ago(const Duration(days: 1)),
-      route: '/sondagem/p-inverno',
-      read: true,
-    ),
-    AppNotification(
       id: 'n-change',
       kind: NotificationKind.officialChange,
       eventId: tempestade.id,
@@ -410,7 +396,7 @@ class DemoData {
           'Adiado para ${formatWeekdayDate(tempestade.start)} · '
           '${formatTime(tempestade.start)}',
       body: 'Era ${formatWeekdayDate(_day(8, 21, 30))}.',
-      source: 'Fonte: bilheteira oficial',
+      source: 'Organização',
       receivedAt: _ago(const Duration(hours: 2)),
       changeId: 'tempestade-date',
       read: true,
@@ -420,11 +406,22 @@ class DemoData {
       kind: NotificationKind.weather,
       eventId: jazzNoParque.id,
       eventName: jazzNoParque.name,
-      typeLabel: 'Meteorologia',
-      title: 'Chuva forte prevista para amanhã às 19h',
-      body: 'Leva impermeável.',
-      source: 'Fonte: IPMA',
-      receivedAt: _ago(const Duration(days: 2)),
+      typeLabel: 'Aviso meteorológico',
+      title: 'Aviso laranja: chuva forte no Porto amanhã',
+      body: 'Das 18:00 às 23:59, no distrito do evento.',
+      source: 'IPMA',
+      receivedAt: _ago(const Duration(hours: 6)),
+      read: true,
+    ),
+    AppNotification(
+      id: 'n-left',
+      kind: NotificationKind.officialChange,
+      eventId: mercadoOutono.id,
+      eventName: mercadoOutono.name,
+      typeLabel: 'Alteração oficial',
+      title: 'Abertura adiada para as 11:00',
+      source: 'Organização',
+      receivedAt: _ago(const Duration(days: 6)),
       read: true,
     ),
   ];
@@ -455,36 +452,6 @@ class DemoData {
       alertMessage: 'Água disponível de novo no bar principal',
     ),
   ];
-
-  List<Poll> get polls {
-    final date = _day(56, 20);
-    return [
-      Poll(
-        id: 'p-inverno',
-        eventId: festivalMargens.id,
-        organizer: festivalMargens.organizer,
-        organizerInitials: 'OM',
-        proposedEvent: 'Margens Inverno',
-        date: date,
-        venue: 'Pavilhão Municipal',
-        closesAt: date.subtract(const Duration(days: 2)),
-        title: 'Ajuda-nos a preparar o Margens Inverno',
-        questions: [
-          PollQuestion(
-            'Vais ao Margens Inverno a ${formatLongDate(date)}?',
-            const ['Sim, vou', 'Talvez', 'Não vou'],
-          ),
-          const PollQuestion('A que horas pensas chegar?', [
-            'Antes das 20h',
-            'Entre as 20h e as 22h',
-            'Depois das 22h',
-          ]),
-        ],
-        sentAt: _ago(const Duration(days: 1)),
-        responses: 486,
-      ),
-    ];
-  }
 
   List<IdeaPrompt> get ideaPrompts => [
     IdeaPrompt(
@@ -550,17 +517,4 @@ class DemoData {
       tone: AppTagTone.info,
     ),
   ];
-
-  /// What the demo "extracts" from a ticket file.
-  TicketDraft extractedDraft(TicketOrigin origin) => TicketDraft(
-    origin: origin,
-    eventName: 'Festival Margens 2026',
-    date: _day(0, 0),
-    gate: 'A',
-    doorsOpen: '20:00',
-    start: '22:00',
-    place: 'Parque da Cidade, Porto',
-    seat: 'Geral',
-    hasEntryCode: true,
-  );
 }

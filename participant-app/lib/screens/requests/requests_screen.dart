@@ -4,12 +4,11 @@ import 'package:go_router/go_router.dart';
 import '../../data/app_store.dart';
 import '../../data/models.dart';
 import '../../ui/ui.dart';
-import '../../utils/pt_format.dart';
 import '../shared/event_context_row.dart';
 import '../shared/shell.dart';
 import '../shared/ticket_card.dart';
 
-/// P17 · Pedidos da organização: confirmations, polls and ideas the
+/// P17 · Pedidos da organização: yes/no requests and ideas the
 /// organizer asks the event's participants for (#47).
 class RequestsScreen extends StatelessWidget {
   const RequestsScreen({super.key, required this.eventId});
@@ -25,17 +24,16 @@ class RequestsScreen extends StatelessWidget {
         children: [
           AppErrorState(
             message: 'Não encontrámos este evento',
-            retryLabel: 'Voltar à carteira',
-            onRetry: () => context.go('/carteira'),
+            retryLabel: 'Voltar aos meus eventos',
+            onRetry: () => context.go('/eventos'),
           ),
         ],
       );
     }
     final now = store.now;
     final yesNo = store.yesNoRequestsFor(eventId);
-    final polls = store.pollsFor(eventId);
     final ideas = store.ideasFor(eventId);
-    final count = yesNo.length + polls.length + ideas.length;
+    final count = yesNo.length + ideas.length;
     final urgent = yesNo.where((n) => n.urgent && n.answer == null).length;
     final cards = [
       for (final request in yesNo)
@@ -44,7 +42,6 @@ class RequestsScreen extends StatelessWidget {
           now: now,
           onAnswer: (answer) => store.answerRequest(request, answer),
         ),
-      for (final poll in polls) _PollCard(poll: poll, now: now),
       for (final prompt in ideas)
         _IdeaCard(
           key: ValueKey(prompt.id),
@@ -82,8 +79,8 @@ class RequestsScreen extends StatelessWidget {
                       AppBreadcrumbs(
                         items: [
                           AppBreadcrumb(
-                            'Carteira',
-                            onTap: () => context.go('/carteira'),
+                            'Os meus eventos',
+                            onTap: () => context.go('/eventos'),
                           ),
                           AppBreadcrumb(
                             event.name,
@@ -155,6 +152,7 @@ class RequestsScreen extends StatelessWidget {
 
     return AppPage(
       title: 'Pedidos',
+      showReportButton: true,
       children: [
         EventContextRow(
           event: event,
@@ -267,55 +265,6 @@ class _YesNoCard extends StatelessWidget {
             ),
           ),
         if (footer.isNotEmpty) Text(footer, style: AppTextStyles.source),
-      ],
-    );
-  }
-}
-
-class _PollCard extends StatelessWidget {
-  const _PollCard({required this.poll, required this.now});
-
-  final Poll poll;
-  final DateTime now;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPanel(
-      padding: _cardPadding,
-      spacing: 10,
-      children: [
-        _CardHeader(
-          tags: [
-            const AppTag(
-              label: 'Sondagem',
-              tone: AppTagTone.poll,
-              icon: Icons.poll_outlined,
-            ),
-            if (poll.answers != null)
-              const AppTag(label: 'Respondeste', tone: AppTagTone.success),
-          ],
-          when: formatSentAgo(poll.sentAt, now: now),
-        ),
-        Text(poll.questions.first.text, style: AppTextStyles.headline),
-        Row(
-          spacing: 10,
-          children: [
-            Expanded(
-              child: Text(
-                '${formatCount(poll.responses)} respostas · fecha a '
-                '${formatDayMonth(poll.closesAt)}',
-                style: AppTextStyles.caption,
-              ),
-            ),
-            AppButton.secondary(
-              label: poll.answers == null ? 'Responder' : 'Ver resposta',
-              trailingIcon: Icons.chevron_right,
-              size: AppButtonSize.small,
-              expand: false,
-              onPressed: () => context.push('/sondagem/${poll.id}'),
-            ),
-          ],
-        ),
       ],
     );
   }

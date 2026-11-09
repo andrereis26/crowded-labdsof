@@ -6,19 +6,39 @@ import '../shared/shell.dart';
 
 /// Sections of the account area, shown as a side menu on desktop.
 enum AccountSection {
-  profile('Perfil', Icons.person_outline, '/conta'),
+  profile(
+    'Perfil',
+    Icons.person_outline,
+    '/conta',
+    'Nome, email e palavra-passe',
+  ),
   notifications(
     'Notificações',
     Icons.notifications_none,
     '/conta/notificacoes',
+    'Alterações, alertas e avisos',
   ),
-  location('Localização', Icons.my_location, null),
-  privacy('Privacidade e dados', Icons.shield_outlined, '/conta/apagar');
+  location('Localização', Icons.my_location, null, 'Permissão de localização'),
+  contributions(
+    'Contribuições',
+    Icons.flag_outlined,
+    '/conta/contribuicoes',
+    'Os teus reportes e confirmações',
+  ),
+  privacy(
+    'Privacidade e dados',
+    Icons.shield_outlined,
+    '/conta/apagar',
+    'Descarregar ou apagar os teus dados',
+  );
 
-  const AccountSection(this.label, this.icon, this.path);
+  const AccountSection(this.label, this.icon, this.path, this.description);
 
   final String label;
   final IconData icon;
+
+  /// Line under the label in the mobile menu (C0).
+  final String description;
 
   /// Null while the section has no screen yet.
   final String? path;

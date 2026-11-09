@@ -20,6 +20,32 @@ enum AlertBannerKind {
     AppColors.warning,
   ),
 
+  /// IPMA warnings for the event's district (FR-036). Yellow only shows on
+  /// the event page; orange and red are also notified.
+  weatherYellow(
+    'AVISO AMARELO · IPMA',
+    Icons.warning_amber_rounded,
+    AppColors.warningSoft,
+    AppColors.warningBorder,
+    AppColors.warning,
+  ),
+  weatherOrange(
+    'AVISO LARANJA · IPMA',
+    Icons.warning_amber_rounded,
+    AppColors.orangeSoft,
+    AppColors.orangeBorder,
+    AppColors.orange,
+  ),
+
+  /// Red warnings are critical (FR-074).
+  weatherRed(
+    'CRÍTICO · AVISO VERMELHO · IPMA',
+    Icons.warning_amber_rounded,
+    AppColors.dangerSoft,
+    AppColors.dangerBorder,
+    AppColors.danger,
+  ),
+
   /// Red, only for people's safety.
   urgent(
     'URGENTE',

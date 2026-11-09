@@ -26,8 +26,7 @@ class AppDestination {
   final bool showInWebHeader;
 
   static const defaults = [
-    AppDestination(label: 'Eventos', icon: Icons.calendar_today_outlined),
-    AppDestination(label: 'Carteira', icon: Icons.credit_card),
+    AppDestination(label: 'Os meus eventos', icon: Icons.credit_card),
     AppDestination(
       label: 'Conta',
       icon: Icons.person_outline,
@@ -132,7 +131,7 @@ class AppBreadcrumb {
   final VoidCallback? onTap;
 }
 
-/// "Carteira › Festival Margens › Como chegar" above desktop pages.
+/// "Os meus eventos › Festival Margens › Como chegar" above desktop pages.
 class AppBreadcrumbs extends StatelessWidget {
   const AppBreadcrumbs({super.key, required this.items});
 
@@ -178,21 +177,48 @@ class AppBreadcrumbs extends StatelessWidget {
   }
 }
 
-/// Bottom tab bar of the mobile app (Eventos, Carteira, Conta).
+/// Bottom tab bar of the mobile app: "Os meus eventos", the raised
+/// "Reportar" button in the middle when [onReport] is given, and "Conta".
 class AppTabBar extends StatelessWidget {
   const AppTabBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
     this.destinations = AppDestination.defaults,
+    this.onReport,
+    this.reportEnabled = true,
   });
 
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<AppDestination> destinations;
 
+  /// Opens the report form. The button is shown when this is set.
+  final VoidCallback? onReport;
+
+  /// False when the participant has no event that day.
+  final bool reportEnabled;
+
   @override
   Widget build(BuildContext context) {
+    final items = <Widget>[
+      for (final (index, destination) in destinations.indexed)
+        Expanded(
+          child: _TabItem(
+            destination: destination,
+            selected: index == currentIndex,
+            onTap: () => onTap(index),
+          ),
+        ),
+    ];
+    if (onReport != null) {
+      items.insert(
+        items.length ~/ 2,
+        Expanded(
+          child: _ReportTab(onTap: onReport!, enabled: reportEnabled),
+        ),
+      );
+    }
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.tabBar,
@@ -200,19 +226,93 @@ class AppTabBar extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 58,
-          child: Row(
+        child: SizedBox(height: 58, child: Row(children: items)),
+      ),
+    );
+  }
+}
+
+/// The middle tab: [AppReportButton] raised over the top edge of the bar,
+/// with its label aligned with the other tabs.
+class _ReportTab extends StatelessWidget {
+  const _ReportTab({required this.onTap, required this.enabled});
+
+  final VoidCallback onTap;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.topCenter,
+      children: [
+        Positioned.fill(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              for (final (index, destination) in destinations.indexed)
-                Expanded(
-                  child: _TabItem(
-                    destination: destination,
-                    selected: index == currentIndex,
-                    onTap: () => onTap(index),
+              ExcludeSemantics(
+                child: Text(
+                  'Reportar',
+                  style: AppTextStyles.tabLabel.copyWith(
+                    color: enabled ? AppColors.ink : AppColors.inkSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+              ),
+              const SizedBox(height: 7),
             ],
+          ),
+        ),
+        Positioned(
+          top: -26,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              color: AppColors.tabBar,
+              shape: BoxShape.circle,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: AppReportButton(onPressed: enabled ? onTap : null),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Round "Reportar" button: in the middle of the tab bar, or floating in the
+/// bottom-right corner when the bar is hidden or the screen has none.
+/// Disabled (no [onPressed]) when the participant has no event that day.
+class AppReportButton extends StatelessWidget {
+  const AppReportButton({super.key, required this.onPressed, this.size = 52});
+
+  final VoidCallback? onPressed;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: enabled ? 'Reportar' : 'Reportar, sem eventos hoje',
+      excludeSemantics: true,
+      child: Material(
+        color: enabled ? AppColors.ink : AppColors.disabled,
+        shape: const CircleBorder(),
+        elevation: enabled ? 6 : 0,
+        shadowColor: const Color(0x66000000),
+        child: InkWell(
+          onTap: onPressed,
+          customBorder: const CircleBorder(),
+          child: SizedBox.square(
+            dimension: size,
+            child: Icon(
+              Icons.flag_outlined,
+              size: 24,
+              color: enabled ? Colors.white : AppColors.inkSecondary,
+            ),
           ),
         ),
       ),
@@ -258,8 +358,8 @@ class _TabItem extends StatelessWidget {
   }
 }
 
-/// Header of the website (desktop layout): logo, sections, search,
-/// notifications and the account avatar.
+/// Header of the website (desktop layout): logo, sections, the "Reportar"
+/// button, notifications and the account avatar.
 class AppWebHeader extends StatelessWidget implements PreferredSizeWidget {
   const AppWebHeader({
     super.key,
@@ -268,7 +368,7 @@ class AppWebHeader extends StatelessWidget implements PreferredSizeWidget {
     required this.userInitials,
     this.destinations = AppDestination.defaults,
     this.unreadNotifications = 0,
-    this.onSearch,
+    this.onReport,
     this.onNotifications,
     this.onAccount,
   });
@@ -278,7 +378,9 @@ class AppWebHeader extends StatelessWidget implements PreferredSizeWidget {
   final List<AppDestination> destinations;
   final String userInitials;
   final int unreadNotifications;
-  final VoidCallback? onSearch;
+
+  /// Opens the report form; the button is disabled when null.
+  final VoidCallback? onReport;
   final VoidCallback? onNotifications;
   final VoidCallback? onAccount;
 
@@ -312,10 +414,8 @@ class AppWebHeader extends StatelessWidget implements PreferredSizeWidget {
               ],
             ),
           ),
-          if (onSearch != null) ...[
-            _SearchBox(onTap: onSearch!),
-            const SizedBox(width: AppSpacing.xl),
-          ],
+          _HeaderReportButton(onPressed: onReport),
+          const SizedBox(width: AppSpacing.xl),
           _NotificationsButton(
             unread: unreadNotifications,
             onTap: onNotifications,
@@ -429,36 +529,40 @@ class _WebNavItem extends StatelessWidget {
   }
 }
 
-class _SearchBox extends StatelessWidget {
-  const _SearchBox({required this.onTap});
+class _HeaderReportButton extends StatelessWidget {
+  const _HeaderReportButton({required this.onPressed});
 
-  final VoidCallback onTap;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    final color = enabled ? Colors.white : AppColors.inkSecondary;
     return Semantics(
       button: true,
+      enabled: enabled,
+      label: enabled ? 'Reportar' : 'Reportar, sem eventos hoje',
+      excludeSemantics: true,
       child: Material(
-        color: AppColors.background,
-        borderRadius: const BorderRadius.all(AppRadii.field),
+        color: enabled ? AppColors.ink : AppColors.disabled,
+        borderRadius: const BorderRadius.all(AppRadii.sm),
         child: InkWell(
-          onTap: onTap,
-          borderRadius: const BorderRadius.all(AppRadii.field),
-          child: Container(
-            width: 280,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: 9,
-            ),
+          onTap: onPressed,
+          borderRadius: const BorderRadius.all(AppRadii.sm),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 16, 8),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               spacing: AppSpacing.sm,
               children: [
-                const Icon(
-                  Icons.search,
-                  size: 16,
-                  color: AppColors.inkSecondary,
+                Icon(Icons.flag_outlined, size: 16, color: color),
+                Text(
+                  'Reportar',
+                  style: AppTextStyles.subhead.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                Text('Procurar eventos', style: AppTextStyles.footnote),
               ],
             ),
           ),

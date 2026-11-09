@@ -42,17 +42,17 @@ class TicketCard extends StatelessWidget {
       ),
       EventStatus.scheduled => (
         formatRelativeDay(event.start, now),
-        'Confirmado',
+        'Bilhete',
         WalletCardStatusTone.confirmed,
       ),
     };
 
-    final updatedAt = event.sourceUpdatedAt;
+    final updatedAt = event.updatedAt;
     final source = updatedAt == null
-        ? 'Fonte: o teu bilhete'
+        ? 'Fonte: organização'
         : savedAt != null
-        ? 'Fonte: bilheteira oficial · guardado às ${formatTime(savedAt!)}'
-        : formatSource('bilheteira oficial', updatedAt, now: now);
+        ? 'Fonte: organização · guardado às ${formatTime(savedAt!)}'
+        : formatSource('organização', updatedAt, now: now);
 
     return Hero(
       tag: heroTag(event.id),

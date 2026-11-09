@@ -42,7 +42,7 @@ class _SignInScreenState extends State<SignInScreen> {
             password: _password.text,
           );
     setState(() => _error = error);
-    if (error == null) context.go('/carteira');
+    if (error == null) context.go('/eventos');
   }
 
   @override
@@ -284,9 +284,9 @@ class _Form extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             spacing: AppSpacing.xs,
             children: [
-              Text('És uma organização?', style: AppTextStyles.bodySecondary),
+              Text('Organizas eventos?', style: AppTextStyles.bodySecondary),
               AppInlineLink(
-                label: 'Registar organização',
+                label: 'Fala com a nossa equipa',
                 onPressed: () => showComingSoon(context),
               ),
             ],

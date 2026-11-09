@@ -40,6 +40,7 @@ class ChangeDetailScreen extends StatelessWidget {
       leadingLabel: 'Fechar',
       showBackChevron: false,
       background: AppColors.surface,
+      showReportButton: true,
       maxWidth: 560,
       children: [
         Column(
@@ -110,7 +111,20 @@ class ChangeDetailScreen extends StatelessWidget {
             ],
           ),
         ),
-        if (ticket != null)
+        if (change.refund case final refund?)
+          AppListGroup(
+            children: [
+              AppListTile(
+                icon: Icons.payments_outlined,
+                title: 'Reembolso, se não puderes ir',
+                subtitle:
+                    'Até ${formatDayMonth(refund.until)} em ${refund.where} · '
+                    'informação da organização',
+                showChevron: false,
+              ),
+            ],
+          ),
+        if (ticket != null && change.ticketStillValid)
           Container(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.lg,
@@ -172,7 +186,7 @@ class ChangeDetailScreen extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  'Fonte: ${change.sourceName} · detetado às '
+                  'Fonte: organização · publicado às '
                   '${formatTime(change.detectedAt)} · '
                   '${formatTimeAgo(change.detectedAt, now: now)}',
                   style: AppTextStyles.caption.copyWith(
@@ -188,11 +202,12 @@ class ChangeDetailScreen extends StatelessWidget {
           label: 'Ver evento',
           onPressed: () => context.go('/evento/${event.id}'),
         ),
-        AppButton.secondary(
-          label: 'Condições de troca e reembolso',
-          icon: Icons.open_in_new,
-          onPressed: () => showComingSoon(context),
-        ),
+        if (change.refund case final refund?)
+          AppButton.secondary(
+            label: 'Pedir reembolso até ${formatDayMonth(refund.until)}',
+            icon: Icons.open_in_new,
+            onPressed: () => showMessage(context, refund.where),
+          ),
       ],
     );
   }

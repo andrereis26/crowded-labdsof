@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/app_store.dart';
 import '../../data/models.dart';
 import '../../ui/ui.dart';
+import '../../utils/pt_format.dart';
 import '../shared/event_context_row.dart';
 import '../shared/shell.dart';
 
@@ -15,8 +16,10 @@ const _fallbackPlaces = [
   VenuePlace('Palco', 'no'),
 ];
 
-/// P11 · Reportar — categoria e detalhes (mobile page). On desktop the same
-/// form opens in a dialog from the event page (see `startReport`).
+/// P11 · Reportar — evento, categoria e detalhes (mobile page). On desktop
+/// the same form opens in a dialog (see `startReport`). The event in
+/// progress is chosen by default; other events of the day are in the
+/// "Evento" selector.
 class ReportScreen extends StatelessWidget {
   const ReportScreen({super.key, required this.eventId, this.category});
 
@@ -32,8 +35,8 @@ class ReportScreen extends StatelessWidget {
         children: [
           AppErrorState(
             message: 'Não encontrámos este evento',
-            retryLabel: 'Voltar à carteira',
-            onRetry: () => context.go('/carteira'),
+            retryLabel: 'Voltar aos meus eventos',
+            onRetry: () => context.go('/eventos'),
           ),
         ],
       );
@@ -47,8 +50,8 @@ class ReportScreen extends StatelessWidget {
           event: event,
           nearVenue: store.isNearVenue(event),
           initialCategory: category,
-          onSent: (_) => context.pushReplacement(
-            '/evento/${event.id}/reporte?estado=enviado',
+          onSent: (report) => context.pushReplacement(
+            '/evento/${report.eventId}/reporte?estado=enviado',
           ),
           onCancel: () => AppPage.goBack(context),
         ),
@@ -90,6 +93,7 @@ class _ReportFormState extends State<ReportForm> {
       widget.nearVenue || widget.initialCategory == ReportCategory.lostAndFound
       ? widget.initialCategory
       : ReportCategory.lostAndFound;
+  late Event _event = widget.event;
   VenuePlace? _place;
   WaitTime? _waitTime;
   CrowdLevel? _crowdLevel;
@@ -100,7 +104,7 @@ class _ReportFormState extends State<ReportForm> {
       : const [ReportCategory.lostAndFound];
 
   List<VenuePlace> get _places =>
-      widget.event.places.isEmpty ? _fallbackPlaces : widget.event.places;
+      _event.places.isEmpty ? _fallbackPlaces : _event.places;
 
   bool get _isValid {
     final category = _category;
@@ -121,7 +125,7 @@ class _ReportFormState extends State<ReportForm> {
 
   void _send() {
     final report = AppStore.read(context).sendReport(
-      event: widget.event,
+      event: _event,
       category: _category!,
       place: _place!,
       waitTime: _category == ReportCategory.queue ? _waitTime : null,
@@ -131,23 +135,99 @@ class _ReportFormState extends State<ReportForm> {
     widget.onSent(report);
   }
 
+  Future<void> _chooseEvent(List<Event> events) async {
+    final now = AppStore.read(context).now;
+    final chosen = await showAppBottomSheet<Event>(
+      context: context,
+      builder: (context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpacing.md,
+        children: [
+          Text('Eventos de hoje', style: AppTextStyles.sheetTitle),
+          AppListGroup(
+            children: [
+              for (final event in events)
+                AppListTile(
+                  leading: EventThumbnail(
+                    gradient: event.art.gradient,
+                    size: 36,
+                    radius: 8,
+                  ),
+                  title: event.name,
+                  subtitle: _whenLabel(event, now),
+                  trailing: event.id == _event.id
+                      ? const Icon(Icons.check, color: AppColors.primary)
+                      : null,
+                  showChevron: false,
+                  onTap: () => Navigator.pop(context, event),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (chosen == null || chosen.id == _event.id || !mounted) return;
+    setState(() {
+      _event = chosen;
+      _place = null;
+    });
+  }
+
+  /// "A decorrer · Parque da Cidade" or "Hoje às 22:00 · Jardim do Palácio".
+  static String _whenLabel(Event event, DateTime now) {
+    final started = !event.start.isAfter(now);
+    final when = started ? 'A decorrer' : 'Hoje às ${formatTime(event.start)}';
+    return '$when · ${event.venue}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final desktop = widget.desktop;
-    final header = EventContextRow(
-      event: widget.event,
-      subtitle: '${widget.event.venue} · agora',
-      background: desktop ? AppColors.background : AppColors.surface,
-      trailing: widget.nearVenue
-          ? AppTag(
-              label: desktop ? 'Estás no recinto' : 'No recinto',
-              tone: AppTagTone.success,
-              icon: Icons.check,
-            )
-          : const AppTag(
-              label: 'Longe do recinto',
-              icon: Icons.location_off_outlined,
+    final store = AppStore.of(context);
+    final today = store.eventsToday;
+    final canChoose = today.length > 1;
+    final tag = widget.nearVenue
+        ? AppTag(
+            label: desktop ? 'Estás no recinto' : 'No recinto',
+            tone: AppTagTone.success,
+            icon: Icons.check,
+          )
+        : const AppTag(
+            label: 'Longe do recinto',
+            icon: Icons.location_off_outlined,
+          );
+    final header = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacing.xs,
+      children: [
+        const AppFieldLabel('Evento'),
+        Semantics(
+          button: canChoose,
+          label: canChoose ? 'Escolher outro evento de hoje' : null,
+          child: InkWell(
+            onTap: canChoose ? () => _chooseEvent(today) : null,
+            borderRadius: const BorderRadius.all(AppRadii.field),
+            child: EventContextRow(
+              event: _event,
+              subtitle: '${_event.venue} · agora',
+              background: desktop ? AppColors.background : AppColors.surface,
+              trailing: canChoose
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: AppSpacing.xs,
+                      children: [
+                        tag,
+                        const Icon(
+                          Icons.expand_more,
+                          color: AppColors.inkSecondary,
+                        ),
+                      ],
+                    )
+                  : tag,
             ),
+          ),
+        ),
+      ],
     );
     final question = Text(
       'O que se passa?',

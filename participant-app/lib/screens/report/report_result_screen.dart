@@ -54,8 +54,8 @@ class ReportResultScreen extends StatelessWidget {
         if (event == null)
           AppErrorState(
             message: 'Não encontrámos este evento',
-            retryLabel: 'Voltar à carteira',
-            onRetry: () => context.go('/carteira'),
+            retryLabel: 'Voltar aos meus eventos',
+            onRetry: () => context.go('/eventos'),
           )
         else if (away)
           ReportAwayView(

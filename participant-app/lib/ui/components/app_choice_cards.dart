@@ -108,7 +108,7 @@ class AppRadio extends StatelessWidget {
 }
 
 /// Card with a radio, optional image, title, subtitle and extra content
-/// below (event match in P4, attendance poll options in P16).
+/// below.
 class AppRadioCard extends StatelessWidget {
   const AppRadioCard({
     super.key,
@@ -184,7 +184,7 @@ class AppRadioCard extends StatelessWidget {
   }
 }
 
-/// Bordered answer with a radio, tinted when selected (poll options in P16).
+/// Bordered answer with a radio, tinted when selected.
 class AppOptionTile extends StatelessWidget {
   const AppOptionTile({
     super.key,

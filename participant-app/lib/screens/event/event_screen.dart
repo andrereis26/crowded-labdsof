@@ -8,12 +8,15 @@ import '../../utils/pt_format.dart';
 import '../report/confirmation_request.dart';
 import '../report/report_flow.dart';
 import '../shared/shell.dart';
+import '../shared/shell.dart' as shell show reportAction;
 import '../shared/ticket_card.dart';
 import 'event_widgets.dart';
 
 /// P5 · Página do evento: the "opened ticket". On the event day it shows the
-/// entry code, organizer alerts, crowd level, queues and weather; on other
-/// days the schedule and forecast. Offline, it shows what was saved.
+/// entry code, organizer alerts, IPMA warnings, crowd level, queues and
+/// weather; on other days the schedule and forecast. Offline, it shows what
+/// was saved. Every piece of information comes from the organization or
+/// IPMA (ADR 0015).
 class EventScreen extends StatefulWidget {
   const EventScreen({super.key, required this.eventId, this.confirmationId});
 
@@ -62,8 +65,8 @@ class _EventScreenState extends State<EventScreen> {
         children: [
           AppErrorState(
             message: 'Não encontrámos este evento',
-            retryLabel: 'Voltar à carteira',
-            onRetry: () => context.go('/carteira'),
+            retryLabel: 'Voltar aos meus eventos',
+            onRetry: () => context.go('/eventos'),
           ),
         ],
       );
@@ -99,9 +102,51 @@ class _EventPageData {
       : const [];
 
   int get requestCount =>
-      store.yesNoRequestsFor(event.id).length +
-      store.pollsFor(event.id).length +
-      store.ideasFor(event.id).length;
+      store.yesNoRequestsFor(event.id).length + store.ideasFor(event.id).length;
+
+  /// "Reportar": this event when it takes place today, otherwise the event
+  /// in progress; disabled offline or with no event today.
+  VoidCallback? reportAction(BuildContext context) {
+    if (offline) return null;
+    if (store.eventsToday.any((e) => e.id == event.id)) {
+      return () => startReport(context, event);
+    }
+    return shell.reportAction(context);
+  }
+
+  /// "Remover bilhete" or "Sair do evento" (FR-008).
+  Future<void> showMoreOptions(BuildContext context) async {
+    final label = ticket != null ? 'Remover bilhete' : 'Sair do evento';
+    final leave = await showAppBottomSheet<bool>(
+      context: context,
+      builder: (context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpacing.md,
+        children: [
+          Text(event.name, style: AppTextStyles.sheetTitle),
+          Text(
+            ticket != null
+                ? 'Deixas de ver a página do evento e de receber as suas '
+                      'alterações. Podes importar o bilhete de novo.'
+                : 'Deixas de ver a página do evento e de receber as suas '
+                      'alterações. Podes voltar com o código de acesso.',
+            style: AppTextStyles.bodySecondary,
+          ),
+          AppButton.danger(
+            label: label,
+            onPressed: () => Navigator.pop(context, true),
+          ),
+          AppButton.secondary(
+            label: 'Cancelar',
+            onPressed: () => Navigator.pop(context, false),
+          ),
+        ],
+      ),
+    );
+    if (leave != true || !context.mounted) return;
+    store.leaveEvent(event.id);
+    context.go('/eventos');
+  }
 
   void openEntryCode(BuildContext context) =>
       context.push('/evento/${event.id}/codigo');
@@ -131,32 +176,16 @@ class _EventPageData {
         savedAt: offline ? store.savedAt : null,
       );
     }
-    final following = store.isFollowing(event.id);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: AppSpacing.md,
-      children: [
-        WalletCard(
-          eventName: event.name,
-          dateLabel: formatRelativeDay(event.start, now),
-          venue: event.place,
-          time: formatTime(event.start),
-          statusLabel: following ? 'A seguir' : 'Sem bilhete',
-          source: event.sourceUpdatedAt == null
-              ? 'Fonte: agenda da bilheteira'
-              : formatSource(
-                  'agenda da bilheteira',
-                  event.sourceUpdatedAt!,
-                  now: now,
-                ),
-          gradient: event.art.gradient,
-        ),
-        AppButton.secondary(
-          label: following ? 'Deixar de seguir' : 'Seguir evento',
-          icon: following ? Icons.check : Icons.add,
-          onPressed: () => store.toggleFollow(event.id),
-        ),
-      ],
+    return WalletCard(
+      eventName: event.name,
+      dateLabel: formatRelativeDay(event.start, now),
+      venue: event.place,
+      time: formatTime(event.start),
+      statusLabel: 'Público',
+      source: event.updatedAt == null
+          ? 'Fonte: organização'
+          : formatSource('organização', event.updatedAt!, now: now),
+      gradient: event.art.gradient,
     );
   }
 
@@ -176,7 +205,7 @@ class _EventPageData {
       AlertBanner(
         kind: AlertBannerKind.officialChange,
         message: postponedMessage(event),
-        origin: formatSource('bilheteira oficial', change.detectedAt, now: now),
+        origin: formatSource('organização', change.detectedAt, now: now),
         onTap: () => context.push('/evento/${event.id}/alteracao/${change.id}'),
       ),
   ];
@@ -191,7 +220,28 @@ class _EventPageData {
           message: alert.message,
           origin: alertOrigin(alert),
         ),
+    for (final warning in event.warnings)
+      AlertBanner(
+        kind: switch (warning.level) {
+          WarningLevel.yellow => AlertBannerKind.weatherYellow,
+          WarningLevel.orange => AlertBannerKind.weatherOrange,
+          WarningLevel.red => AlertBannerKind.weatherRed,
+        },
+        message: warning.detail == null
+            ? warning.title
+            : '${warning.title} · ${warning.detail}',
+        origin: warningOrigin(warning),
+      ),
   ];
+
+  /// "Fonte: IPMA · emitido às 14:00 · até 23:59".
+  String warningOrigin(WeatherWarning warning) {
+    final until = isSameDay(warning.until, warning.issuedAt)
+        ? formatTime(warning.until)
+        : '${formatDayMonth(warning.until)}, ${formatTime(warning.until)}';
+    return 'Fonte: IPMA · emitido às ${formatTime(warning.issuedAt)} · '
+        'até $until';
+  }
 
   Widget countdown() => MutedNotice(
     icon: Icons.schedule,
@@ -205,11 +255,11 @@ class _EventPageData {
 
   Widget schedule() => schedulePanel(
     event,
-    source: source('bilheteira oficial', event.sourceUpdatedAt),
+    source: source('organização', event.updatedAt),
     large: isEventDay,
   );
 
-  Widget? live() {
+  Widget? live(BuildContext context) {
     if (!isEventDay) return null;
     if (offline) {
       return const MutedNotice(
@@ -219,7 +269,21 @@ class _EventPageData {
       );
     }
     final status = event.venueStatus;
-    return status == null ? null : LiveVenuePanel(status: status, now: now);
+    if (status == null) return null;
+    final estimates = visibleEstimates;
+    return LiveVenuePanel(
+      status: status,
+      now: now,
+      footer: estimates.isEmpty || isDesktopLayout(context)
+          ? null
+          : AppListTile(
+              icon: Icons.people_outline,
+              iconColor: AppColors.ink,
+              title: 'Estimativas de participantes · ${estimates.length}',
+              subtitle: estimates.first.title,
+              onTap: () => context.push('/evento/${event.id}/estimativas'),
+            ),
+    );
   }
 
   Widget? weather() {
@@ -232,7 +296,10 @@ class _EventPageData {
           ? w.summary
           : 'Previsão para ${formatDayMonth(event.start)} · ${w.summary}',
       subtitle: w.detail,
-      source: source('IPMA', w.updatedAt),
+      source: offline
+          ? source('IPMA', w.updatedAt)
+          : 'Previsão IPMA · distrito do ${event.district} · atualizada às '
+                '${formatTime(w.updatedAt)}',
       large: isEventDay,
     );
   }
@@ -245,23 +312,13 @@ class _EventPageData {
         title: event.doorsOpen != null
             ? 'Portas abrem às ${formatTime(event.doorsOpen!)}'
             : 'Começa às ${formatTime(event.start)}',
-        subtitle:
-            'Início às ${formatTime(event.start)} · Fonte: bilheteira oficial',
+        subtitle: 'Início às ${formatTime(event.start)} · Fonte: organização',
       ),
     if (!withSchedule)
       AppListTile(
         icon: Icons.directions_outlined,
         title: 'Como chegar',
         onTap: () => openDirections(context),
-      ),
-    if (!withSchedule && visibleEstimates.isNotEmpty)
-      AppListTile(
-        icon: Icons.people_outline,
-        title: 'Estimativas de participantes',
-        subtitle: visibleEstimates.length == 1
-            ? '1 confirmada por quem está no recinto'
-            : '${visibleEstimates.length} confirmadas por quem está no recinto',
-        onTap: () => context.push('/evento/${event.id}/estimativas'),
       ),
     if (requestCount > 0)
       AppListTile(
@@ -283,16 +340,6 @@ class _EventPageData {
       onTap: () => context.push('/evento/${event.id}/historico'),
     ),
   ];
-
-  Widget? reportButton(BuildContext context, {bool expand = true}) {
-    if (!isEventDay || ticket == null) return null;
-    return AppButton(
-      label: 'Reportar algo no recinto',
-      icon: Icons.flag_outlined,
-      expand: expand,
-      onPressed: offline ? null : () => startReport(context, event),
-    );
-  }
 }
 
 class _MobileEventPage extends StatelessWidget {
@@ -303,6 +350,9 @@ class _MobileEventPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: page.offline
+          ? null
+          : AppReportButton(onPressed: page.reportAction(context)),
       appBar: AppTopBar(
         leadingLabel: 'Fechar',
         onLeading: () => AppPage.goBack(context),
@@ -318,7 +368,7 @@ class _MobileEventPage extends StatelessWidget {
           AppCircleButton(
             icon: Icons.more_horiz,
             semanticLabel: 'Mais opções',
-            onPressed: () => showComingSoon(context),
+            onPressed: () => page.showMoreOptions(context),
           ),
         ],
       ),
@@ -327,7 +377,7 @@ class _MobileEventPage extends StatelessWidget {
           AppSpacing.screen,
           AppSpacing.md,
           AppSpacing.screen,
-          AppSpacing.xxl,
+          96,
         ),
         children: [
           Column(
@@ -342,10 +392,9 @@ class _MobileEventPage extends StatelessWidget {
               ...page.alerts(),
               if (!page.isEventDay && page.daysToGo > 0) page.countdown(),
               page.schedule(),
-              ?page.live(),
+              ?page.live(context),
               ?page.weather(),
               AppListGroup(children: page.links(context)),
-              ?page.reportButton(context),
             ],
           ),
         ],
@@ -364,7 +413,6 @@ class _DesktopEventPage extends StatelessWidget {
     final event = page.event;
     final estimates = page.visibleEstimates;
     final weather = page.weather();
-    final report = page.reportButton(context, expand: false);
 
     return Scaffold(
       appBar: const CrowdedWebHeader(currentIndex: Sections.wallet),
@@ -383,19 +431,27 @@ class _DesktopEventPage extends StatelessWidget {
                     Row(
                       children: [
                         AppInlineLink(
-                          label: 'Carteira',
-                          onPressed: () => context.go('/carteira'),
+                          label: 'Os meus eventos',
+                          onPressed: () => context.go('/eventos'),
                         ),
                         const Icon(
                           Icons.chevron_right,
                           size: 18,
                           color: AppColors.inkSecondary,
                         ),
-                        Text(
-                          event.name,
-                          style: AppTextStyles.label.copyWith(
-                            fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: Text(
+                            event.name,
+                            style: AppTextStyles.label.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
+                        ),
+                        AppInlineLink(
+                          label: page.ticket != null
+                              ? 'Remover bilhete'
+                              : 'Sair do evento',
+                          onPressed: () => page.showMoreOptions(context),
                         ),
                       ],
                     ),
@@ -434,7 +490,7 @@ class _DesktopEventPage extends StatelessWidget {
                               ...page.alerts(),
                               if (!page.isEventDay && page.daysToGo > 0)
                                 page.countdown(),
-                              ?page.live(),
+                              ?page.live(context),
                               if (estimates.isNotEmpty)
                                 _EstimatesPanel(
                                   estimates: estimates,
@@ -467,7 +523,6 @@ class _DesktopEventPage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    if (report != null) Center(child: report),
                   ],
                 ),
               ),

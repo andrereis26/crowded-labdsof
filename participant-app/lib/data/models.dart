@@ -100,23 +100,7 @@ class ParticipantEstimate {
   final ConfidenceLevel confidence;
 }
 
-enum ChangeSource {
-  official('Oficial', 'Bilheteira oficial'),
-  organization('Organização', 'Organização');
-
-  const ChangeSource(this.label, this.defaultPublisher);
-
-  final String label;
-  final String defaultPublisher;
-}
-
-enum ChangeKind {
-  published,
-  venueConfirmed,
-  dateChanged,
-  timeChanged,
-  cancelled,
-}
+enum ChangeKind { published, dateChanged, timeChanged, venueChanged, cancelled }
 
 /// An entry in an event's change history (P6, P7).
 class EventChange {
@@ -126,10 +110,11 @@ class EventChange {
     required this.title,
     required this.description,
     required this.detectedAt,
-    required this.source,
     required this.publisher,
     this.previousStart,
     this.newStart,
+    this.ticketStillValid = true,
+    this.refund,
   });
 
   final String id;
@@ -137,17 +122,69 @@ class EventChange {
   final String title;
   final String description;
   final DateTime detectedAt;
-  final ChangeSource source;
+
+  /// The organization that published it ("Teatro Municipal"): the only
+  /// source of event information (ADR 0015).
   final String publisher;
   final DateTime? previousStart;
   final DateTime? newStart;
 
-  /// Name used after "Fonte:" ("bilheteira oficial", "Teatro Municipal").
-  String get sourceName =>
-      source == ChangeSource.official ? 'bilheteira oficial' : publisher;
+  /// "O bilhete continua válido para a nova data" (O4).
+  final bool ticketStillValid;
+
+  /// Refund information written by the organization, if any (P7).
+  final Refund? refund;
 }
 
-/// An event in the catalog.
+/// Refund information that the organization adds to a change (O4, P7).
+class Refund {
+  const Refund({required this.until, required this.where});
+
+  final DateTime until;
+
+  /// "teatromunicipal.pt/reembolsos".
+  final String where;
+}
+
+/// IPMA weather warning level (FR-036, FR-074).
+enum WarningLevel {
+  yellow('Aviso amarelo'),
+  orange('Aviso laranja'),
+  red('Aviso vermelho');
+
+  const WarningLevel(this.label);
+
+  final String label;
+
+  /// Red warnings are critical; orange and red are notified, yellow only
+  /// shows on the event page.
+  bool get critical => this == red;
+}
+
+/// An IPMA warning for the event's district during the event.
+class WeatherWarning {
+  const WeatherWarning({
+    required this.level,
+    required this.title,
+    required this.issuedAt,
+    required this.until,
+    this.detail,
+  });
+
+  final WarningLevel level;
+
+  /// "Vento forte no distrito do Porto".
+  final String title;
+
+  /// "Rajadas até 90 km/h".
+  final String? detail;
+  final DateTime issuedAt;
+  final DateTime until;
+}
+
+/// An event registered by an organization (ADR 0015). Ticketed events are
+/// matched by the event code printed on their tickets; public events are
+/// joined with an access code.
 class Event {
   const Event({
     required this.id,
@@ -165,10 +202,13 @@ class Event {
     this.venueStatus,
     this.weather,
     this.estimates = const [],
-    this.distanceKm,
-    this.sourceUpdatedAt,
+    this.updatedAt,
     this.places = const [],
     this.directions,
+    this.district = 'Porto',
+    this.warnings = const [],
+    this.eventCode,
+    this.accessCode,
   });
 
   final String id;
@@ -188,14 +228,27 @@ class Event {
   final VenueStatus? venueStatus;
   final WeatherInfo? weather;
   final List<ParticipantEstimate> estimates;
-  final double? distanceKm;
 
-  /// Last sync with the ticketing source.
-  final DateTime? sourceUpdatedAt;
+  /// When the organization last updated the event.
+  final DateTime? updatedAt;
 
   /// Gates and services a report can point to ("Onde?" in P11).
   final List<VenuePlace> places;
   final Directions? directions;
+
+  /// District used for IPMA warnings and forecasts.
+  final String district;
+
+  /// IPMA warnings for the district during the event, most severe first.
+  final List<WeatherWarning> warnings;
+
+  /// Code printed on the tickets of a ticketed event ("MARG-2026").
+  final String? eventCode;
+
+  /// Code of a public event, shown on its posters ("SAOJOAO24").
+  final String? accessCode;
+
+  bool get isPublic => accessCode != null;
 
   String get place => '$venue, $city';
 
@@ -206,8 +259,7 @@ class Event {
 
 enum TicketOrigin {
   pdf('Importado de PDF'),
-  email('Importado de email'),
-  manual('Introduzido à mão');
+  image('Importado de uma imagem');
 
   const TicketOrigin(this.label);
 
@@ -229,8 +281,7 @@ class Ticket {
 
   final String id;
 
-  /// The linked catalog event. Tickets saved without a link (P4, "Nenhum
-  /// destes") get an event built from the ticket data and no changes.
+  /// The registered event whose code matched the ticket (FR-003).
   final Event event;
   final TicketOrigin origin;
   final DateTime importedAt;
@@ -242,20 +293,12 @@ class Ticket {
   final String? codeReference;
 }
 
-/// Event the participant follows without a ticket.
-class FollowedEvent {
-  const FollowedEvent(this.event);
-
-  final Event event;
-}
-
 enum NotificationKind {
   alert,
   request,
 
   /// Asks to confirm another participant's report (P13).
   confirmation,
-  poll,
   recognition,
   officialChange,
   weather,
@@ -265,6 +308,7 @@ enum NotificationFilter {
   all('Todas'),
   changes('Alterações'),
   alerts('Alertas'),
+  weather('Tempo'),
   requests('Pedidos');
 
   const NotificationFilter(this.label);
@@ -323,48 +367,45 @@ class AppNotification {
   bool matches(NotificationFilter filter) => switch (filter) {
     NotificationFilter.all => true,
     NotificationFilter.changes => kind == NotificationKind.officialChange,
-    NotificationFilter.alerts =>
-      kind == NotificationKind.alert || kind == NotificationKind.weather,
+    NotificationFilter.alerts => kind == NotificationKind.alert,
+    NotificationFilter.weather => kind == NotificationKind.weather,
     NotificationFilter.requests =>
-      kind == NotificationKind.request ||
-          kind == NotificationKind.confirmation ||
-          kind == NotificationKind.poll,
+      kind == NotificationKind.request || kind == NotificationKind.confirmation,
   };
 }
 
-/// Data extracted from a ticket file, or typed in, before it is saved (P3).
-class TicketDraft {
-  TicketDraft({
-    required this.origin,
-    this.eventName = '',
-    this.date,
-    this.gate = '',
-    this.doorsOpen = '',
-    this.start = '',
-    this.place = '',
-    this.seat = '',
-    this.hasEntryCode = false,
-  });
+/// What happened to a ticket file after it was read (P2 → P2a / P2b).
+enum ImportOutcome {
+  /// The event code matched a registered event: the ticket was added (P2a).
+  added,
 
-  final TicketOrigin origin;
-  String eventName;
-  DateTime? date;
-  String gate;
-  String doorsOpen;
-  String start;
-  String place;
-  String seat;
-  bool hasEntryCode;
+  /// No event code was read, or the code that was read matches no event:
+  /// the participant types it (P2b, FR-004).
+  needsEventCode,
+
+  /// No QR code in the file: the ticket is not stored (FR-070).
+  noQrCode,
+
+  /// The typed code matches no event: nothing is stored (FR-083).
+  eventNotOnCrowded,
+
+  /// The ticket is already linked to another account (FR-084).
+  linkedToAnotherAccount,
 }
 
-/// A catalog event suggested for a draft ticket (P4).
-class EventMatch {
-  const EventMatch({required this.event, required this.strong});
+/// A ticket file being imported, with what was read from it (P2b).
+class TicketImport {
+  const TicketImport({
+    required this.fileName,
+    required this.origin,
+    this.readCode,
+  });
 
-  final Event event;
+  final String fileName;
+  final TicketOrigin origin;
 
-  /// "Correspondência alta" when true, "Correspondência baixa" otherwise.
-  final bool strong;
+  /// Event code read from the ticket, when there was one ("MARG-2O26").
+  final String? readCode;
 }
 
 /// What a participant receives for one event (C2, "Por evento").
@@ -395,7 +436,6 @@ class NotificationPreferences {
   bool organizerAlerts = true;
   bool weatherAlerts = true;
   bool recognitions = true;
-  bool officialChangesByEmail = true;
   RequestNotificationLevel requests = RequestNotificationLevel.urgentOnly;
   bool confirmationPrompts = true;
   final Map<String, EventNotificationLevel> perEvent = {};
@@ -571,52 +611,6 @@ class Recognition {
   final String alertMessage;
 }
 
-class PollQuestion {
-  const PollQuestion(this.text, this.options);
-
-  final String text;
-  final List<String> options;
-}
-
-/// Interest poll about a proposed event (P16). Answering does not follow
-/// the event.
-class Poll {
-  Poll({
-    required this.id,
-    required this.eventId,
-    required this.organizer,
-    required this.organizerInitials,
-    required this.proposedEvent,
-    required this.date,
-    required this.venue,
-    required this.closesAt,
-    required this.title,
-    required this.questions,
-    required this.sentAt,
-    required this.responses,
-  });
-
-  final String id;
-
-  /// Event whose participants are asked (the requests list in P17).
-  final String eventId;
-  final String organizer;
-  final String organizerInitials;
-
-  /// "Margens Inverno".
-  final String proposedEvent;
-  final DateTime date;
-  final String venue;
-  final DateTime closesAt;
-  final String title;
-  final List<PollQuestion> questions;
-  final DateTime sentAt;
-  int responses;
-
-  /// Index of the chosen option per question, once sent.
-  List<int>? answers;
-}
-
 /// Open question from the organizer (P17).
 class IdeaPrompt {
   IdeaPrompt({
@@ -671,8 +665,13 @@ class Directions {
     required this.entrance,
     required this.entranceDetail,
     required this.options,
+    required this.operators,
     required this.updatedAt,
   });
+
+  /// Transport operators whose GTFS timetables feed the options
+  /// ("Metro do Porto e STCP").
+  final String operators;
 
   /// "Porta A".
   final String entrance;

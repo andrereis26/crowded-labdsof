@@ -63,8 +63,8 @@ class NotificationPreferencesScreen extends StatelessWidget {
             onChanged: (v) => update((p) => p.organizerAlerts = v),
           ),
           PreferenceSwitchTile(
-            title: 'Alertas de meteorologia',
-            subtitle: 'Só avisos de risco.',
+            title: 'Avisos meteorológicos',
+            subtitle: 'Laranja e vermelho do IPMA, no distrito do evento.',
             value: prefs.weatherAlerts,
             onChanged: (v) => update((p) => p.weatherAlerts = v),
           ),
@@ -73,17 +73,6 @@ class NotificationPreferencesScreen extends StatelessWidget {
             subtitle: 'Quando um reporte teu ajuda a organização.',
             value: prefs.recognitions,
             onChanged: (v) => update((p) => p.recognitions = v),
-          ),
-        ],
-      ),
-      PreferencePanel(
-        children: [
-          PreferenceSwitchTile(
-            icon: Icons.mail_outline,
-            title: 'Alterações oficiais também por email',
-            subtitle: 'Mesmo sem a app instalada.',
-            value: prefs.officialChangesByEmail,
-            onChanged: (v) => update((p) => p.officialChangesByEmail = v),
           ),
         ],
       ),

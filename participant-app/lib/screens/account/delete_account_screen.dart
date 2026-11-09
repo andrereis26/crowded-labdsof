@@ -51,7 +51,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   Widget build(BuildContext context) {
     final store = AppStore.of(context);
     final tickets = store.tickets.length;
-    final followed = store.followedEvents.length;
+    final publicEvents = store.publicEvents.length;
 
     Widget item(IconData icon, String text) => Row(
       spacing: 10,
@@ -119,9 +119,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           ),
           item(
             Icons.calendar_today_outlined,
-            followed == 1
-                ? '1 evento que segues'
-                : '$followed eventos que segues',
+            publicEvents == 1
+                ? '1 evento público a que estás ligado'
+                : '$publicEvents eventos públicos a que estás ligado',
           ),
           item(
             Icons.notifications_none,

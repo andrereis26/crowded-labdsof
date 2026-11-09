@@ -6,8 +6,9 @@ import '../../ui/ui.dart';
 import '../shared/shell.dart';
 import 'account_layout.dart';
 
-/// Conta: profile, contributions (P20), account settings (C2, C3), sign out
-/// and the demo switches.
+/// C0 · Conta: profile and the account menu (Perfil, Notificações,
+/// Localização, Contribuições, Privacidade e dados), sign out and the demo
+/// switches.
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
 
@@ -86,17 +87,6 @@ class AccountScreen extends StatelessWidget {
       ),
     ];
 
-    final contributions = AppListGroup(
-      children: [
-        AppListTile(
-          icon: Icons.flag_outlined,
-          title: 'As tuas contribuições',
-          subtitle: 'Reportes e confirmações que fizeste',
-          onTap: () => context.push('/conta/contribuicoes'),
-        ),
-      ],
-    );
-
     final signOutButton = AppButton.secondary(
       label: 'Terminar sessão',
       icon: Icons.logout,
@@ -109,7 +99,6 @@ class AccountScreen extends StatelessWidget {
         title: 'Perfil',
         children: [
           profile,
-          contributions,
           Align(alignment: Alignment.centerLeft, child: signOutButton),
           const SizedBox(height: AppSpacing.sm),
           ...demo,
@@ -133,17 +122,17 @@ class AccountScreen extends StatelessWidget {
             children: [
               const SectionHeader(title: 'Conta'),
               profile,
-              contributions,
               AppListGroup(
                 children: [
-                  for (final section in AccountSection.values.skip(1))
+                  for (final section in AccountSection.values)
                     AppListTile(
                       icon: section.icon,
+                      iconColor: AppColors.inkSecondary,
                       title: section.label,
-                      subtitle: section == AccountSection.privacy
-                          ? 'Descarregar ou apagar os teus dados'
-                          : null,
-                      onTap: () => section.path == null
+                      subtitle: section.description,
+                      onTap: () =>
+                          section.path == null ||
+                              section == AccountSection.profile
                           ? showComingSoon(context)
                           : context.push(section.path!),
                     ),

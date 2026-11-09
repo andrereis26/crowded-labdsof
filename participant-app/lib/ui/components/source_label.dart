@@ -28,7 +28,7 @@ String formatSentAgo(DateTime sent, {DateTime? now}) {
   return days == 1 ? 'ontem' : formatTimeAgo(sent, now: reference);
 }
 
-/// "Fonte: bilheteira oficial · há 5 min", or "Organização Margens · agora"
+/// "Fonte: organização · há 5 min", or "Organização Margens · agora"
 /// when [withPrefix] is false (alerts name the publisher directly).
 String formatSource(
   String source,

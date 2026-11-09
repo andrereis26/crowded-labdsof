@@ -6,14 +6,25 @@ import '../../data/models.dart';
 import '../../ui/ui.dart';
 import '../shared/shell.dart';
 
-/// P2 · Importar bilhete: from the ticket PDF or the confirmation email
-/// file, or typed in by hand.
+/// P2 · Importar bilhete: from the ticket PDF or a screenshot or photo of
+/// it. The QR code and the event code are read from the file (FR-003,
+/// FR-070); events without tickets are joined with an access code (P21).
 class ImportScreen extends StatelessWidget {
   const ImportScreen({super.key});
 
-  void _start(BuildContext context, TicketOrigin origin) {
-    AppStore.of(context).startImport(origin);
-    context.push('/importar/rever');
+  /// Screen that shows [outcome]: P2a when the ticket was added, P2b
+  /// otherwise.
+  static String pathFor(ImportOutcome outcome) => switch (outcome) {
+    ImportOutcome.added => '/importar/adicionado',
+    ImportOutcome.needsEventCode => '/importar/codigo',
+    ImportOutcome.noQrCode => '/importar/erro/sem-qr',
+    ImportOutcome.eventNotOnCrowded => '/importar/erro/sem-crowded',
+    ImportOutcome.linkedToAnotherAccount => '/importar/erro/outra-conta',
+  };
+
+  void _import(BuildContext context, TicketOrigin origin) {
+    final outcome = AppStore.read(context).importFile(origin);
+    context.push(pathFor(outcome));
   }
 
   @override
@@ -25,37 +36,29 @@ class ImportScreen extends StatelessWidget {
       maxWidth: 560,
       children: [
         Text(
-          'Carrega o bilhete que compraste noutra plataforma.',
+          'Carrega o bilhete do evento. Lemos o código QR e o código do '
+          'evento para o juntar aos teus eventos.',
           style: AppTextStyles.bodySecondary.copyWith(fontSize: 15),
         ),
         AppNavigationCard(
           icon: Icons.description_outlined,
           title: 'PDF do bilhete',
-          subtitle: 'O ficheiro que recebeste da bilheteira.',
-          onTap: () => _start(context, TicketOrigin.pdf),
+          subtitle: 'O ficheiro que recebeste quando compraste o bilhete.',
+          onTap: () => _import(context, TicketOrigin.pdf),
         ),
         AppNavigationCard(
-          icon: Icons.mail_outline,
-          title: 'Email de confirmação (.eml)',
-          subtitle: 'Guarda o email como ficheiro .eml e carrega-o aqui.',
-          onTap: () => _start(context, TicketOrigin.email),
-          footer: AppInlineLink(
-            label: 'Como guardar um email em .eml?',
-            icon: Icons.info_outline,
-            onPressed: () => showComingSoon(context),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.xxs),
-        AppButton.secondary(
-          label: 'Introduzir dados manualmente',
-          icon: Icons.edit_outlined,
-          onPressed: () => _start(context, TicketOrigin.manual),
+          icon: Icons.image_outlined,
+          title: 'Captura de ecrã ou foto',
+          subtitle: isDesktopLayout(context)
+              ? 'PNG ou JPG, com o código QR visível.'
+              : 'Uma imagem nítida, com o código QR visível.',
+          onTap: () => _import(context, TicketOrigin.image),
         ),
         Center(
           child: AppInlineLink(
-            label: 'Como tratamos os teus dados',
-            icon: Icons.shield_outlined,
-            onPressed: () => showComingSoon(context),
+            label: 'Evento sem bilhete? Inserir código de acesso',
+            icon: Icons.qr_code_scanner,
+            onPressed: () => context.push('/codigo-de-acesso'),
           ),
         ),
       ],
