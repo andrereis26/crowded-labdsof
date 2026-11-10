@@ -4,7 +4,7 @@ Core service of Crowded ([Technical Design](../docs/deliverables/technical-desig
 
 - **Responsibility:** domain rules, authentication (issues JWTs), REST API, Organization API, live event-page updates (SSE), AI ticket extraction and alert drafts. Applies the changes detected by Jobs.
 - **Owns (writes):** users, organizations, events, connections, on-site information, weather, alerts, surveys, reports, incidents.
-- **Dependencies:** Spring Web MVC, Validation, Spring Data JPA with the PostgreSQL driver, Spring AMQP, Spring Data Redis, Spring Security with OAuth2 Resource Server (JWT).
+- **Dependencies:** Spring Web MVC, Validation, Spring Data JPA with the PostgreSQL driver, Spring AMQP, Spring Data Redis, Spring Security with OAuth2 Resource Server (JWT), MapStruct; ArchUnit in the tests.
 
 ## Stack
 
@@ -51,6 +51,21 @@ Same for `core/`, `jobs/` and `notifications/` ([ADR 0006](../docs/deliverables/
 Unit tests are `*Test` classes; integration tests are `*IT` classes that extend `IntegrationTest`, which starts PostgreSQL, RabbitMQ and Redis with Testcontainers (Docker must be running). Read the rules in `IntegrationTest` before adding one: all of them share one Spring context, and a test that changes the database, broker or cache takes the `SHARED_STATE` lock ([ADR 0011](../docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md#integration-tests)).
 
 The `Dockerfile` builds the service and runs it on a JRE as a non-root user; its health check calls `/actuator/health/readiness`, the only endpoint that needs no token. The application does not start without PostgreSQL, RabbitMQ and Redis; [`deployment/`](../deployment/README.md) runs it with them.
+
+## Code Layout
+
+Onion architecture, one package per module under `com.crowded.core` (`event`, `user`, `organization`, `audit`, `outbox`, and `shared` for what they all use). Inside a module, dependencies only point inwards:
+
+| Layer | Package | Holds | May use |
+|---|---|---|---|
+| Domain | `domain.model`, `domain.exception` | Entities, value objects, enums, the refusals (`NotFoundException`, `RuleViolationException`, ...) | Nothing else |
+| | `domain.service`, `domain.repository` | Domain rules (`ChangePlanner`) and the repository ports (interfaces) | The domain model |
+| Application | `application.service`, `application.dto` | Use cases (`@Service`, `@Transactional`), their commands and results | The domain |
+| Adapters | `api.controller`, `api.dto`, `api.mapper` | REST controllers, request and response DTOs, MapStruct mappers to the application DTOs | Application, domain |
+| | `infrastructure.persistence.entity`, `.repository`, `.mapper` | JPA entities, Spring Data repositories with the adapters that implement the ports, MapStruct mappers to the domain | Domain |
+| | `infrastructure.messaging`, `infrastructure.config` | The outbox relay to RabbitMQ; security and clock configuration | Domain |
+
+The domain uses no framework: no Spring, JPA, validation, Jackson or MapStruct. Adapters never use each other. `OnionArchitectureTest` (ArchUnit) checks these rules on every build. The `ApiExceptionHandler` turns a domain refusal into an RFC 9457 problem with its `code`. Mappers are MapStruct interfaces, generated at compile time as Spring beans. A target property a mapper leaves unmapped fails the build.
 
 ## Configuration
 

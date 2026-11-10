@@ -23,6 +23,9 @@
     <rabbit-amqp-client.version>5.37.0</rabbit-amqp-client.version>
     <jacoco-maven-plugin.version>0.8.16</jacoco-maven-plugin.version>
     <spotbugs-maven-plugin.version>4.10.5.0</spotbugs-maven-plugin.version>
+    <!-- Latest stable releases; 1.7 of MapStruct is still a beta. -->
+    <mapstruct.version>1.6.3</mapstruct.version>
+    <archunit.version>1.5.1</archunit.version>
     <!-- CI runs unit and integration tests in separate jobs (ADR 0011):
          -DskipUTs skips the unit tests, -DskipITs the integration tests. -->
     <skipUTs>false</skipUTs>
@@ -69,6 +72,13 @@
     </dependency>
 
     <dependency>
+      <!-- Mappers between the layers: API DTOs, domain and JPA entities. -->
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct</artifactId>
+      <version>${mapstruct.version}</version>
+    </dependency>
+
+    <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
@@ -81,6 +91,13 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <!-- Checks the onion layering (OnionArchitectureTest). -->
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit</artifactId>
+      <version>${archunit.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -131,8 +148,34 @@
           <failOnWarning>true</failOnWarning>
           <compilerArgs combine.children="append">
             <arg>-Xlint:all</arg>
+            <!-- "No processor claimed these annotations": MapStruct claims none on
+                 purpose, so this lint category says nothing about the code. -->
+            <arg>-Xlint:-processing</arg>
           </compilerArgs>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.mapstruct</groupId>
+              <artifactId>mapstruct-processor</artifactId>
+              <version>${mapstruct.version}</version>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
+        <executions>
+          <execution>
+            <!-- Main code only: the tests declare no mappers, and javac warns about
+                 options no processor reads. -->
+            <id>default-compile</id>
+            <configuration>
+              <compilerArgs combine.children="append">
+                <!-- MapStruct mappers are Spring beans with constructor injection,
+                     and a target property left unmapped fails the build. -->
+                <arg>-Amapstruct.defaultComponentModel=spring</arg>
+                <arg>-Amapstruct.defaultInjectionStrategy=constructor</arg>
+                <arg>-Amapstruct.unmappedTargetPolicy=ERROR</arg>
+              </compilerArgs>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <!-- Formatting: ./mvnw spotless:apply, checked by spotless:check in verify. -->

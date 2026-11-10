@@ -22,6 +22,9 @@ spring:
     password: ${RABBITMQ_PASSWORD}
     # The outbox relay deletes a message only once the broker confirmed it.
     publisher-confirm-type: simple
+    # While the broker is down, the relay gives up within 5 s instead of the
+    # default 60 s, so it does not hold a database transaction that long.
+    connection-timeout: 5s
   data:
     redis:
       host: ${REDIS_HOST}
