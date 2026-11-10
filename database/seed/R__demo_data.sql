@@ -102,7 +102,7 @@ INSERT INTO event (
 ON CONFLICT DO NOTHING;
 
 INSERT INTO event_change (
-  id, event_id, type, severity, previous_value, new_value, ticket_still_valid, refund_info_url,
+  id, event_id, type, severity, previous_value, new_value, ticket_still_valid, refund_info,
   provenance_source_type, provenance_source_name, provenance_last_updated_at, provenance_confirmed,
   corroborating_source_type, corroborated_at
 ) VALUES

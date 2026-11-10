@@ -11,7 +11,7 @@ import org.springframework.security.web.SecurityFilterChain;
  * health check and Docker Swarm call without one. Only health is exposed over HTTP.
  */
 @Configuration(proxyBeanMethods = false)
-class SecurityConfiguration {
+public class SecurityConfiguration {
 
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {

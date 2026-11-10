@@ -5,7 +5,7 @@ This document outlines the principal APIs between the client apps and the backen
 ## Conventions
 
 - **Format:** field names, enum values and ids (UUID) follow the [Data Model](diagrams/data-model.svg).
-- **Authentication:** Core registers participants and issues short-lived JWTs; the services validate them and check the revocation list ([ADR 0005](adr/0005-authentication-in-core-with-jwt.md), [ADR 0004](adr/0004-redis-for-revocation-rate-limiting-and-cache.md)). Organization members get their accounts from a platform administrator.
+- **Authentication:** Core registers participants and issues short-lived JWTs; the services validate them and check the revocation list ([ADR 0005](adr/0005-authentication-in-core-with-jwt.md), [ADR 0004](adr/0004-redis-for-revocation-rate-limiting-and-cache.md)). Organization members get their accounts from a platform administrator. The token's `sub` is the user id; Core reads the user's role and organization from the database on each request instead of trusting claims, so a changed role or organization applies at once (SR-001).
 - **Access to an event:** every endpoint under `/events/{eventId}` that a participant can call requires a connection to that event, through a ticket or the access code (SR-020). Which event a ticket or an access code connects to is decided by Core from the code, never from an `eventId` sent by the client (SR-021).
 - **Provenance:** every piece of event information carries `provenance` {`sourceType`, `sourceName`, `lastUpdatedAt`, `confirmed`}, so the app can show its source and last-update time (FR-032) and flag or hide information that has not been updated within the configured period (FR-033).
 - **Rate limits:** unauthenticated requests, ticket imports, reports and confirmation answers (SR-011), and sign-in and participant registration (SR-015) are rate-limited. NGINX keeps a coarse per-IP limit; per-user limits run in Core ([ADR 0004](adr/0004-redis-for-revocation-rate-limiting-and-cache.md)).
@@ -108,7 +108,7 @@ Also uses: `GET /notifications`, `GET /notifications/stream`, `POST /notificatio
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
-| POST | `/events/{eventId}/changes` | Publish a change: postpone, move, cancel, or change the time or doors opening time (FR-016, FR-072, FR-075). Core sets the severity (FR-074), stores the `EventChange`, updates the event and publishes `NotificationRequested` in one transaction ([Asynchronous Flows](asynchronous-flows.md)). | `type`, `newValue` (changed fields, such as `startDateTime`, `doorsOpenAt` or `venue`), `ticketStillValid`, `refundInfo` | `changeId`, `severity` | Member |
+| POST | `/events/{eventId}/changes` | Publish a change: postpone, move, cancel, or change the time or doors opening time (FR-016, FR-072, FR-075). Core sets the severity (FR-074), stores the `EventChange`, updates the event, audits it (SR-006) and publishes `NotificationRequested` in one transaction ([Asynchronous Flows](asynchronous-flows.md)). A postponement or start-time change moves the doors opening and end times with the start unless they are sent. A change the event already has records nothing and answers `200` with the change recorded the first time (NFR-003); a new one answers `201`. | `type` (`POSTPONEMENT`, `TIME_CHANGE`, `VENUE_CHANGE` or `CANCELLATION`), `newValue` (changed fields: `startDateTime`, `doorsOpenAt`, `endDateTime`, or `venueName`, `address`, `latitude`, `longitude`), `ticketStillValid` and `refundInfo` (postponement or cancellation only), `message` (to the participants) | `changeId`, `severity`. Errors: `EVENT_NOT_FOUND`, `NOT_EVENT_ORGANIZATION`, `EVENT_CLOSED`, `NOTHING_CHANGES`, and invalid values such as `START_IN_PAST` or `VENUE_REQUIRED` | Member |
 
 ### 4. Check conditions and decide
 
@@ -170,14 +170,14 @@ The Router (NGINX) is the single entry point ([Technical Design](technical-desig
 
 ### Messages
 
-Messages carry ids only; consumers read the current data from the database ([ADR 0003](adr/0003-rabbitmq-for-asynchronous-messaging.md)). Failed processing is retried with backoff, and repeatedly failing messages are moved to a dead-letter queue (NFR-004). The only exception to ids only is `ReportsGrouped`, which carries the grouping result because Jobs does not store it.
+Messages are JSON, published to the topic exchange `crowded.events` with the message name as routing key in dotted lower case (`NotificationRequested` → `notification.requested`) and `messageId` as the AMQP message id ([Asynchronous Flows](asynchronous-flows.md#2-messages)). Messages carry ids only; consumers read the current data from the database ([ADR 0003](adr/0003-rabbitmq-for-asynchronous-messaging.md)). Failed processing is retried with backoff, and repeatedly failing messages are moved to a dead-letter queue (NFR-004). The only exception to ids only is `ReportsGrouped`, which carries the grouping result because Jobs does not store it.
 
 | Message | Publisher | Consumer | Payload | Effect |
 |---|---|---|---|---|
 | `WeatherUpdated` | Jobs | Core | `district`, `snapshotId` | Core stores the forecast and warnings for the events in that district (FR-035) and, for a new or raised orange or red warning during an event, notifies its connected participants (FR-036). |
 | `ReportSubmitted` | Core | Jobs | `eventId`, `reportId` | Jobs groups the report with similar ones, by category and time window when the AI is unavailable (FR-053). |
 | `ReportsGrouped` | Jobs | Core | `eventId`, `groupingMethod`, `groups[]` {`reportIds[]`, `summary`} | Core creates or updates incidents; AI summaries are labelled until the organization acts on them (FR-053, NFR-007). |
-| `NotificationRequested` | Core | Notifications | `messageId`, `type`, `eventId`, `causeId`, `userIds[]` | Notifications notifies the participants connected to the event or, when given, only `userIds`. |
+| `NotificationRequested` | Core | Notifications | `messageId`, `type`, `eventId`, `causeId`, `userIds[]` | Notifications notifies the participants connected to the event or, when `userIds` is not empty, only those users. |
 | `UserDeleted` | Core | Notifications | `userId` | Notifications deletes the user's notifications, settings and device tokens (FR-042). |
 
 Core publishes `NotificationRequested` with the `type` and `causeId` that the `Notification` will have:

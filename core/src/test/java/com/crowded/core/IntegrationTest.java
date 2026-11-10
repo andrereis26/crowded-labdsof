@@ -2,6 +2,7 @@ package com.crowded.core;
 
 import static org.junit.jupiter.api.parallel.ResourceAccessMode.READ;
 
+import java.util.UUID;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
@@ -51,6 +52,11 @@ public abstract class IntegrationTest {
     // Stopped by Testcontainers when the test JVM exits.
     Startables.deepStart(POSTGRES, RABBITMQ, REDIS).join();
     DATABASE = TestDatabase.migrate(NETWORK, POSTGRES);
+  }
+
+  /** A token of the user {@code userId}, signed with the key pair Core validates against. */
+  protected static String token(UUID userId) {
+    return JWT_KEYS.token(userId.toString());
   }
 
   @DynamicPropertySource

@@ -3,6 +3,7 @@ package com.crowded.core;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.crowded.core.event.EventChangeService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -19,6 +20,9 @@ class SecurityConfigurationTest {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private JwtDecoder jwtDecoder;
+
+  // The slice loads every controller; their services are not part of it.
+  @MockitoBean private EventChangeService eventChangeService;
 
   @Test
   void rejectsRequestsWithoutAToken() throws Exception {
