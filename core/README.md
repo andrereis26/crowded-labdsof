@@ -1,6 +1,6 @@
 # Crowded Core
 
-Core service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). For now it is an empty skeleton: no endpoints, entities or queues yet.
+Core service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). So far it publishes an organization's official event changes (`POST /events/{eventId}/changes`, #37) and relays its outbox to RabbitMQ; the other endpoints follow the [API Outline](../docs/deliverables/api-outline.md).
 
 - **Responsibility:** domain rules, authentication (issues JWTs), REST API, Organization API, live event-page updates (SSE), AI ticket extraction and alert drafts. Applies the changes detected by Jobs.
 - **Owns (writes):** users, organizations, events, connections, on-site information, weather, alerts, surveys, reports, incidents.

@@ -20,11 +20,11 @@ The messages are defined in the [API Outline](api-outline.md#messages). The two 
 | `NotificationRequested` | Core → Notifications | `messageId`, `type`, `eventId`, `causeId`, `userIds[]` | Notifications notifies the connected participants, or only `userIds` when given. |
 | `WeatherUpdated` | Jobs → Core | `district`, `snapshotId` | Core stores the forecast and warnings and, for a new or raised orange or red warning, publishes `NotificationRequested`. |
 
-All messages go through one topic exchange, `crowded.events`. Each consumer has its own durable queue.
+All messages go through one topic exchange, `crowded.events`. The routing key is the message name in dotted lower case, such as `notification.requested`. The body is the payload as JSON, persistent, with `messageId` also as the AMQP message id. Each consumer declares its own durable queue, bound to the routing keys it consumes, and its dead-letter queue.
 
 **Retries.** A failed message is retried after 5 s, 15 s and 30 s, so all retries end within 1 minute. After that, it goes to the queue's dead-letter queue (`<queue>.dlq`). A non-empty DLQ raises an alert in Grafana. Messages can be replayed from the DLQ after the cause is fixed, which is safe because consumers are idempotent.
 
-**Outbox.** Core and Jobs write each outgoing message to an `outbox` table in the same transaction as the change. A relay then publishes it, keeping the same `messageId` if it has to publish it again. If RabbitMQ is down, the message waits in the outbox, so no change is lost.
+**Outbox.** Core and Jobs write each outgoing message to an outbox table in the same transaction as the change; Core's is `outbox` ([Data Model](diagrams/data-model.svg)), and Jobs gets its own when it publishes, since each table has one writer (ADR 0002). A relay polls it every half second, publishes the oldest messages first, and deletes each one once RabbitMQ confirms it, keeping the same `messageId` if it has to publish it again. If RabbitMQ is down, the message waits in the outbox, so no change is lost. Rows locked by one Core replica's relay are skipped by the others.
 
 ## 3. Official change flow
 

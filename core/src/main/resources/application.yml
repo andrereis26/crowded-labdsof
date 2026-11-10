@@ -13,16 +13,24 @@ spring:
       # The schema belongs to database/ (ADR 0012): the service never changes
       # it, and fails at startup when its entities do not match it.
       ddl-auto: validate
+    # No database session held open while the response is written.
+    open-in-view: false
   rabbitmq:
     host: ${RABBITMQ_HOST}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME}
     password: ${RABBITMQ_PASSWORD}
+    # The outbox relay deletes a message only once the broker confirmed it.
+    publisher-confirm-type: simple
   data:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+  mvc:
+    # Errors as RFC 9457 problems, with the API's error code in "code".
+    problemdetails:
+      enabled: true
   security:
     oauth2:
       resourceserver:

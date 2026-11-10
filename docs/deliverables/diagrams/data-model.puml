@@ -91,6 +91,7 @@ entity "EventChange" as EventChange {
   newValue : JSONB
   ticketStillValid : BOOLEAN [NULL]
   refundInfo : TEXT [NULL]
+  message : TEXT [NULL]
   provenanceSourceType : source_type
   provenanceSourceName : TEXT
   provenanceLastUpdatedAt : TIMESTAMPTZ
@@ -366,6 +367,20 @@ note right of AuditLogEntry
   event type (event change, alert sent, incident status
   change, an administrator's account action), as covered
   by SR-006.
+end note
+
+entity "Outbox" as Outbox {
+  * id : UUID <<PK>>
+  --
+  routingKey : TEXT
+  payload : JSONB
+  createdAt : TIMESTAMPTZ
+}
+
+note right of Outbox
+  Messages Core committed with a change and RabbitMQ has
+  not confirmed yet (Asynchronous Flows). The relay publishes
+  each with id as its message id, then deletes it.
 end note
 
 }

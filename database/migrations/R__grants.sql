@@ -18,7 +18,7 @@ REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SC
   FROM crowded_core, crowded_jobs, crowded_notifications;
 
 -- Core: users, organizations, events, connections, on-site information,
--- alerts, surveys, polls, reports, incidents and the audit log.
+-- alerts, surveys, polls, reports, incidents, the audit log and its outbox.
 GRANT INSERT, UPDATE, DELETE ON
   app_user, organization, api_credential,
   event, event_change, ownership_request,
@@ -27,7 +27,7 @@ GRANT INSERT, UPDATE, DELETE ON
   alert, alert_draft, event_survey, survey_option, survey_response,
   interest_poll, poll_option, poll_response,
   report, report_category, event_category_setting, confirmation, incident, recognition,
-  audit_log_entry
+  audit_log_entry, outbox
   TO crowded_core;
 
 -- Jobs: its sync snapshots, when a migration adds them. It owns no table of
