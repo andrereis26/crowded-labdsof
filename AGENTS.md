@@ -61,8 +61,10 @@
   one checkbox per item saying what to do, where in the code, and which story and
   pull request it comes from. Ask before commenting on an issue another person
   owns. A follow-up kept only in a pull request or a chat is forgotten after the
-  merge. Before closing a story, check its issue's comments for such checkboxes and
-  do or move them.
+  merge. When reading a story's issue to implement it, read its comments too
+  (`gh issue view <n> --comments`): deferred checkboxes left there by other stories
+  are part of its scope, so list them with the acceptance criteria. Before closing
+  the story, do or move each one.
 - Deliverable and commits: a commit on a feature branch. Messages follow
   `type(#issue): message` with type `feat|fix|docs|chore|ci` (README, DoD-03).
 - Worktrees: use one for parallel or delegated work, at `.claude/worktrees/<name>`.
