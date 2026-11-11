@@ -42,8 +42,7 @@ class AccountScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: 2,
                 children: [
-                  Text(account?.name ?? '', style: AppTextStyles.bodyLarge),
-                  Text(account?.email ?? '', style: AppTextStyles.footnote),
+                  Text(account?.email ?? '', style: AppTextStyles.bodyLarge),
                 ],
               ),
             ),

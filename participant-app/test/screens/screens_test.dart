@@ -1,5 +1,6 @@
 import 'package:crowded/app.dart';
 import 'package:crowded/data/app_store.dart';
+import 'package:crowded/data/auth_api.dart';
 import 'package:crowded/data/models.dart';
 import 'package:crowded/screens/event/entry_code_screen.dart';
 import 'package:crowded/screens/import/access_code_screen.dart';
@@ -10,6 +11,53 @@ import 'package:flutter_test/flutter_test.dart';
 /// Saturday 17 October 2026, 15:00.
 final _now = DateTime(2026, 10, 17, 15);
 
+const _email = 'ines.martins@email.pt';
+
+AuthSession _session(String email, {String role = 'PARTICIPANT'}) =>
+    AuthSession(
+      accessToken: 'token',
+      expiresAt: _now.add(const Duration(hours: 1)),
+      userId: 'u-1',
+      role: role,
+      email: email,
+    );
+
+/// Core's registration and sign-in, without a network: one account, whose
+/// password is `palavra-secreta`, plus the ones registered in the test.
+class _FakeAuthApi implements AuthApi {
+  final accounts = {_email: 'palavra-secreta', 'equipa@ribeira-live.test': 'x'};
+  String? failWith;
+
+  @override
+  Future<void> register({
+    required String email,
+    required String password,
+  }) async {
+    if (failWith != null) throw AuthException(failWith!);
+    if (accounts.containsKey(email)) {
+      throw const AuthException('EMAIL_ALREADY_REGISTERED');
+    }
+    accounts[email] = password;
+  }
+
+  @override
+  Future<AuthSession> signIn({
+    required String email,
+    required String password,
+  }) async {
+    if (failWith != null) throw AuthException(failWith!);
+    if (accounts[email] != password) {
+      throw const AuthException('INVALID_CREDENTIALS');
+    }
+    return _session(
+      email,
+      role: email.endsWith('ribeira-live.test')
+          ? 'ORGANIZATION_MEMBER'
+          : 'PARTICIPANT',
+    );
+  }
+}
+
 const _mobile = Size(390, 844);
 const _desktop = Size(1440, 1000);
 
@@ -18,12 +66,16 @@ Future<AppStore> _pump(
   String location = '/eventos',
   Size size = _mobile,
   bool signedIn = true,
+  AuthApi? auth,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  final store = AppStore(clock: () => _now);
-  if (!signedIn) store.signOut();
+  final store = AppStore(
+    clock: () => _now,
+    auth: auth ?? _FakeAuthApi(),
+    session: signedIn ? _session(_email) : null,
+  );
   await tester.pumpWidget(CrowdedApp(store: store, initialLocation: location));
   await tester.pumpAndSettle();
   return store;
@@ -360,32 +412,116 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Introduz um email válido.'), findsOneWidget);
 
-      await tester.enterText(find.byType(TextField).at(0), 'ines@email.pt');
+      await tester.enterText(find.byType(TextField).at(0), _email);
+      await tester.enterText(find.byType(TextField).at(1), 'errada-errada');
+      await tester.tap(find.widgetWithText(AppButton, 'Entrar'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('O email ou a palavra-passe estão errados.'),
+        findsOneWidget,
+      );
+      expect(store.signedIn, isFalse);
+
       await tester.enterText(find.byType(TextField).at(1), 'palavra-secreta');
       await tester.tap(find.widgetWithText(AppButton, 'Entrar'));
       await tester.pumpAndSettle();
       expect(store.signedIn, isTrue);
+      expect(store.session?.accessToken, 'token');
       expect(find.text('ADIADO · 8 NOV'), findsOneWidget);
     });
 
-    testWidgets('creates an account', (tester) async {
+    testWidgets('sends an organization member to the backoffice', (
+      tester,
+    ) async {
+      final store = await _pump(tester, location: '/entrar', signedIn: false);
+
+      await tester.enterText(
+        find.byType(TextField).at(0),
+        'equipa@ribeira-live.test',
+      );
+      await tester.enterText(find.byType(TextField).at(1), 'x');
+      await tester.tap(find.widgetWithText(AppButton, 'Entrar'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Esta conta é de uma organização. Entra no backoffice.'),
+        findsOneWidget,
+      );
+      expect(store.signedIn, isFalse);
+    });
+
+    testWidgets('says when Core cannot be reached or limits the attempts', (
+      tester,
+    ) async {
+      final auth = _FakeAuthApi()..failWith = 'NETWORK';
+      await _pump(tester, location: '/entrar', signedIn: false, auth: auth);
+
+      await tester.enterText(find.byType(TextField).at(0), _email);
+      await tester.enterText(find.byType(TextField).at(1), 'palavra-secreta');
+      await tester.tap(find.widgetWithText(AppButton, 'Entrar'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'Não foi possível ligar ao Crowded. Verifica a ligação e tenta novamente.',
+        ),
+        findsOneWidget,
+      );
+
+      auth.failWith = 'RATE_LIMITED';
+      await tester.tap(find.widgetWithText(AppButton, 'Entrar'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'Demasiadas tentativas. Tenta novamente daqui a alguns minutos.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('creates an account without a name and signs in', (
+      tester,
+    ) async {
       final store = await _pump(tester, location: '/entrar', signedIn: false);
 
       await tester.tap(find.text('Criar conta').first);
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).at(0), 'Ana Costa');
-      await tester.enterText(find.byType(TextField).at(1), 'ana@email.pt');
-      await tester.enterText(find.byType(TextField).at(2), 'palavra-secreta');
+      expect(find.text('Nome'), findsNothing);
+      await tester.enterText(find.byType(TextField).at(0), 'ana@email.pt');
+      await tester.enterText(find.byType(TextField).at(1), 'curta');
       await tester.tap(find.widgetWithText(AppButton, 'Criar conta'));
       await tester.pumpAndSettle();
-      expect(store.account?.name, 'Ana Costa');
+      expect(
+        find.text('Usa pelo menos 8 caracteres na palavra-passe.'),
+        findsOneWidget,
+      );
+
+      await tester.enterText(find.byType(TextField).at(1), 'palavra-secreta');
+      await tester.tap(find.widgetWithText(AppButton, 'Criar conta'));
+      await tester.pumpAndSettle();
+      expect(store.account?.email, 'ana@email.pt');
+      expect(find.text('ADIADO · 8 NOV'), findsOneWidget);
+    });
+
+    testWidgets('refuses an email that already has an account', (tester) async {
+      await _pump(tester, location: '/entrar', signedIn: false);
+
+      await tester.tap(find.text('Criar conta').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).at(0), _email);
+      await tester.enterText(find.byType(TextField).at(1), 'outra-palavra');
+      await tester.tap(find.widgetWithText(AppButton, 'Criar conta'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Já existe uma conta com este email. Entra com ela.'),
+        findsOneWidget,
+      );
     });
   });
 
   testWidgets('C0 lists the account menu and signs out to C1', (tester) async {
     final store = await _pump(tester, location: '/conta');
 
-    expect(find.text('Inês Martins'), findsOneWidget);
+    expect(find.text(_email), findsOneWidget);
     expect(find.text('Contribuições'), findsOneWidget);
     expect(find.text('Os teus reportes e confirmações'), findsOneWidget);
     await tester.ensureVisible(find.text('Terminar sessão'));
@@ -601,7 +737,7 @@ void main() {
 
       expect(find.byType(EntryCodeImage), findsOneWidget);
       expect(find.text('Ref. •••• 4821'), findsOneWidget);
-      expect(find.text('Inês Martins'), findsOneWidget);
+      expect(find.text(_email), findsOneWidget);
     });
 
     testWidgets('asks for the password on the web and hides after 2 min', (

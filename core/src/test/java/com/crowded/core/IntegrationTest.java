@@ -72,5 +72,8 @@ public abstract class IntegrationTest {
     registry.add("REDIS_PORT", () -> REDIS.getMappedPort(6379));
     registry.add("JWT_PUBLIC_KEY_LOCATION", JWT_KEYS::publicKeyLocation);
     registry.add("JWT_PRIVATE_KEY_LOCATION", () -> JWT_KEYS.privateKeyLocation());
+    // Every test client has the same address: only the per-email limit is tested.
+    registry.add("crowded.rate-limits.sign-ins-per-address", () -> 10_000);
+    registry.add("crowded.rate-limits.registrations-per-address", () -> 10_000);
   }
 }

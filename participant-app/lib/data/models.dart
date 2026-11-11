@@ -441,19 +441,14 @@ class NotificationPreferences {
   final Map<String, EventNotificationLevel> perEvent = {};
 }
 
-/// The signed-in participant.
+/// The signed-in participant. Crowded keeps only the email, no name (data
+/// minimisation).
 class Account {
-  const Account({required this.name, required this.email});
+  const Account({required this.email});
 
-  final String name;
   final String email;
 
-  String get initials => name
-      .split(RegExp(r'\s+'))
-      .where((p) => p.isNotEmpty)
-      .take(2)
-      .map((p) => p[0].toUpperCase())
-      .join();
+  String get initials => email.isEmpty ? '' : email[0].toUpperCase();
 }
 
 /// A gate or service at the venue, with the preposition used before it

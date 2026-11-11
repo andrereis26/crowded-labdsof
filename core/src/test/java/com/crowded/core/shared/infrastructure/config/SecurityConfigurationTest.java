@@ -1,14 +1,17 @@
 package com.crowded.core.shared.infrastructure.config;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.crowded.core.event.api.mapper.EventChangeApiMapper;
 import com.crowded.core.event.application.service.EventChangeService;
+import com.crowded.core.user.application.service.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,10 +28,26 @@ class SecurityConfigurationTest {
   // The slice loads every controller; their services are not part of it.
   @MockitoBean private EventChangeService eventChangeService;
   @MockitoBean private EventChangeApiMapper eventChangeApiMapper;
+  @MockitoBean private AuthService authService;
 
   @Test
   void rejectsRequestsWithoutAToken() throws Exception {
     mockMvc.perform(get("/anything")).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void letsRegistrationAndSignInThroughWithoutATokenOrACsrfToken() throws Exception {
+    // An empty body reaches the controller, whose validation refuses it (400), not security.
+    for (String path : new String[] {"/auth/register", "/auth/login"}) {
+      mockMvc
+          .perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{}"))
+          .andExpect(status().isBadRequest());
+    }
+  }
+
+  @Test
+  void requiresATokenForOtherMethodsOnTheAuthPaths() throws Exception {
+    mockMvc.perform(get("/auth/login")).andExpect(status().isUnauthorized());
   }
 
   @Test

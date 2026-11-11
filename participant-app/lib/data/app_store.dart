@@ -3,14 +3,18 @@ import 'package:flutter/widgets.dart';
 import '../ui/ui.dart';
 
 import '../utils/pt_format.dart';
+import 'auth_api.dart';
 import 'demo_data.dart';
 import 'models.dart';
 
-/// App state for the participant screens, backed by [DemoData] until the
-/// Core and Notifications APIs exist. Screens read it with
-/// `AppStore.of(context)` and rebuild when it changes.
+/// App state for the participant screens. Registration and sign-in go to
+/// Core (#59); the events and notifications are [DemoData] until their APIs
+/// are wired in (#148). Screens read it with `AppStore.of(context)` and
+/// rebuild when it changes.
 class AppStore extends ChangeNotifier {
-  AppStore({DateTime Function()? clock}) : _clock = clock ?? DateTime.now {
+  AppStore({DateTime Function()? clock, AuthApi? auth, this._session})
+    : _clock = clock ?? DateTime.now,
+      _auth = auth ?? HttpAuthApi() {
     final demo = DemoData(now);
     _registered = {for (final e in demo.registered) e.id: e};
     _tickets = demo.tickets;
@@ -26,6 +30,7 @@ class AppStore extends ChangeNotifier {
   }
 
   final DateTime Function() _clock;
+  final AuthApi _auth;
   late final Map<String, Event> _registered;
   late List<Ticket> _tickets;
   late Set<String> _public;
@@ -37,55 +42,84 @@ class AppStore extends ChangeNotifier {
   late List<IdeaPrompt> _ideas;
   late List<Contribution> _contributions;
 
-  /// Name of the signed-in participant (entry code holder in P19).
-  String get userName => _account?.name ?? '';
+  /// The signed-in participant, as the entry code's holder (P19).
+  String get userName => _session?.email ?? '';
 
   DateTime get now => _clock();
 
   static AppStore of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppStoreScope>()!.notifier!;
 
-  // Account (C0, C1, C3). Sign-in is a demo until Core authentication exists.
+  // Account (C0, C1, C3): registration and sign-in in Core (#59). The token
+  // stays in memory, so reloading the app signs the participant out.
 
-  Account? _account = const Account(
-    name: 'Inês Martins',
-    email: 'ines.martins@email.pt',
-  );
-  Account? get account => _account;
-  bool get signedIn => _account != null;
+  AuthSession? _session;
+  AuthSession? get session => _session;
+  Account? get account =>
+      _session == null ? null : Account(email: _session!.email);
+  bool get signedIn => _session != null;
 
   static const minPasswordLength = 8;
 
-  /// Returns an error message, or null when signed in.
-  String? signIn({required String email, required String password}) {
-    if (!_looksLikeEmail(email)) return 'Introduz um email válido.';
-    if (password.length < minPasswordLength) {
-      return 'A palavra-passe tem pelo menos $minPasswordLength caracteres.';
-    }
-    final name = _account?.name ?? email.split('@').first;
-    _account = Account(name: name, email: email.trim());
-    notifyListeners();
-    return null;
-  }
-
-  /// Returns an error message, or null when the account was created.
-  String? register({
-    required String name,
+  /// Signs in. Returns an error message, or null when signed in.
+  Future<String?> signIn({
     required String email,
     required String password,
-  }) {
-    if (name.trim().isEmpty) return 'Indica o teu nome.';
+  }) async {
+    if (!_looksLikeEmail(email)) return 'Introduz um email válido.';
+    if (password.isEmpty) return 'Introduz a palavra-passe.';
+    try {
+      final session = await _auth.signIn(
+        email: email.trim(),
+        password: password,
+      );
+      if (session.role != 'PARTICIPANT') {
+        return 'Esta conta é de uma organização. Entra no backoffice.';
+      }
+      _session = session;
+      notifyListeners();
+      return null;
+    } on AuthException catch (e) {
+      return _authError(e.code);
+    }
+  }
+
+  /// Creates a participant account and signs in with it. Returns an error
+  /// message, or null when signed in.
+  Future<String?> register({
+    required String email,
+    required String password,
+  }) async {
     if (!_looksLikeEmail(email)) return 'Introduz um email válido.';
     if (password.length < minPasswordLength) {
       return 'Usa pelo menos $minPasswordLength caracteres na palavra-passe.';
     }
-    _account = Account(name: name.trim(), email: email.trim());
-    notifyListeners();
-    return null;
+    try {
+      await _auth.register(email: email.trim(), password: password);
+    } on AuthException catch (e) {
+      return _authError(e.code);
+    }
+    return signIn(email: email, password: password);
   }
 
+  /// The participant's message for a refusal from Core.
+  static String _authError(String code) => switch (code) {
+    'INVALID_CREDENTIALS' => 'O email ou a palavra-passe estão errados.',
+    'EMAIL_ALREADY_REGISTERED' =>
+      'Já existe uma conta com este email. Entra com ela.',
+    'PASSWORD_TOO_SHORT' =>
+      'Usa pelo menos $minPasswordLength caracteres na palavra-passe.',
+    'PASSWORD_TOO_LONG' => 'Usa uma palavra-passe mais curta.',
+    'RATE_LIMITED' =>
+      'Demasiadas tentativas. Tenta novamente daqui a alguns minutos.',
+    'PASSWORD_CHANGE_REQUIRED' =>
+      'Esta conta é de uma organização. Entra no backoffice.',
+    'NETWORK' => 'Não foi possível ligar ao Crowded. Verifica a ligação e tenta novamente.',
+    _ => 'Não foi possível entrar agora. Tenta novamente.',
+  };
+
   void signOut() {
-    _account = null;
+    _session = null;
     notifyListeners();
   }
 
@@ -101,7 +135,7 @@ class AppStore extends ChangeNotifier {
     _contributions = [];
     _preferences = NotificationPreferences();
     pendingImport = null;
-    _account = null;
+    _session = null;
     notifyListeners();
   }
 
