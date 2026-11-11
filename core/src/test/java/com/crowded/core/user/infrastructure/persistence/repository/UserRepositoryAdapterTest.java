@@ -21,10 +21,11 @@ class UserRepositoryAdapterTest {
     row.setId(UUID.randomUUID());
     row.setOrganizationId(UUID.randomUUID());
     row.setRole(Role.ORGANIZATION_MEMBER);
+    row.setActive(true);
     when(rows.findById(row.getId())).thenReturn(Optional.of(row));
 
     assertThat(
             new UserRepositoryAdapter(rows, new UserPersistenceMapperImpl()).findById(row.getId()))
-        .contains(new User(row.getId(), row.getOrganizationId(), Role.ORGANIZATION_MEMBER));
+        .contains(new User(row.getId(), row.getOrganizationId(), Role.ORGANIZATION_MEMBER, true));
   }
 }

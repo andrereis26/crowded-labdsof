@@ -26,6 +26,9 @@ public class UserEntity {
   @Column(columnDefinition = "role", nullable = false)
   private Role role;
 
+  @Column(nullable = false)
+  private boolean active;
+
   public UUID getId() {
     return id;
   }
@@ -48,5 +51,13 @@ public class UserEntity {
 
   public void setRole(Role role) {
     this.role = role;
+  }
+
+  public boolean isActive() {
+    return active;
+  }
+
+  public void setActive(boolean active) {
+    this.active = active;
   }
 }

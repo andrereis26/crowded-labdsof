@@ -288,7 +288,7 @@ class ChangePlannerTest {
   @ParameterizedTest
   @EnumSource(
       value = ChangeType.class,
-      names = {"CONFIRMATION", "DETAILS_UPDATE"})
+      names = {"DETAILS_UPDATE"})
   void refusesChangesThatAreNotOfficialChanges(ChangeType type) {
     assertRefused(request(type, null, null, null, null), "UNSUPPORTED_CHANGE_TYPE");
   }
@@ -303,19 +303,6 @@ class ChangePlannerTest {
             ChangeType.TIME_CHANGE, times("2026-11-20T21:00:00Z", null, null), null, null, null);
 
     assertThatThrownBy(() -> ChangePlanner.plan(withStatus(SCHEDULED, status), later, NOW))
-        .isInstanceOfSatisfying(
-            ConflictException.class, e -> assertThat(e.getCode()).isEqualTo("EVENT_CLOSED"));
-  }
-
-  @Test
-  void refusesChangesToAProposedEvent() {
-    EventState proposed =
-        new EventState(EventStatus.PROPOSED, null, null, null, null, null, null, null);
-
-    assertThatThrownBy(
-            () ->
-                ChangePlanner.plan(
-                    proposed, request(ChangeType.CANCELLATION, null, null, null, null), NOW))
         .isInstanceOfSatisfying(
             ConflictException.class, e -> assertThat(e.getCode()).isEqualTo("EVENT_CLOSED"));
   }

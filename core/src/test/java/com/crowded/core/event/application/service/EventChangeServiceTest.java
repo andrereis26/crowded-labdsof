@@ -190,7 +190,8 @@ class EventChangeServiceTest {
   void refusesAMemberOfAnotherOrganization() {
     when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
     when(users.findById(MEMBER))
-        .thenReturn(Optional.of(new User(MEMBER, UUID.randomUUID(), Role.ORGANIZATION_MEMBER)));
+        .thenReturn(
+            Optional.of(new User(MEMBER, UUID.randomUUID(), Role.ORGANIZATION_MEMBER, true)));
 
     assertRefused(
         () -> service.publish(command(CANCELLATION)),
@@ -201,11 +202,24 @@ class EventChangeServiceTest {
   }
 
   @Test
+  void refusesADeactivatedMember() {
+    when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
+    when(users.findById(MEMBER))
+        .thenReturn(Optional.of(new User(MEMBER, ORGANIZATION, Role.ORGANIZATION_MEMBER, false)));
+
+    assertRefused(
+        () -> service.publish(command(CANCELLATION)),
+        NotAllowedException.class,
+        "NOT_EVENT_ORGANIZATION");
+    verify(changes, never()).save(any());
+  }
+
+  @Test
   void refusesAParticipantAndAnUnknownUser() {
     when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
     UUID participant = UUID.randomUUID();
     when(users.findById(participant))
-        .thenReturn(Optional.of(new User(participant, null, Role.PARTICIPANT)));
+        .thenReturn(Optional.of(new User(participant, null, Role.PARTICIPANT, true)));
 
     assertRefused(
         () -> service.publish(new PublishChangeCommand(event.getId(), participant, CANCELLATION)),
@@ -231,7 +245,7 @@ class EventChangeServiceTest {
   private void givenEventAndMember() {
     when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
     when(users.findById(MEMBER))
-        .thenReturn(Optional.of(new User(MEMBER, ORGANIZATION, Role.ORGANIZATION_MEMBER)));
+        .thenReturn(Optional.of(new User(MEMBER, ORGANIZATION, Role.ORGANIZATION_MEMBER, true)));
   }
 
   private PublishChangeCommand command(RequestedChange change) {

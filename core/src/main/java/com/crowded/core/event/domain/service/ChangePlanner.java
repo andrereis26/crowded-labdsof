@@ -20,9 +20,8 @@ import java.util.Set;
  */
 public final class ChangePlanner {
 
-  /** Events that no longer take changes. A proposed event has no schedule to change yet. */
-  private static final Set<EventStatus> CLOSED =
-      Set.of(EventStatus.PROPOSED, EventStatus.CANCELLED, EventStatus.ENDED);
+  /** Events that no longer take changes. */
+  private static final Set<EventStatus> CLOSED = Set.of(EventStatus.CANCELLED, EventStatus.ENDED);
 
   private ChangePlanner() {}
 
@@ -43,16 +42,13 @@ public final class ChangePlanner {
           "TICKET_INFO_NOT_APPLICABLE",
           "Ticket validity and refund information apply only to a postponement or cancellation.");
     }
-    if (before.startDateTime() == null) {
-      throw closed();
-    }
     EventState after =
         switch (request.type()) {
           case CANCELLATION -> withStatus(before, EventStatus.CANCELLED);
           case POSTPONEMENT -> postponed(before, value);
           case TIME_CHANGE -> retimed(before, value);
           case VENUE_CHANGE -> relocated(before, value);
-          case CONFIRMATION, DETAILS_UPDATE ->
+          case DETAILS_UPDATE ->
               throw invalid(
                   "UNSUPPORTED_CHANGE_TYPE",
                   "Publish a postponement, a time change, a venue change or a cancellation.");
@@ -204,7 +200,6 @@ public final class ChangePlanner {
   }
 
   private static ConflictException closed() {
-    return new ConflictException(
-        "EVENT_CLOSED", "This event is cancelled, ended or not scheduled.");
+    return new ConflictException("EVENT_CLOSED", "This event is cancelled or ended.");
   }
 }

@@ -32,7 +32,7 @@ class DatabaseIT extends IntegrationTest {
   @Test
   void readsButCannotWriteCoreTables() {
     assertThat(jdbc.queryForObject("SELECT count(*) FROM event", Integer.class)).isPositive();
-    assertThatThrownBy(() -> jdbc.update("UPDATE event SET last_synced_at = now()"))
+    assertThatThrownBy(() -> jdbc.update("UPDATE event SET district = district"))
         .isInstanceOf(DataAccessException.class)
         .rootCause()
         .hasMessageContaining("permission denied for table event");
