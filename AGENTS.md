@@ -55,6 +55,44 @@
     severity). `scripts/local/` and the scripts Lefthook runs must work on
     macOS's bash 3.2 with BSD tools (`scripts/local/lib.sh`); then run the changed
     script for real, e.g. `stack-up.sh` and `stack-down.sh` twice each.
+- Backend architecture (`core/`, `jobs/`, `notifications/` and any new service; the
+  backoffice and the participant app keep their own layouts): onion architecture
+  with domain-driven design, the same in every service. Core is the reference:
+  `core/README.md` (Code Layout) and `OnionArchitectureTest`.
+  - Folders: one package per domain under `com.crowded.<service>` (Core:
+    `event`, `user`, `organization`, `audit`, `outbox`; `shared` for what
+    several domains use). Inside each domain, the same subfolders:
+    `domain/{model,exception,service,repository}`, `application/{service,dto}`,
+    `api/{controller,dto,mapper}` and
+    `infrastructure/{persistence/{entity,repository,mapper},messaging,config}`.
+    Create only the folders a domain needs, never other names.
+  - Dependencies point inwards: api and infrastructure → application → domain.
+    Adapters never use each other. The domain uses no framework: no Spring, JPA,
+    validation, Jackson or MapStruct.
+  - DDD: names come from the data model and the requirements. Rules live on the
+    model (`Event.apply`, `User.isMemberOf`) or in a domain service
+    (`ChangePlanner`), not in controllers or adapters. An aggregate changes only
+    through its root and is saved through its own port. Another module is reached
+    through its application service or port, never through its entities.
+    Refusals are domain exceptions with a `code` (`shared/domain/exception`);
+    `ApiExceptionHandler` turns them into RFC 9457 problems.
+  - Single responsibility and interface segregation: one use case per application
+    method, small ports per aggregate.
+  - Dependency inversion: the application depends on the ports in
+    `domain/repository`. Infrastructure implements each port as a
+    `<Name>RepositoryAdapter` over a package-private `SpringData<Name>Repository`.
+    JPA entities never leave `infrastructure`.
+  - Liskov: an adapter keeps its port's contract (what it returns when nothing is
+    found, which exceptions it throws, what transaction it expects), so a test fake
+    can replace it. A subclass of a domain exception keeps its category's HTTP
+    status.
+  - DTOs: one class per request, response, command or result (`api/dto`,
+    `application/dto`), never nested in a controller. API DTOs are never entities
+    or domain objects; domain enums are fine. Map between layers only with
+    MapStruct interfaces (`api/mapper`, `infrastructure/persistence/mapper`).
+  - Enforced: each service has an `OnionArchitectureTest` (ArchUnit) like Core's.
+    `jobs/` and `notifications/` add theirs, and Core's MapStruct compiler setup,
+    with their first domain.
 - Deferred work: when a story leaves something for another story (a check that
   waits for a column, wiring that waits for an API, a queue the consumer must
   declare), comment it on that story's issue before the pull request is ready, as
@@ -107,6 +145,15 @@
     Maven must run on JDK 25 (`JAVA_HOME`); the enforcer plugin stops the build
     otherwise, and google-java-format 1.36.1 needs JVM 21 or later. The services do
     not start without PostgreSQL, RabbitMQ and Redis (`deployment/` runs them).
+  - MapStruct under the strict compiler (`-Xlint:all`, warnings fail): keep
+    `-Xlint:-processing`, and set the `-Amapstruct.*` options on the
+    `default-compile` execution only, or test-compile warns (`core/pom.xml`).
+    MapStruct reads a one-argument method that returns its own type, such as
+    `withStatus`, as a setter. Mappers are Spring beans with constructor
+    injection, and an unmapped target fails the build.
+  - SpotBugs flags `EI_EXPOSE_REP2` on public constructors that store injected beans.
+    Make the constructor package-private when its tests share the package;
+    otherwise add a `Match` with the reason to `spotbugs-exclude.xml`.
   - `participant-gallery` serves a stale build unless you rebuild the web app.
   - PRs that change the UI need mobile and desktop screenshots (PR template). UI copy
     is in European Portuguese (`participant-app/README.md`).
