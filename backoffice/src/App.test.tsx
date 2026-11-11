@@ -3,11 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import App from './App'
+import type { Session, SignIn, SignInOutcome } from './data/auth'
 import {
   demoMembers,
   lastAccessLabel,
   memberStatusTag,
-  signIn,
   temporaryPassword,
   validateMember,
   validateNewPassword,
@@ -17,10 +17,33 @@ import {
 
 const now = new Date(2026, 10, 7, 22, 0)
 
-function renderAt(path: string) {
+function session(role: Session['role']): Session {
+  return {
+    accessToken: 'jwt',
+    expiresAt: new Date(2026, 10, 7, 23, 0),
+    userId: 'u-1',
+    role,
+    organizationId: role === 'ADMINISTRATOR' ? null : 'organizacao-margens',
+  }
+}
+
+/** Core's sign-in, without a network: answers `outcome` and records the call. */
+function fakeSignIn(outcome: SignInOutcome) {
+  const calls: [string, string][] = []
+  const signIn: SignIn = (email, password) => {
+    calls.push([email, password])
+    return Promise.resolve(outcome)
+  }
+  return { signIn, calls }
+}
+
+function renderAt(
+  path: string | { pathname: string; state: unknown },
+  signIn: SignIn = fakeSignIn({ kind: 'error', title: 'Erro', message: 'Sem rede.' }).signIn,
+) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <App now={now} />
+      <App now={now} signIn={signIn} />
     </MemoryRouter>,
   )
 }
@@ -63,23 +86,6 @@ describe('admin helpers', () => {
       'As palavras-passe não coincidem.',
     )
   })
-
-  it('signs in members, the administrator and temporary passwords', () => {
-    expect(signIn(members, 'ana.lopes@crowded.test', 'x', now)).toEqual({ kind: 'admin' })
-    expect(signIn(members, 'miguel.sousa@margens.pt', 'x', now).kind).toBe('member')
-    expect(signIn(members, 'rita.ferreira@margens.pt', 'T7q-mK4-v9Px', now).kind).toBe(
-      'new-password',
-    )
-    expect(signIn(members, 'rita.ferreira@margens.pt', 'errada', now).kind).toBe('error')
-    expect(signIn(members, 'sofia.martins@teatromunicipal.pt', 'Hc3-pW8-z2Rt', now).kind).toBe(
-      'expired',
-    )
-    expect(signIn(members, 'joao.pinto@margens.pt', 'x', now)).toMatchObject({
-      message: 'Esta conta está desativada. Fala com o administrador do Crowded.',
-    })
-    expect(signIn(members, 'ninguem@margens.pt', 'x', now).kind).toBe('error')
-    expect(signIn(members, 'sem-email', '', now).kind).toBe('error')
-  })
 })
 
 describe('C1 and C4 sign-in', () => {
@@ -93,26 +99,62 @@ describe('C1 and C4 sign-in', () => {
     )
   })
 
-  it('shows the expired temporary password error', async () => {
+  it("shows Core's refusal and how to get a new password", async () => {
     const user = userEvent.setup()
-    renderAt('/entrar')
-    await user.type(screen.getByLabelText('Email'), 'sofia.martins@teatromunicipal.pt')
-    await user.type(screen.getByLabelText('Palavra-passe'), 'Hc3-pW8-z2Rt')
+    const core = fakeSignIn({
+      kind: 'error',
+      title: 'Não foi possível entrar',
+      message: 'O email ou a palavra-passe não estão certos.',
+    })
+    renderAt('/entrar', core.signIn)
+    await user.type(screen.getByLabelText('Email'), 'equipa@ribeira-live.test')
+    await user.type(screen.getByLabelText('Palavra-passe'), 'errada')
+    await user.click(screen.getByRole('button', { name: 'Mostrar palavra-passe' }))
+    expect(screen.getByLabelText('Palavra-passe')).toHaveAttribute('type', 'text')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('A palavra-passe temporária expirou')
 
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'O email ou a palavra-passe não estão certos.',
+    )
+    expect(core.calls).toEqual([['equipa@ribeira-live.test', 'errada']])
+    expect(screen.getByLabelText('Palavra-passe')).toHaveAttribute('aria-invalid', 'true')
     await user.click(screen.getByRole('button', { name: 'Esqueci-me da palavra-passe' }))
     expect(screen.getByText(/Pede uma nova palavra-passe temporária/)).toBeInTheDocument()
   })
 
+  it('sends a member to the events', async () => {
+    const user = userEvent.setup()
+    renderAt(
+      '/entrar',
+      fakeSignIn({ kind: 'signed-in', session: session('ORGANIZATION_MEMBER') }).signIn,
+    )
+    await user.type(screen.getByLabelText('Email'), 'equipa@ribeira-live.test')
+    await user.type(screen.getByLabelText('Palavra-passe'), 'crowded-demo')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    expect(await screen.findByRole('heading', { name: 'Eventos', level: 2 })).toBeInTheDocument()
+  })
+
+  it('sends the administrator to the organizations', async () => {
+    const user = userEvent.setup()
+    renderAt('/entrar', fakeSignIn({ kind: 'signed-in', session: session('ADMINISTRATOR') }).signIn)
+    await user.type(screen.getByLabelText('Email'), 'admin@crowded.test')
+    await user.type(screen.getByLabelText('Palavra-passe'), 'crowded-demo')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    expect(await screen.findByRole('heading', { name: 'Organizações' })).toBeInTheDocument()
+  })
+
+  it('says when a member still has the temporary password', async () => {
+    const user = userEvent.setup()
+    renderAt('/entrar', fakeSignIn({ kind: 'new-password' }).signIn)
+    await user.type(screen.getByLabelText('Email'), 'novo@ribeira-live.test')
+    await user.type(screen.getByLabelText('Palavra-passe'), 'crowded-demo')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Primeiro acesso')
+  })
+
   it('makes a member with a temporary password choose a new one', async () => {
     const user = userEvent.setup()
-    renderAt('/entrar')
-    await user.type(screen.getByLabelText('Email'), 'rita.ferreira@margens.pt')
-    await user.type(screen.getByLabelText('Palavra-passe'), 'T7q-mK4-v9Px')
-    await user.click(screen.getByRole('button', { name: 'Mostrar palavra-passe' }))
-    expect(screen.getByLabelText('Palavra-passe')).toHaveAttribute('type', 'text')
-    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    renderAt({ pathname: '/definir-palavra-passe', state: { memberId: 'rita-ferreira' } })
 
     expect(
       screen.getByRole('heading', { name: 'Define a tua nova palavra-passe' }),
@@ -124,15 +166,6 @@ describe('C1 and C4 sign-in', () => {
     await user.type(screen.getByLabelText('Confirmar palavra-passe'), 'margens-inverno-26')
     await user.click(screen.getByRole('button', { name: 'Guardar e continuar' }))
     expect(screen.getByRole('heading', { name: 'Eventos', level: 2 })).toBeInTheDocument()
-  })
-
-  it('sends the administrator to the organizations and others back to sign-in', async () => {
-    const user = userEvent.setup()
-    renderAt('/entrar')
-    await user.type(screen.getByLabelText('Email'), 'ana.lopes@crowded.test')
-    await user.type(screen.getByLabelText('Palavra-passe'), 'qualquer')
-    await user.click(screen.getByRole('button', { name: 'Entrar' }))
-    expect(screen.getByRole('heading', { name: 'Organizações' })).toBeInTheDocument()
   })
 
   it('does not show the new password page without a temporary sign-in', () => {

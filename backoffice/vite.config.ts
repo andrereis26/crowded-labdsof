@@ -9,6 +9,16 @@ export default defineConfig(({ command }) => ({
   // the dev server keeps serving at /.
   base: command === 'build' ? '/backoffice/' : '/',
   plugins: [react(), tailwindcss()],
+  // The dev server sends /api to a Core run from source (scripts/local/start.sh
+  // core, port 8081), without /api, as the router does.
+  server: {
+    proxy: {
+      '/api': {
+        target: process.env.CORE_URL ?? 'http://localhost:8081',
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

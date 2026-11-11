@@ -290,12 +290,14 @@ class _EntryCodeContent extends StatelessWidget {
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              spacing: AppSpacing.md,
               children: [
                 for (final (label, value) in fields)
                   if (desktop)
                     Expanded(child: _Field(label, value, centered: true))
                   else
-                    _Field(label, value),
+                    // The holder's email can be long: it shrinks, with "…".
+                    Flexible(child: _Field(label, value)),
               ],
             ),
           ),
@@ -378,7 +380,12 @@ class _Field extends StatelessWidget {
             letterSpacing: 0.6,
           ),
         ),
-        Text(value, style: AppTextStyles.bodyLarge),
+        Text(
+          value,
+          style: AppTextStyles.bodyLarge,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ],
     );
   }

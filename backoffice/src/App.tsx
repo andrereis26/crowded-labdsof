@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { signInWithCore, type Session, type SignIn } from './data/auth'
 import { Navigate, Route, Routes } from 'react-router'
 import { demoMembers, demoOrganizations, type AdminOrganization, type Member } from './data/admin'
 import { AdminLayout } from './layout/AdminLayout'
@@ -7,10 +8,14 @@ import { OrganizationsPage } from './pages/admin/OrganizationsPage'
 import { NewPasswordPage, SignInPage } from './pages/SignInPage'
 import { Panel } from './ui/components'
 
-/** `now` is fixed at start-up so demo times stay stable between renders. */
-export default function App({ now }: { now: Date }) {
+/** `now` is fixed at start-up so demo times stay stable between renders.
+ * Sign-in goes to Core (#59); the pages after it still show demo data, and
+ * use the session once their APIs are wired in (#148). */
+export default function App({ now, signIn = signInWithCore }: { now: Date; signIn?: SignIn }) {
   const [organizations, setOrganizations] = useState<AdminOrganization[]>(demoOrganizations)
   const [members, setMembers] = useState<Member[]>(() => demoMembers(now))
+  // Kept for #148, which sends its token with every API call.
+  const [, setSession] = useState<Session>()
 
   const updateMember = (updated: Member) =>
     setMembers((all) => all.map((m) => (m.id === updated.id ? updated : m)))
@@ -18,7 +23,7 @@ export default function App({ now }: { now: Date }) {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/entrar" replace />} />
-      <Route path="/entrar" element={<SignInPage members={members} now={now} />} />
+      <Route path="/entrar" element={<SignInPage signIn={signIn} onSignedIn={setSession} />} />
       <Route
         path="/definir-palavra-passe"
         element={<NewPasswordPage members={members} now={now} onChange={updateMember} />}

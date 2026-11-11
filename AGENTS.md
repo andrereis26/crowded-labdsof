@@ -124,9 +124,10 @@
     (`npm --prefix backoffice run dev -- --port 5173 --strictPort`) and
     `participant-gallery` (serves `participant-app/build/web` on
     `http://localhost:8765`, so run `flutter build web --release` first).
-  - Local identity: none. Both apps use demo data (`backoffice/src/data/`,
-    `participant-app/lib/data/`) until the Core API exists; the database has demo
-    accounts (`database/README.md`).
+  - Local identity: both apps sign in with Core (`POST /auth/login`) and the
+    database's demo accounts (`database/README.md`); the screens after sign-in
+    still use demo data (`backoffice/src/data/`, `participant-app/lib/data/`)
+    until #148.
 - Graph: auto
 - Hooks: `lefthook.yml` (pre-commit formats staged files and runs gitleaks; pre-push
   lints changed projects and runs gitleaks). `lefthook install` writes to the

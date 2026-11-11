@@ -253,46 +253,6 @@ export function validateMember(
   return errors
 }
 
-export type SignInResult =
-  | { kind: 'admin' }
-  | { kind: 'member'; member: Member }
-  /** Temporary password: the member must choose a new one (C4). */
-  | { kind: 'new-password'; member: Member }
-  | { kind: 'expired' }
-  | { kind: 'error'; message: string }
-
-/** Sign-in on demo data. There is no identity provider yet: active members and
- * the administrator enter with any password; members with a temporary
- * password must type it. */
-export function signIn(
-  members: Member[],
-  email: string,
-  password: string,
-  now: Date,
-): SignInResult {
-  if (!isEmail(email) || !password) {
-    return { kind: 'error', message: 'Escreve o email e a palavra-passe.' }
-  }
-  const wanted = email.trim().toLowerCase()
-  if (wanted === admin.email) return { kind: 'admin' }
-  const member = members.find((m) => m.email.toLowerCase() === wanted)
-  if (!member) return { kind: 'error', message: 'O email ou a palavra-passe não estão certos.' }
-  if (member.status === 'disabled') {
-    return {
-      kind: 'error',
-      message: 'Esta conta está desativada. Fala com o administrador do Crowded.',
-    }
-  }
-  if (member.status === 'temporary') {
-    if (password !== member.temporaryPassword) {
-      return { kind: 'error', message: 'O email ou a palavra-passe não estão certos.' }
-    }
-    if (isExpired(member, now)) return { kind: 'expired' }
-    return { kind: 'new-password', member }
-  }
-  return { kind: 'member', member }
-}
-
 export function validateNewPassword(
   password: string,
   confirmation: string,

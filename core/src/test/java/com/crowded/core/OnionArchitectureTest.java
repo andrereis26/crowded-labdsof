@@ -12,7 +12,8 @@ import org.junit.jupiter.api.Test;
  * Core follows the onion architecture: every module ({@code event}, {@code user}, ...) has a {@code
  * domain} at its centre, an {@code application} around it, and the adapters outside ({@code api},
  * {@code infrastructure.persistence}, {@code infrastructure.messaging}, {@code
- * infrastructure.config}). Dependencies only point inwards, and adapters never use each other.
+ * infrastructure.config}, {@code infrastructure.security}, {@code infrastructure.cache}).
+ * Dependencies only point inwards, and adapters never use each other.
  */
 class OnionArchitectureTest {
 
@@ -32,6 +33,8 @@ class OnionArchitectureTest {
         .adapter("persistence", "com.crowded.core..infrastructure.persistence..")
         .adapter("messaging", "com.crowded.core..infrastructure.messaging..")
         .adapter("config", "com.crowded.core..infrastructure.config..")
+        .adapter("security", "com.crowded.core..infrastructure.security..")
+        .adapter("cache", "com.crowded.core..infrastructure.cache..")
         .check(CORE);
   }
 
