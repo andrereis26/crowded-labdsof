@@ -55,6 +55,14 @@
     severity). `scripts/local/` and the scripts Lefthook runs must work on
     macOS's bash 3.2 with BSD tools (`scripts/local/lib.sh`); then run the changed
     script for real, e.g. `stack-up.sh` and `stack-down.sh` twice each.
+- Deferred work: when a story leaves something for another story (a check that
+  waits for a column, wiring that waits for an API, a queue the consumer must
+  declare), comment it on that story's issue before the pull request is ready, as
+  one checkbox per item saying what to do, where in the code, and which story and
+  pull request it comes from. Ask before commenting on an issue another person
+  owns. A follow-up kept only in a pull request or a chat is forgotten after the
+  merge. Before closing a story, check its issue's comments for such checkboxes and
+  do or move them.
 - Deliverable and commits: a commit on a feature branch. Messages follow
   `type(#issue): message` with type `feat|fix|docs|chore|ci` (README, DoD-03).
 - Worktrees: use one for parallel or delegated work, at `.claude/worktrees/<name>`.
