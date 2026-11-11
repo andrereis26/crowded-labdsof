@@ -12,19 +12,19 @@ pre-commit:
     - name: format core
       root: core/
       glob: "core/**/*.java"
-      run: files=""; for f in {staged_files}; do files="$files,.*${f#./}"; done; ./mvnw -B -ntp -q spotless:apply -DspotlessFiles="${files#,}"
+      run: ../scripts/spotless-staged.sh {staged_files}
       stage_fixed: true
 
     - name: format jobs
       root: jobs/
       glob: "jobs/**/*.java"
-      run: files=""; for f in {staged_files}; do files="$files,.*${f#./}"; done; ./mvnw -B -ntp -q spotless:apply -DspotlessFiles="${files#,}"
+      run: ../scripts/spotless-staged.sh {staged_files}
       stage_fixed: true
 
     - name: format notifications
       root: notifications/
       glob: "notifications/**/*.java"
-      run: files=""; for f in {staged_files}; do files="$files,.*${f#./}"; done; ./mvnw -B -ntp -q spotless:apply -DspotlessFiles="${files#,}"
+      run: ../scripts/spotless-staged.sh {staged_files}
       stage_fixed: true
 
     - name: format backoffice
