@@ -73,7 +73,7 @@ public class EventChangeService {
    * change was published before, returns that change and records nothing.
    *
    * @throws NotFoundException when the event does not exist
-   * @throws NotAllowedException when the user is not a member of its organization (SR-001)
+   * @throws NotAllowedException when the user is not an active member of its organization (SR-001)
    * @throws RuleViolationException when the change is invalid, or the event already has these
    *     values without a change that set them
    */
@@ -90,12 +90,12 @@ public class EventChangeService {
             .isPresent();
     if (!member) {
       log.warn(
-          "Refused a change to event {} by user {}: not a member of its organization",
+          "Refused a change to event {} by user {}: not an active member of its organization",
           event.getId(),
           command.userId());
       throw new NotAllowedException(
           "NOT_EVENT_ORGANIZATION",
-          "Only members of the organization that owns this event can change it.");
+          "Only active members of the organization that owns this event can change it.");
     }
 
     Instant now = clock.instant();

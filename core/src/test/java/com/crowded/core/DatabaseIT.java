@@ -46,9 +46,7 @@ class DatabaseIT extends IntegrationTest {
   void writesItsOwnTables() {
     UUID id = UUID.randomUUID();
 
-    jdbc.update(
-        "INSERT INTO organization (id, name, verification_status) VALUES (?, 'Test', 'PENDING')",
-        id);
+    jdbc.update("INSERT INTO organization (id, name, created_at) VALUES (?, 'Test', now())", id);
     int deleted = jdbc.update("DELETE FROM organization WHERE id = ?", id);
 
     assertThat(deleted).isOne();
@@ -80,13 +78,14 @@ class DatabaseIT extends IntegrationTest {
   void seededTheDemoData() {
     assertThat(jdbc.queryForList("SELECT DISTINCT status::text FROM event", String.class))
         .containsExactlyInAnyOrder(
-            "PROPOSED", "SCHEDULED", "POSTPONED", "RELOCATED", "CANCELLED", "ONGOING", "ENDED");
-    assertThat(
-            jdbc.queryForList(
-                "SELECT DISTINCT verification_status::text FROM organization", String.class))
-        .contains("VERIFIED", "PENDING");
+            "SCHEDULED", "POSTPONED", "RELOCATED", "CANCELLED", "ONGOING", "ENDED");
+    assertThat(jdbc.queryForList("SELECT DISTINCT type::text FROM event", String.class))
+        .containsExactlyInAnyOrder("TICKETED", "PUBLIC");
     assertThat(jdbc.queryForObject("SELECT count(*) FROM ticket", Integer.class)).isPositive();
-    assertThat(jdbc.queryForObject("SELECT count(*) FROM follow", Integer.class)).isPositive();
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM access_code_connection", Integer.class))
+        .isPositive();
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM weather_warning", Integer.class))
+        .isPositive();
     assertThat(jdbc.queryForObject("SELECT count(*) FROM alert", Integer.class)).isPositive();
   }
 

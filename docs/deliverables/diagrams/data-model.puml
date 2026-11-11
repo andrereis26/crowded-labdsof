@@ -37,7 +37,7 @@ end note
 
 entity "Organization" as Organization {
   * id : UUID <<PK>>
-  createdByUserId : UUID <<FK>> [PERSONAL]
+  createdByUserId : UUID [NULL] <<FK>> [PERSONAL]
   --
   name : TEXT
   createdAt : TIMESTAMPTZ
@@ -132,8 +132,9 @@ entity "Ticket" as Ticket {
 note right of Ticket
   entryCode is the ticket's QR code (FR-070), encrypted
   and treated as a credential per SR-018. entryCodeHash is
-  a keyed hash, unique per event, so one ticket links to
-  one account (FR-084). A ticket is stored only once it is
+  a keyed hash, unique, that Core keys with the event, so
+  one ticket links to one account per event (FR-084).
+  A ticket is stored only once it is
   matched: an import waiting for the typed code is kept in
   Redis for 30 minutes, not here (FR-004, FR-083).
 end note
@@ -181,7 +182,7 @@ entity "WeatherForecast\n<<Dependent Value Object>>" as WeatherForecast {
   conditions : TEXT
   minTemperature : DOUBLE PRECISION
   maxTemperature : DOUBLE PRECISION
-  precipitationProbability : DOUBLE PRECISION
+  precipitationProbability : DOUBLE PRECISION [PERCENT]
   provenanceSourceType : source_type
   provenanceSourceName : TEXT
   provenanceLastUpdatedAt : TIMESTAMPTZ
@@ -560,7 +561,7 @@ enum "notification_type" as notification_type {
 
 ' Identity and access relationships
 Organization |o--|{ User : members
-User ||--o{ Organization : creates (administrator)
+User |o--o{ Organization : creates (administrator)
 
 ' Event catalog relationships
 Organization ||--o{ Event : owns

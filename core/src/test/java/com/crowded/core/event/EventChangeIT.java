@@ -54,6 +54,7 @@ class EventChangeIT extends IntegrationTest {
   private final UUID organization = UUID.randomUUID();
   private final UUID member = UUID.randomUUID();
   private final UUID outsider = UUID.randomUUID();
+  private final UUID deactivated = UUID.randomUUID();
   private final UUID event = UUID.randomUUID();
   private final String queue = "event-change-it-" + UUID.randomUUID();
 
@@ -61,14 +62,15 @@ class EventChangeIT extends IntegrationTest {
   void createAnOrganizationWithAnEvent() {
     UUID otherOrganization = UUID.randomUUID();
     jdbc.update(
-        "INSERT INTO organization (id, name, verification_status) VALUES (?, 'Ribeira Teste',"
-            + " 'VERIFIED'), (?, 'Outra', 'VERIFIED')",
+        "INSERT INTO organization (id, name, created_at) VALUES (?, 'Ribeira Teste', now()),"
+            + " (?, 'Outra', now())",
         organization,
         otherOrganization);
     jdbc.update(
-        "INSERT INTO app_user (id, organization_id, email, password_hash, role, created_at)"
-            + " VALUES (?, ?, ?, ?, 'ORGANIZATION_MEMBER', now()),"
-            + " (?, ?, ?, ?, 'ORGANIZATION_MEMBER', now())",
+        "INSERT INTO app_user (id, organization_id, email, password_hash, role, created_at, active)"
+            + " VALUES (?, ?, ?, ?, 'ORGANIZATION_MEMBER', now(), true),"
+            + " (?, ?, ?, ?, 'ORGANIZATION_MEMBER', now(), true),"
+            + " (?, ?, ?, ?, 'ORGANIZATION_MEMBER', now(), false)",
         member,
         organization,
         member + "@crowded.test",
@@ -76,14 +78,20 @@ class EventChangeIT extends IntegrationTest {
         outsider,
         otherOrganization,
         outsider + "@crowded.test",
+        PASSWORD_HASH,
+        deactivated,
+        organization,
+        deactivated + "@crowded.test",
         PASSWORD_HASH);
     jdbc.update(
-        "INSERT INTO event (id, organization_id, name, description, start_date_time,"
-            + " doors_open_at, end_date_time, status, visibility, origin, venue_name, address)"
-            + " VALUES (?, ?, 'Concerto', 'Teste', ?, ?, ?, 'SCHEDULED', 'TICKETED',"
-            + " 'ORGANIZATION', 'Coliseu', 'Porto')",
+        "INSERT INTO event (id, organization_id, name, description, type, ticket_event_code,"
+            + " start_date_time, doors_open_at, end_date_time, status, venue_name, address,"
+            + " district, latitude, longitude)"
+            + " VALUES (?, ?, 'Concerto', 'Teste', 'TICKETED', ?, ?, ?, ?, 'SCHEDULED',"
+            + " 'Coliseu', 'Porto', 'Porto', 41.146, -8.606)",
         event,
         organization,
+        "IT-" + event,
         Timestamp.from(START),
         Timestamp.from(START.minus(90, ChronoUnit.MINUTES)),
         Timestamp.from(START.plus(3, ChronoUnit.HOURS)));
@@ -203,6 +211,18 @@ class EventChangeIT extends IntegrationTest {
             jdbc.queryForObject(
                 "SELECT count(*) FROM event_change WHERE event_id = ?", Integer.class, event))
         .isZero();
+  }
+
+  @Test
+  void refusesADeactivatedMemberOfTheOrganization() throws Exception {
+    HttpResponse<String> response = post(deactivated, "{\"type\": \"CANCELLATION\"}");
+
+    assertThat(response.statusCode()).isEqualTo(403);
+    assertThat(json.readTree(response.body()).get("code").asString())
+        .isEqualTo("NOT_EVENT_ORGANIZATION");
+    assertThat(
+            jdbc.queryForObject("SELECT status::text FROM event WHERE id = ?", String.class, event))
+        .isEqualTo("SCHEDULED");
   }
 
   @Test

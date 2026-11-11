@@ -18,14 +18,13 @@ REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SC
   FROM crowded_core, crowded_jobs, crowded_notifications;
 
 -- Core: users, organizations, events, connections, on-site information,
--- alerts, surveys, polls, reports, incidents, the audit log and its outbox.
+-- alerts, surveys, reports, incidents, the audit log and its outbox.
 GRANT INSERT, UPDATE, DELETE ON
-  app_user, organization, api_credential,
-  event, event_change, ownership_request,
-  event_connection, ticket, follow, ticket_extraction, event_match_candidate,
-  queue_time, weather_forecast,
+  app_user, organization,
+  event, event_change,
+  event_connection, ticket, access_code_connection, ticket_extraction,
+  queue_time, weather_forecast, weather_warning,
   alert, alert_draft, event_survey, survey_option, survey_response,
-  interest_poll, poll_option, poll_response,
   report, report_category, event_category_setting, confirmation, incident, recognition,
   audit_log_entry, outbox
   TO crowded_core;

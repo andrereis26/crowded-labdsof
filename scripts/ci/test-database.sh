@@ -101,7 +101,7 @@ for user in crowded_core:"${CORE_PASSWORD}" crowded_jobs:"${JOBS_PASSWORD}" \
 done
 pass "every service user reads every table and cannot change the schema"
 
-core_write="INSERT INTO organization (id, name, verification_status) VALUES (gen_random_uuid(), 'Test', 'PENDING')"
+core_write="INSERT INTO organization (id, name, created_at) VALUES (gen_random_uuid(), 'Test', now())"
 notifications_write="DELETE FROM user_notification_setting"
 expect_ok "${db}" crowded_core "${CORE_PASSWORD}" "${core_write}"
 expect_denied "${db}" crowded_core "${CORE_PASSWORD}" "${notifications_write}"
@@ -118,9 +118,17 @@ migrate "${db}" true
 pass "migrations and demo data apply to an empty database"
 check_second_run "${db}" true
 
-[[ "$(sql "${db}" crowded "${OWNER_PASSWORD}" 'SELECT count(DISTINCT status) FROM event')" == 7 ]] \
+[[ "$(sql "${db}" crowded "${OWNER_PASSWORD}" 'SELECT count(DISTINCT status) FROM event')" == 6 ]] \
   || fail "the demo data has no event in every state"
 pass "the demo data has an event in every state"
+
+# The refined scope (#142): both kinds of event and of connection, and a weather warning.
+[[ "$(sql "${db}" crowded "${OWNER_PASSWORD}" "SELECT
+    (SELECT count(DISTINCT type) FROM event) = 2
+    AND EXISTS (SELECT FROM ticket) AND EXISTS (SELECT FROM access_code_connection)
+    AND EXISTS (SELECT FROM weather_warning)")" == t ]] \
+  || fail "the demo data lacks a kind of event, a kind of connection or a weather warning"
+pass "the demo data has ticketed and public events, both kinds of connection and a weather warning"
 
 # {bcrypt} and a 60-character bcrypt hash.
 [[ "$(sql "${db}" crowded "${OWNER_PASSWORD}" \

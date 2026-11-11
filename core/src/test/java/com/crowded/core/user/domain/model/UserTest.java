@@ -11,7 +11,7 @@ class UserTest {
 
   @Test
   void isAMemberOnlyOfItsOwnOrganization() {
-    User member = new User(UUID.randomUUID(), ORGANIZATION, Role.ORGANIZATION_MEMBER);
+    User member = new User(UUID.randomUUID(), ORGANIZATION, Role.ORGANIZATION_MEMBER, true);
 
     assertThat(member.isMemberOf(ORGANIZATION)).isTrue();
     assertThat(member.isMemberOf(UUID.randomUUID())).isFalse();
@@ -21,7 +21,16 @@ class UserTest {
   @Test
   void isNeverAMemberWithAnotherRole() {
     assertThat(
-            new User(UUID.randomUUID(), ORGANIZATION, Role.ADMINISTRATOR).isMemberOf(ORGANIZATION))
+            new User(UUID.randomUUID(), ORGANIZATION, Role.ADMINISTRATOR, true)
+                .isMemberOf(ORGANIZATION))
+        .isFalse();
+  }
+
+  @Test
+  void isNoLongerAMemberOnceDeactivated() {
+    assertThat(
+            new User(UUID.randomUUID(), ORGANIZATION, Role.ORGANIZATION_MEMBER, false)
+                .isMemberOf(ORGANIZATION))
         .isFalse();
   }
 }

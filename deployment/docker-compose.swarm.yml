@@ -5,7 +5,7 @@
 #
 # Only the router publishes a port. The data stores are reachable only on the
 # internal `backend` network; the router reaches the applications on `edge`.
-# Observability (ADR 0009) and the simulators are added by their own stories.
+# Observability (ADR 0009) is added by its own story. No simulator is deployed (TR-009).
 
 # Each service connects as its own database user, which writes only the
 # tables that service owns (ADR 0002, ADR 0012): DB_USERNAME and the
@@ -129,8 +129,7 @@ services:
       - { source: rabbitmq_password, target: RABBITMQ_PASSWORD }
       - { source: redis_password, target: REDIS_PASSWORD }
       - jwt_public_key
-    # No route to the internet yet: the ticketing simulator will run in this
-    # stack. Add `edge` when Jobs calls an external system.
+    # No route to the internet yet. Add `edge` when Jobs calls IPMA.
     networks: [backend]
     deploy:
       <<: *app-deploy
