@@ -54,7 +54,7 @@ The `Dockerfile` builds the service and runs it on a JRE as a non-root user; its
 
 ## Code Layout
 
-Onion architecture, one package per module under `com.crowded.core` (`event`, `user`, `organization`, `audit`, `outbox`, and `shared` for what they all use). Inside a module, dependencies only point inwards:
+Onion architecture ([ADR 0016](../docs/deliverables/adr/0016-onion-architecture-for-backend-services.md)), one package per module under `com.crowded.core` (`event`, `user`, `organization`, `audit`, `outbox`, and `shared` for what they all use). Inside a module, dependencies only point inwards:
 
 | Layer | Package | Holds | May use |
 |---|---|---|---|
