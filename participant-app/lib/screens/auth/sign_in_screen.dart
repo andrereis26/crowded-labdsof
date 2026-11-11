@@ -18,30 +18,34 @@ class SignInScreen extends StatefulWidget {
 
 class _SignInScreenState extends State<SignInScreen> {
   _Mode _mode = _Mode.signIn;
-  final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _showPassword = false;
+  bool _busy = false;
   String? _error;
 
   @override
   void dispose() {
-    _name.dispose();
     _email.dispose();
     _password.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_busy) return;
     final store = AppStore.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     final error = _mode == _Mode.signIn
-        ? store.signIn(email: _email.text, password: _password.text)
-        : store.register(
-            name: _name.text,
-            email: _email.text,
-            password: _password.text,
-          );
-    setState(() => _error = error);
+        ? await store.signIn(email: _email.text, password: _password.text)
+        : await store.register(email: _email.text, password: _password.text);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _error = error;
+    });
     if (error == null) context.go('/eventos');
   }
 
@@ -49,10 +53,10 @@ class _SignInScreenState extends State<SignInScreen> {
   Widget build(BuildContext context) {
     final form = _Form(
       mode: _mode,
-      name: _name,
       email: _email,
       password: _password,
       showPassword: _showPassword,
+      busy: _busy,
       error: _error,
       onModeChanged: (m) => setState(() {
         _mode = m;
@@ -183,10 +187,10 @@ class _Hero extends StatelessWidget {
 class _Form extends StatelessWidget {
   const _Form({
     required this.mode,
-    required this.name,
     required this.email,
     required this.password,
     required this.showPassword,
+    required this.busy,
     required this.error,
     required this.onModeChanged,
     required this.onTogglePassword,
@@ -194,10 +198,10 @@ class _Form extends StatelessWidget {
   });
 
   final _Mode mode;
-  final TextEditingController name;
   final TextEditingController email;
   final TextEditingController password;
   final bool showPassword;
+  final bool busy;
   final String? error;
   final ValueChanged<_Mode> onModeChanged;
   final VoidCallback onTogglePassword;
@@ -219,14 +223,7 @@ class _Form extends StatelessWidget {
               AppSegment(value: _Mode.register, label: 'Criar conta'),
             ],
           ),
-          if (registering)
-            AppTextField(
-              label: 'Nome',
-              controller: name,
-              prefixIcon: Icons.person_outline,
-              textInputAction: TextInputAction.next,
-              autofillHints: const [AutofillHints.name],
-            ),
+
           AppTextField(
             label: 'Email',
             controller: email,
@@ -277,7 +274,8 @@ class _Form extends StatelessWidget {
             ),
           AppButton(
             label: registering ? 'Criar conta' : 'Entrar',
-            onPressed: onSubmit,
+            // Disabled while Core answers, so a double tap sends one request.
+            onPressed: busy ? null : onSubmit,
           ),
           Wrap(
             alignment: WrapAlignment.center,

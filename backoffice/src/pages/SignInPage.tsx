@@ -2,7 +2,8 @@ import { Building2, CircleAlert, Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import festivalImage from '../assets/festival-margens-2026.jpg'
-import { contactEmail, signIn, validateNewPassword, type Member } from '../data/admin'
+import { contactEmail, validateNewPassword, type Member } from '../data/admin'
+import type { Session, SignIn } from '../data/auth'
 import { Logo } from '../layout/Shell'
 import { Button } from '../ui/components'
 import { Field, TextInput, type ControlProps } from '../ui/forms'
@@ -84,27 +85,39 @@ function ErrorBox({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-/** C1 · Entrar, for organization members and administrators. */
-export function SignInPage({ members, now }: { members: Member[]; now: Date }) {
+/** C1 · Entrar, for organization members and administrators, with Core
+ * (`POST /auth/login`, #59). */
+export function SignInPage({
+  signIn,
+  onSignedIn,
+}: {
+  signIn: SignIn
+  onSignedIn: (session: Session) => void
+}) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<{ title: string; text: string }>()
   const [forgot, setForgot] = useState(false)
+  const [busy, setBusy] = useState(false)
   const navigate = useNavigate()
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
-    const result = signIn(members, email, password, now)
-    if (result.kind === 'admin') navigate('/organizacoes')
-    else if (result.kind === 'member') navigate('/organizacao/eventos')
-    else if (result.kind === 'new-password') {
-      navigate('/definir-palavra-passe', { state: { memberId: result.member.id } })
-    } else if (result.kind === 'expired') {
+    if (busy) return
+    setBusy(true)
+    const result = await signIn(email, password)
+    setBusy(false)
+    if (result.kind === 'signed-in') {
+      onSignedIn(result.session)
+      navigate(result.session.role === 'ADMINISTRATOR' ? '/organizacoes' : '/organizacao/eventos')
+    } else if (result.kind === 'new-password') {
+      // Core accepts the temporary password only to set a new one, which C4
+      // does with #141.
       setError({
-        title: 'A palavra-passe temporária expirou',
-        text: 'Era válida durante 7 dias. Pede uma nova ao administrador do Crowded.',
+        title: 'Primeiro acesso',
+        text: 'Esta conta ainda tem a palavra-passe temporária. Escolher uma nova ainda não está disponível.',
       })
-    } else setError({ title: 'Não foi possível entrar', text: result.message })
+    } else setError({ title: result.title, text: result.message })
   }
 
   return (
@@ -153,7 +166,7 @@ export function SignInPage({ members, now }: { members: Member[]; now: Date }) {
           </p>
         )}
         {error && <ErrorBox title={error.title}>{error.text}</ErrorBox>}
-        <Button type="submit" size="lg">
+        <Button type="submit" size="lg" disabled={busy}>
           Entrar
         </Button>
       </form>
