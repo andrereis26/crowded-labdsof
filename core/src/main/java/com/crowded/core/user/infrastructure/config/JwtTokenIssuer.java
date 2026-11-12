@@ -1,7 +1,7 @@
-package com.crowded.core.user.infrastructure.security;
+package com.crowded.core.user.infrastructure.config;
 
-import com.crowded.core.user.application.dto.IssuedToken;
-import com.crowded.core.user.application.port.TokenIssuer;
+import com.crowded.core.user.domain.model.IssuedToken;
+import com.crowded.core.user.domain.repository.TokenIssuer;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

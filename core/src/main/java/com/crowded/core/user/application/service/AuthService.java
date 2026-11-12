@@ -1,18 +1,18 @@
 package com.crowded.core.user.application.service;
 
-import com.crowded.core.shared.application.port.RateLimiter;
 import com.crowded.core.shared.domain.exception.ConflictException;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.domain.exception.NotAuthenticatedException;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
 import com.crowded.core.shared.domain.exception.TooManyRequestsException;
+import com.crowded.core.shared.domain.repository.RateLimiter;
 import com.crowded.core.user.application.dto.RegisterCommand;
 import com.crowded.core.user.application.dto.SignInCommand;
 import com.crowded.core.user.application.dto.SignedIn;
-import com.crowded.core.user.application.port.PasswordHasher;
-import com.crowded.core.user.application.port.TokenIssuer;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.model.UserAccount;
+import com.crowded.core.user.domain.repository.PasswordHasher;
+import com.crowded.core.user.domain.repository.TokenIssuer;
 import com.crowded.core.user.domain.repository.UserRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;

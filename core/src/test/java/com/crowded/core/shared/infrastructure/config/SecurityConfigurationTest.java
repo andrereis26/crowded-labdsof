@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.crowded.core.event.api.mapper.EventChangeApiMapper;
 import com.crowded.core.event.application.service.EventChangeService;
+import com.crowded.core.user.api.mapper.AuthApiMapper;
 import com.crowded.core.user.application.service.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,7 @@ class SecurityConfigurationTest {
   @MockitoBean private EventChangeService eventChangeService;
   @MockitoBean private EventChangeApiMapper eventChangeApiMapper;
   @MockitoBean private AuthService authService;
+  @MockitoBean private AuthApiMapper authApiMapper;
 
   @Test
   void rejectsRequestsWithoutAToken() throws Exception {

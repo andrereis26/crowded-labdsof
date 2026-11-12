@@ -1,4 +1,4 @@
-package com.crowded.core.user.application.dto;
+package com.crowded.core.user.domain.model;
 
 import java.time.Instant;
 

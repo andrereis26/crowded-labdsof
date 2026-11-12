@@ -1,6 +1,6 @@
-package com.crowded.core.user.infrastructure.security;
+package com.crowded.core.user.infrastructure.config;
 
-import com.crowded.core.user.application.port.PasswordHasher;
+import com.crowded.core.user.domain.repository.PasswordHasher;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
