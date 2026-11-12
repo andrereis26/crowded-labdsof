@@ -1,7 +1,7 @@
 #Requires -Version 7.4
 <#
 .SYNOPSIS
-Drops the local database and creates it again, migrated (#111).
+Drops the local database and creates it again, migrated.
 
 .DESCRIPTION
 With the demo data when SEED_DEMO_DATA is true, in the stack of stack-up.ps1,

@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-/** An organization that publishes events, created by a platform administrator (FR-087). */
+/** An organization that publishes events, created by a platform administrator. */
 public final class Organization {
 
   /** The longest organization name. */

@@ -21,7 +21,7 @@ spring:
     listener:
       simple:
         # A failed message is retried after 5 s, 15 s and 30 s, all within
-        # 1 minute, then dead-lettered (Asynchronous Flows, NFR-004). The
+        # 1 minute, then dead-lettered (Asynchronous Flows). The
         # retries hold a consumer, so a few run side by side.
         concurrency: 2
         max-concurrency: 4
@@ -49,6 +49,6 @@ management:
   endpoint:
     health:
       # /actuator/health/liveness and /readiness: the container health check
-      # calls readiness (ADR 0011). #70 adds the dependencies' details.
+      # calls readiness (ADR 0011).
       probes:
         enabled: true

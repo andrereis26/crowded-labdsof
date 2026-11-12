@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs one app from source on this machine, in the background, against the
 # infrastructure of infra-up.sh (or the data stores of stack-up.sh), with its
-# configuration from .env (#111):
+# configuration from .env:
 #   core, jobs, notifications  ./mvnw spring-boot:run, as the service's own
 #                              database user, on CORE_PORT, JOBS_PORT...
 #   backoffice                 npm run dev, on BACKOFFICE_PORT

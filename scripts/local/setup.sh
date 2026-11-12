@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepares a fresh clone for local development, on Debian or macOS (#111):
+# Prepares a fresh clone for local development, on Debian or macOS:
 #   1. checks the tools and versions the projects need, and says how to
 #      install any that is missing;
 #   2. creates .env from .env.example, with a freshly generated random value

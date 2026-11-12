@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Who did what and when (SR-006). Written once, never changed. */
+/** Who did what and when. Written once, never changed. */
 public final class AuditLogEntry {
 
   private final UUID id;

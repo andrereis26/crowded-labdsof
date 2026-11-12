@@ -1,7 +1,7 @@
 #Requires -Version 7.4
 <#
 .SYNOPSIS
-Runs one app from source on this machine, in the background (#111).
+Runs one app from source on this machine, in the background.
 
 .DESCRIPTION
 Against the infrastructure of infra-up.ps1 (or the data stores of

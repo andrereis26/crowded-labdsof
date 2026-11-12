@@ -196,7 +196,7 @@ class AppErrorState extends StatelessWidget {
 }
 
 /// Thin strip that says the app is offline or running in degraded mode and
-/// how old the data is (NFR-005).
+/// how old the data is.
 class AppStatusStrip extends StatelessWidget {
   /// "Sem rede · a mostrar dados de há 12 min".
   const AppStatusStrip.offline({super.key, required this.message})

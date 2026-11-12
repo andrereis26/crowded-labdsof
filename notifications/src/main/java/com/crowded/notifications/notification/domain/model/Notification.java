@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-/** A notification for one participant (FR-067). Created once, never changed. */
+/** A notification for one participant. Created once, never changed. */
 public final class Notification {
 
   private final UUID id;
@@ -61,7 +61,7 @@ public final class Notification {
 
   /**
    * The key of the notification of {@code userId} asked for by the message {@code messageId}:
-   * unique, so a message delivered twice notifies once (NFR-003).
+   * unique, so a message delivered twice notifies once.
    */
   public static String deduplicationKey(UUID userId, UUID messageId) {
     return userId + ":" + messageId;

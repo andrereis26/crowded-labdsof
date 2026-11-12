@@ -1,7 +1,7 @@
 #Requires -Version 7.4
 <#
 .SYNOPSIS
-Starts the infrastructure alone, for apps run from source by start.ps1 (#111).
+Starts the infrastructure alone, for apps run from source by start.ps1.
 
 .DESCRIPTION
 PostgreSQL migrated and seeded (database/compose.yaml), RabbitMQ and Redis,

@@ -2,7 +2,7 @@
 # Install them once after cloning: lefthook install
 # The backend jobs need JAVA_HOME set to a JDK 25.
 # See "Contributing" in README.md. Hooks can be skipped with --no-verify; the
-# pipeline (#69) runs the same checks.
+# pipeline runs the same checks.
 
 min_version: 2.0.0
 

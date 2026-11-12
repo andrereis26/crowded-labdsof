@@ -122,7 +122,7 @@ check_second_run "${db}" true
   || fail "the demo data has no event in every state"
 pass "the demo data has an event in every state"
 
-# The refined scope (#142): both kinds of event and of connection, and a weather warning.
+# The refined scope: both kinds of event and of connection, and a weather warning.
 [[ "$(sql "${db}" crowded "${OWNER_PASSWORD}" "SELECT
     (SELECT count(DISTINCT type) FROM event) = 2
     AND EXISTS (SELECT FROM ticket) AND EXISTS (SELECT FROM access_code_connection)

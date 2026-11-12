@@ -33,9 +33,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Registers participants and signs users in (FR-039, FR-043). Passwords are stored only as a hash
- * with salt (SR-013); registration and sign-in are rate-limited (SR-015). A refused sign-in says
- * the same whatever was wrong, so it does not reveal which emails have an account.
+ * Registers participants and signs users in. Passwords are stored only as a hash with salt;
+ * registration and sign-in are rate-limited. A refused sign-in says the same whatever was wrong, so
+ * it does not reveal which emails have an account.
  */
 @Service
 public class AuthService {
@@ -82,7 +82,7 @@ public class AuthService {
 
   /**
    * Creates a participant account. Nobody can register as an organization member or an
-   * administrator: their accounts are created by an administrator (FR-087).
+   * administrator: their accounts are created by an administrator.
    *
    * @throws RuleViolationException when the password is too short or too long, or the email is
    *     invalid
@@ -110,8 +110,7 @@ public class AuthService {
    * Signs a user in with their email and password.
    *
    * @throws NotAuthenticatedException when the email and password do not match an active account
-   * @throws NotAllowedException when the account still has its temporary password; #141 lets it
-   *     sign in to set a new one
+   * @throws NotAllowedException when the account still has its temporary password
    * @throws TooManyRequestsException when the client or the email had too many attempts
    */
   @Transactional

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Starts the infrastructure alone, for apps run from source by start.sh
-# (#111): PostgreSQL migrated and seeded (database/compose.yaml), RabbitMQ and
+# Starts the infrastructure alone, for apps run from source by start.sh:
+# PostgreSQL migrated and seeded (database/compose.yaml), RabbitMQ and
 # Redis, in containers, with the passwords of .env and their ports on
 # 127.0.0.1. Running it again keeps what runs and migrates again (a no-op).
 # The database lives in memory: infra-down.sh, or a restart, empties it.

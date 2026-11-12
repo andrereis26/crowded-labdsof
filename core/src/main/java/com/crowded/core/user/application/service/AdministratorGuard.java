@@ -9,8 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Lets only an active platform administrator through (FR-087). The role is read from the database
- * on each request, never from the token (API Outline, Authentication).
+ * Lets only an active platform administrator through. The role is read from the database on each
+ * request, never from the token (API Outline, Authentication).
  */
 @Service
 public class AdministratorGuard {

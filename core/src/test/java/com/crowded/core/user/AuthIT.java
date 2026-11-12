@@ -21,7 +21,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Registration and sign-in through the HTTP API (#59), against the migrated database with its demo
+ * Registration and sign-in through the HTTP API, against the migrated database with its demo
  * accounts, whose password is {@code crowded-demo} (database/README.md).
  */
 @ResourceLock(IntegrationTest.SHARED_STATE)

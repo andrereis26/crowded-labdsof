@@ -1,7 +1,7 @@
 #Requires -Version 7.4
 <#
 .SYNOPSIS
-Runs the whole system on this machine as the production environment runs it (#111).
+Runs the whole system on this machine as the production environment runs it.
 
 .DESCRIPTION
 The Swarm stack of deployment/docker-compose.swarm.yml, with the local
@@ -23,7 +23,7 @@ Bash twin (Debian, macOS): scripts/local/stack-up.sh
 Use the images tagged main instead of building them.
 
 .PARAMETER WithObservability
-Add Prometheus, Loki, Alloy and Grafana (from #70).
+Add Prometheus, Loki, Alloy and Grafana.
 #>
 [CmdletBinding()]
 param(
@@ -38,7 +38,7 @@ $timeoutSeconds = if ($env:TIMEOUT_SECONDS) { [int]$env:TIMEOUT_SECONDS } else {
 $stackFiles = @('-c', $StackFile, '-c', (Join-Path $LocalDir 'stack.local.yml'))
 if ($WithObservability) {
     if (-not (Test-Path -LiteralPath $ObservabilityFile)) {
-        Exit-WithError "-WithObservability needs $([IO.Path]::GetRelativePath($Root, $ObservabilityFile)), which #70 adds."
+        Exit-WithError "-WithObservability needs $([IO.Path]::GetRelativePath($Root, $ObservabilityFile)), which this checkout does not have yet."
     }
     $stackFiles += @('-c', $ObservabilityFile)
 }

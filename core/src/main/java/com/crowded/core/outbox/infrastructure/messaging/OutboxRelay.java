@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Publishes the outbox to RabbitMQ, oldest first, and removes each message once the broker has
  * confirmed it. A message that fails stays in the outbox and is published again, with the same
- * message id, on the next run; consumers skip a message they already processed (NFR-003).
+ * message id, on the next run; consumers skip a message they already processed.
  */
 @Component
 class OutboxRelay {
@@ -39,7 +39,7 @@ class OutboxRelay {
     this.rabbit = rabbit;
   }
 
-  /** Runs every half second, well inside the 1-minute delivery target (NFR-001). */
+  /** Runs every half second, well inside the 1-minute delivery target. */
   @Scheduled(fixedDelay = 500)
   @Transactional
   public void publishWaiting() {

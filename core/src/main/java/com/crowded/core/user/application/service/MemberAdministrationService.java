@@ -33,9 +33,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * An administrator's management of organization members (FR-087): their accounts, created with a
- * temporary password shown once (SR-022), deactivation and new temporary passwords. Every action is
- * audited (SR-006), and the member's earlier tokens are revoked when they lose access.
+ * An administrator's management of organization members: their accounts, created with a temporary
+ * password shown once, deactivation and new temporary passwords. Every action is audited, and the
+ * member's earlier tokens are revoked when they lose access.
  */
 @Service
 public class MemberAdministrationService {

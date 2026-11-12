@@ -6,7 +6,7 @@ import '../../ui/ui.dart';
 import '../shared/shell.dart';
 import 'account_layout.dart';
 
-/// C3 · Conta: apagar conta e dados (FR-071). The participant types APAGAR
+/// C3 · Conta: apagar conta e dados. The participant types APAGAR
 /// and the password before the button is enabled.
 class DeleteAccountScreen extends StatefulWidget {
   const DeleteAccountScreen({super.key});

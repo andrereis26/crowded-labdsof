@@ -1,7 +1,7 @@
 #Requires -Version 7.4
 <#
 .SYNOPSIS
-Prepares a fresh clone for local development, on Windows (#111).
+Prepares a fresh clone for local development, on Windows.
 
 .DESCRIPTION
 1. Checks the tools and versions the projects need, and says how to install

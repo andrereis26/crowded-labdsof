@@ -12,7 +12,7 @@ import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** Row of {@code notification}. Delivery and reading are stamped later (#92). */
+/** Row of {@code notification}. Delivery and reading are stamped later. */
 @Entity
 @Table(name = "notification")
 public class NotificationEntity {

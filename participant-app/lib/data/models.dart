@@ -146,7 +146,7 @@ class Refund {
   final String where;
 }
 
-/// IPMA weather warning level (FR-036, FR-074).
+/// IPMA weather warning level.
 enum WarningLevel {
   yellow('Aviso amarelo'),
   orange('Aviso laranja'),
@@ -281,7 +281,7 @@ class Ticket {
 
   final String id;
 
-  /// The registered event whose code matched the ticket (FR-003).
+  /// The registered event whose code matched the ticket.
   final Event event;
   final TicketOrigin origin;
   final DateTime importedAt;
@@ -380,16 +380,16 @@ enum ImportOutcome {
   added,
 
   /// No event code was read, or the code that was read matches no event:
-  /// the participant types it (P2b, FR-004).
+  /// the participant types it (P2b).
   needsEventCode,
 
-  /// No QR code in the file: the ticket is not stored (FR-070).
+  /// No QR code in the file: the ticket is not stored.
   noQrCode,
 
-  /// The typed code matches no event: nothing is stored (FR-083).
+  /// The typed code matches no event: nothing is stored.
   eventNotOnCrowded,
 
-  /// The ticket is already linked to another account (FR-084).
+  /// The ticket is already linked to another account.
   linkedToAnotherAccount,
 }
 
@@ -430,7 +430,7 @@ enum RequestNotificationLevel {
   final String label;
 }
 
-/// Notification preferences (C2, FR-069).
+/// Notification preferences (C2).
 class NotificationPreferences {
   bool officialChanges = true;
   bool organizerAlerts = true;
@@ -701,7 +701,7 @@ enum ContributionFilter {
 }
 
 /// A report or confirmation the participant made, with what happened to it
-/// (P20, FR-038). Private to the participant.
+/// (P20). Private to the participant.
 class Contribution {
   const Contribution({
     required this.id,

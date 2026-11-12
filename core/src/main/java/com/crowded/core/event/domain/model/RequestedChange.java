@@ -1,7 +1,7 @@
 package com.crowded.core.event.domain.model;
 
 /**
- * An official change as the organization asks for it (FR-016, FR-075).
+ * An official change as the organization asks for it.
  *
  * @param newValues the changed fields; null or {@link NewValues#NONE} for a cancellation
  * @param ticketStillValid for a postponement or cancellation, whether tickets stay valid

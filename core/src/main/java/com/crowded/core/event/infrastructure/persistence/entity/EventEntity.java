@@ -12,7 +12,7 @@ import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** Row of {@code event}. Maps only the columns Core uses so far; #36 adds the rest. */
+/** Row of {@code event}. Maps only the columns Core uses so far. */
 @Entity
 @Table(name = "event")
 public class EventEntity {

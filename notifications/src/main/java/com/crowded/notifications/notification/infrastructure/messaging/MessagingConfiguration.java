@@ -18,8 +18,8 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Notifications' queue on the {@code crowded.events} exchange and its dead-letter queue
  * (Asynchronous Flows). A message that fails is retried after 5 s, 15 s and 30 s ({@code
- * application.yml}), then moved to the dead-letter queue (NFR-004). A message that cannot succeed,
- * because it is not valid JSON or its type is not supported yet, goes there at once.
+ * application.yml}), then moved to the dead-letter queue. A message that cannot succeed, because it
+ * is not valid JSON or its type is not supported yet, goes there at once.
  */
 @Configuration(proxyBeanMethods = false)
 class MessagingConfiguration {

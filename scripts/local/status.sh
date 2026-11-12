@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shows what runs locally (#111): the services of the stack (stack-up.sh) and
+# Shows what runs locally: the services of the stack (stack-up.sh) and
 # the gateway, the infrastructure (infra-up.sh), and the apps that start.sh
 # runs from source. A Swarm task counts as running only once its health check
 # passes, so "1/1" replicas means healthy.

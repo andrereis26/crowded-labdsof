@@ -1,6 +1,6 @@
 package com.crowded.core.user.domain.repository;
 
-/** One-way password hashing with salt (SR-013). */
+/** One-way password hashing with salt. */
 public interface PasswordHasher {
 
   /** The hash to store for {@code password}. */

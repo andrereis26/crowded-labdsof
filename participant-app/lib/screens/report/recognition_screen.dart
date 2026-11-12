@@ -8,7 +8,7 @@ import '../../utils/pt_format.dart';
 import '../shared/shell.dart';
 
 /// P15 · Reconhecimento — o teu reporte ajudou. Opened from the
-/// notification when the organizer marks a report as helpful (#54).
+/// notification when the organizer marks a report as helpful.
 class RecognitionScreen extends StatelessWidget {
   const RecognitionScreen({super.key, required this.recognitionId});
 

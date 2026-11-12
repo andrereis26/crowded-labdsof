@@ -34,7 +34,7 @@ const headCell = 'py-2.5 text-left text-[11px] font-semibold tracking-[0.44px] u
 export type Outcome<T> = { ok: true; value: T } | { ok: false; code: string }
 
 /** A2 · Administração da plataforma: organizations and their members, from
- * Core (`/admin/...`, #140). */
+ * Core (`/admin/...`). */
 export function OrganizationsPage({
   organizations,
   members,

@@ -7,8 +7,8 @@ import '../../utils/pt_format.dart';
 import '../shared/shell.dart';
 
 /// P8 · Já não estás ligado a este evento: shown instead of the event page
-/// when the participant removed its ticket or left the public event (FR-008,
-/// SR-020), for instance from an old notification.
+/// when the participant removed its ticket or left the public event, for
+/// instance from an old notification.
 class LeftEventScreen extends StatelessWidget {
   const LeftEventScreen({super.key, required this.eventId});
 

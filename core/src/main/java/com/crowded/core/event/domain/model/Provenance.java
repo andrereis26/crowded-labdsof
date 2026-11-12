@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 /**
- * Where a piece of information came from and how fresh it is (FR-016, NFR-008).
+ * Where a piece of information came from and how fresh it is.
  *
  * @param sourceName who gave it, such as the organization's name
  * @param confirmed whether the source confirmed it

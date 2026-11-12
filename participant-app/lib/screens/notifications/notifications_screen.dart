@@ -136,7 +136,7 @@ class _NotificationTile extends StatelessWidget {
   final VoidCallback onTap;
 
   /// False for events the participant left: shown muted, and opening it
-  /// explains that the page is no longer available (SR-020).
+  /// explains that the page is no longer available.
   final bool connected;
   final ValueChanged<bool> onAnswer;
 
