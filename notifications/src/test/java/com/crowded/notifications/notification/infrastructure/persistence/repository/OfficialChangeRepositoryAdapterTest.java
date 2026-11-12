@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 import com.crowded.notifications.notification.domain.model.ChangeType;
 import com.crowded.notifications.notification.domain.model.OfficialChange;
 import com.crowded.notifications.notification.infrastructure.persistence.mapper.OfficialChangePersistenceMapperImpl;
-import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -27,10 +26,8 @@ class OfficialChangeRepositoryAdapterTest {
     when(row.getId()).thenReturn(id);
     when(row.getEventId()).thenReturn(eventId);
     when(row.getType()).thenReturn("POSTPONEMENT");
-    when(row.getPreviousStart()).thenReturn("2025-10-25T20:30:00Z");
-    when(row.getNewStart()).thenReturn("2025-11-08T21:30:00Z");
-    when(row.getPreviousDoorsOpenAt()).thenReturn("19:30");
-    when(row.getNewDoorsOpenAt()).thenReturn(null);
+    when(row.getStartChanged()).thenReturn(true);
+    when(row.getDoorsOpenChanged()).thenReturn(false);
     when(row.getPreviousVenueName()).thenReturn("Teatro Municipal");
     when(row.getNewVenueName()).thenReturn("Coliseu");
     when(row.getNewAddress()).thenReturn("Rua de Passos Manuel");
@@ -45,10 +42,8 @@ class OfficialChangeRepositoryAdapterTest {
                 id,
                 eventId,
                 ChangeType.POSTPONEMENT,
-                Instant.parse("2025-10-25T20:30:00Z"),
-                Instant.parse("2025-11-08T21:30:00Z"),
-                null,
-                null,
+                true,
+                false,
                 "Teatro Municipal",
                 "Coliseu",
                 "Rua de Passos Manuel",

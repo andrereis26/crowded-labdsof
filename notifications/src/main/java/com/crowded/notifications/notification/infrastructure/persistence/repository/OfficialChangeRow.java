@@ -2,10 +2,7 @@ package com.crowded.notifications.notification.infrastructure.persistence.reposi
 
 import java.util.UUID;
 
-/**
- * An {@code event_change} with the values it changed, read from its JSON as text. Instants are
- * ISO-8601, as Core writes them.
- */
+/** An {@code event_change} with what it changed, read from its JSON. */
 public interface OfficialChangeRow {
 
   UUID getId();
@@ -14,13 +11,9 @@ public interface OfficialChangeRow {
 
   String getType();
 
-  String getPreviousStart();
+  boolean getStartChanged();
 
-  String getNewStart();
-
-  String getPreviousDoorsOpenAt();
-
-  String getNewDoorsOpenAt();
+  boolean getDoorsOpenChanged();
 
   String getPreviousVenueName();
 
