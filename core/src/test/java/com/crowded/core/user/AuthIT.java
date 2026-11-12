@@ -44,7 +44,7 @@ class AuthIT extends IntegrationTest {
             "/auth/register",
             "{\"email\": \""
                 + email
-                + "\", \"password\": \"frase-secreta\","
+                + "\", \"password\": \"Frase-secr3ta\"," // ggignore
                 + " \"role\": \"ORGANIZATION_MEMBER\"}");
 
     assertThat(registered.statusCode()).isEqualTo(201);
@@ -61,9 +61,9 @@ class AuthIT extends IntegrationTest {
             jdbc.queryForObject(
                 "SELECT password_hash FROM app_user WHERE id = ?", String.class, userId))
         .startsWith("{bcrypt}$2a$10$")
-        .doesNotContain("frase-secreta");
+        .doesNotContain("Frase-secr3ta"); // ggignore
 
-    HttpResponse<String> signedIn = signIn(email, "frase-secreta");
+    HttpResponse<String> signedIn = signIn(email, "Frase-secr3ta"); // ggignore
 
     assertThat(signedIn.statusCode()).isEqualTo(200);
     assertThat(
@@ -130,11 +130,12 @@ class AuthIT extends IntegrationTest {
   void refusesASecondAccountWithTheSameEmailAndInvalidRequests() throws Exception {
     HttpResponse<String> taken =
         post(
-            "/auth/register", "{\"email\": \"ANA@crowded.test\", \"password\": \"frase-secreta\"}");
+            "/auth/register",
+            "{\"email\": \"ANA@crowded.test\", \"password\": \"Frase-secr3ta\"}"); // ggignore
     HttpResponse<String> shortPassword =
         post("/auth/register", "{\"email\": \"curta@crowded.test\", \"password\": \"curta\"}");
     HttpResponse<String> notAnEmail =
-        post("/auth/register", "{\"email\": \"ana\", \"password\": \"frase-secreta\"}");
+        post("/auth/register", "{\"email\": \"ana\", \"password\": \"Frase-secr3ta\"}"); // ggignore
 
     assertThat(taken.statusCode()).isEqualTo(409);
     assertThat(json.readTree(taken.body()).get("code").asString())
@@ -143,6 +144,12 @@ class AuthIT extends IntegrationTest {
     assertThat(json.readTree(shortPassword.body()).get("code").asString())
         .isEqualTo("PASSWORD_TOO_SHORT");
     assertThat(notAnEmail.statusCode()).isEqualTo(400);
+    HttpResponse<String> weak =
+        post(
+            "/auth/register",
+            "{\"email\": \"fraca@crowded.test\", \"password\": \"semmaiusculas1!\"}"); // ggignore
+    assertThat(weak.statusCode()).isEqualTo(400);
+    assertThat(json.readTree(weak.body()).get("code").asString()).isEqualTo("PASSWORD_TOO_WEAK");
   }
 
   @Test

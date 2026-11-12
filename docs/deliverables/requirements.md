@@ -153,6 +153,7 @@ Security is specified separately in section 3. Scaling beyond one node is out of
 | SR-018 | The system shall treat ticket entry codes as credentials: store them encrypted, show them only to the ticket owner, never send them to the AI provider or write them to logs, and delete them with the ticket or account. To enforce FR-084, it may keep a keyed hash of the code. | 8 |
 | SR-023 | The participant client shall delete its cached event data and entry codes when the user signs out or deletes their account, and the cached data of an event when its connection is removed. | 8 |
 | SR-013 | The system shall store user passwords using a strong one-way hashing algorithm with salt. | 8 |
+| SR-024 | The system shall accept a password chosen by a user only with at least 8 characters, at most 72 bytes, and at least one uppercase letter, one lowercase letter, one digit and one special character; the temporary passwords it generates meet the same rule. | 8 |
 | SR-016 | The system shall accept at most one confirmation answer per participant per report, shall not let reporters confirm their own reports, and shall not reveal who confirmed or denied a report. | 8 |
 | SR-017 | The system shall check location for reporting and confirmation only once, at the moment of the action, store only the result of the check (not the location itself), and never track location continuously. | 8 |
 | SR-006 | The system shall keep an audit log of event changes, alerts sent, incident status changes and the administrator's account actions, including who performed them and when. | 7 |

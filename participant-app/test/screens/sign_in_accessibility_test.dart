@@ -60,6 +60,19 @@ void main() {
       await tester.pumpAndSettle();
       await _expectAccessible(tester);
 
+      // The strength meter, in its five colours.
+      for (final password in [
+        'curta',
+        'palavra-secreta',
+        'Segr3do!',
+        'Segr3do!-Forte',
+        'Palavra-secr3ta!',
+      ]) {
+        await tester.enterText(find.byType(TextField).at(1), password);
+        await tester.pumpAndSettle();
+        await _expectAccessible(tester);
+      }
+
       semantics.dispose();
     });
   }

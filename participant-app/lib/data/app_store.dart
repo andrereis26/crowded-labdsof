@@ -8,6 +8,7 @@ import '../ui/ui.dart';
 import '../utils/pt_format.dart';
 import 'auth_api.dart';
 import 'demo_data.dart';
+import 'password_strength.dart';
 import 'models.dart';
 import 'notifications_api.dart';
 
@@ -95,16 +96,22 @@ class AppStore extends ChangeNotifier {
     }
   }
 
-  /// Creates a participant account and signs in with it. Returns an error
-  /// message, or null when signed in.
+  /// Creates a participant account and signs in with it. [confirmation] is
+  /// the password typed again, so a typo does not lock the participant out.
+  /// Returns an error message, or null when signed in.
   Future<String?> register({
     required String email,
     required String password,
+    required String confirmation,
   }) async {
     if (!_looksLikeEmail(email)) return 'Introduz um email válido.';
     if (password.length < minPasswordLength) {
       return 'Usa pelo menos $minPasswordLength caracteres na palavra-passe.';
     }
+    if (!PasswordStrength.of(password).meetsTheRule) {
+      return _weakPassword;
+    }
+    if (confirmation != password) return 'As palavras-passe não coincidem.';
     try {
       await _auth.register(email: email.trim(), password: password);
     } on AuthException catch (e) {
@@ -112,6 +119,10 @@ class AppStore extends ChangeNotifier {
     }
     return signIn(email: email, password: password);
   }
+
+  static const _weakPassword =
+      'A palavra-passe não cumpre os requisitos de segurança: deve incluir '
+      'uma letra maiúscula, uma letra minúscula, um algarismo e um símbolo.';
 
   /// The participant's message for a refusal from Core.
   static String _authError(String code) => switch (code) {
@@ -121,6 +132,7 @@ class AppStore extends ChangeNotifier {
     'PASSWORD_TOO_SHORT' =>
       'Usa pelo menos $minPasswordLength caracteres na palavra-passe.',
     'PASSWORD_TOO_LONG' => 'Usa uma palavra-passe mais curta.',
+    'PASSWORD_TOO_WEAK' => _weakPassword,
     'RATE_LIMITED' =>
       'Demasiadas tentativas. Tenta novamente daqui a alguns minutos.',
     'PASSWORD_CHANGE_REQUIRED' =>

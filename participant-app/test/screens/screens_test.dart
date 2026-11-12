@@ -802,8 +802,10 @@ void main() {
       await tester.tap(find.text('Criar conta').first);
       await tester.pumpAndSettle();
       expect(find.text('Nome'), findsNothing);
+      expect(find.text('Confirmar palavra-passe'), findsOneWidget);
       await tester.enterText(find.byType(TextField).at(0), 'ana@email.pt');
       await tester.enterText(find.byType(TextField).at(1), 'curta');
+      await tester.ensureVisible(find.widgetWithText(AppButton, 'Criar conta'));
       await tester.tap(find.widgetWithText(AppButton, 'Criar conta'));
       await tester.pumpAndSettle();
       expect(
@@ -811,7 +813,49 @@ void main() {
         findsOneWidget,
       );
 
+      expect(find.text('Força: Muito fraca'), findsOneWidget);
+      expect(find.text('A palavra-passe deve conter:'), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      expect(find.byIcon(Icons.radio_button_unchecked), findsNWidgets(4));
       await tester.enterText(find.byType(TextField).at(1), 'palavra-secreta');
+      await tester.pump();
+      expect(find.text('Força: Fraca'), findsOneWidget);
+      await tester.ensureVisible(find.widgetWithText(AppButton, 'Criar conta'));
+      await tester.tap(find.widgetWithText(AppButton, 'Criar conta'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'A palavra-passe não cumpre os requisitos de segurança: deve incluir '
+          'uma letra maiúscula, uma letra minúscula, um algarismo e um símbolo.',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.enterText(find.byType(TextField).at(1), 'Segr3do!');
+      await tester.pump();
+      expect(find.text('Força: Moderada'), findsOneWidget);
+      expect(find.byIcon(Icons.radio_button_unchecked), findsNothing);
+      await tester.enterText(find.byType(TextField).at(1), 'Segr3do!-Forte');
+      await tester.pump();
+      expect(find.text('Força: Forte'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).at(1), 'Palavra-secr3ta!');
+      await tester.pump();
+      expect(find.text('Força: Muito forte'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(
+          'Força da palavra-passe: Muito forte. Cumpre todos os requisitos.',
+        ),
+        findsOneWidget,
+      );
+      await tester.enterText(find.byType(TextField).at(2), 'Palavra-secrta!');
+      await tester.ensureVisible(find.widgetWithText(AppButton, 'Criar conta'));
+      await tester.tap(find.widgetWithText(AppButton, 'Criar conta'));
+      await tester.pumpAndSettle();
+      expect(find.text('As palavras-passe não coincidem.'), findsOneWidget);
+      expect(store.signedIn, isFalse);
+
+      await tester.enterText(find.byType(TextField).at(2), 'Palavra-secr3ta!');
+      await tester.ensureVisible(find.widgetWithText(AppButton, 'Criar conta'));
       await tester.tap(find.widgetWithText(AppButton, 'Criar conta'));
       await tester.pumpAndSettle();
       expect(store.account?.email, 'ana@email.pt');
@@ -824,7 +868,10 @@ void main() {
       await tester.tap(find.text('Criar conta').first);
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).at(0), _email);
-      await tester.enterText(find.byType(TextField).at(1), 'outra-palavra');
+      await tester.enterText(find.byType(TextField).at(1), 'Outra-palavr4');
+      await tester.enterText(find.byType(TextField).at(2), 'Outra-palavr4');
+
+      await tester.ensureVisible(find.widgetWithText(AppButton, 'Criar conta'));
       await tester.tap(find.widgetWithText(AppButton, 'Criar conta'));
       await tester.pumpAndSettle();
       expect(

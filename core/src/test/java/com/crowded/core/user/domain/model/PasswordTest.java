@@ -10,17 +10,29 @@ class PasswordTest {
 
   @Test
   void needsEightCharactersAndAtMost72Bytes() {
-    assertThat(new Password("12345678").value()).isEqualTo("12345678");
-    assertThat(new Password("a".repeat(72))).isNotNull();
-    assertRefused("1234567", "PASSWORD_TOO_SHORT");
+    assertThat(new Password("Segr3do!").value()).isEqualTo("Segr3do!"); // ggignore
+    assertThat(new Password("Aa1-" + "a".repeat(68))).isNotNull(); // ggignore
+    assertRefused("Seg3do!", "PASSWORD_TOO_SHORT"); // ggignore
     assertRefused(null, "PASSWORD_TOO_SHORT");
     // 37 two-byte characters: 74 bytes, more than bcrypt reads.
     assertRefused("ç".repeat(37), "PASSWORD_TOO_LONG");
   }
 
   @Test
+  void needsAnUppercaseLetterALowercaseLetterADigitAndASpecialCharacter() {
+    assertRefused("segr3do!", "PASSWORD_TOO_WEAK"); // ggignore
+    assertRefused("SEGR3DO!", "PASSWORD_TOO_WEAK"); // ggignore
+    assertRefused("Segredo!", "PASSWORD_TOO_WEAK"); // ggignore
+    assertRefused("Segr3dos", "PASSWORD_TOO_WEAK"); // ggignore
+    // A space is not a special character.
+    assertRefused("Segr3do s", "PASSWORD_TOO_WEAK");
+    assertThat(new Password("Çeia-2026").value()).isEqualTo("Çeia-2026"); // ggignore
+    assertThat(new Password("Pass 2026€x")).isNotNull();
+  }
+
+  @Test
   void neverShowsItself() {
-    assertThat(new Password("segredo-forte").toString()).doesNotContain("segredo");
+    assertThat(new Password("Segredo-forte1").toString()).doesNotContain("Segredo"); // ggignore
   }
 
   private static void assertRefused(String value, String code) {

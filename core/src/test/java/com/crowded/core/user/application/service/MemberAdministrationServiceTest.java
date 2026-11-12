@@ -32,6 +32,7 @@ import com.crowded.core.user.domain.model.UserAccount;
 import com.crowded.core.user.domain.repository.PasswordHasher;
 import com.crowded.core.user.domain.repository.TokenRevocations;
 import com.crowded.core.user.domain.repository.UserRepository;
+import com.crowded.core.user.domain.service.TemporaryPasswords;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Duration;
@@ -51,6 +52,9 @@ class MemberAdministrationServiceTest {
   private static final Instant NOW = Instant.parse("2026-11-12T10:00:00Z");
   private static final UUID ADMIN = UUID.randomUUID();
   private static final UUID ORGANIZATION = UUID.randomUUID();
+
+  /** What the service's generator, which always answers 0, makes. */
+  private static final String FIXED_PASSWORD = TemporaryPasswords.generate(() -> 0L);
 
   private final UserRepository users = mock(UserRepository.class);
   private final OrganizationRepository organizations = mock(OrganizationRepository.class);
@@ -88,8 +92,8 @@ class MemberAdministrationServiceTest {
     ArgumentCaptor<UserAccount> stored = ArgumentCaptor.forClass(UserAccount.class);
     verify(users).add(stored.capture());
     UserAccount member = stored.getValue();
-    assertThat(issued.password()).isEqualTo("AAA-AAA-AAAA");
-    assertThat(member.getPasswordHash()).isEqualTo("hash:AAA-AAA-AAAA");
+    assertThat(issued.password()).isEqualTo(FIXED_PASSWORD);
+    assertThat(member.getPasswordHash()).isEqualTo("hash:" + FIXED_PASSWORD);
     assertThat(member.getRole()).isEqualTo(Role.ORGANIZATION_MEMBER);
     assertThat(member.getOrganizationId()).isEqualTo(ORGANIZATION);
     assertThat(member.getName()).isEqualTo("Rita Ferreira");
@@ -177,10 +181,10 @@ class MemberAdministrationServiceTest {
         service.change(new ChangeMemberCommand(ADMIN, member.getId(), null, true));
 
     assertThat(changed.active()).isTrue();
-    assertThat(changed.temporaryPassword()).isEqualTo("AAA-AAA-AAAA");
+    assertThat(changed.temporaryPassword()).isEqualTo(FIXED_PASSWORD);
     assertThat(changed.expiresAt()).isEqualTo(NOW.plus(Duration.ofDays(7)));
     UserAccount stored = stored();
-    assertThat(stored.getPasswordHash()).isEqualTo("hash:AAA-AAA-AAAA");
+    assertThat(stored.getPasswordHash()).isEqualTo("hash:" + FIXED_PASSWORD);
     assertThat(stored.hasTemporaryPassword()).isTrue();
     verify(revocations).revokeIssuedBefore(member.getId(), NOW);
     verifyAudited("MEMBER_PASSWORD_RESET", member.getId());
