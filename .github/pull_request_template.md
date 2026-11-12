@@ -39,6 +39,7 @@ When it applies:
 - [ ] Integration or end-to-end tests (DoD-06)
 - [ ] Failure scenarios handled and tested (DoD-07)
 - [ ] AI evaluation dataset updated (DoD-08)
+- [ ] Backend: entities are classes that hold their rules, value objects validate themselves, application services only orchestrate (ADR 0017)
 - [ ] Structured logs, metrics and trace identifiers (DoD-11)
 - [ ] Security and privacy requirements addressed (DoD-13)
 - [ ] UI meets WCAG 2.1 AA (DoD-14)

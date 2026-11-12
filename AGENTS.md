@@ -58,7 +58,8 @@
 - Backend architecture (`core/`, `jobs/`, `notifications/` and any new service; the
   backoffice and the participant app keep their own layouts): onion architecture
   with domain-driven design, the same in every service. Core is the reference:
-  `core/README.md` (Code Layout) and `OnionArchitectureTest`.
+  `core/README.md` (Code Layout) and `OnionArchitectureTest`; for domain types,
+  `UserAccount`, `Event` (aggregates) and `Email`, `Schedule` (value objects).
   - Folders: one package per domain under `com.crowded.<service>` (Core:
     `event`, `user`, `organization`, `audit`, `outbox`; `shared` for what
     several domains use). Inside each domain, the same subfolders:
@@ -69,13 +70,49 @@
   - Dependencies point inwards: api and infrastructure → application → domain.
     Adapters never use each other. The domain uses no framework: no Spring, JPA,
     validation, Jackson or MapStruct.
-  - DDD: names come from the data model and the requirements. Rules live on the
-    model (`Event.apply`, `User.isMemberOf`) or in a domain service
-    (`ChangePlanner`), not in controllers or adapters. An aggregate changes only
-    through its root and is saved through its own port. Another module is reached
-    through its application service or port, never through its entities.
-    Refusals are domain exceptions with a `code` (`shared/domain/exception`);
-    `ApiExceptionHandler` turns them into RFC 9457 problems.
+  - DDD: names come from the data model and the requirements. An aggregate
+    changes only through its root and is saved through its own port. Another
+    module is reached through its application service or port, never through its
+    entities. Refusals are domain exceptions with a `code`
+    (`shared/domain/exception`); `ApiExceptionHandler` turns them into RFC 9457
+    problems.
+  - Rich domain model (ADR 0017), never records of data with the rules
+    elsewhere. Before writing a domain type, decide which kind it is:
+    - Entity or aggregate root (it has an identity: a user, an event, an
+      organization): a `final class`, never a record. Private fields, no
+      setters, `equals`/`hashCode` on the id, getters named `getX()`. A private
+      constructor; static factories named after the domain
+      (`UserAccount.registerParticipant`) check every invariant, and
+      `restore(...)` rebuilds a stored one for the persistence mapper. State
+      changes are methods named after domain verbs (`deactivate()`,
+      `Event.publishChange(...)`) that check their rule and throw a domain exception;
+      never a setter or a `with*` copy that skips the rule.
+    - Value object (no identity, equal by value: an email, a password, a
+      schedule, a venue, coordinates): a record whose compact constructor
+      validates and normalizes, so an invalid one cannot exist, plus the
+      behaviour about that value (`Schedule.movedTo`). Wrap a `String`,
+      number or `Instant` in one as soon as something checks it (a format, a
+      range, a normalization, fields that only make sense together). Group the
+      fields of an entity into value objects instead of a long flat list.
+    - Domain event or outgoing message (`NotificationRequested`): an immutable
+      record.
+  - Where a rule goes: on the aggregate that owns the data, or in a value object.
+    A domain service only for a rule that spans several aggregates or needs a
+    port; never a static helper that computes an aggregate's next state for it.
+    An application service only orchestrates: authorize, load, call domain
+    methods, save, then the side effects (audit, outbox, metrics, logs). An `if`
+    on domain state or a `RuleViolationException` built in `application/` means
+    the rule is in the wrong layer. Bean Validation on an API DTO only gives an
+    early 400: the domain checks the same rule, because jobs, consumers and
+    tests create objects without the API.
+  - Mapping a rich model: MapStruct maps the domain → JPA direction from the
+    getters (nested value objects with `@Mapping(source = "venue.name")`). The
+    JPA → domain direction of an entity is a `default` method in the mapper
+    interface that calls `restore(...)`; when it needs another bean (such as
+    `JsonColumnConverter`), the adapter passes it as a parameter. Never widen a
+    constructor or turn a class into a record to please MapStruct.
+  - Tests: every invariant and state change has a unit test on the domain type
+    itself, without Spring or mocks.
   - Single responsibility and interface segregation: one use case per application
     method, small ports per aggregate.
   - Dependency inversion: the application depends on the ports in
@@ -91,6 +128,10 @@
     or domain objects; domain enums are fine. Map between layers only with
     MapStruct interfaces (`api/mapper`, `infrastructure/persistence/mapper`).
   - Enforced: each service has an `OnionArchitectureTest` (ArchUnit) like Core's.
+    It also checks the rich model: a `domain.model` type with an `id` is a class
+    without public constructors or setters, and only the domain builds a
+    `RuleViolationException`. Value objects and where a rule goes are left to
+    review.
     `jobs/` and `notifications/` add theirs, and Core's MapStruct compiler setup,
     with their first domain.
 - Deferred work: when a story leaves something for another story (a check that
