@@ -4,8 +4,10 @@ import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.event.infrastructure.persistence.entity.EventEntity;
 import com.crowded.core.event.infrastructure.persistence.mapper.EventPersistenceMapper;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Repository;
 
 /** {@link EventRepository} on PostgreSQL. */
@@ -33,5 +35,11 @@ class EventRepositoryAdapter implements EventRepository {
             .findById(event.getId())
             .orElseThrow(() -> new IllegalStateException("Event " + event.getId() + " is gone"));
     mapper.updateEntity(event, entity);
+  }
+
+  @Override
+  public Map<UUID, Long> countByOrganization() {
+    return events.countGroupedByOrganization().stream()
+        .collect(Collectors.toMap(row -> (UUID) row[0], row -> (Long) row[1]));
   }
 }

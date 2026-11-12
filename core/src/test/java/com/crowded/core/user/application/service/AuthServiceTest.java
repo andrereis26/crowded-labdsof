@@ -211,10 +211,13 @@ class AuthServiceTest {
         UUID.randomUUID(),
         organization,
         role,
+        null,
         "x@crowded.test",
         "hash:" + PASSWORD,
         active,
         mustChangePassword,
+        null,
+        null,
         NOW);
   }
 

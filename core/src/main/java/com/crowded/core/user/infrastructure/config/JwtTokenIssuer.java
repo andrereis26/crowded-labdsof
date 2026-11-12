@@ -19,6 +19,9 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
  */
 class JwtTokenIssuer implements TokenIssuer {
 
+  /** When the token was issued, in epoch milliseconds. */
+  static final String ISSUED_AT_MILLIS = "iat_ms";
+
   private final JwtEncoder encoder;
   private final Clock clock;
   private final Duration lifetime;
@@ -38,6 +41,8 @@ class JwtTokenIssuer implements TokenIssuer {
             .id(UUID.randomUUID().toString())
             .subject(userId.toString())
             .issuedAt(now)
+            // iat has whole seconds; revocations compare milliseconds (TokenRevocations).
+            .claim(ISSUED_AT_MILLIS, now.toEpochMilli())
             .expiresAt(expiresAt)
             .build();
     String value =

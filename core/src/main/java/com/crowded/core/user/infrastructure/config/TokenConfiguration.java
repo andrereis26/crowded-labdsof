@@ -1,6 +1,7 @@
 package com.crowded.core.user.infrastructure.config;
 
 import com.crowded.core.user.domain.repository.TokenIssuer;
+import com.crowded.core.user.domain.repository.TokenRevocations;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.interfaces.RSAPrivateKey;
@@ -12,6 +13,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 import org.springframework.security.converter.RsaKeyConverters;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 /**
@@ -32,11 +37,30 @@ class TokenConfiguration {
     try (InputStream in = privateKey.getInputStream()) {
       signing = RsaKeyConverters.pkcs8().convert(in);
     }
-    RSAPublicKey verifying;
-    try (InputStream in = publicKey.getInputStream()) {
-      verifying = RsaKeyConverters.x509().convert(in);
-    }
+    RSAPublicKey verifying = publicKey(publicKey);
     return new JwtTokenIssuer(
         NimbusJwtEncoder.withKeyPair(verifying, signing).build(), clock, lifetime);
+  }
+
+  /**
+   * Checks every token's signature, expiry and revocation (ADR 0004, ADR 0005). Replaces the
+   * decoder Spring Boot would build from the same public key.
+   */
+  @Bean
+  JwtDecoder jwtDecoder(
+      @Value("${spring.security.oauth2.resourceserver.jwt.public-key-location}") Resource publicKey,
+      TokenRevocations revocations)
+      throws IOException {
+    NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(publicKey(publicKey)).build();
+    decoder.setJwtValidator(
+        new DelegatingOAuth2TokenValidator<>(
+            JwtValidators.createDefault(), new RevokedTokenValidator(revocations)));
+    return decoder;
+  }
+
+  private static RSAPublicKey publicKey(Resource location) throws IOException {
+    try (InputStream in = location.getInputStream()) {
+      return RsaKeyConverters.x509().convert(in);
+    }
   }
 }

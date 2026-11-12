@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import App from './App'
+import { AdminApiError, type AdminApi } from './data/adminApi'
 import type { Session, SignIn, SignInOutcome } from './data/auth'
 import {
   demoMembers,
@@ -37,15 +38,75 @@ function fakeSignIn(outcome: SignInOutcome) {
   return { signIn, calls }
 }
 
+/** Core's administration, without a network: the demo organizations and
+ * members, changed in memory. Emails in `taken` already have an account. */
+function fakeAdminApi(taken: string[] = []): AdminApi {
+  const organizations = demoOrganizations()
+  const members = demoMembers(now)
+  const week = new Date(now.getTime() + 7 * 24 * 3600000)
+  return {
+    list: () =>
+      Promise.resolve({
+        organizations: [...organizations],
+        members: members.map((m) => ({ ...m })),
+      }),
+    createOrganization: (name) => {
+      const id = `org-${organizations.length + 1}`
+      organizations.push({
+        id,
+        name,
+        createdAt: '2026-11-07',
+        events: 0,
+        gradient: ['#000', '#111'],
+      })
+      return Promise.resolve(id)
+    },
+    addMember: (organizationId, name, email) => {
+      if (taken.includes(email))
+        return Promise.reject(new AdminApiError('EMAIL_ALREADY_REGISTERED'))
+      const userId = `member-${members.length + 1}`
+      members.push({
+        id: userId,
+        organizationId,
+        name,
+        email,
+        status: 'temporary',
+        temporaryExpiresAt: week,
+      })
+      return Promise.resolve({ userId, temporaryPassword: 'T7q-mK4-v9Px', expiresAt: week })
+    },
+    changeMember: (userId, change) => {
+      const member = members.find((m) => m.id === userId)!
+      if (change.resetPassword) {
+        member.status = 'temporary'
+        member.temporaryExpiresAt = week
+      }
+      if (change.active === false) member.status = 'disabled'
+      if (change.active === true) member.status = member.temporaryExpiresAt ? 'temporary' : 'active'
+      return Promise.resolve({
+        active: member.status !== 'disabled',
+        temporaryPassword: change.resetPassword ? 'Hc3-pW8-z2Rt' : undefined,
+        expiresAt: change.resetPassword ? week : undefined,
+      })
+    },
+  }
+}
+
 function renderAt(
   path: string | { pathname: string; state: unknown },
   signIn: SignIn = fakeSignIn({ kind: 'error', title: 'Erro', message: 'Sem rede.' }).signIn,
+  options: { session?: Session; adminApi?: AdminApi } = {},
 ) {
+  const api = options.adminApi ?? fakeAdminApi()
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <App now={now} signIn={signIn} />
+      <App now={now} signIn={signIn} initialSession={options.session} adminApiFor={() => api} />
     </MemoryRouter>,
   )
+}
+
+function renderAsAdministrator(path: string, adminApi?: AdminApi) {
+  return renderAt(path, undefined, { session: session('ADMINISTRATOR'), adminApi })
 }
 
 describe('admin helpers', () => {
@@ -57,6 +118,13 @@ describe('admin helpers', () => {
     expect(memberStatusTag(rita, now).label).toBe('Temporária · expira em 6 dias')
     expect(memberStatusTag(joao, now).label).toBe('Desativado')
     expect(memberStatusTag(members[5], now).label).toBe('Temporária · expirada')
+    const soon = {
+      ...rita,
+      temporaryExpiresAt: new Date(now.getTime() + 7 * 24 * 3600000 + 120000),
+    }
+    expect(memberStatusTag(soon, now).label).toBe('Temporária · expira em 7 dias')
+    const hours = { ...rita, temporaryExpiresAt: new Date(now.getTime() + 3 * 3600000) }
+    expect(memberStatusTag(hours, now).label).toBe('Temporária · expira em 1 dia')
     expect(lastAccessLabel(miguel.lastAccess, now)).toBe('hoje, 21:40')
     expect(lastAccessLabel(members[3].lastAccess, now)).toBe('ontem, 17:12')
     expect(lastAccessLabel(joao.lastAccess, now)).toBe('3 OUT')
@@ -177,8 +245,8 @@ describe('C1 and C4 sign-in', () => {
 describe('A2 platform administration', () => {
   it('lists organizations and the members of the selected one', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacoes')
-    expect(screen.getByText('3 organizações · 9 membros')).toBeInTheDocument()
+    renderAsAdministrator('/organizacoes')
+    expect(await screen.findByText('3 organizações · 9 membros')).toBeInTheDocument()
     expect(screen.getByText('12 SET 2026')).toBeInTheDocument()
     const margens = screen.getByRole('table', { name: 'Membros de Organização Margens' })
     expect(within(margens).getByText('Temporária · expira em 6 dias')).toBeInTheDocument()
@@ -190,7 +258,8 @@ describe('A2 platform administration', () => {
 
   it('creates an organization and a member, showing the password once', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacoes')
+    renderAsAdministrator('/organizacoes')
+    await screen.findByText('3 organizações · 9 membros')
 
     await user.click(screen.getByRole('button', { name: 'Criar organização' }))
     let dialog = screen.getByRole('dialog', { name: 'Criar organização' })
@@ -198,7 +267,7 @@ describe('A2 platform administration', () => {
     expect(within(dialog).getByText('Escreve o nome da organização.')).toBeInTheDocument()
     await user.type(within(dialog).getByLabelText('Nome da organização'), 'Festival Paredes')
     await user.click(within(dialog).getByRole('button', { name: 'Criar organização' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Festival Paredes criada.')
+    expect(await screen.findByRole('status')).toHaveTextContent('Festival Paredes criada.')
     expect(screen.getByText('Esta organização ainda não tem membros.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Criar membro' }))
@@ -207,7 +276,7 @@ describe('A2 platform administration', () => {
     await user.type(within(dialog).getByLabelText('Email'), 'ines.costa@paredes.pt')
     await user.click(within(dialog).getByRole('button', { name: 'Criar membro' }))
 
-    dialog = screen.getByRole('dialog', { name: 'Membro criado' })
+    dialog = await screen.findByRole('dialog', { name: 'Membro criado' })
     expect(
       within(dialog).getByText('Inês Costa já é membro de Festival Paredes.'),
     ).toBeInTheDocument()
@@ -221,10 +290,15 @@ describe('A2 platform administration', () => {
 
   it('issues a new temporary password, deactivates and reactivates members', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacoes')
+    renderAsAdministrator('/organizacoes')
 
-    await user.click(screen.getByRole('button', { name: 'Nova palavra-passe para Miguel Sousa' }))
-    const dialog = screen.getByRole('dialog', { name: 'Nova palavra-passe temporária' })
+    await user.click(
+      await screen.findByRole('button', { name: 'Nova palavra-passe para Miguel Sousa' }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Nova palavra-passe temporária' })
+    expect(within(dialog).getByLabelText('Palavra-passe temporária')).toHaveTextContent(
+      'Hc3-pW8-z2Rt',
+    )
     expect(within(dialog).getByText(/A anterior deixou de funcionar/)).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Concluído' }))
     expect(screen.getAllByText('Temporária · expira em 7 dias')).toHaveLength(1)
@@ -232,14 +306,46 @@ describe('A2 platform administration', () => {
     await user.click(screen.getByRole('button', { name: 'Desativar Rita Ferreira' }))
     const confirm = screen.getByRole('dialog', { name: 'Desativar Rita Ferreira?' })
     await user.click(within(confirm).getByRole('button', { name: 'Desativar' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Conta de Rita Ferreira desativada.')
+    expect(await screen.findByText('Conta de Rita Ferreira desativada.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Reativar João Pinto' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Conta de João Pinto reativada.')
+    expect(await screen.findByText('Conta de João Pinto reativada.')).toBeInTheDocument()
+  })
+
+  it("shows Core's refusal in the member form", async () => {
+    const user = userEvent.setup()
+    renderAsAdministrator('/organizacoes', fakeAdminApi(['ja.existe@margens.pt']))
+
+    await user.click(await screen.findByRole('button', { name: 'Criar membro' }))
+    const dialog = screen.getByRole('dialog', { name: 'Criar membro' })
+    await user.type(within(dialog).getByLabelText('Nome'), 'Outra Pessoa')
+    await user.type(within(dialog).getByLabelText('Email'), 'ja.existe@margens.pt')
+    await user.click(within(dialog).getByRole('button', { name: 'Criar membro' }))
+
+    expect(
+      await within(dialog).findByText('Já existe uma conta com este email.'),
+    ).toBeInTheDocument()
+  })
+
+  it('says when the organizations cannot be loaded', async () => {
+    const failing: AdminApi = {
+      ...fakeAdminApi(),
+      list: () => Promise.reject(new AdminApiError('NETWORK')),
+    }
+    renderAsAdministrator('/organizacoes', failing)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível carregar as organizações.',
+    )
+  })
+
+  it('sends anyone but the administrator to the sign-in page', () => {
+    renderAt('/organizacoes', undefined, { session: session('ORGANIZATION_MEMBER') })
+    expect(screen.getByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
   })
 
   it('shows a placeholder for sections not built yet', () => {
-    renderAt('/auditoria')
+    renderAsAdministrator('/auditoria')
     expect(screen.getByText('Disponível em breve.')).toBeInTheDocument()
   })
 })

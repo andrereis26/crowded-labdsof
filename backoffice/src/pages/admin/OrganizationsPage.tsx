@@ -5,14 +5,12 @@ import {
   lastAccessLabel,
   longDate,
   memberStatusTag,
-  temporaryPassword,
   validateMember,
   validateOrganizationName,
-  withTemporaryPassword,
   type AdminOrganization,
   type Member,
 } from '../../data/admin'
-import { slug } from '../../data/organizer'
+import { adminErrorMessage, type MemberChange } from '../../data/adminApi'
 import {
   Button,
   Dialog,
@@ -32,41 +30,53 @@ type Modal =
 
 const headCell = 'py-2.5 text-left text-[11px] font-semibold tracking-[0.44px] uppercase'
 
-/** A2 · Administração da plataforma: organizations and their members. */
+/** What Core answered: the value, or the error code of its refusal. */
+export type Outcome<T> = { ok: true; value: T } | { ok: false; code: string }
+
+/** A2 · Administração da plataforma: organizations and their members, from
+ * Core (`/admin/...`, #140). */
 export function OrganizationsPage({
   organizations,
   members,
   now,
-  onAddOrganization,
-  onAddMember,
+  onCreateOrganization,
+  onCreateMember,
   onChangeMember,
 }: {
   organizations: AdminOrganization[]
   members: Member[]
   now: Date
-  onAddOrganization: (organization: AdminOrganization) => void
-  onAddMember: (member: Member) => void
-  onChangeMember: (member: Member) => void
+  /** Resolves to the new organization's id. */
+  onCreateOrganization: (name: string) => Promise<Outcome<string>>
+  /** Resolves to the member with their temporary password, shown once. */
+  onCreateMember: (organizationId: string, name: string, email: string) => Promise<Outcome<Member>>
+  /** Resolves to the changed member, with a new temporary password if one was issued. */
+  onChangeMember: (member: Member, change: MemberChange) => Promise<Outcome<Member>>
 }) {
   const [selectedId, setSelectedId] = useState(organizations[0]?.id)
   const [modal, setModal] = useState<Modal>()
   const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
   const selected = organizations.find((o) => o.id === selectedId) ?? organizations[0]
   const orgMembers = members.filter((m) => m.organizationId === selected?.id)
   const close = () => setModal(undefined)
   const countOf = (o: AdminOrganization) => members.filter((m) => m.organizationId === o.id).length
 
-  const newPassword = (member: Member) => {
-    const updated = withTemporaryPassword(member, now, temporaryPassword())
-    onChangeMember(updated)
+  const change = async (member: Member, what: MemberChange, done: (m: Member) => void) => {
     setMessage('')
-    setModal({ kind: 'password', member: updated, created: false })
+    setError('')
+    const result = await onChangeMember(member, what)
+    if (result.ok) done(result.value)
+    else setError(adminErrorMessage(result.code))
   }
 
-  const reactivate = (member: Member) => {
-    onChangeMember({ ...member, status: member.temporaryPassword ? 'temporary' : 'active' })
-    setMessage(`Conta de ${member.name} reativada.`)
-  }
+  const newPassword = (member: Member) =>
+    change(member, { resetPassword: true }, (updated) =>
+      setModal({ kind: 'password', member: updated, created: false }),
+    )
+
+  const reactivate = (member: Member) =>
+    change(member, { active: true }, () => setMessage(`Conta de ${member.name} reativada.`))
 
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
@@ -80,6 +90,11 @@ export function OrganizationsPage({
         }
       />
       <SuccessBanner>{message}</SuccessBanner>
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
 
       <div className="overflow-x-auto rounded-[14px] bg-surface py-1">
         <table className="w-full min-w-[640px] text-sm">
@@ -213,13 +228,14 @@ export function OrganizationsPage({
       {modal?.kind === 'organization' && (
         <CreateOrganizationDialog
           organizations={organizations}
-          now={now}
           onClose={close}
-          onCreate={(o) => {
-            onAddOrganization(o)
-            setSelectedId(o.id)
-            setMessage(`${o.name} criada.`)
+          onCreate={async (name) => {
+            const result = await onCreateOrganization(name)
+            if (!result.ok) return adminErrorMessage(result.code)
+            setSelectedId(result.value)
+            setMessage(`${name.trim()} criada.`)
             close()
+            return undefined
           }}
         />
       )}
@@ -228,13 +244,18 @@ export function OrganizationsPage({
           organizations={organizations}
           organizationId={selected.id}
           members={members}
-          now={now}
           onClose={close}
-          onCreate={(m) => {
-            onAddMember(m)
-            setSelectedId(m.organizationId)
+          onCreate={async (organizationId, name, email) => {
+            const result = await onCreateMember(organizationId, name, email)
+            if (!result.ok) {
+              return result.code === 'EMAIL_ALREADY_REGISTERED'
+                ? { email: adminErrorMessage(result.code) }
+                : { name: adminErrorMessage(result.code) }
+            }
+            setSelectedId(organizationId)
             setMessage('')
-            setModal({ kind: 'password', member: m, created: true })
+            setModal({ kind: 'password', member: result.value, created: true })
+            return {}
           }}
         />
       )}
@@ -260,9 +281,11 @@ export function OrganizationsPage({
               variant="danger"
               size="lg"
               onClick={() => {
-                onChangeMember({ ...modal.member, status: 'disabled' })
-                setMessage(`Conta de ${modal.member.name} desativada.`)
+                const member = modal.member
                 close()
+                void change(member, { active: false }, () =>
+                  setMessage(`Conta de ${member.name} desativada.`),
+                )
               }}
             >
               Desativar
@@ -274,13 +297,21 @@ export function OrganizationsPage({
   )
 }
 
-function DialogActions({ submit, onClose }: { submit: string; onClose: () => void }) {
+function DialogActions({
+  submit,
+  busy,
+  onClose,
+}: {
+  submit: string
+  busy: boolean
+  onClose: () => void
+}) {
   return (
     <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
       <Button variant="secondary" size="lg" onClick={onClose} className="max-sm:hidden">
         Cancelar
       </Button>
-      <Button type="submit" size="lg">
+      <Button type="submit" size="lg" disabled={busy}>
         {submit}
       </Button>
     </div>
@@ -289,31 +320,27 @@ function DialogActions({ submit, onClose }: { submit: string; onClose: () => voi
 
 function CreateOrganizationDialog({
   organizations,
-  now,
   onClose,
   onCreate,
 }: {
   organizations: AdminOrganization[]
-  now: Date
   onClose: () => void
-  onCreate: (organization: AdminOrganization) => void
+  /** Resolves to an error for the name, or undefined once created. */
+  onCreate: (name: string) => Promise<string | undefined>
 }) {
   const [name, setName] = useState('')
   const [error, setError] = useState<string>()
+  const [busy, setBusy] = useState(false)
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
     const found = validateOrganizationName(name, organizations)
     setError(found)
-    if (found) return
-    const iso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    onCreate({
-      id: slug(name) || `organizacao-${organizations.length + 1}`,
-      name: name.trim(),
-      createdAt: iso,
-      events: 0,
-      gradient: ['rgb(217,107,77)', 'rgb(77,31,89)'],
-    })
+    if (found || busy) return
+    setBusy(true)
+    const refused = await onCreate(name.trim())
+    setBusy(false)
+    setError(refused)
   }
 
   return (
@@ -334,7 +361,7 @@ function CreateOrganizationDialog({
         <Notice icon={Users} title="A organização começa sem membros">
           Depois de a criares, adiciona os membros que vão gerir os eventos.
         </Notice>
-        <DialogActions submit="Criar organização" onClose={onClose} />
+        <DialogActions submit="Criar organização" busy={busy} onClose={onClose} />
       </form>
     </Dialog>
   )
@@ -344,35 +371,35 @@ function CreateMemberDialog({
   organizations,
   organizationId,
   members,
-  now,
   onClose,
   onCreate,
 }: {
   organizations: AdminOrganization[]
   organizationId: string
   members: Member[]
-  now: Date
   onClose: () => void
-  onCreate: (member: Member) => void
+  /** Resolves to the errors of the fields Core refused; empty once created. */
+  onCreate: (
+    organizationId: string,
+    name: string,
+    email: string,
+  ) => Promise<ReturnType<typeof validateMember>>
 }) {
   const [orgId, setOrgId] = useState(organizationId)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [errors, setErrors] = useState<ReturnType<typeof validateMember>>({})
+  const [busy, setBusy] = useState(false)
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
     const found = validateMember({ name, email }, members)
     setErrors(found)
-    if (found.name || found.email) return
-    const base: Member = {
-      id: `${slug(name)}-${members.length + 1}`,
-      organizationId: orgId,
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      status: 'temporary',
-    }
-    onCreate(withTemporaryPassword(base, now, temporaryPassword()))
+    if (found.name || found.email || busy) return
+    setBusy(true)
+    const refused = await onCreate(orgId, name.trim(), email.trim().toLowerCase())
+    setBusy(false)
+    setErrors(refused)
   }
 
   return (
@@ -418,7 +445,7 @@ function CreateMemberDialog({
           Geramos uma palavra-passe temporária, válida durante 7 dias. O membro define a sua no
           primeiro acesso.
         </Notice>
-        <DialogActions submit="Criar membro" onClose={onClose} />
+        <DialogActions submit="Criar membro" busy={busy} onClose={onClose} />
       </form>
     </Dialog>
   )

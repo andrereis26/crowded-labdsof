@@ -1,24 +1,132 @@
-import { useState } from 'react'
-import { signInWithCore, type Session, type SignIn } from './data/auth'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
-import { demoMembers, demoOrganizations, type AdminOrganization, type Member } from './data/admin'
+import { demoMembers, type AdminOrganization, type Member } from './data/admin'
+import { AdminApiError, httpAdminApi, type AdminApi, type MemberChange } from './data/adminApi'
+import { signInWithCore, type Session, type SignIn } from './data/auth'
 import { AdminLayout } from './layout/AdminLayout'
 import { OrganizerApp } from './OrganizerApp'
-import { OrganizationsPage } from './pages/admin/OrganizationsPage'
+import { OrganizationsPage, type Outcome } from './pages/admin/OrganizationsPage'
 import { NewPasswordPage, SignInPage } from './pages/SignInPage'
 import { Panel } from './ui/components'
 
-/** `now` is fixed at start-up so demo times stay stable between renders.
- * Sign-in goes to Core (#59); the pages after it still show demo data, and
- * use the session once their APIs are wired in (#148). */
-export default function App({ now, signIn = signInWithCore }: { now: Date; signIn?: SignIn }) {
-  const [organizations, setOrganizations] = useState<AdminOrganization[]>(demoOrganizations)
-  const [members, setMembers] = useState<Member[]>(() => demoMembers(now))
-  // Kept for #148, which sends its token with every API call.
-  const [, setSession] = useState<Session>()
+function codeOf(error: unknown): string {
+  return error instanceof AdminApiError ? error.code : 'UNKNOWN'
+}
 
-  const updateMember = (updated: Member) =>
-    setMembers((all) => all.map((m) => (m.id === updated.id ? updated : m)))
+/** `now` is fixed at start-up so demo times stay stable between renders.
+ * Sign-in (#59) and the platform administration (A2, #140) go to Core; the
+ * organizer pages still show demo data until #148. */
+export default function App({
+  now,
+  signIn = signInWithCore,
+  adminApiFor = httpAdminApi,
+  initialSession,
+}: {
+  now: Date
+  signIn?: SignIn
+  adminApiFor?: (accessToken: string) => AdminApi
+  /** A session to start with, for tests. */
+  initialSession?: Session
+}) {
+  const [session, setSession] = useState<Session | undefined>(initialSession)
+  const [organizations, setOrganizations] = useState<AdminOrganization[]>([])
+  const [members, setMembers] = useState<Member[]>([])
+  const [loadError, setLoadError] = useState('')
+  // C4 runs on demo data until #141 adds the new-password API.
+  const [newPasswordMembers, setNewPasswordMembers] = useState<Member[]>(() => demoMembers(now))
+  const administrator = session?.role === 'ADMINISTRATOR'
+  const api = useMemo(
+    () => (session && administrator ? adminApiFor(session.accessToken) : undefined),
+    [session, administrator, adminApiFor],
+  )
+
+  const show = useCallback((data: Awaited<ReturnType<AdminApi['list']>>) => {
+    setOrganizations(data.organizations)
+    setMembers(data.members)
+    setLoadError('')
+  }, [])
+  const loadFailed = () =>
+    setLoadError('Não foi possível carregar as organizações. Tenta novamente.')
+
+  // Loads the organizations from Core when an administrator signs in.
+  useEffect(() => {
+    if (!api) return
+    let current = true
+    api.list().then(
+      (data) => current && show(data),
+      () => current && loadFailed(),
+    )
+    return () => {
+      current = false
+    }
+  }, [api, show])
+
+  /** After a change: the list as Core has it now. */
+  const reload = async () => {
+    try {
+      show(await api!.list())
+    } catch {
+      loadFailed()
+    }
+  }
+
+  const createOrganization = async (name: string): Promise<Outcome<string>> => {
+    try {
+      const id = await api!.createOrganization(name)
+      await reload()
+      return { ok: true, value: id }
+    } catch (e) {
+      return { ok: false, code: codeOf(e) }
+    }
+  }
+
+  const createMember = async (
+    organizationId: string,
+    name: string,
+    email: string,
+  ): Promise<Outcome<Member>> => {
+    try {
+      const issued = await api!.addMember(organizationId, name, email)
+      await reload()
+      return {
+        ok: true,
+        value: {
+          id: issued.userId,
+          organizationId,
+          name,
+          email,
+          status: 'temporary',
+          temporaryPassword: issued.temporaryPassword,
+          temporaryExpiresAt: issued.expiresAt,
+        },
+      }
+    } catch (e) {
+      return { ok: false, code: codeOf(e) }
+    }
+  }
+
+  const changeMember = async (member: Member, change: MemberChange): Promise<Outcome<Member>> => {
+    try {
+      const changed = await api!.changeMember(member.id, change)
+      await reload()
+      const temporary = changed.temporaryPassword !== undefined
+      return {
+        ok: true,
+        value: {
+          ...member,
+          status: !changed.active
+            ? 'disabled'
+            : temporary || member.status === 'temporary'
+              ? 'temporary'
+              : 'active',
+          temporaryPassword: changed.temporaryPassword,
+          temporaryExpiresAt: changed.expiresAt ?? member.temporaryExpiresAt,
+        },
+      }
+    } catch (e) {
+      return { ok: false, code: codeOf(e) }
+    }
+  }
 
   return (
     <Routes>
@@ -26,37 +134,56 @@ export default function App({ now, signIn = signInWithCore }: { now: Date; signI
       <Route path="/entrar" element={<SignInPage signIn={signIn} onSignedIn={setSession} />} />
       <Route
         path="/definir-palavra-passe"
-        element={<NewPasswordPage members={members} now={now} onChange={updateMember} />}
+        element={
+          <NewPasswordPage
+            members={newPasswordMembers}
+            now={now}
+            onChange={(updated) =>
+              setNewPasswordMembers((all) => all.map((m) => (m.id === updated.id ? updated : m)))
+            }
+          />
+        }
       />
       <Route path="/organizacao/*" element={<OrganizerApp now={now} />} />
       <Route
         path="*"
         element={
-          <AdminLayout>
-            <Routes>
-              <Route
-                path="/organizacoes"
-                element={
-                  <OrganizationsPage
-                    organizations={organizations}
-                    members={members}
-                    now={now}
-                    onAddOrganization={(o) => setOrganizations((all) => [...all, o])}
-                    onAddMember={(m) => setMembers((all) => [...all, m])}
-                    onChangeMember={updateMember}
-                  />
-                }
-              />
-              <Route
-                path="*"
-                element={
-                  <Panel title="Administração">
-                    <p className="text-sm text-ink-secondary">Disponível em breve.</p>
-                  </Panel>
-                }
-              />
-            </Routes>
-          </AdminLayout>
+          administrator ? (
+            <AdminLayout>
+              <Routes>
+                <Route
+                  path="/organizacoes"
+                  element={
+                    <>
+                      {loadError && (
+                        <p role="alert" className="mb-3 text-sm text-danger">
+                          {loadError}
+                        </p>
+                      )}
+                      <OrganizationsPage
+                        organizations={organizations}
+                        members={members}
+                        now={now}
+                        onCreateOrganization={createOrganization}
+                        onCreateMember={createMember}
+                        onChangeMember={changeMember}
+                      />
+                    </>
+                  }
+                />
+                <Route
+                  path="*"
+                  element={
+                    <Panel title="Administração">
+                      <p className="text-sm text-ink-secondary">Disponível em breve.</p>
+                    </Panel>
+                  }
+                />
+              </Routes>
+            </AdminLayout>
+          ) : (
+            <Navigate to="/entrar" replace />
+          )
         }
       />
     </Routes>
