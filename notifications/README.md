@@ -1,10 +1,24 @@
 # Crowded Notifications
 
-Notifications service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). For now it is an empty skeleton: no endpoints, entities or queues yet.
+Notifications service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). It turns Core's `NotificationRequested` messages into notifications for the official changes; the notification center, the live stream and the other types come with their stories.
 
 - **Responsibility:** fan-out to connected users, preferences, deduplication, the notification center and live banners (SSE); push to the mobile app later.
 - **Owns (writes):** notifications, device tokens.
 - **Dependencies:** Spring Web MVC, Validation, Spring Data JPA with the PostgreSQL driver, Spring AMQP, Spring Data Redis, Spring Security with OAuth2 Resource Server (JWT).
+
+## Messages
+
+The service follows the onion layout of [`core/`](../core/README.md#code-layout), checked by `OnionArchitectureTest`; the `notification` module holds everything below.
+
+| Queue | Bound to | Consumes |
+|---|---|---|
+| `notifications`, durable | `crowded.events`, routing key `notification.requested` | Core's `NotificationRequested` ([API Outline](../docs/deliverables/api-outline.md#messages)) |
+| `notifications.dlq`, durable | the dead-letter queue of `notifications` | messages that kept failing, kept for inspection and replay |
+
+For an official change (`OFFICIAL_CHANGE`), the service reads the change from Core's `event_change` and stores one `notification` per participant connected to the event through a ticket or the access code who did not turn official changes off, for the event or overall (FR-013, FR-041, FR-065). The title and body, in European Portuguese, say what changes: the new date, time or venue, and, for a ticket holder, whether the ticket stays valid and where to ask for a refund; the organization's message comes last (FR-075). The source shown to the participant is the organization, which the type implies.
+
+- **Once per participant (NFR-003):** the `deduplication_key` is the participant plus the message's `messageId`, and a notification whose key exists is skipped, so a redelivered message notifies no one twice.
+- **Retries and dead letters (NFR-004):** a failed message is retried after 5 s, 15 s and 30 s, then rejected into `notifications.dlq`. A message that cannot succeed, because it is not valid JSON or its type has no text yet, goes there at once. The message is acknowledged only after its notifications are committed.
 
 ## Stack
 
