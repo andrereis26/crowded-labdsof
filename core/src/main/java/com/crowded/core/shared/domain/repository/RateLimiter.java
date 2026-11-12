@@ -1,4 +1,4 @@
-package com.crowded.core.shared.application.port;
+package com.crowded.core.shared.domain.repository;
 
 import java.time.Duration;
 

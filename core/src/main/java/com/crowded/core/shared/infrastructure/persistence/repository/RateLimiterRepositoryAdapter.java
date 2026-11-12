@@ -1,7 +1,7 @@
-package com.crowded.core.shared.infrastructure.cache;
+package com.crowded.core.shared.infrastructure.persistence.repository;
 
-import com.crowded.core.shared.application.port.RateLimiter;
 import com.crowded.core.shared.domain.exception.UnavailableException;
+import com.crowded.core.shared.domain.repository.RateLimiter;
 import java.time.Duration;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -12,13 +12,13 @@ import org.springframework.stereotype.Component;
  * its expiry. When Redis is down, attempts are refused rather than let through unlimited.
  */
 @Component
-class RedisRateLimiter implements RateLimiter {
+class RateLimiterRepositoryAdapter implements RateLimiter {
 
   private static final String PREFIX = "rate-limit:";
 
   private final StringRedisTemplate redis;
 
-  RedisRateLimiter(StringRedisTemplate redis) {
+  RateLimiterRepositoryAdapter(StringRedisTemplate redis) {
     this.redis = redis;
   }
 

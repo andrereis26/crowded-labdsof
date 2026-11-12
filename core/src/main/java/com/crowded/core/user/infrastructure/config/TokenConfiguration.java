@@ -1,6 +1,6 @@
-package com.crowded.core.user.infrastructure.security;
+package com.crowded.core.user.infrastructure.config;
 
-import com.crowded.core.user.application.port.TokenIssuer;
+import com.crowded.core.user.domain.repository.TokenIssuer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.interfaces.RSAPrivateKey;

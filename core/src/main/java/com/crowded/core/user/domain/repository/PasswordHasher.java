@@ -1,4 +1,4 @@
-package com.crowded.core.user.application.port;
+package com.crowded.core.user.domain.repository;
 
 /** One-way password hashing with salt (SR-013). */
 public interface PasswordHasher {
