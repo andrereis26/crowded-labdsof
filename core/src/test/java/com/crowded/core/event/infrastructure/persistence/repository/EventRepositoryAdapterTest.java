@@ -5,12 +5,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.crowded.core.event.domain.model.ChangePlan;
 import com.crowded.core.event.domain.model.ChangeType;
+import com.crowded.core.event.domain.model.Coordinates;
 import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventState;
 import com.crowded.core.event.domain.model.EventStatus;
-import com.crowded.core.event.domain.model.Severity;
+import com.crowded.core.event.domain.model.NewValues;
+import com.crowded.core.event.domain.model.Provenance;
+import com.crowded.core.event.domain.model.RequestedChange;
+import com.crowded.core.event.domain.model.Schedule;
+import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.infrastructure.persistence.entity.EventEntity;
 import com.crowded.core.event.infrastructure.persistence.mapper.EventPersistenceMapperImpl;
 import java.time.Instant;
@@ -37,13 +41,8 @@ class EventRepositoryAdapterTest {
         .isEqualTo(
             new EventState(
                 EventStatus.SCHEDULED,
-                row.getStartDateTime(),
-                row.getDoorsOpenAt(),
-                row.getEndDateTime(),
-                "Coliseu",
-                "Porto",
-                41.1,
-                -8.6));
+                new Schedule(row.getStartDateTime(), row.getDoorsOpenAt(), row.getEndDateTime()),
+                new Venue("Coliseu", "Porto", new Coordinates(41.1, -8.6))));
   }
 
   @Test
@@ -53,25 +52,15 @@ class EventRepositoryAdapterTest {
     when(rows.findForUpdateById(row.getId())).thenReturn(Optional.of(row));
     when(rows.findById(row.getId())).thenReturn(Optional.of(row));
     Event event = events.findByIdForUpdate(row.getId()).orElseThrow();
-    EventState relocated =
-        new EventState(
-            EventStatus.RELOCATED,
-            row.getStartDateTime(),
-            row.getDoorsOpenAt(),
-            row.getEndDateTime(),
-            "Hard Club",
-            "Mercado Ferreira Borges",
-            null,
-            null);
-    event.apply(
-        new ChangePlan(
+    event.publishChange(
+        new RequestedChange(
             ChangeType.VENUE_CHANGE,
-            Severity.CRITICAL,
-            event.getState(),
-            relocated,
+            new NewValues(null, null, null, "Hard Club", "Mercado Ferreira Borges", null, null),
             null,
             null,
-            null));
+            null),
+        Provenance.organization("Ribeira Live", Instant.parse("2026-11-10T10:00:00Z")),
+        Instant.parse("2026-11-10T10:00:00Z"));
 
     events.save(event);
 
@@ -84,7 +73,7 @@ class EventRepositoryAdapterTest {
 
   @Test
   void failsWhenTheRowIsGone() {
-    Event event = new Event(UUID.randomUUID(), null, null);
+    Event event = new EventPersistenceMapperImpl().toDomain(row());
 
     assertThatThrownBy(() -> events.save(event)).isInstanceOf(IllegalStateException.class);
   }

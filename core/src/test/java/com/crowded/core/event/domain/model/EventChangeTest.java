@@ -11,9 +11,15 @@ class EventChangeTest {
 
   private static final Instant START = Instant.parse("2026-11-20T20:00:00Z");
   private static final EventState SCHEDULED =
-      new EventState(EventStatus.SCHEDULED, START, null, null, "Coliseu", "Porto", 41.1, -8.6);
+      new EventState(
+          EventStatus.SCHEDULED,
+          new Schedule(START, null, null),
+          new Venue("Coliseu", "Porto", new Coordinates(41.1, -8.6)));
   private static final EventState RELOCATED =
-      new EventState(EventStatus.RELOCATED, START, null, null, "Hard Club", "Porto", null, null);
+      new EventState(
+          EventStatus.RELOCATED,
+          new Schedule(START, null, null),
+          new Venue("Hard Club", "Porto", null));
 
   @Test
   void recordsTheChangedFieldsAsTheOrganization() {
@@ -31,24 +37,21 @@ class EventChangeTest {
                 null,
                 null,
                 "Mudámos de sala."),
-            "Ribeira Live",
-            now);
+            Provenance.organization("Ribeira Live", now));
 
-    assertThat(change.eventId()).isEqualTo(event);
-    assertThat(change.previousValue())
+    assertThat(change.getEventId()).isEqualTo(event);
+    assertThat(change.getPreviousValue())
         .containsExactly(
             Map.entry("status", "SCHEDULED"),
             Map.entry("venueName", "Coliseu"),
             Map.entry("latitude", 41.1),
             Map.entry("longitude", -8.6));
-    assertThat(change.newValue())
+    assertThat(change.getNewValue())
         .containsEntry("venueName", "Hard Club")
         .containsEntry("latitude", null);
-    assertThat(change.message()).isEqualTo("Mudámos de sala.");
-    assertThat(change.provenanceSourceType()).isEqualTo(SourceType.ORGANIZATION);
-    assertThat(change.provenanceSourceName()).isEqualTo("Ribeira Live");
-    assertThat(change.provenanceLastUpdatedAt()).isEqualTo(now);
-    assertThat(change.provenanceConfirmed()).isTrue();
+    assertThat(change.getMessage()).isEqualTo("Mudámos de sala.");
+    assertThat(change.getProvenance())
+        .isEqualTo(new Provenance(SourceType.ORGANIZATION, "Ribeira Live", now, true));
   }
 
   @Test
@@ -58,8 +61,7 @@ class EventChangeTest {
             UUID.randomUUID(),
             new ChangePlan(
                 ChangeType.VENUE_CHANGE, Severity.CRITICAL, SCHEDULED, RELOCATED, null, null, null),
-            "Ribeira Live",
-            Instant.EPOCH);
+            Provenance.organization("Ribeira Live", Instant.EPOCH));
 
     assertThat(change.isReflectedIn(RELOCATED)).isTrue();
     assertThat(change.isReflectedIn(SCHEDULED)).isFalse();
@@ -68,7 +70,7 @@ class EventChangeTest {
   @Test
   void isNotReflectedWhenItSetAFieldTheEventDoesNotHave() {
     EventChange seeded =
-        new EventChange(
+        EventChange.restore(
             UUID.randomUUID(),
             UUID.randomUUID(),
             ChangeType.TIME_CHANGE,
@@ -78,10 +80,7 @@ class EventChangeTest {
             null,
             null,
             null,
-            SourceType.ORGANIZATION,
-            "Ribeira Live",
-            Instant.EPOCH,
-            true);
+            Provenance.organization("Ribeira Live", Instant.EPOCH));
 
     assertThat(seeded.isReflectedIn(SCHEDULED)).isFalse();
   }

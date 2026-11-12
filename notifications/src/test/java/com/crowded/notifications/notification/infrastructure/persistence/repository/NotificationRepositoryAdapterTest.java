@@ -55,15 +55,15 @@ class NotificationRepositoryAdapterTest {
             NotificationEntity::getDeduplicationKey,
             NotificationEntity::getCreatedAt)
         .containsExactly(
-            notification.id(),
-            notification.userId(),
-            notification.eventId(),
-            notification.type(),
-            notification.causeId(),
-            notification.title(),
-            notification.body(),
-            notification.deduplicationKey(),
-            notification.createdAt());
+            notification.getId(),
+            notification.getUserId(),
+            notification.getEventId(),
+            notification.getType(),
+            notification.getCauseId(),
+            notification.getTitle(),
+            notification.getBody(),
+            notification.getDeduplicationKey(),
+            notification.getCreatedAt());
   }
 
   @Test

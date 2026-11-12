@@ -34,11 +34,7 @@ class OutboxRepositoryAdapter implements OutboxRepository {
   public void add(NotificationRequested message) {
     messages.save(
         mapper.toEntity(
-            new OutboxMessage(
-                message.messageId(),
-                NotificationRequested.ROUTING_KEY,
-                json.writeValueAsString(message),
-                clock.instant())));
+            OutboxMessage.of(message, json.writeValueAsString(message), clock.instant())));
   }
 
   @Override

@@ -37,8 +37,10 @@ class OfficialChangeRepositoryAdapterTest {
     when(rows.findChangeById(id)).thenReturn(Optional.of(row));
 
     assertThat(changes.findById(id))
-        .contains(
-            new OfficialChange(
+        .get()
+        .usingRecursiveComparison()
+        .isEqualTo(
+            OfficialChange.restore(
                 id,
                 eventId,
                 ChangeType.POSTPONEMENT,

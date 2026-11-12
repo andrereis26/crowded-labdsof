@@ -38,8 +38,7 @@ class AuditLogTest {
         .usingRecursiveComparison()
         .ignoringFields("id")
         .isEqualTo(
-            new AuditLogEntry(
-                null,
+            AuditLogEntry.record(
                 actor,
                 event,
                 "EVENT_CHANGE_PUBLISHED",
@@ -47,6 +46,6 @@ class AuditLogTest {
                 change,
                 Map.of("type", "CANCELLATION"),
                 Instant.EPOCH));
-    assertThat(saved.getValue().id()).isNotNull();
+    assertThat(saved.getValue().getId()).isNotNull();
   }
 }

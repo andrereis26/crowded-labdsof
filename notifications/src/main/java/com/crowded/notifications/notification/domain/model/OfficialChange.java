@@ -2,34 +2,95 @@ package com.crowded.notifications.notification.domain.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
  * An official change that Core recorded (FR-016). The new date and time stay in the change, which
  * the clients read and show in the participant's time zone; the notification only says what kind of
- * change it is.
- *
- * @param startChanged whether the change moved the start
- * @param doorsOpenChanged whether the change moved the doors opening time
- * @param previousVenueName the venue before a venue change; {@code null} otherwise
- * @param newVenueName the venue after a venue change; {@code null} otherwise
- * @param newAddress the address after a venue change; {@code null} otherwise
- * @param ticketStillValid whether tickets stay valid, for a postponement or cancellation
- * @param refundInfo where to ask for a refund, for a postponement or cancellation
- * @param message the organization's text to the participants
+ * change it is. Notifications only read it: Core owns it.
  */
-public record OfficialChange(
-    UUID id,
-    UUID eventId,
-    ChangeType type,
-    boolean startChanged,
-    boolean doorsOpenChanged,
-    String previousVenueName,
-    String newVenueName,
-    String newAddress,
-    Boolean ticketStillValid,
-    String refundInfo,
-    String message) {
+public final class OfficialChange {
+
+  private final UUID id;
+  private final UUID eventId;
+  private final ChangeType type;
+  private final boolean startChanged;
+  private final boolean doorsOpenChanged;
+  private final String previousVenueName;
+  private final String newVenueName;
+  private final String newAddress;
+  private final Boolean ticketStillValid;
+  private final String refundInfo;
+  private final String message;
+
+  private OfficialChange(
+      UUID id,
+      UUID eventId,
+      ChangeType type,
+      boolean startChanged,
+      boolean doorsOpenChanged,
+      String previousVenueName,
+      String newVenueName,
+      String newAddress,
+      Boolean ticketStillValid,
+      String refundInfo,
+      String message) {
+    this.id = Objects.requireNonNull(id, "id");
+    this.eventId = Objects.requireNonNull(eventId, "eventId");
+    this.type = Objects.requireNonNull(type, "type");
+    this.startChanged = startChanged;
+    this.doorsOpenChanged = doorsOpenChanged;
+    this.previousVenueName = previousVenueName;
+    this.newVenueName = newVenueName;
+    this.newAddress = newAddress;
+    this.ticketStillValid = ticketStillValid;
+    this.refundInfo = refundInfo;
+    this.message = message;
+  }
+
+  /**
+   * The change as Core stored it.
+   *
+   * @param startChanged whether the change moved the start
+   * @param doorsOpenChanged whether the change moved the doors opening time
+   * @param previousVenueName the venue before a venue change; {@code null} otherwise
+   * @param newVenueName the venue after a venue change; {@code null} otherwise
+   * @param newAddress the address after a venue change; {@code null} otherwise
+   * @param ticketStillValid whether tickets stay valid, for a postponement or cancellation
+   * @param refundInfo where to ask for a refund, for a postponement or cancellation
+   * @param message the organization's text to the participants
+   */
+  public static OfficialChange restore(
+      UUID id,
+      UUID eventId,
+      ChangeType type,
+      boolean startChanged,
+      boolean doorsOpenChanged,
+      String previousVenueName,
+      String newVenueName,
+      String newAddress,
+      Boolean ticketStillValid,
+      String refundInfo,
+      String message) {
+    return new OfficialChange(
+        id,
+        eventId,
+        type,
+        startChanged,
+        doorsOpenChanged,
+        previousVenueName,
+        newVenueName,
+        newAddress,
+        ticketStillValid,
+        refundInfo,
+        message);
+  }
+
+  /** Whether this change is of the event {@code event}. */
+  public boolean isOf(UUID event) {
+    return eventId.equals(event);
+  }
 
   /**
    * What the notification of this change tells a participant: what kind of change it is, the new
@@ -100,5 +161,28 @@ public record OfficialChange(
 
   private static boolean hasText(String value) {
     return value != null && !value.isBlank();
+  }
+
+  public UUID getId() {
+    return id;
+  }
+
+  public UUID getEventId() {
+    return eventId;
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    return other instanceof OfficialChange change && id.equals(change.id);
+  }
+
+  @Override
+  public int hashCode() {
+    return id.hashCode();
+  }
+
+  @Override
+  public String toString() {
+    return "OfficialChange[" + id + ", " + type + "]";
   }
 }

@@ -25,6 +25,7 @@ import com.crowded.core.user.application.dto.ChangeMemberCommand;
 import com.crowded.core.user.application.dto.MemberChanged;
 import com.crowded.core.user.application.dto.MemberOverview;
 import com.crowded.core.user.application.dto.TemporaryPassword;
+import com.crowded.core.user.domain.model.Email;
 import com.crowded.core.user.domain.model.Role;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.model.UserAccount;
@@ -72,9 +73,9 @@ class MemberAdministrationServiceTest {
   @BeforeEach
   void givenAnAdministratorAndAnOrganization() {
     when(users.findById(ADMIN))
-        .thenReturn(Optional.of(new User(ADMIN, null, Role.ADMINISTRATOR, true)));
+        .thenReturn(Optional.of(User.restore(ADMIN, null, Role.ADMINISTRATOR, true)));
     when(organizations.findById(ORGANIZATION))
-        .thenReturn(Optional.of(new Organization(ORGANIZATION, "Ribeira Live", ADMIN, NOW)));
+        .thenReturn(Optional.of(Organization.restore(ORGANIZATION, "Ribeira Live", ADMIN, NOW)));
     when(passwords.hash(anyString())).thenAnswer(call -> "hash:" + call.getArgument(0));
   }
 
@@ -88,22 +89,22 @@ class MemberAdministrationServiceTest {
     verify(users).add(stored.capture());
     UserAccount member = stored.getValue();
     assertThat(issued.password()).isEqualTo("AAA-AAA-AAAA");
-    assertThat(member.passwordHash()).isEqualTo("hash:AAA-AAA-AAAA");
-    assertThat(member.role()).isEqualTo(Role.ORGANIZATION_MEMBER);
-    assertThat(member.organizationId()).isEqualTo(ORGANIZATION);
-    assertThat(member.name()).isEqualTo("Rita Ferreira");
-    assertThat(member.email()).isEqualTo("rita@ribeira.pt");
-    assertThat(member.mustChangePassword()).isTrue();
-    assertThat(member.temporaryPasswordExpiresAt()).isEqualTo(NOW.plus(Duration.ofDays(7)));
-    assertThat(issued.expiresAt()).isEqualTo(member.temporaryPasswordExpiresAt());
-    assertThat(issued.userId()).isEqualTo(member.id());
+    assertThat(member.getPasswordHash()).isEqualTo("hash:AAA-AAA-AAAA");
+    assertThat(member.getRole()).isEqualTo(Role.ORGANIZATION_MEMBER);
+    assertThat(member.getOrganizationId()).isEqualTo(ORGANIZATION);
+    assertThat(member.getName()).isEqualTo("Rita Ferreira");
+    assertThat(member.getEmail()).isEqualTo(new Email("rita@ribeira.pt"));
+    assertThat(member.isMustChangePassword()).isTrue();
+    assertThat(member.getTemporaryPasswordExpiresAt()).isEqualTo(NOW.plus(Duration.ofDays(7)));
+    assertThat(issued.expiresAt()).isEqualTo(member.getTemporaryPasswordExpiresAt());
+    assertThat(issued.userId()).isEqualTo(member.getId());
     verify(audit)
         .record(
             eq(ADMIN),
             isNull(),
             eq("MEMBER_CREATED"),
             eq("User"),
-            eq(member.id()),
+            eq(member.getId()),
             eq(Map.of("organizationId", ORGANIZATION.toString())));
     assertThat(meters.counter("crowded.admin.actions", "action", "MEMBER_CREATED").count()).isOne();
   }
@@ -122,9 +123,10 @@ class MemberAdministrationServiceTest {
     UUID member = UUID.randomUUID();
     UUID formerAdmin = UUID.randomUUID();
     when(users.findById(member))
-        .thenReturn(Optional.of(new User(member, ORGANIZATION, Role.ORGANIZATION_MEMBER, true)));
+        .thenReturn(
+            Optional.of(User.restore(member, ORGANIZATION, Role.ORGANIZATION_MEMBER, true)));
     when(users.findById(formerAdmin))
-        .thenReturn(Optional.of(new User(formerAdmin, null, Role.ADMINISTRATOR, false)));
+        .thenReturn(Optional.of(User.restore(formerAdmin, null, Role.ADMINISTRATOR, false)));
 
     for (UUID caller : new UUID[] {member, formerAdmin, UUID.randomUUID()}) {
       assertRefused(
@@ -144,14 +146,14 @@ class MemberAdministrationServiceTest {
     UserAccount member = givenMember(true, false);
 
     MemberChanged changed =
-        service.change(new ChangeMemberCommand(ADMIN, member.id(), false, false));
+        service.change(new ChangeMemberCommand(ADMIN, member.getId(), false, false));
 
     assertThat(changed.active()).isFalse();
     assertThat(changed.temporaryPassword()).isNull();
     assertThat(changed.expiresAt()).isNull();
-    assertThat(stored().active()).isFalse();
-    verify(revocations).revokeIssuedBefore(member.id(), NOW);
-    verifyAudited("MEMBER_DEACTIVATED", member.id());
+    assertThat(stored().isActive()).isFalse();
+    verify(revocations).revokeIssuedBefore(member.getId(), NOW);
+    verifyAudited("MEMBER_DEACTIVATED", member.getId());
   }
 
   @Test
@@ -159,28 +161,29 @@ class MemberAdministrationServiceTest {
     UserAccount member = givenMember(false, false);
 
     MemberChanged changed =
-        service.change(new ChangeMemberCommand(ADMIN, member.id(), true, false));
+        service.change(new ChangeMemberCommand(ADMIN, member.getId(), true, false));
 
     assertThat(changed.active()).isTrue();
-    assertThat(stored().passwordHash()).isEqualTo(member.passwordHash());
+    assertThat(stored().getPasswordHash()).isEqualTo(member.getPasswordHash());
     verify(revocations, never()).revokeIssuedBefore(any(), any());
-    verifyAudited("MEMBER_REACTIVATED", member.id());
+    verifyAudited("MEMBER_REACTIVATED", member.getId());
   }
 
   @Test
   void issuesANewTemporaryPasswordAndRevokesTheTokens() {
     UserAccount member = givenMember(true, false);
 
-    MemberChanged changed = service.change(new ChangeMemberCommand(ADMIN, member.id(), null, true));
+    MemberChanged changed =
+        service.change(new ChangeMemberCommand(ADMIN, member.getId(), null, true));
 
     assertThat(changed.active()).isTrue();
     assertThat(changed.temporaryPassword()).isEqualTo("AAA-AAA-AAAA");
     assertThat(changed.expiresAt()).isEqualTo(NOW.plus(Duration.ofDays(7)));
     UserAccount stored = stored();
-    assertThat(stored.passwordHash()).isEqualTo("hash:AAA-AAA-AAAA");
-    assertThat(stored.mustChangePassword()).isTrue();
-    verify(revocations).revokeIssuedBefore(member.id(), NOW);
-    verifyAudited("MEMBER_PASSWORD_RESET", member.id());
+    assertThat(stored.getPasswordHash()).isEqualTo("hash:AAA-AAA-AAAA");
+    assertThat(stored.isMustChangePassword()).isTrue();
+    verify(revocations).revokeIssuedBefore(member.getId(), NOW);
+    verifyAudited("MEMBER_PASSWORD_RESET", member.getId());
   }
 
   @Test
@@ -188,7 +191,7 @@ class MemberAdministrationServiceTest {
     UserAccount member = givenMember(true, false);
 
     MemberChanged changed =
-        service.change(new ChangeMemberCommand(ADMIN, member.id(), true, false));
+        service.change(new ChangeMemberCommand(ADMIN, member.getId(), true, false));
 
     assertThat(changed.active()).isTrue();
     verify(audit, never()).record(any(), any(), anyString(), anyString(), any(), anyMap());
@@ -201,12 +204,12 @@ class MemberAdministrationServiceTest {
     when(users.findAccountById(participant))
         .thenReturn(
             Optional.of(
-                new UserAccount(
+                UserAccount.restore(
                     participant,
                     null,
                     Role.PARTICIPANT,
                     null,
-                    "ana@x.pt",
+                    new Email("ana@x.pt"),
                     "h",
                     true,
                     false,
@@ -232,7 +235,7 @@ class MemberAdministrationServiceTest {
         .revokeIssuedBefore(any(), any());
 
     assertRefused(
-        () -> service.change(new ChangeMemberCommand(ADMIN, member.id(), false, false)),
+        () -> service.change(new ChangeMemberCommand(ADMIN, member.getId(), false, false)),
         UnavailableException.class,
         "REVOCATIONS_UNAVAILABLE");
   }
@@ -253,7 +256,7 @@ class MemberAdministrationServiceTest {
                     .singleElement()
                     .satisfies(
                         m -> {
-                          assertThat(m.userId()).isEqualTo(member.id());
+                          assertThat(m.userId()).isEqualTo(member.getId());
                           assertThat(m.name()).isEqualTo("Rita Ferreira");
                           assertThat(m.mustChangePassword()).isTrue();
                         }));
@@ -261,19 +264,19 @@ class MemberAdministrationServiceTest {
 
   private UserAccount givenMember(boolean active, boolean mustChangePassword) {
     UserAccount member =
-        new UserAccount(
+        UserAccount.restore(
             UUID.randomUUID(),
             ORGANIZATION,
             Role.ORGANIZATION_MEMBER,
             "Rita Ferreira",
-            "rita@ribeira.pt",
+            new Email("rita@ribeira.pt"),
             "hash:old",
             active,
             mustChangePassword,
-            null,
+            mustChangePassword ? NOW.plus(Duration.ofDays(1)) : null,
             null,
             NOW.minus(Duration.ofDays(30)));
-    when(users.findAccountById(member.id())).thenReturn(Optional.of(member));
+    when(users.findAccountById(member.getId())).thenReturn(Optional.of(member));
     return member;
   }
 

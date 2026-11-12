@@ -3,12 +3,11 @@ package com.crowded.core.event.application.service;
 import com.crowded.core.audit.application.service.AuditLog;
 import com.crowded.core.event.application.dto.PublishChangeCommand;
 import com.crowded.core.event.application.dto.PublishedChange;
-import com.crowded.core.event.domain.model.ChangePlan;
 import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventChange;
+import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
-import com.crowded.core.event.domain.service.ChangePlanner;
 import com.crowded.core.organization.domain.model.Organization;
 import com.crowded.core.organization.domain.repository.OrganizationRepository;
 import com.crowded.core.outbox.application.service.NotificationRequester;
@@ -98,56 +97,46 @@ public class EventChangeService {
           "Only active members of the organization that owns this event can change it.");
     }
 
-    Instant now = clock.instant();
-    Optional<ChangePlan> plan = ChangePlanner.plan(event.getState(), command.change(), now);
-    if (plan.isEmpty()) {
-      return alreadyPublished(event, command);
-    }
-    return record(event, command, plan.get(), now);
-  }
-
-  /** The earlier change that set the values the event has, as a resend finds it. */
-  private PublishedChange alreadyPublished(Event event, PublishChangeCommand command) {
-    return changes
-        .findLatest(event.getId(), command.change().type())
-        .filter(change -> change.isReflectedIn(event.getState()))
-        .map(change -> new PublishedChange(change.id(), change.severity(), false))
-        .orElseThrow(
-            () ->
-                new RuleViolationException(
-                    "NOTHING_CHANGES", "The event already has these values."));
-  }
-
-  private PublishedChange record(
-      Event event, PublishChangeCommand command, ChangePlan plan, Instant now) {
     Organization organization =
         organizations
             .findById(event.getOrganizationId())
             .orElseThrow(() -> new IllegalStateException("Event without its organization"));
-    EventChange change = EventChange.publish(event.getId(), plan, organization.name(), now);
+    Instant now = clock.instant();
+    Optional<EventChange> change =
+        event.publishChange(
+            command.change(), Provenance.organization(organization.getName(), now), now);
+    if (change.isEmpty()) {
+      // A resend: the earlier change that set the values the event has.
+      EventChange earlier =
+          event.repeatedChange(changes.findLatest(event.getId(), command.change().type()));
+      return new PublishedChange(earlier.getId(), earlier.getSeverity(), false);
+    }
+    return record(event, command, change.get());
+  }
+
+  private PublishedChange record(Event event, PublishChangeCommand command, EventChange change) {
     changes.save(change);
-    event.apply(plan);
     events.save(event);
-    notifications.request(OFFICIAL_CHANGE, event.getId(), change.id());
+    notifications.request(OFFICIAL_CHANGE, event.getId(), change.getId());
     audit.record(
         command.userId(),
         event.getId(),
         "EVENT_CHANGE_PUBLISHED",
         "EventChange",
-        change.id(),
-        Map.of("type", plan.type().name(), "severity", plan.severity().name()));
+        change.getId(),
+        Map.of("type", change.getType().name(), "severity", change.getSeverity().name()));
     Counter.builder("crowded.event.changes")
         .description("Official event changes published")
-        .tag("type", plan.type().name())
-        .tag("severity", plan.severity().name())
+        .tag("type", change.getType().name())
+        .tag("severity", change.getSeverity().name())
         .register(meters)
         .increment();
     log.info(
         "Published {} change {} to event {} by user {}",
-        plan.type(),
-        change.id(),
+        change.getType(),
+        change.getId(),
         event.getId(),
         command.userId());
-    return new PublishedChange(change.id(), plan.severity(), true);
+    return new PublishedChange(change.getId(), change.getSeverity(), true);
   }
 }

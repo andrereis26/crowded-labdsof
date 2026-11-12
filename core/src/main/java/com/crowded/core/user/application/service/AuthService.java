@@ -9,6 +9,8 @@ import com.crowded.core.shared.domain.repository.RateLimiter;
 import com.crowded.core.user.application.dto.RegisterCommand;
 import com.crowded.core.user.application.dto.SignInCommand;
 import com.crowded.core.user.application.dto.SignedIn;
+import com.crowded.core.user.domain.model.Email;
+import com.crowded.core.user.domain.model.Password;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.model.UserAccount;
 import com.crowded.core.user.domain.repository.PasswordHasher;
@@ -22,7 +24,6 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.HexFormat;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -40,11 +41,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
   private static final Logger log = LoggerFactory.getLogger(AuthService.class);
-
-  static final int MIN_PASSWORD_LENGTH = 8;
-
-  /** bcrypt uses only the first 72 bytes of a password. */
-  static final int MAX_PASSWORD_BYTES = 72;
 
   private static final Duration SIGN_IN_WINDOW = Duration.ofMinutes(15);
   private static final Duration REGISTRATION_WINDOW = Duration.ofHours(1);
@@ -88,7 +84,8 @@ public class AuthService {
    * Creates a participant account. Nobody can register as an organization member or an
    * administrator: their accounts are created by an administrator (FR-087).
    *
-   * @throws RuleViolationException when the password is too short or too long
+   * @throws RuleViolationException when the password is too short or too long, or the email is
+   *     invalid
    * @throws ConflictException when the email already has an account
    * @throws TooManyRequestsException when the client registered too often
    */
@@ -99,14 +96,13 @@ public class AuthService {
         registrationsPerAddress,
         REGISTRATION_WINDOW,
         "register");
-    checkPassword(command.password());
-    String email = normalized(command.email());
+    Password password = new Password(command.password());
+    Email email = new Email(command.email());
     UserAccount account =
-        UserAccount.newParticipant(
-            UUID.randomUUID(), email, passwords.hash(command.password()), clock.instant());
+        UserAccount.registerParticipant(email, passwords.hash(password.value()), clock.instant());
     users.add(account);
     count("crowded.auth.registrations", "Participant accounts registered", "registered");
-    log.info("Registered participant {}", account.id());
+    log.info("Registered participant {}", account.getId());
     return account.user();
   }
 
@@ -120,32 +116,36 @@ public class AuthService {
    */
   @Transactional
   public SignedIn signIn(SignInCommand command) {
-    String email = normalized(command.email());
+    String normalized = Email.normalize(command.email());
     limit(
         "sign-in:address:" + command.clientAddress(), signInsPerAddress, SIGN_IN_WINDOW, "sign-in");
-    limit("sign-in:email:" + sha256(email), signInsPerEmail, SIGN_IN_WINDOW, "sign-in");
+    limit("sign-in:email:" + sha256(normalized), signInsPerEmail, SIGN_IN_WINDOW, "sign-in");
 
-    Optional<UserAccount> found = users.findAccountByEmail(email);
+    Optional<UserAccount> found = Email.parse(normalized).flatMap(users::findAccountByEmail);
     String password = command.password() == null ? "" : command.password();
+    // Hashes even for an unknown email, so the answer takes as long either way.
     boolean matches =
         passwords.matches(
-            password, found.map(UserAccount::passwordHash).orElse(unknownAccountHash));
-    if (found.isEmpty() || !matches || !found.get().active()) {
-      count("crowded.auth.sign-ins", "Sign-in attempts", "refused");
-      log.warn("Refused a sign-in: wrong credentials or deactivated account");
-      throw new NotAuthenticatedException(
-          "INVALID_CREDENTIALS", "The email or the password is wrong.");
-    }
-    UserAccount account = found.get();
-    if (account.mustChangePassword()) {
+            password, found.map(UserAccount::getPasswordHash).orElse(unknownAccountHash));
+    UserAccount account = found.orElseThrow(() -> refused(UserAccount.invalidCredentials()));
+    try {
+      account.signIn(matches, clock.instant());
+    } catch (NotAuthenticatedException e) {
+      throw refused(e);
+    } catch (NotAllowedException e) {
       count("crowded.auth.sign-ins", "Sign-in attempts", "password-change-required");
-      throw new NotAllowedException(
-          "PASSWORD_CHANGE_REQUIRED", "Set a new password before signing in.");
+      throw e;
     }
+    users.saveSignIn(account);
     count("crowded.auth.sign-ins", "Sign-in attempts", "signed-in");
-    log.info("User {} signed in", account.id());
-    users.recordSignIn(account.id(), clock.instant());
-    return new SignedIn(tokens.issue(account.id()), account.user(), false);
+    log.info("User {} signed in", account.getId());
+    return new SignedIn(tokens.issue(account.getId()), account.user(), false);
+  }
+
+  private NotAuthenticatedException refused(NotAuthenticatedException refusal) {
+    count("crowded.auth.sign-ins", "Sign-in attempts", "refused");
+    log.warn("Refused a sign-in: wrong credentials or deactivated account");
+    return refusal;
   }
 
   private void limit(String key, int limit, Duration window, String action) {
@@ -159,22 +159,6 @@ public class AuthService {
       throw new TooManyRequestsException(
           "RATE_LIMITED", "Too many attempts. Try again in a few minutes.");
     }
-  }
-
-  private static void checkPassword(String password) {
-    if (password == null || password.length() < MIN_PASSWORD_LENGTH) {
-      throw new RuleViolationException(
-          "PASSWORD_TOO_SHORT", "The password needs at least 8 characters.");
-    }
-    if (password.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
-      throw new RuleViolationException(
-          "PASSWORD_TOO_LONG", "The password can have at most 72 bytes.");
-    }
-  }
-
-  /** Emails are stored and compared in lower case (app_user_email_lower_case). */
-  private static String normalized(String email) {
-    return email == null ? "" : email.strip().toLowerCase(Locale.ROOT);
   }
 
   /** The email as a key without the email itself, which is personal data. */

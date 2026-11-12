@@ -1,14 +1,32 @@
 package com.crowded.core.user.domain.model;
 
+import java.util.Objects;
 import java.util.UUID;
 
-/**
- * A user account, as far as authorization needs it.
- *
- * @param organizationId the organization of a member; null for other roles
- * @param active false once an administrator deactivated the account (FR-087)
- */
-public record User(UUID id, UUID organizationId, Role role, boolean active) {
+/** A user account, as far as authorization needs it: no credentials. */
+public final class User {
+
+  private final UUID id;
+  private final UUID organizationId;
+  private final Role role;
+  private final boolean active;
+
+  private User(UUID id, UUID organizationId, Role role, boolean active) {
+    this.id = Objects.requireNonNull(id, "id");
+    this.organizationId = organizationId;
+    this.role = Objects.requireNonNull(role, "role");
+    this.active = active;
+  }
+
+  /**
+   * A stored user.
+   *
+   * @param organizationId the organization of a member; null for other roles
+   * @param active false once an administrator deactivated the account (FR-087)
+   */
+  public static User restore(UUID id, UUID organizationId, Role role, boolean active) {
+    return new User(id, organizationId, role, active);
+  }
 
   /** Whether this user is an active member of the given organization (SR-001). */
   public boolean isMemberOf(UUID organization) {
@@ -21,5 +39,36 @@ public record User(UUID id, UUID organizationId, Role role, boolean active) {
   /** Whether this user is an active platform administrator (FR-087). */
   public boolean isAdministrator() {
     return active && role == Role.ADMINISTRATOR;
+  }
+
+  public UUID getId() {
+    return id;
+  }
+
+  public UUID getOrganizationId() {
+    return organizationId;
+  }
+
+  public Role getRole() {
+    return role;
+  }
+
+  public boolean isActive() {
+    return active;
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    return other instanceof User user && id.equals(user.id);
+  }
+
+  @Override
+  public int hashCode() {
+    return id.hashCode();
+  }
+
+  @Override
+  public String toString() {
+    return "User[" + id + ", " + role + "]";
   }
 }

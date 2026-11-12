@@ -33,7 +33,7 @@ class AuthApiMapperTest {
   void mapsTheAccountAndTheSignIn() {
     UUID id = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
-    User member = new User(id, organization, Role.ORGANIZATION_MEMBER, true);
+    User member = User.restore(id, organization, Role.ORGANIZATION_MEMBER, true);
     Instant expiresAt = Instant.parse("2026-11-12T11:00:00Z");
 
     assertThat(mapper.toRegisteredResponse(member))

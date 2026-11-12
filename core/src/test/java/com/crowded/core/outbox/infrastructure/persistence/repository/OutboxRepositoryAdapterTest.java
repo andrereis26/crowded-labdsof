@@ -58,8 +58,10 @@ class OutboxRepositoryAdapterTest {
     when(rows.lockOldest(10)).thenReturn(List.of(row));
 
     assertThat(outbox.lockOldest(10))
-        .containsExactly(
-            new OutboxMessage(row.getId(), "notification.requested", "{}", Instant.EPOCH));
+        .singleElement()
+        .usingRecursiveComparison()
+        .isEqualTo(
+            OutboxMessage.restore(row.getId(), "notification.requested", "{}", Instant.EPOCH));
 
     outbox.remove(row.getId());
 

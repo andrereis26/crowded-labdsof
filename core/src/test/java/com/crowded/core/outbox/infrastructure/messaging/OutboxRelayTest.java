@@ -55,13 +55,13 @@ class OutboxRelayTest {
         .send(eq("crowded.events"), eq("notification.requested"), sent.capture());
     Message published = sent.getAllValues().getFirst();
     assertThat(new String(published.getBody(), StandardCharsets.UTF_8)).isEqualTo("{\"n\":1}");
-    assertThat(published.getMessageProperties().getMessageId()).isEqualTo(first.id().toString());
+    assertThat(published.getMessageProperties().getMessageId()).isEqualTo(first.getId().toString());
     assertThat(published.getMessageProperties().getContentType()).isEqualTo("application/json");
     assertThat(published.getMessageProperties().getDeliveryMode())
         .isEqualTo(MessageDeliveryMode.PERSISTENT);
     verify(operations, times(2)).waitForConfirmsOrDie(anyLong());
-    verify(outbox).remove(first.id());
-    verify(outbox).remove(second.id());
+    verify(outbox).remove(first.getId());
+    verify(outbox).remove(second.getId());
   }
 
   @Test
@@ -78,6 +78,7 @@ class OutboxRelayTest {
   }
 
   private static OutboxMessage message(String payload) {
-    return new OutboxMessage(UUID.randomUUID(), "notification.requested", payload, Instant.EPOCH);
+    return OutboxMessage.restore(
+        UUID.randomUUID(), "notification.requested", payload, Instant.EPOCH);
   }
 }

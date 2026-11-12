@@ -48,26 +48,29 @@ class OutboxRelay {
         publish(message);
       } catch (AmqpException e) {
         // Keep the order: the rest waits for the next run.
-        log.warn("Outbox message {} not published, retrying later", message.id(), e);
+        log.warn("Outbox message {} not published, retrying later", message.getId(), e);
         return;
       }
-      outbox.remove(message.id());
+      outbox.remove(message.getId());
     }
   }
 
   private void publish(OutboxMessage message) {
     Message amqp =
-        MessageBuilder.withBody(message.payload().getBytes(StandardCharsets.UTF_8))
+        MessageBuilder.withBody(message.getPayload().getBytes(StandardCharsets.UTF_8))
             .setContentType(MessageProperties.CONTENT_TYPE_JSON)
-            .setMessageId(message.id().toString())
+            .setMessageId(message.getId().toString())
             .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
             .build();
     rabbit.invoke(
         operations -> {
-          operations.send(MessagingConfiguration.EXCHANGE, message.routingKey(), amqp);
+          operations.send(MessagingConfiguration.EXCHANGE, message.getRoutingKey(), amqp);
           operations.waitForConfirmsOrDie(CONFIRM_TIMEOUT.toMillis());
           return null;
         });
-    log.info("Published outbox message {} with routing key {}", message.id(), message.routingKey());
+    log.info(
+        "Published outbox message {} with routing key {}",
+        message.getId(),
+        message.getRoutingKey());
   }
 }

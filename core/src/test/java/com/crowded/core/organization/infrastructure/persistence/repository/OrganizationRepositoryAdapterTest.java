@@ -33,8 +33,10 @@ class OrganizationRepositoryAdapterTest {
     assertThat(
             new OrganizationRepositoryAdapter(rows, new OrganizationPersistenceMapperImpl())
                 .findById(row.getId()))
-        .contains(
-            new Organization(
+        .get()
+        .usingRecursiveComparison()
+        .isEqualTo(
+            Organization.restore(
                 row.getId(), "Ribeira Live", null, Instant.parse("2026-11-01T10:00:00Z")));
   }
 
@@ -44,24 +46,24 @@ class OrganizationRepositoryAdapterTest {
     OrganizationRepositoryAdapter adapter =
         new OrganizationRepositoryAdapter(rows, new OrganizationPersistenceMapperImpl());
     Organization ribeira =
-        new Organization(
+        Organization.restore(
             UUID.randomUUID(),
             "Ribeira Live",
             UUID.randomUUID(),
             Instant.parse("2026-11-01T10:00:00Z"));
     OrganizationEntity row = new OrganizationEntity();
-    row.setId(ribeira.id());
-    row.setName(ribeira.name());
-    row.setCreatedByUserId(ribeira.createdByUserId());
-    row.setCreatedAt(ribeira.createdAt());
+    row.setId(ribeira.getId());
+    row.setName(ribeira.getName());
+    row.setCreatedByUserId(ribeira.getCreatedByUserId());
+    row.setCreatedAt(ribeira.getCreatedAt());
     when(rows.findAllByOrderByNameAsc()).thenReturn(List.of(row));
 
-    assertThat(adapter.findAll()).containsExactly(ribeira);
+    assertThat(adapter.findAll()).singleElement().usingRecursiveComparison().isEqualTo(ribeira);
 
     adapter.add(ribeira);
     ArgumentCaptor<OrganizationEntity> stored = ArgumentCaptor.forClass(OrganizationEntity.class);
     verify(rows).saveAndFlush(stored.capture());
-    assertThat(stored.getValue().getCreatedByUserId()).isEqualTo(ribeira.createdByUserId());
+    assertThat(stored.getValue().getCreatedByUserId()).isEqualTo(ribeira.getCreatedByUserId());
 
     when(rows.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("dup"));
     assertThatThrownBy(() -> adapter.add(ribeira))

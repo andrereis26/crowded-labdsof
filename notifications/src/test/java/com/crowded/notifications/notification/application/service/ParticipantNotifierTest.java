@@ -31,7 +31,7 @@ class ParticipantNotifierTest {
   private static final UUID TURNED_OFF = UUID.randomUUID();
 
   private final OfficialChange cancellation =
-      new OfficialChange(
+      OfficialChange.restore(
           UUID.randomUUID(),
           EVENT,
           ChangeType.CANCELLATION,
@@ -51,7 +51,7 @@ class ParticipantNotifierTest {
   private final FakeNotifications notifications = new FakeNotifications();
   private final ParticipantNotifier notifier =
       new ParticipantNotifier(
-          id -> Optional.ofNullable(Map.of(cancellation.id(), cancellation).get(id)),
+          id -> Optional.ofNullable(Map.of(cancellation.getId(), cancellation).get(id)),
           (eventId, type) -> eventId.equals(EVENT) ? connections : List.of(),
           notifications,
           Clock.fixed(NOW, ZoneOffset.UTC));
@@ -64,22 +64,22 @@ class ParticipantNotifierTest {
 
     assertThat(stored).isEqualTo(2);
     assertThat(notifications.stored)
-        .extracting(Notification::userId)
+        .extracting(Notification::getUserId)
         .containsExactly(TICKET_HOLDER, ACCESS_CODE);
     assertThat(notifications.stored)
         .allSatisfy(
             notification -> {
-              assertThat(notification.type()).isEqualTo(NotificationType.OFFICIAL_CHANGE);
-              assertThat(notification.eventId()).isEqualTo(EVENT);
-              assertThat(notification.causeId()).isEqualTo(cancellation.id());
-              assertThat(notification.title()).isEqualTo("Cancelado");
-              assertThat(notification.createdAt()).isEqualTo(NOW);
-              assertThat(notification.deduplicationKey())
-                  .isEqualTo(Notification.deduplicationKey(notification.userId(), messageId));
+              assertThat(notification.getType()).isEqualTo(NotificationType.OFFICIAL_CHANGE);
+              assertThat(notification.getEventId()).isEqualTo(EVENT);
+              assertThat(notification.getCauseId()).isEqualTo(cancellation.getId());
+              assertThat(notification.getTitle()).isEqualTo("Cancelado");
+              assertThat(notification.getCreatedAt()).isEqualTo(NOW);
+              assertThat(notification.getDeduplicationKey())
+                  .isEqualTo(Notification.deduplicationKey(notification.getUserId(), messageId));
             });
-    assertThat(notifications.stored.get(0).body())
+    assertThat(notifications.stored.get(0).getBody())
         .contains("O teu bilhete deixa de ser válido.", "Reembolso: Até 5 DEZ");
-    assertThat(notifications.stored.get(1).body()).isEqualTo("A organização cancelou o evento.");
+    assertThat(notifications.stored.get(1).getBody()).isEqualTo("A organização cancelou o evento.");
   }
 
   @Test
@@ -99,7 +99,9 @@ class ParticipantNotifierTest {
     notifier.notify(
         command(UUID.randomUUID(), NotificationType.OFFICIAL_CHANGE, List.of(ACCESS_CODE)));
 
-    assertThat(notifications.stored).extracting(Notification::userId).containsExactly(ACCESS_CODE);
+    assertThat(notifications.stored)
+        .extracting(Notification::getUserId)
+        .containsExactly(ACCESS_CODE);
   }
 
   @Test
@@ -127,7 +129,7 @@ class ParticipantNotifierTest {
             UUID.randomUUID(),
             NotificationType.OFFICIAL_CHANGE,
             UUID.randomUUID(),
-            cancellation.id(),
+            cancellation.getId(),
             null);
 
     assertThatThrownBy(() -> notifier.notify(missing))
@@ -140,7 +142,7 @@ class ParticipantNotifierTest {
 
   private NotifyParticipantsCommand command(
       UUID messageId, NotificationType type, List<UUID> userIds) {
-    return new NotifyParticipantsCommand(messageId, type, EVENT, cancellation.id(), userIds);
+    return new NotifyParticipantsCommand(messageId, type, EVENT, cancellation.getId(), userIds);
   }
 
   /** Keeps the first notification per deduplication key, as the unique column does. */
@@ -151,7 +153,7 @@ class ParticipantNotifierTest {
     @Override
     public boolean addIfAbsent(Notification notification) {
       if (stored.stream()
-          .anyMatch(n -> n.deduplicationKey().equals(notification.deduplicationKey()))) {
+          .anyMatch(n -> n.getDeduplicationKey().equals(notification.getDeduplicationKey()))) {
         return false;
       }
       return stored.add(notification);

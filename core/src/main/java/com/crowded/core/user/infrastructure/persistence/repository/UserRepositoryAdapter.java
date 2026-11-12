@@ -1,12 +1,12 @@
 package com.crowded.core.user.infrastructure.persistence.repository;
 
 import com.crowded.core.shared.domain.exception.ConflictException;
+import com.crowded.core.user.domain.model.Email;
 import com.crowded.core.user.domain.model.Role;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.model.UserAccount;
 import com.crowded.core.user.domain.repository.UserRepository;
 import com.crowded.core.user.infrastructure.persistence.mapper.UserPersistenceMapper;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,8 +36,8 @@ class UserRepositoryAdapter implements UserRepository {
   }
 
   @Override
-  public Optional<UserAccount> findAccountByEmail(String email) {
-    return users.findByEmail(email).map(mapper::toAccount);
+  public Optional<UserAccount> findAccountByEmail(Email email) {
+    return users.findByEmail(email.value()).map(mapper::toAccount);
   }
 
   @Override
@@ -64,7 +64,7 @@ class UserRepositoryAdapter implements UserRepository {
   }
 
   @Override
-  public void recordSignIn(UUID id, Instant at) {
-    users.updateLastSignedInAt(id, at);
+  public void saveSignIn(UserAccount account) {
+    users.updateLastSignedInAt(account.getId(), account.getLastSignedInAt());
   }
 }
