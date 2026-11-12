@@ -20,13 +20,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   void _open(AppStore store, AppNotification n) {
     store.markRead(n);
-    if (n.route != null) {
-      context.push(n.route!);
-    } else if (n.changeId != null) {
-      context.push('/evento/${n.eventId}/alteracao/${n.changeId}');
-    } else {
-      context.push('/evento/${n.eventId}');
-    }
+    context.push(n.target);
   }
 
   @override
@@ -76,7 +70,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ],
           ),
         ),
-        if (groups.isEmpty)
+        if (groups.isEmpty && store.notificationsFailed)
+          AppErrorState(
+            message: 'Não foi possível carregar as notificações',
+            retryLabel: 'Tentar novamente',
+            onRetry: store.refreshNotifications,
+          )
+        else if (groups.isEmpty)
           const AppEmptyState(
             icon: Icons.notifications_none,
             message: 'Sem notificações',
@@ -110,7 +110,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         store.isConnected(n.eventId) ||
                         store.eventById(n.eventId) == null,
                     onTap: () => _open(store, n),
-                    onAnswer: (answer) => store.answerRequest(n, answer),
                   ),
                 ],
               ],
@@ -122,13 +121,63 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 }
 
+/// Icon of a notification type, with its background and colour.
+(IconData, Color, Color) notificationIcon(NotificationKind kind) =>
+    switch (kind) {
+      NotificationKind.alert => (
+        Icons.campaign_outlined,
+        AppColors.warningSoft,
+        AppColors.warning,
+      ),
+      NotificationKind.request => (
+        Icons.chat_bubble_outline,
+        AppColors.primarySoft,
+        AppColors.primary,
+      ),
+      NotificationKind.confirmation => (
+        Icons.fact_check_outlined,
+        AppColors.primarySoft,
+        AppColors.primary,
+      ),
+      NotificationKind.recognition => (
+        Icons.workspace_premium_outlined,
+        AppColors.successSoft,
+        AppColors.success,
+      ),
+      NotificationKind.officialChange => (
+        Icons.calendar_today_outlined,
+        AppColors.dangerSoft,
+        AppColors.danger,
+      ),
+      NotificationKind.weather => (
+        Icons.warning_amber_rounded,
+        AppColors.orangeSoft,
+        AppColors.orange,
+      ),
+      NotificationKind.reportStatus => (
+        Icons.flag_outlined,
+        AppColors.primarySoft,
+        AppColors.primary,
+      ),
+    };
+
+/// Where a notification comes from, next to the event name, when the type
+/// does not already say it: the organization publishes official changes, and
+/// IPMA the weather warnings. Urgent requests say so instead.
+String? notificationSource(AppNotification notification) => notification.urgent
+    ? 'Urgente'
+    : switch (notification.kind) {
+        NotificationKind.officialChange => 'Organização',
+        NotificationKind.weather => 'IPMA',
+        _ => null,
+      };
+
 class _NotificationTile extends StatelessWidget {
   const _NotificationTile({
     required this.notification,
     required this.now,
     required this.onTap,
     this.connected = true,
-    required this.onAnswer,
   });
 
   final AppNotification notification;
@@ -138,50 +187,6 @@ class _NotificationTile extends StatelessWidget {
   /// False for events the participant left: shown muted, and opening it
   /// explains that the page is no longer available.
   final bool connected;
-  final ValueChanged<bool> onAnswer;
-
-  (IconData, Color, Color) get _icon => switch (notification.kind) {
-    NotificationKind.alert => (
-      Icons.campaign_outlined,
-      AppColors.warningSoft,
-      AppColors.warning,
-    ),
-    NotificationKind.request => (
-      Icons.chat_bubble_outline,
-      AppColors.primarySoft,
-      AppColors.primary,
-    ),
-    NotificationKind.confirmation => (
-      Icons.fact_check_outlined,
-      AppColors.primarySoft,
-      AppColors.primary,
-    ),
-    NotificationKind.recognition => (
-      Icons.workspace_premium_outlined,
-      AppColors.successSoft,
-      AppColors.success,
-    ),
-    NotificationKind.officialChange => (
-      Icons.calendar_today_outlined,
-      AppColors.dangerSoft,
-      AppColors.danger,
-    ),
-    NotificationKind.weather => (
-      Icons.warning_amber_rounded,
-      AppColors.orangeSoft,
-      AppColors.orange,
-    ),
-  };
-
-  /// Next to the event name only when it changes priority or trust; the
-  /// icon already shows the type.
-  String? get _tag => notification.urgent
-      ? 'Urgente'
-      : switch (notification.kind) {
-          NotificationKind.officialChange => 'Organização',
-          NotificationKind.weather => 'IPMA',
-          _ => null,
-        };
 
   String get _when {
     final at = notification.receivedAt;
@@ -192,9 +197,7 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = notification;
-    final (icon, background, foreground) = _icon;
-    final isOpenRequest =
-        connected && n.kind == NotificationKind.request && n.answer == null;
+    final (icon, background, foreground) = notificationIcon(n.kind);
 
     return Semantics(
       button: true,
@@ -233,7 +236,7 @@ class _NotificationTile extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              [n.eventName, ?_tag].join(' · '),
+                              [n.eventName, ?notificationSource(n)].join(' · '),
                               style: AppTextStyles.caption.copyWith(
                                 fontWeight: FontWeight.w500,
                               ),
@@ -254,35 +257,6 @@ class _NotificationTile extends StatelessWidget {
                           style: AppTextStyles.footnote.copyWith(
                             color: AppColors.ink,
                             height: 1.4,
-                          ),
-                        ),
-                      if (isOpenRequest)
-                        Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.xs),
-                          child: Row(
-                            spacing: AppSpacing.sm,
-                            children: [
-                              AppButton.secondary(
-                                label: 'Não',
-                                size: AppButtonSize.small,
-                                expand: false,
-                                onPressed: () => onAnswer(false),
-                              ),
-                              AppButton(
-                                label: 'Sim',
-                                size: AppButtonSize.small,
-                                expand: false,
-                                onPressed: () => onAnswer(true),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (n.answer != null)
-                        Text(
-                          'Respondeste: ${n.answer! ? 'Sim' : 'Não'}',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.success,
-                            fontWeight: FontWeight.w600,
                           ),
                         ),
                     ],

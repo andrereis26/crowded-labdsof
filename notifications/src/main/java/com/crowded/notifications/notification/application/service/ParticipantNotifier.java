@@ -8,6 +8,7 @@ import com.crowded.notifications.notification.domain.model.NotificationType;
 import com.crowded.notifications.notification.domain.model.OfficialChange;
 import com.crowded.notifications.notification.domain.model.Recipient;
 import com.crowded.notifications.notification.domain.repository.ConnectionRepository;
+import com.crowded.notifications.notification.domain.repository.NotificationAnnouncements;
 import com.crowded.notifications.notification.domain.repository.NotificationRepository;
 import com.crowded.notifications.notification.domain.repository.OfficialChangeRepository;
 import com.crowded.notifications.notification.domain.service.RecipientSelector;
@@ -31,21 +32,26 @@ public class ParticipantNotifier {
   private final OfficialChangeRepository changes;
   private final ConnectionRepository connections;
   private final NotificationRepository notifications;
+  private final NotificationAnnouncements announcements;
   private final Clock clock;
 
   ParticipantNotifier(
       OfficialChangeRepository changes,
       ConnectionRepository connections,
       NotificationRepository notifications,
+      NotificationAnnouncements announcements,
       Clock clock) {
     this.changes = changes;
     this.connections = connections;
     this.notifications = notifications;
+    this.announcements = announcements;
     this.clock = clock;
   }
 
   /**
-   * Stores one notification per participant who wants it, in one transaction.
+   * Stores one notification per participant who wants it, in one transaction, and announces each
+   * one stored to the live streams once it commits. A notification that already existed is not
+   * announced again, so a redelivered message shows no second banner.
    *
    * @return how many notifications were stored; none for a request already processed
    * @throws UnsupportedNotificationTypeException for a type other than an official change
@@ -77,6 +83,7 @@ public class ParticipantNotifier {
               change.describeFor(recipient),
               now);
       if (notifications.addIfAbsent(notification)) {
+        announcements.announce(notification.getId());
         stored++;
       }
     }

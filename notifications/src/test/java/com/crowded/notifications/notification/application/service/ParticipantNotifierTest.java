@@ -11,7 +11,6 @@ import com.crowded.notifications.notification.domain.model.Connection;
 import com.crowded.notifications.notification.domain.model.Notification;
 import com.crowded.notifications.notification.domain.model.NotificationType;
 import com.crowded.notifications.notification.domain.model.OfficialChange;
-import com.crowded.notifications.notification.domain.repository.NotificationRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -48,12 +47,14 @@ class ParticipantNotifierTest {
           new Connection(TICKET_HOLDER, true, null, null),
           new Connection(ACCESS_CODE, false, null, null),
           new Connection(TURNED_OFF, true, false, null));
-  private final FakeNotifications notifications = new FakeNotifications();
+  private final InMemoryNotifications notifications = new InMemoryNotifications();
+  private final List<UUID> announced = new ArrayList<>();
   private final ParticipantNotifier notifier =
       new ParticipantNotifier(
           id -> Optional.ofNullable(Map.of(cancellation.getId(), cancellation).get(id)),
           (eventId, type) -> eventId.equals(EVENT) ? connections : List.of(),
           notifications,
+          announced::add,
           Clock.fixed(NOW, ZoneOffset.UTC));
 
   @Test
@@ -80,6 +81,8 @@ class ParticipantNotifierTest {
     assertThat(notifications.stored.get(0).getBody())
         .contains("O teu bilhete deixa de ser válido.", "Reembolso: Até 5 DEZ");
     assertThat(notifications.stored.get(1).getBody()).isEqualTo("A organização cancelou o evento.");
+    assertThat(announced)
+        .containsExactly(notifications.stored.get(0).getId(), notifications.stored.get(1).getId());
   }
 
   @Test
@@ -92,6 +95,9 @@ class ParticipantNotifierTest {
 
     assertThat(again).isZero();
     assertThat(notifications.stored).hasSize(2);
+    assertThat(announced)
+        .as("a redelivered message announces nothing again")
+        .containsExactlyElementsOf(notifications.stored.stream().map(Notification::getId).toList());
   }
 
   @Test
@@ -113,6 +119,7 @@ class ParticipantNotifierTest {
         .isInstanceOf(UnsupportedNotificationTypeException.class)
         .hasFieldOrPropertyWithValue("code", "UNSUPPORTED_NOTIFICATION_TYPE");
     assertThat(notifications.stored).isEmpty();
+    assertThat(announced).isEmpty();
   }
 
   @Test
@@ -143,20 +150,5 @@ class ParticipantNotifierTest {
   private NotifyParticipantsCommand command(
       UUID messageId, NotificationType type, List<UUID> userIds) {
     return new NotifyParticipantsCommand(messageId, type, EVENT, cancellation.getId(), userIds);
-  }
-
-  /** Keeps the first notification per deduplication key, as the unique column does. */
-  private static final class FakeNotifications implements NotificationRepository {
-
-    private final List<Notification> stored = new ArrayList<>();
-
-    @Override
-    public boolean addIfAbsent(Notification notification) {
-      if (stored.stream()
-          .anyMatch(n -> n.getDeduplicationKey().equals(notification.getDeduplicationKey()))) {
-        return false;
-      }
-      return stored.add(notification);
-    }
   }
 }

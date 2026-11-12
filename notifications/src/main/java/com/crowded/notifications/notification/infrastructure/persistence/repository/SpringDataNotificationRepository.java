@@ -1,6 +1,9 @@
 package com.crowded.notifications.notification.infrastructure.persistence.repository;
 
 import com.crowded.notifications.notification.infrastructure.persistence.entity.NotificationEntity;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -28,4 +31,26 @@ interface SpringDataNotificationRepository extends Repository<NotificationEntity
           ON CONFLICT (deduplication_key) DO NOTHING""",
       nativeQuery = true)
   int insertIfAbsent(@Param("n") NotificationEntity n);
+
+  Optional<NotificationEntity> findById(UUID id);
+
+  /** Newest first; the id breaks ties, so the order is stable. */
+  List<NotificationEntity> findByUserIdOrderByCreatedAtDescIdDesc(UUID userId);
+
+  long countByUserIdAndReadAtIsNull(UUID userId);
+
+  /** Stores the delivery and reading times that are not stored yet; a stored one is kept. */
+  @Modifying
+  @Query(
+      value =
+          """
+          UPDATE notification
+          SET delivered_at = COALESCE(delivered_at, :deliveredAt),
+              read_at = COALESCE(read_at, :readAt)
+          WHERE id = :id""",
+      nativeQuery = true)
+  int stamp(
+      @Param("id") UUID id,
+      @Param("deliveredAt") Instant deliveredAt,
+      @Param("readAt") Instant readAt);
 }

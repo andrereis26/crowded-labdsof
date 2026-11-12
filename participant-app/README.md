@@ -4,7 +4,7 @@ Flutter app for participants, on mobile and the web ([ADR 0006](../docs/delivera
 
 ## Setup
 
-**Prerequisites:** Flutter 3.47, the version CI pins (3.47.7), and Chrome for `flutter run -d chrome`. [`scripts/local/setup.sh`](../scripts/local/setup.sh) (`setup.ps1` on Windows) checks Flutter and creates `.env` ([Getting Started](../README.md#getting-started)). The app needs no backend yet: it runs on demo data.
+**Prerequisites:** Flutter 3.47, the version CI pins (3.47.7), and Chrome for `flutter run -d chrome`. [`scripts/local/setup.sh`](../scripts/local/setup.sh) (`setup.ps1` on Windows) checks Flutter and creates `.env` ([Getting Started](../README.md#getting-started)). Signing in and the notifications need Core and Notifications behind the router, as `scripts/local/stack-up.sh` runs them; the other screens run on demo data.
 
 **Configuration from `.env`:** `PARTICIPANT_APP_PORT` (8090).
 
@@ -37,10 +37,10 @@ flutter analyze --fatal-infos
 |---|---|
 | `lib/ui/` | Design system: tokens and shared components |
 | `lib/screens/` | Participant screens, one folder per area (wallet, import, event, report, requests, notifications, events, account) |
-| `lib/data/` | Models and `AppStore`, backed by demo data until the Core API exists |
+| `lib/data/` | Models, `AppStore` and the API clients: sign-in (`auth_api.dart`) and notifications (`notifications_api.dart`); the rest is demo data until the Core API exists |
 | `lib/app.dart` | Routes (`go_router`); each route notes its mockup code (P1, P2, …) |
 
-The screens use demo data relative to the current date, so the Festival Margens ticket is always "today". The Conta tab has switches to simulate being offline and being away from the venue (P12 "Não estás perto do recinto"), and a link to the component gallery (`/dev/componentes`). File picking and opening an external map show "Disponível em breve" for now. The map in P18 is an illustration and the entry code in P19 is drawn from the ticket until the ticketing simulator supplies real codes; on the website the code shows for two minutes after the password.
+The notification center (P8) lists the participant's notifications from Notifications and shows each new one as a banner at the top of the page while the app is open, through the live stream; after the connection drops it reconnects and loads what it missed. The other screens use demo data relative to the current date, so the Festival Margens ticket is always "today". The Conta tab has switches to simulate being offline and being away from the venue (P12 "Não estás perto do recinto"), and a link to the component gallery (`/dev/componentes`). File picking and opening an external map show "Disponível em breve" for now. The map in P18 is an illustration and the entry code in P19 is drawn from the ticket until the ticketing simulator supplies real codes; on the website the code shows for two minutes after the password.
 
 ## Container image
 

@@ -12,7 +12,7 @@ import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** Row of {@code notification}. Delivery and reading are stamped later. */
+/** Row of {@code notification}. Delivery and reading are stamped after it is created. */
 @Entity
 @Table(name = "notification")
 public class NotificationEntity {
@@ -44,6 +44,12 @@ public class NotificationEntity {
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
+
+  @Column(name = "delivered_at")
+  private Instant deliveredAt;
+
+  @Column(name = "read_at")
+  private Instant readAt;
 
   public UUID getId() {
     return id;
@@ -115,5 +121,21 @@ public class NotificationEntity {
 
   public void setCreatedAt(Instant createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public Instant getDeliveredAt() {
+    return deliveredAt;
+  }
+
+  public void setDeliveredAt(Instant deliveredAt) {
+    this.deliveredAt = deliveredAt;
+  }
+
+  public Instant getReadAt() {
+    return readAt;
+  }
+
+  public void setReadAt(Instant readAt) {
+    this.readAt = readAt;
   }
 }

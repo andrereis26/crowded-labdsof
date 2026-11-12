@@ -1,7 +1,11 @@
 import 'package:crowded/app.dart';
 import 'package:crowded/data/app_store.dart';
 import 'package:crowded/data/auth_api.dart';
+
+import 'dart:async';
+
 import 'package:crowded/data/models.dart';
+import 'package:crowded/data/notifications_api.dart';
 import 'package:crowded/screens/event/entry_code_screen.dart';
 import 'package:crowded/screens/import/access_code_screen.dart';
 import 'package:crowded/ui/ui.dart';
@@ -58,6 +62,143 @@ class _FakeAuthApi implements AuthApi {
   }
 }
 
+AppNotification _notification(
+  String id,
+  NotificationKind kind, {
+  required String title,
+  required Duration ago,
+  String eventId = 'festival-margens',
+  String eventName = 'Festival Margens',
+  String? body,
+  String? changeId,
+  bool read = false,
+}) => AppNotification(
+  id: id,
+  kind: kind,
+  eventId: eventId,
+  eventName: eventName,
+  typeLabel: kind.typeLabel,
+  title: title,
+  body: body,
+  receivedAt: _now.subtract(ago),
+  changeId: changeId,
+  read: read,
+);
+
+/// The participant's notifications in Notifications, without a network.
+/// Each call to [live] opens a stream the test drives with [send], [drop]
+/// and [refuse].
+class _FakeNotificationsApi implements NotificationsApi {
+  _FakeNotificationsApi([List<AppNotification>? notifications])
+    : stored =
+          notifications ??
+          [
+            _notification(
+              'n-alert',
+              NotificationKind.alert,
+              title: 'Porta B fechada. Use a Porta C.',
+              ago: const Duration(minutes: 3),
+            ),
+            _notification(
+              'n-change',
+              NotificationKind.officialChange,
+              eventId: 'a-tempestade',
+              eventName: 'A Tempestade',
+              title: 'Adiado para SÁB 8 NOV · 21:30',
+              body: 'Era SÁB 25 OUT.\nTraz o bilhete.',
+              changeId: 'tempestade-date',
+              ago: const Duration(hours: 2),
+            ),
+            _notification(
+              'n-weather',
+              NotificationKind.weather,
+              eventId: 'jazz-no-parque',
+              eventName: 'Jazz no Parque',
+              title: 'Aviso laranja: chuva forte no Porto amanhã',
+              ago: const Duration(days: 2),
+              read: true,
+            ),
+            _notification(
+              'n-left',
+              NotificationKind.officialChange,
+              eventId: 'mercado-outono',
+              eventName: 'Mercado de Outono',
+              title: 'Abertura adiada para as 11:00',
+              ago: const Duration(days: 6),
+              read: true,
+            ),
+          ];
+
+  final List<AppNotification> stored;
+  final read = <String>[];
+  final tokens = <String>[];
+  int lists = 0;
+  int connections = 0;
+  String? failListWith;
+
+  /// While set, [list] answers only once it completes.
+  Completer<void>? listGate;
+  StreamController<LiveEvent>? _live;
+
+  /// Copies, as each response from the server is a new object.
+  @override
+  Future<NotificationPage> list(String token) async {
+    lists++;
+    if (failListWith != null) throw NotificationsException(failListWith!);
+    final stored = [...this.stored];
+    await listGate?.future;
+    final copies = [
+      for (final n in stored)
+        _notification(
+          n.id,
+          n.kind,
+          eventId: n.eventId,
+          eventName: n.eventName,
+          title: n.title,
+          body: n.body,
+          changeId: n.changeId,
+          ago: _now.difference(n.receivedAt),
+          read: n.read || read.contains(n.id),
+        ),
+    ];
+    return NotificationPage(
+      notifications: copies,
+      unread: copies.where((n) => !n.read).length,
+    );
+  }
+
+  @override
+  Future<void> markRead(String token, String notificationId) async {
+    read.add(notificationId);
+  }
+
+  @override
+  Stream<LiveEvent> live(String token) {
+    connections++;
+    tokens.add(token);
+    _live = StreamController<LiveEvent>(
+      onListen: () => _live!.add(const LiveOpened()),
+    );
+    return _live!.stream;
+  }
+
+  /// Stores [notification] and sends it on the open stream.
+  void send(AppNotification notification, {bool store = true}) {
+    if (store) stored.add(notification);
+    _live!.add(LiveNotificationEvent(notification));
+  }
+
+  void drop() {
+    _live!.addError(const NotificationsException('NETWORK'));
+    _live!.close();
+  }
+
+  void refuse() {
+    _live!.addError(const NotificationsException('UNAUTHORIZED'));
+    _live!.close();
+  }
+}
+
 const _mobile = Size(390, 844);
 const _desktop = Size(1440, 1000);
 
@@ -67,6 +208,7 @@ Future<AppStore> _pump(
   Size size = _mobile,
   bool signedIn = true,
   AuthApi? auth,
+  NotificationsApi? notifications,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -74,6 +216,7 @@ Future<AppStore> _pump(
   final store = AppStore(
     clock: () => _now,
     auth: auth ?? _FakeAuthApi(),
+    notifications: notifications ?? _FakeNotificationsApi(),
     session: signedIn ? _session(_email) : null,
   );
   await tester.pumpWidget(CrowdedApp(store: store, initialLocation: location));
@@ -346,25 +489,25 @@ void main() {
     expect(find.text('Sem alteração'), findsNWidgets(2));
   });
 
-  testWidgets('P8 filters notifications and answers requests', (tester) async {
-    final store = await _pump(tester, location: '/notificacoes');
-    expect(store.unreadCount, 2);
-
-    await tester.ensureVisible(find.text('Pedidos'));
-
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Pedidos'));
-    await tester.pumpAndSettle();
-    expect(
-      find.text('Vais usar o autocarro especial das 23:30?'),
-      findsOneWidget,
+  testWidgets('P8 lists the notifications, filters and opens them', (
+    tester,
+  ) async {
+    final api = _FakeNotificationsApi();
+    final store = await _pump(
+      tester,
+      location: '/notificacoes',
+      notifications: api,
     );
-    expect(find.text('O teu reporte ajudou'), findsNothing);
-
-    await tester.tap(find.text('Sim'));
-    await tester.pumpAndSettle();
-    expect(find.text('Respondeste: Sim'), findsOneWidget);
-    expect(store.unreadCount, 1);
+    expect(store.unreadCount, 2);
+    expect(store.notifications.map((n) => n.id), [
+      'n-alert',
+      'n-change',
+      'n-weather',
+      'n-left',
+    ]);
+    expect(find.text('HOJE'), findsOneWidget);
+    expect(find.text('A Tempestade · Organização'), findsOneWidget);
+    expect(find.text('Era SÁB 25 OUT.\nTraz o bilhete.'), findsOneWidget);
 
     await tester.ensureVisible(find.text('Tempo'));
     await tester.pumpAndSettle();
@@ -374,11 +517,20 @@ void main() {
       find.text('Aviso laranja: chuva forte no Porto amanhã'),
       findsOneWidget,
     );
+    expect(find.text('Porta B fechada. Use a Porta C.'), findsNothing);
 
     await tester.ensureVisible(find.text('Todas'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Todas'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Adiado para SÁB 8 NOV · 21:30'));
+    await tester.pumpAndSettle();
+    expect(api.read, ['n-change']);
+    expect(store.unreadCount, 1);
+    expect(find.text('A Tempestade foi adiada'), findsOneWidget);
+    await tester.tap(find.text('Fechar').first);
+    await tester.pumpAndSettle();
+
     await tester.scrollUntilVisible(
       find.text('Abertura adiada para as 11:00'),
       200,
@@ -393,6 +545,170 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Já não estás ligado a este evento'), findsOneWidget);
+  });
+
+  testWidgets('P8 shows a failed load and loads again', (tester) async {
+    final api = _FakeNotificationsApi()..failListWith = 'NETWORK';
+    final store = await _pump(
+      tester,
+      location: '/notificacoes',
+      notifications: api,
+    );
+    expect(
+      find.text('Não foi possível carregar as notificações'),
+      findsOneWidget,
+    );
+
+    api.failListWith = null;
+    await tester.tap(find.text('Tentar novamente'));
+    await tester.pumpAndSettle();
+    expect(store.notificationsFailed, isFalse);
+    expect(find.text('Porta B fechada. Use a Porta C.'), findsOneWidget);
+  });
+
+  group('P8 live banner', () {
+    AppNotification fresh() => _notification(
+      'n-new',
+      NotificationKind.officialChange,
+      eventId: 'a-tempestade',
+      eventName: 'A Tempestade',
+      title: 'Cancelado',
+      changeId: 'tempestade-date',
+      ago: Duration.zero,
+    );
+
+    testWidgets('shows a new notification and updates the badge once', (
+      tester,
+    ) async {
+      final api = _FakeNotificationsApi();
+      final store = await _pump(tester, notifications: api);
+      expect(api.tokens, ['token']);
+      expect(store.unreadCount, 2);
+
+      api.send(fresh());
+      await tester.pumpAndSettle();
+      expect(store.unreadCount, 3);
+      expect(find.text('Cancelado'), findsOneWidget);
+      expect(find.text('A Tempestade · Organização'), findsOneWidget);
+      expect(find.bySemanticsLabel('Notificações, 3 por ler'), findsWidgets);
+
+      // Sent twice, as after a redelivery: shown once.
+      api.send(fresh(), store: false);
+      await tester.pumpAndSettle();
+      expect(store.unreadCount, 3);
+      expect(store.notifications.where((n) => n.id == 'n-new'), hasLength(1));
+
+      await tester.tap(find.text('Cancelado'));
+      await tester.pumpAndSettle();
+      expect(api.read, ['n-new']);
+      expect(store.banner, isNull);
+      expect(find.text('A Tempestade foi adiada'), findsOneWidget);
+    });
+
+    testWidgets('closes, and hides by itself after 8 seconds', (tester) async {
+      final api = _FakeNotificationsApi();
+      final store = await _pump(tester, notifications: api);
+
+      api.send(fresh());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('live-banner-close')));
+      await tester.pumpAndSettle();
+      expect(find.text('Cancelado'), findsNothing);
+      expect(store.unreadCount, 3, reason: 'closing does not read it');
+
+      api.send(
+        _notification(
+          'n-other',
+          NotificationKind.alert,
+          title: 'Porta A aberta',
+          ago: Duration.zero,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Porta A aberta'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 8));
+      await tester.pumpAndSettle();
+      expect(find.text('Porta A aberta'), findsNothing);
+      expect(store.banner, isNull);
+    });
+
+    testWidgets('reconnects after a drop and lists what was missed once', (
+      tester,
+    ) async {
+      final api = _FakeNotificationsApi();
+      final store = await _pump(tester, notifications: api);
+      final listsBefore = api.lists;
+
+      api.drop();
+      await tester.pump();
+      // Created while the stream was down.
+      api.stored.add(fresh());
+      await tester.pump(AppStore.reconnectDelay(1));
+      await tester.pumpAndSettle();
+
+      expect(api.connections, 2);
+      expect(api.lists, greaterThan(listsBefore));
+      expect(store.notifications.where((n) => n.id == 'n-new'), hasLength(1));
+      expect(store.unreadCount, 3);
+      expect(store.banner, isNull, reason: 'missed ones wait in the center');
+    });
+
+    testWidgets('stops when the token is refused, and on sign-out', (
+      tester,
+    ) async {
+      final api = _FakeNotificationsApi();
+      final store = await _pump(tester, notifications: api);
+
+      api.refuse();
+      await tester.pump(const Duration(minutes: 1));
+      expect(api.connections, 1);
+
+      store.signOut();
+      await tester.pumpAndSettle();
+      expect(store.notifications, isEmpty);
+      expect(store.unreadCount, 0);
+    });
+
+    testWidgets('keeps a notification received while the list loads', (
+      tester,
+    ) async {
+      final api = _FakeNotificationsApi();
+      final store = await _pump(tester, notifications: api);
+
+      api.listGate = Completer();
+      final refreshed = store.refreshNotifications();
+      await tester.pump();
+      api.send(fresh());
+      await tester.pump();
+      api.listGate!.complete();
+      await tester.runAsync(() => refreshed);
+      await tester.pumpAndSettle();
+
+      expect(store.notifications.where((n) => n.id == 'n-new'), hasLength(1));
+    });
+
+    testWidgets('reads from the banner after the list was reloaded', (
+      tester,
+    ) async {
+      final api = _FakeNotificationsApi();
+      final store = await _pump(tester, notifications: api);
+      api.send(fresh());
+      await tester.pumpAndSettle();
+
+      await store.refreshNotifications();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancelado'));
+      await tester.pumpAndSettle();
+
+      expect(api.read, ['n-new']);
+      expect(store.unreadCount, 2);
+    });
+
+    test('waits longer after each drop, up to 30 seconds', () {
+      expect(AppStore.reconnectDelay(1), const Duration(seconds: 5));
+      expect(AppStore.reconnectDelay(3), const Duration(seconds: 15));
+      expect(AppStore.reconnectDelay(9), const Duration(seconds: 30));
+    });
   });
 
   group('C1 sign in', () {

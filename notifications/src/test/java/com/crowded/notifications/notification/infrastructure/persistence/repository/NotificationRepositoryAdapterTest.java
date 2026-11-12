@@ -13,6 +13,8 @@ import com.crowded.notifications.notification.domain.model.Recipient;
 import com.crowded.notifications.notification.infrastructure.persistence.entity.NotificationEntity;
 import com.crowded.notifications.notification.infrastructure.persistence.mapper.NotificationPersistenceMapperImpl;
 import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -71,5 +73,51 @@ class NotificationRepositoryAdapterTest {
     when(rows.insertIfAbsent(any())).thenReturn(0);
 
     assertThat(notifications.addIfAbsent(notification)).isFalse();
+  }
+
+  @Test
+  void readsANotificationWithItsStamps() {
+    Instant delivered = Instant.parse("2026-11-12T10:01:00Z");
+    Instant read = Instant.parse("2026-11-12T10:02:00Z");
+    NotificationEntity row = new NotificationPersistenceMapperImpl().toEntity(notification);
+    row.setDeliveredAt(delivered);
+    row.setReadAt(read);
+    when(rows.findById(notification.getId())).thenReturn(Optional.of(row));
+    when(rows.findByUserIdOrderByCreatedAtDescIdDesc(notification.getUserId()))
+        .thenReturn(List.of(row));
+    when(rows.countByUserIdAndReadAtIsNull(notification.getUserId())).thenReturn(3L);
+
+    Notification found = notifications.findById(notification.getId()).orElseThrow();
+
+    assertThat(found)
+        .extracting(
+            Notification::getId,
+            Notification::getUserId,
+            Notification::getTitle,
+            Notification::getBody,
+            Notification::getDeduplicationKey,
+            Notification::getDeliveredAt,
+            Notification::getReadAt)
+        .containsExactly(
+            notification.getId(),
+            notification.getUserId(),
+            notification.getTitle(),
+            notification.getBody(),
+            notification.getDeduplicationKey(),
+            delivered,
+            read);
+    assertThat(notifications.findByRecipient(notification.getUserId())).containsExactly(found);
+    assertThat(notifications.countUnread(notification.getUserId())).isEqualTo(3);
+    assertThat(notifications.findById(UUID.randomUUID())).isEmpty();
+  }
+
+  @Test
+  void savesTheDeliveryAndReadingTimes() {
+    Instant read = Instant.parse("2026-11-12T10:02:00Z");
+    notification.markRead(read);
+
+    notifications.saveStamps(notification);
+
+    verify(rows).stamp(notification.getId(), null, read);
   }
 }

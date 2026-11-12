@@ -1,6 +1,6 @@
 # Crowded Notifications
 
-Notifications service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). It turns Core's `NotificationRequested` messages into notifications for the official changes; the notification center, the live stream and the other types come with their stories.
+Notifications service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). It turns Core's `NotificationRequested` messages into notifications for the official changes, and serves each participant's notification center and live stream; the other types come with their stories.
 
 - **Responsibility:** fan-out to connected users, preferences, deduplication, the notification center and live banners (SSE); push to the mobile app later.
 - **Owns (writes):** notifications, device tokens.
@@ -19,6 +19,13 @@ For an official change (`OFFICIAL_CHANGE`), the service reads the change from Co
 
 - **Once per participant (NFR-003):** the `deduplication_key` is the participant plus the message's `messageId`, and a notification whose key exists is skipped, so a redelivered message notifies no one twice.
 - **Retries and dead letters (NFR-004):** a failed message is retried after 5 s, 15 s and 30 s, then rejected into `notifications.dlq`. A message that cannot succeed, because it is not valid JSON or its type has no text yet, goes there at once. The message is acknowledged only after its notifications are committed.
+
+## Notification center and live stream
+
+The API is in the [API Outline](../docs/deliverables/api-outline.md#notification-center-notifications); the router serves it under `/api/notifications/`. Every endpoint needs a token, and a participant only ever sees and reads their own notifications (SR-003).
+
+- **Center:** `GET /notifications` lists them newest first with the event's name, read from Core's `event`, and the unread count; `POST /notifications/{id}/read` stamps `read_at` once.
+- **Live stream (ADR 0007):** `GET /notifications/stream` is a server-sent event stream. When a message stores new notifications, each one is announced after the transaction commits on the Redis channel `notifications:created`, which every instance subscribes to; the instance holding the recipient's streams sends it and stamps `delivered_at` the first time. A notification that already existed is not announced again, so a redelivered message shows no second banner. A comment every 25 s keeps idle connections open, and the stream ends when the token expires or the service stops; the client reconnects and fetches what it missed from the center.
 
 ## Stack
 

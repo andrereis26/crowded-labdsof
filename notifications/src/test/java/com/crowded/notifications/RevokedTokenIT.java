@@ -31,8 +31,7 @@ class RevokedTokenIT extends IntegrationTest {
     Instant revokedAt = Instant.now();
     String earlier = token(user, revokedAt.minusSeconds(5));
     String later = token(user, revokedAt.plusMillis(1));
-    // Accepted: no endpoint answers the path yet, so 404, not 401.
-    assertThat(get(earlier)).isEqualTo(404);
+    assertThat(get(earlier)).isEqualTo(200);
 
     redis
         .opsForValue()
@@ -42,7 +41,7 @@ class RevokedTokenIT extends IntegrationTest {
             Duration.ofMinutes(5));
 
     assertThat(get(earlier)).isEqualTo(401);
-    assertThat(get(later)).isEqualTo(404);
+    assertThat(get(later)).isEqualTo(200);
   }
 
   private int get(String token) throws IOException, InterruptedException {
