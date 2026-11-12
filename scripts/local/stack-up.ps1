@@ -79,6 +79,12 @@ if ($Pull) {
         $image = "crowded/${service}:local"
         Write-Step "Building $image"
         docker build --quiet --tag $image (Join-Path $Root $service) | Out-Null
+        # Deployed by a tag made from the image id: Swarm keeps a service running
+        # while its image reference is unchanged, so a rebuilt image needs a new
+        # tag, and an unchanged one keeps its tag and its containers.
+        $id = (Get-NativeOutput docker @('image', 'inspect', '--format', '{{.Id}}', $image)).Trim() -replace '^sha256:', ''
+        $image = "crowded/${service}:local-$($id.Substring(0, 12))"
+        docker tag "crowded/${service}:local" $image
         $stackEnvironment["$(ConvertTo-UpperName $service)_IMAGE"] = $image
     }
 }
@@ -161,12 +167,33 @@ while ($true) {
         if (-not $replicas -or $replicas -like '*completed*') { continue }
         $running, $desired = ($replicas -split ' ')[0] -split '/'
         if ($running -ne $desired) { $pending += "$($name.Substring($StackName.Length + 1))($replicas)" }
+        # A service moving to a new image still counts its old task as running.
+        $update = (Get-NativeOutput docker @('service', 'inspect', '--format', '{{if .UpdateStatus}}{{.UpdateStatus.State}}{{end}}', $name)).Trim()
+        if ($update -eq 'updating') { $pending += "$($name.Substring($StackName.Length + 1))(updating)" }
     }
     if (-not $pending) { break }
     if ((Get-Date) -ge $deadline) {
         Exit-WithError "not healthy after ${timeoutSeconds}s: $($pending -join ' '). See scripts/local/status.ps1 and logs.ps1 <service>."
     }
     Start-Sleep -Seconds 5
+}
+
+# Tags of earlier builds, now unused: an image a container still uses keeps its.
+if (-not $Pull) {
+    foreach ($service in $ImageServices) {
+        $current = $stackEnvironment["$(ConvertTo-UpperName $service)_IMAGE"]
+        foreach ($tag in (Get-NativeOutput docker @('image', 'ls', "crowded/$service", '--format', '{{.Tag}}')) -split "`n") {
+            $tag = $tag.Trim()
+            $old = "crowded/${service}:$tag"
+            # Swarm keeps the stopped containers of earlier tasks, which still use theirs.
+            if ($tag -like 'local-*' -and $old -ne $current -and
+                -not (Get-NativeOutput docker @('ps', '--all', '--quiet', '--filter', "ancestor=$old"))) {
+                [void](Test-Native docker @('image', 'rm', $old))
+            }
+        }
+    }
+    # A tag that could not be removed is not a failure of the deployment.
+    $global:LASTEXITCODE = 0
 }
 
 Write-Output @"
