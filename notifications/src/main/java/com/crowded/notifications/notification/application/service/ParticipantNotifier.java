@@ -20,8 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Notifies the participants connected to an event of an official change (FR-013, FR-075), once per
- * participant however often the request arrives (NFR-003).
+ * Notifies the participants connected to an event of an official change, once per participant
+ * however often the request arrives.
  */
 @Service
 public class ParticipantNotifier {

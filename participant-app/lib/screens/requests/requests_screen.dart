@@ -9,7 +9,7 @@ import '../shared/shell.dart';
 import '../shared/ticket_card.dart';
 
 /// P17 · Pedidos da organização: yes/no requests and ideas the
-/// organizer asks the event's participants for (#47).
+/// organizer asks the event's participants for.
 class RequestsScreen extends StatelessWidget {
   const RequestsScreen({super.key, required this.eventId});
 

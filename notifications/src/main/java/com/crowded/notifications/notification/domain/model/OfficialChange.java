@@ -6,8 +6,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * An official change that Core recorded (FR-016). The new date and time stay in the change, which
- * the clients read and show in the participant's time zone; the notification only says what kind of
+ * An official change that Core recorded. The new date and time stay in the change, which the
+ * clients read and show in the participant's time zone; the notification only says what kind of
  * change it is. Notifications only read it: Core owns it.
  */
 public final class OfficialChange {
@@ -94,8 +94,8 @@ public final class OfficialChange {
 
   /**
    * What the notification of this change tells a participant: what kind of change it is, the new
-   * venue, and, when they have a ticket, whether it is still valid and where to ask for a refund
-   * (FR-075). The organization's message comes last, on its own line.
+   * venue, and, when they have a ticket, whether it is still valid and where to ask for a refund.
+   * The organization's message comes last, on its own line.
    */
   public NotificationText describeFor(Recipient recipient) {
     List<String> facts = new ArrayList<>();

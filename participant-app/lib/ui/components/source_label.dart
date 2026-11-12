@@ -4,7 +4,7 @@ import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 import 'app_tag.dart';
 
-/// Information older than this shows "Desatualizado" (FR-033).
+/// Information older than this shows "Desatualizado".
 const staleAfter = Duration(minutes: 20);
 
 /// "agora", "há 5 min", "há 2 h", "há 3 dias".
@@ -43,8 +43,8 @@ String formatSource(
 bool isStale(DateTime updatedAt, {DateTime? now}) =>
     (now ?? DateTime.now()).difference(updatedAt) >= staleAfter;
 
-/// Source and last-update time shown next to every piece of information
-/// (FR-032), with a "Desatualizado" tag after 20 minutes (FR-033).
+/// Source and last-update time shown next to every piece of information,
+/// with a "Desatualizado" tag after 20 minutes.
 class SourceLabel extends StatelessWidget {
   const SourceLabel({
     super.key,

@@ -7,7 +7,7 @@ import '../../ui/ui.dart';
 import '../shared/shell.dart';
 
 /// P21 · Código de acesso: joins a public event by scanning the QR code on
-/// its posters or typing its access code (FR-085). An unknown code reveals
+/// its posters or typing its access code. An unknown code reveals
 /// no event.
 class AccessCodeScreen extends StatefulWidget {
   const AccessCodeScreen({super.key});

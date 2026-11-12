@@ -6,7 +6,7 @@
 #
 # The default passwords are for this throwaway database on 127.0.0.1 only.
 # scripts/local/infra-up.sh runs this file with the values of .env instead;
-# the deployed environments get theirs from Doppler (SR-008).
+# the deployed environments get theirs from Doppler.
 name: crowded-database
 
 services:

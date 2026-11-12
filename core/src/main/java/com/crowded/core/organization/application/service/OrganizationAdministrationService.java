@@ -22,8 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * An administrator's management of organizations (FR-087): a festival that subscribes to Crowded
- * gets its organization from the Crowded team instead of registering itself. Audited (SR-006).
+ * An administrator's management of organizations: a festival that subscribes to Crowded gets its
+ * organization from the Crowded team instead of registering itself. Audited.
  */
 @Service
 public class OrganizationAdministrationService {

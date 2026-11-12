@@ -13,7 +13,7 @@ import '../shared/shell.dart';
 /// On the web the code shows for two minutes after the password (P19).
 const _webRevealSeconds = 120;
 
-/// P19 · Código de entrada (#91). The app shows it straight away, also
+/// P19 · Código de entrada. The app shows it straight away, also
 /// offline; the website asks for the password first and hides it again
 /// after two minutes.
 class EntryCodeScreen extends StatefulWidget {

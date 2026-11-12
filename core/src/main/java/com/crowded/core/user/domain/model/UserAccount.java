@@ -9,17 +9,17 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * A user's account with its credentials (FR-039, FR-043, FR-087): the aggregate root of the user
- * module. It changes only through its methods, which keep its invariants:
+ * A user's account with its credentials: the aggregate root of the user module. It changes only
+ * through its methods, which keep its invariants:
  *
  * <ul>
  *   <li>a member belongs to an organization and has a name; other roles belong to none;
- *   <li>an account that must change its password has a temporary password that expires (SR-022).
+ *   <li>an account that must change its password has a temporary password that expires.
  * </ul>
  */
 public final class UserAccount {
 
-  /** A temporary password works for 7 days (SR-022). */
+  /** A temporary password works for 7 days. */
   public static final Duration TEMPORARY_PASSWORD_LIFETIME = Duration.ofDays(7);
 
   /** The longest member name. */
@@ -71,7 +71,7 @@ public final class UserAccount {
     this.lastSignedInAt = lastSignedInAt;
   }
 
-  /** A new participant: the only role anyone can register for (FR-043). */
+  /** A new participant: the only role anyone can register for. */
   public static UserAccount registerParticipant(Email email, String passwordHash, Instant now) {
     return new UserAccount(
         UUID.randomUUID(),
@@ -88,8 +88,7 @@ public final class UserAccount {
   }
 
   /**
-   * A new member of {@code organizationId}, created by an administrator with a temporary password
-   * (FR-087, SR-022).
+   * A new member of {@code organizationId}, created by an administrator with a temporary password.
    *
    * @throws RuleViolationException when the name is blank or longer than 120 characters
    */
@@ -148,7 +147,7 @@ public final class UserAccount {
    *
    * @param passwordMatches whether the password given matched this account's hash
    * @throws NotAuthenticatedException when the password is wrong or the account is deactivated
-   * @throws NotAllowedException when the account still has its temporary password (FR-088)
+   * @throws NotAllowedException when the account still has its temporary password
    */
   public void signIn(boolean passwordMatches, Instant now) {
     if (!passwordMatches || !active) {
@@ -162,7 +161,7 @@ public final class UserAccount {
   }
 
   /**
-   * Deactivates the account: it can no longer sign in (FR-087, SR-001).
+   * Deactivates the account: it can no longer sign in.
    *
    * @return false when it already was inactive
    */
@@ -187,7 +186,7 @@ public final class UserAccount {
     return true;
   }
 
-  /** Replaces the password with a temporary one that expires in 7 days (FR-087, SR-022). */
+  /** Replaces the password with a temporary one that expires in 7 days. */
   public void resetPassword(String temporaryPasswordHash, Instant now) {
     passwordHash = Objects.requireNonNull(temporaryPasswordHash, "temporaryPasswordHash");
     mustChangePassword = true;
@@ -237,22 +236,22 @@ public final class UserAccount {
     return email;
   }
 
-  /** The password's one-way hash with salt (SR-013), never the password. */
+  /** The password's one-way hash with salt, never the password. */
   public String getPasswordHash() {
     return passwordHash;
   }
 
-  /** False once an administrator deactivated the account (FR-087). */
+  /** False once an administrator deactivated the account. */
   public boolean isActive() {
     return active;
   }
 
-  /** True while the account has a temporary password (FR-088). */
+  /** True while the account has a temporary password. */
   public boolean isMustChangePassword() {
     return mustChangePassword;
   }
 
-  /** When the temporary password stops working (SR-022), or null. */
+  /** When the temporary password stops working, or null. */
   public Instant getTemporaryPasswordExpiresAt() {
     return temporaryPasswordExpiresAt;
   }

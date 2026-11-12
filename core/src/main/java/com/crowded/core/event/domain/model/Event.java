@@ -9,9 +9,8 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * An event, as far as official changes need it; #36 adds the rest. Its state changes only through
- * {@link #publishChange}, which applies the rules of an official change (FR-016, FR-072, FR-074,
- * FR-075).
+ * An event, as far as official changes need it. Its state changes only through {@link
+ * #publishChange}, which applies the rules of an official change.
  */
 public final class Event {
 
@@ -155,7 +154,7 @@ public final class Event {
     return new EventState(EventStatus.RELOCATED, state.schedule(), venue);
   }
 
-  /** Critical: cancellation, postponement, venue or start-time change; else a warning (FR-074). */
+  /** Critical: cancellation, postponement, venue or start-time change; else a warning. */
   private Severity severity(ChangeType type, EventState after) {
     if (type == ChangeType.TIME_CHANGE
         && after.schedule().start().equals(state.schedule().start())) {

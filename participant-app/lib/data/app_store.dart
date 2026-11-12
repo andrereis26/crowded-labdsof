@@ -8,8 +8,8 @@ import 'demo_data.dart';
 import 'models.dart';
 
 /// App state for the participant screens. Registration and sign-in go to
-/// Core (#59); the events and notifications are [DemoData] until their APIs
-/// are wired in (#148). Screens read it with `AppStore.of(context)` and
+/// Core; the events and notifications are [DemoData] until their APIs
+/// are wired in. Screens read it with `AppStore.of(context)` and
 /// rebuild when it changes.
 class AppStore extends ChangeNotifier {
   AppStore({DateTime Function()? clock, AuthApi? auth, this._session})
@@ -50,7 +50,7 @@ class AppStore extends ChangeNotifier {
   static AppStore of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppStoreScope>()!.notifier!;
 
-  // Account (C0, C1, C3): registration and sign-in in Core (#59). The token
+  // Account (C0, C1, C3): registration and sign-in in Core. The token
   // stays in memory, so reloading the app signs the participant out.
 
   AuthSession? _session;
@@ -123,7 +123,7 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Deletes the account and its personal data (C3, FR-071). Reports stay,
+  /// Deletes the account and its personal data (C3). Reports stay,
   /// without a link to the account.
   void deleteAccount() {
     _tickets = [];
@@ -216,7 +216,7 @@ class AppStore extends ChangeNotifier {
   // Events and tickets.
 
   /// A registered event. Pages of events the participant is not connected
-  /// to are not shown (SR-020): use [isConnected].
+  /// to are not shown: use [isConnected].
   Event? eventById(String id) => _registered[id];
 
   /// Wallet order: soonest first.
@@ -238,7 +238,7 @@ class AppStore extends ChangeNotifier {
   /// When the participant left [eventId], if they did (P8).
   DateTime? leftAt(String eventId) => _left[eventId];
 
-  /// Connects to a public event with its access code (P21, FR-085).
+  /// Connects to a public event with its access code (P21).
   /// Returns the event, or null when no public event has that code.
   Event? joinWithAccessCode(String code) {
     final normalized = code.trim().toUpperCase();
@@ -252,7 +252,7 @@ class AppStore extends ChangeNotifier {
     return event;
   }
 
-  /// Removes a ticket or leaves a public event (FR-008): its page is no
+  /// Removes a ticket or leaves a public event: its page is no
   /// longer shown.
   void leaveEvent(String eventId) {
     _tickets.removeWhere((t) => t.event.id == eventId);
@@ -415,7 +415,7 @@ class AppStore extends ChangeNotifier {
     }
     final existing = ticketFor(event.id);
     if (existing != null) {
-      // Importing the same ticket again changes nothing (FR-084).
+      // Importing the same ticket again changes nothing.
       lastImported = existing;
       pendingImport = null;
       notifyListeners();

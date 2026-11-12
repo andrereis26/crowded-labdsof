@@ -14,7 +14,7 @@ export const organization = {
 export type EventStatus = 'draft' | 'published' | 'live' | 'ended' | 'cancelled'
 /** Ticketed events: participants import the ticket bought elsewhere, matched
  * by the event code printed on it. Public events: no ticket, participants
- * join with the access code or its QR code (FR-085). */
+ * join with the access code or its QR code. */
 export type EventKind = 'ticketed' | 'public'
 
 export interface OrgEvent {
@@ -763,7 +763,7 @@ export function demoAlerts(now: Date): SentAlert[] {
   ]
 }
 
-/** Stand-in for the AI drafting service (FR-042) until it exists: turns the
+/** Stand-in for the AI drafting service until it exists: turns the
  * organizer's description into a title and a clear message. */
 export function draftAlert(description: string): { title: string; message: string } {
   const text = description.trim().replace(/\s+/g, ' ')

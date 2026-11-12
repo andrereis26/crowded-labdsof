@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stops the infrastructure of infra-up.sh and deletes its data (#111). Apps
+# Stops the infrastructure of infra-up.sh and deletes its data. Apps
 # still running from source lose their connections: stop them with stop.sh.
 # Usage: scripts/local/infra-down.sh
 # Windows twin: scripts/local/infra-down.ps1

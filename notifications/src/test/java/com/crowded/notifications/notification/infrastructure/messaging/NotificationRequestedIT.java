@@ -28,9 +28,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Core's {@code NotificationRequested}, published to RabbitMQ as Core's outbox relay does, becomes
- * one notification per connected participant (FR-013, FR-075), once (NFR-003), and a message that
- * keeps failing ends in the dead-letter queue (NFR-004). Uses the demo data
- * (database/seed/R__demo_data.sql).
+ * one notification per connected participant, once, and a message that keeps failing ends in the
+ * dead-letter queue. Uses the demo data (database/seed/R__demo_data.sql).
  */
 class NotificationRequestedIT extends IntegrationTest {
 

@@ -1,4 +1,4 @@
-# Repository-wide security checks: committed secrets (SR-008) and known
+# Repository-wide security checks: committed secrets and known
 # vulnerabilities or misconfigurations in dependencies and Dockerfiles.
 # Pull requests, pushes to main (the merged code is checked again, ADR 0011)
 # and a weekly run.

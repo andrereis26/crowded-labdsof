@@ -94,7 +94,7 @@ class _EventPageData {
   int get daysToGo => daysBetween(now, event.start);
   bool get hasEntryCode => ticket?.hasEntryCode ?? false;
 
-  /// Estimates shown to participants: not low confidence (FR-058).
+  /// Estimates shown to participants: not low confidence.
   List<ParticipantEstimate> get visibleEstimates => isEventDay && !offline
       ? event.estimates
             .where((e) => e.confidence != ConfidenceLevel.low)
@@ -114,7 +114,7 @@ class _EventPageData {
     return shell.reportAction(context);
   }
 
-  /// "Remover bilhete" or "Sair do evento" (FR-008).
+  /// "Remover bilhete" or "Sair do evento".
   Future<void> showMoreOptions(BuildContext context) async {
     final label = ticket != null ? 'Remover bilhete' : 'Sair do evento';
     final leave = await showAppBottomSheet<bool>(

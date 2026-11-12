@@ -41,7 +41,7 @@ GoRouter buildRouter({
     final atSignIn = state.matchedLocation == '/entrar';
     if (!store.signedIn) return atSignIn ? null : '/entrar';
     if (atSignIn) return '/eventos';
-    // Event pages are only shown to connected participants (SR-020).
+    // Event pages are only shown to connected participants.
     final eventId = state.pathParameters['id'];
     if (state.matchedLocation.startsWith('/evento/') &&
         eventId != null &&

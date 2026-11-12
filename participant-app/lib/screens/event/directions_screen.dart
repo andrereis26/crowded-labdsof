@@ -10,7 +10,7 @@ import 'event_widgets.dart';
 import 'map_preview.dart';
 
 /// P18 · Como chegar ao local: route to the entrance and live transport
-/// options (#57).
+/// options.
 class DirectionsScreen extends StatelessWidget {
   const DirectionsScreen({super.key, required this.eventId});
 

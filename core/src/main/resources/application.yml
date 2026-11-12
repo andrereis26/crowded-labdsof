@@ -47,7 +47,7 @@ crowded:
     private-key-location: ${JWT_PRIVATE_KEY_LOCATION}
     # Short-lived (ADR 0005); there is no refresh token, so the user signs in again.
     lifetime: 1h
-  # Per-user limits (SR-015, ADR 0004); NGINX keeps a coarse per-IP one.
+  # Per-user limits (ADR 0004); NGINX keeps a coarse per-IP one.
   rate-limits:
     sign-ins-per-email: 10 # per 15 minutes
     sign-ins-per-address: 30 # per 15 minutes
@@ -62,6 +62,6 @@ management:
   endpoint:
     health:
       # /actuator/health/liveness and /readiness: the container health check
-      # calls readiness (ADR 0011). #70 adds the dependencies' details.
+      # calls readiness (ADR 0011).
       probes:
         enabled: true

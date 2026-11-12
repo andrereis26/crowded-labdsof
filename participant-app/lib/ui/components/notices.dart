@@ -20,7 +20,7 @@ enum AlertBannerKind {
     AppColors.warning,
   ),
 
-  /// IPMA warnings for the event's district (FR-036). Yellow only shows on
+  /// IPMA warnings for the event's district. Yellow only shows on
   /// the event page; orange and red are also notified.
   weatherYellow(
     'AVISO AMARELO · IPMA',
@@ -37,7 +37,7 @@ enum AlertBannerKind {
     AppColors.orange,
   ),
 
-  /// Red warnings are critical (FR-074).
+  /// Red warnings are critical.
   weatherRed(
     'CRÍTICO · AVISO VERMELHO · IPMA',
     Icons.warning_amber_rounded,
@@ -70,7 +70,7 @@ enum AlertBannerKind {
   final Color foreground;
 }
 
-/// Alert or official change banner: icon, label, message and origin (#41).
+/// Alert or official change banner: icon, label, message and origin.
 class AlertBanner extends StatelessWidget {
   const AlertBanner({
     super.key,
@@ -144,7 +144,7 @@ class AlertBanner extends StatelessWidget {
   }
 }
 
-/// Notice that always accompanies participant estimates (FR-059).
+/// Notice that always accompanies participant estimates.
 class EstimateNotice extends StatelessWidget {
   const EstimateNotice({
     super.key,

@@ -14,8 +14,8 @@ function codeOf(error: unknown): string {
 }
 
 /** `now` is fixed at start-up so demo times stay stable between renders.
- * Sign-in (#59) and the platform administration (A2, #140) go to Core; the
- * organizer pages still show demo data until #148. */
+ * Sign-in and the platform administration (A2) go to Core; the
+ * organizer pages still show demo data. */
 export default function App({
   now,
   signIn = signInWithCore,
@@ -32,7 +32,7 @@ export default function App({
   const [organizations, setOrganizations] = useState<AdminOrganization[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [loadError, setLoadError] = useState('')
-  // C4 runs on demo data until #141 adds the new-password API.
+  // C4 runs on demo data until Core has the new-password API.
   const [newPasswordMembers, setNewPasswordMembers] = useState<Member[]>(() => demoMembers(now))
   const administrator = session?.role === 'ADMINISTRATOR'
   const api = useMemo(

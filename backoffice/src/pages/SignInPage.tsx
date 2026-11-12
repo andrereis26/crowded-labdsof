@@ -86,7 +86,7 @@ function ErrorBox({ title, children }: { title: string; children: ReactNode }) {
 }
 
 /** C1 · Entrar, for organization members and administrators, with Core
- * (`POST /auth/login`, #59). */
+ * (`POST /auth/login`). */
 export function SignInPage({
   signIn,
   onSignedIn,
@@ -111,8 +111,7 @@ export function SignInPage({
       onSignedIn(result.session)
       navigate(result.session.role === 'ADMINISTRATOR' ? '/organizacoes' : '/organizacao/eventos')
     } else if (result.kind === 'new-password') {
-      // Core accepts the temporary password only to set a new one, which C4
-      // does with #141.
+      // Core accepts the temporary password only to set a new one, in C4.
       setError({
         title: 'Primeiro acesso',
         text: 'Esta conta ainda tem a palavra-passe temporária. Escolher uma nova ainda não está disponível.',

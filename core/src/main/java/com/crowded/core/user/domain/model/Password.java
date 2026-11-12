@@ -4,8 +4,7 @@ import com.crowded.core.shared.domain.exception.RuleViolationException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * A password a user chose, before it is hashed (SR-013). Never logged: {@link #toString()} hides
- * it.
+ * A password a user chose, before it is hashed. Never logged: {@link #toString()} hides it.
  *
  * @param value the password as typed
  */

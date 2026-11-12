@@ -7,8 +7,8 @@ import '../../ui/ui.dart';
 import '../shared/shell.dart';
 
 /// P2 · Importar bilhete: from the ticket PDF or a screenshot or photo of
-/// it. The QR code and the event code are read from the file (FR-003,
-/// FR-070); events without tickets are joined with an access code (P21).
+/// it. The QR code and the event code are read from the file; events
+/// without tickets are joined with an access code (P21).
 class ImportScreen extends StatelessWidget {
   const ImportScreen({super.key});
 

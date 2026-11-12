@@ -4,7 +4,7 @@
 -- them), after the migrations.
 --
 -- Every person, address and message is invented. The demo accounts all use
--- the password in database/README.md, stored only as a bcrypt hash (SR-013),
+-- the password in database/README.md, stored only as a bcrypt hash,
 -- in the {id} format of Spring Security's DelegatingPasswordEncoder.
 --
 -- Fixed ids, so the apps and tests can point at them, and ON CONFLICT DO

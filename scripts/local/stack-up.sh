@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Runs the whole system on this machine as the production environment runs it
-# (#111): the Swarm stack of deployment/docker-compose.swarm.yml, with the
+# Runs the whole system on this machine as the production environment runs it:
+# the Swarm stack of deployment/docker-compose.swarm.yml, with the
 # local override stack.local.yml. It
 #   1. turns on single-node Swarm if it is off, on 127.0.0.1;
 #   2. builds every app's image from the working copy (the participant app
@@ -15,7 +15,7 @@
 # Running it again updates what changed. stack-down.sh removes it all.
 # Usage: scripts/local/stack-up.sh [--pull] [--with-observability]
 #   --pull                 use the images tagged main instead of building them
-#   --with-observability   add Prometheus, Loki, Alloy and Grafana (from #70)
+#   --with-observability   add Prometheus, Loki, Alloy and Grafana
 # Windows twin: scripts/local/stack-up.ps1
 
 set -euo pipefail
@@ -41,7 +41,7 @@ TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-600}"
 stack_files=(-c "${STACK_FILE}" -c "${LOCAL_DIR}/stack.local.yml")
 if [[ "${observability}" == true ]]; then
   [[ -f "${OBSERVABILITY_FILE}" ]] \
-    || die "--with-observability needs ${OBSERVABILITY_FILE#"${ROOT}"/}, which #70 adds."
+    || die "--with-observability needs ${OBSERVABILITY_FILE#"${ROOT}"/}, which this checkout does not have yet."
   stack_files+=(-c "${OBSERVABILITY_FILE}")
 fi
 

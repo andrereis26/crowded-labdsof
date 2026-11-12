@@ -32,8 +32,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * A member publishes a change through the API (#37): Core records it once, updates the event,
- * audits it and publishes {@code NotificationRequested} through the outbox to RabbitMQ.
+ * A member publishes a change through the API: Core records it once, updates the event, audits it
+ * and publishes {@code NotificationRequested} through the outbox to RabbitMQ.
  */
 @ResourceLock(IntegrationTest.SHARED_STATE)
 class EventChangeIT extends IntegrationTest {

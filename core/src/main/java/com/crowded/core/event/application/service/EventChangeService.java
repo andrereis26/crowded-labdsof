@@ -72,7 +72,7 @@ public class EventChangeService {
    * change was published before, returns that change and records nothing.
    *
    * @throws NotFoundException when the event does not exist
-   * @throws NotAllowedException when the user is not an active member of its organization (SR-001)
+   * @throws NotAllowedException when the user is not an active member of its organization
    * @throws RuleViolationException when the change is invalid, or the event already has these
    *     values without a change that set them
    */

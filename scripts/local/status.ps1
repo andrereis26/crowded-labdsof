@@ -1,7 +1,7 @@
 #Requires -Version 7.4
 <#
 .SYNOPSIS
-Shows what runs locally (#111).
+Shows what runs locally.
 
 .DESCRIPTION
 The services of the stack (stack-up.ps1) and the gateway, the infrastructure

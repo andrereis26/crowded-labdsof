@@ -1,7 +1,7 @@
 #Requires -Version 7.4
 <#
 .SYNOPSIS
-Stops the infrastructure of infra-up.ps1 and deletes its data (#111).
+Stops the infrastructure of infra-up.ps1 and deletes its data.
 
 .DESCRIPTION
 Apps still running from source lose their connections: stop them with stop.ps1.

@@ -1,7 +1,7 @@
 #Requires -Version 7.4
 <#
 .SYNOPSIS
-Follows the log of one service (#111).
+Follows the log of one service.
 
 .DESCRIPTION
 The first that runs of:

@@ -1,7 +1,7 @@
 #Requires -Version 7.4
 <#
 .SYNOPSIS
-Stops an app that start.ps1 runs from source, with every process it started (#111).
+Stops an app that start.ps1 runs from source, with every process it started.
 
 .DESCRIPTION
 Windows has no signal that asks a console process to stop, so the processes

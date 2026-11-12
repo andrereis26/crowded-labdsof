@@ -16,7 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
-/** A token Core revoked in Redis is refused here too (ADR 0004, #140). */
+/** A token Core revoked in Redis is refused here too (ADR 0004). */
 @ResourceLock(IntegrationTest.SHARED_STATE)
 class RevokedTokenIT extends IntegrationTest {
 

@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Records actions in the audit log (SR-006), in the caller's transaction. */
+/** Records actions in the audit log, in the caller's transaction. */
 @Service
 public class AuditLog {
 

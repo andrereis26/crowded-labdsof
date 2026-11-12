@@ -3,8 +3,8 @@ package com.crowded.core.user.domain.service;
 import java.util.random.RandomGenerator;
 
 /**
- * Temporary passwords an administrator gives a member (FR-087), such as {@code T7q-mK4-v9Px}: ten
- * random characters without the ones easily confused when read aloud or copied (0, O, 1, l, I).
+ * Temporary passwords an administrator gives a member, such as {@code T7q-mK4-v9Px}: ten random
+ * characters without the ones easily confused when read aloud or copied (0, O, 1, l, I).
  */
 public final class TemporaryPasswords {
 

@@ -22,13 +22,13 @@ public final class User {
    * A stored user.
    *
    * @param organizationId the organization of a member; null for other roles
-   * @param active false once an administrator deactivated the account (FR-087)
+   * @param active false once an administrator deactivated the account
    */
   public static User restore(UUID id, UUID organizationId, Role role, boolean active) {
     return new User(id, organizationId, role, active);
   }
 
-  /** Whether this user is an active member of the given organization (SR-001). */
+  /** Whether this user is an active member of the given organization. */
   public boolean isMemberOf(UUID organization) {
     return active
         && role == Role.ORGANIZATION_MEMBER
@@ -36,7 +36,7 @@ public final class User {
         && organization.equals(organizationId);
   }
 
-  /** Whether this user is an active platform administrator (FR-087). */
+  /** Whether this user is an active platform administrator. */
   public boolean isAdministrator() {
     return active && role == Role.ADMINISTRATOR;
   }

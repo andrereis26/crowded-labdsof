@@ -22,8 +22,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Platform administration through the HTTP API (#140): organizations and members, the temporary
- * password shown once, deactivation that revokes the member's tokens, and the audit log.
+ * Platform administration through the HTTP API: organizations and members, the temporary password
+ * shown once, deactivation that revokes the member's tokens, and the audit log.
  */
 @ResourceLock(IntegrationTest.SHARED_STATE)
 class AdminIT extends IntegrationTest {

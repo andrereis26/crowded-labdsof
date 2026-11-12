@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Drops the local database and creates it again, migrated and with the demo
-# data when SEED_DEMO_DATA is true (#111), in the stack of stack-up.sh, or else
+# data when SEED_DEMO_DATA is true, in the stack of stack-up.sh, or else
 # in the infrastructure of infra-up.sh. The services' open connections are
 # closed; their connection pools open new ones.
 # Usage: scripts/local/reset-db.sh

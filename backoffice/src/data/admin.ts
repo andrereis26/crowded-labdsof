@@ -1,7 +1,7 @@
 /** Platform administration (A2) and sign-in (C1, C4), backed by demo data
  * until the Core API exists. Administrators create the organizations and their
  * members; a member gets a temporary password, valid for 7 days, and chooses a
- * new one at the first sign-in (FR-087, FR-088). */
+ * new one at the first sign-in. */
 
 import festivalImage from '../assets/festival-margens-2026.jpg'
 

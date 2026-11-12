@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Follows the log of one service (#111), the first that runs of:
+# Follows the log of one service, the first that runs of:
 #   a service of the stack (stack-up.sh), e.g. core, database, postgres;
 #   the stack's gateway: gateway;
 #   a service of the infrastructure (infra-up.sh): postgres, migrate, rabbitmq, redis;

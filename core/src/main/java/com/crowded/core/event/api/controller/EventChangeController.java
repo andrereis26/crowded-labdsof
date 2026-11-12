@@ -43,7 +43,7 @@ public class EventChangeController {
         .body(mapper.toResponse(change));
   }
 
-  /** The user is the token's subject; Core reads their role and organization (SR-001). */
+  /** The user is the token's subject; Core reads their role and organization. */
   private static UUID userId(Jwt token) {
     String subject = token.getSubject();
     try {

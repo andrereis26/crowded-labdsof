@@ -2,7 +2,7 @@
 -- before the grants in R__grants.sql, and a password changed in Doppler takes
 -- effect at the next deployment. The passwords are placeholders that the
 -- entrypoint fills from the environment (letters and digits only), never
--- stored in the repository (SR-008).
+-- stored in the repository.
 --
 -- The users can log in and nothing else: they own no schema and cannot create
 -- one, so only the migration user changes the schema (ADR 0012).

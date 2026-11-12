@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Removes what stack-up.sh created (#111): the gateway, the stack with its
+# Removes what stack-up.sh created: the gateway, the stack with its
 # networks, its volumes (the data) and its secrets. Swarm stays on; turn it off
 # with docker swarm leave --force. Running it again finds nothing to remove.
 # Usage: scripts/local/stack-down.sh

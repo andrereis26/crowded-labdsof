@@ -7,8 +7,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * An official change to an event (FR-016), with the fields it changed before and after it. Only
- * {@link Event#publishChange} creates one; it never changes afterwards.
+ * An official change to an event, with the fields it changed before and after it. Only {@link
+ * Event#publishChange} creates one; it never changes afterwards.
  */
 public final class EventChange {
 

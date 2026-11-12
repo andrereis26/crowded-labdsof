@@ -10,8 +10,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Chooses who to notify among the participants connected to an event (FR-013, FR-041, FR-065).
- * Pure, so every rule is a unit test.
+ * Chooses who to notify among the participants connected to an event. Pure, so every rule is a unit
+ * test.
  */
 public final class RecipientSelector {
 

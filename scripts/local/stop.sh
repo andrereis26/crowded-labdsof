@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Stops an app that start.sh runs from source, with every process it started
-# (#111): SIGTERM first, so Spring Boot shuts down gracefully, then SIGKILL
+# Stops an app that start.sh runs from source, with every process it started:
+# SIGTERM first, so Spring Boot shuts down gracefully, then SIGKILL
 # after STOP_TIMEOUT_SECONDS. An app that does not run is left as it is.
 # Usage: scripts/local/stop.sh <core|jobs|notifications|backoffice|participant-app>
 # Windows twin: scripts/local/stop.ps1

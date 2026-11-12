@@ -8,7 +8,7 @@ import '../../utils/pt_format.dart';
 import '../shared/shell.dart';
 
 /// P20 · As tuas contribuições: the participant's reports and confirmations
-/// and what happened to each one (FR-038). Only the participant sees it.
+/// and what happened to each one. Only the participant sees it.
 class ContributionsScreen extends StatefulWidget {
   const ContributionsScreen({super.key});
 

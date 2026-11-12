@@ -6,7 +6,7 @@ import com.crowded.notifications.notification.domain.model.Notification;
 public interface NotificationRepository {
 
   /**
-   * Stores {@code notification} unless one with its deduplication key exists (NFR-003).
+   * Stores {@code notification} unless one with its deduplication key exists.
    *
    * @return whether it was stored
    */

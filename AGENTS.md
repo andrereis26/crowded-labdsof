@@ -144,6 +144,17 @@
   (`gh issue view <n> --comments`): deferred checkboxes left there by other stories
   are part of its scope, so list them with the acceptance criteria. Before closing
   the story, do or move each one.
+- Code comments, in every app, script and config: say what the code is for and
+  why, in a sentence or two; never repeat what the code already says.
+  - Cite no requirement or story: no FR-, NFR-, TR-, SR- or US- ids, no `#123`
+    issue numbers, no "#70 adds this later". They go stale and mean nothing
+    when reading the code; that trace belongs in the issue, the pull request
+    and `docs/`. The only reference allowed is an ADR, as `(ADR 0011)`.
+  - No long blocks: a short summary per class or method; design detail goes to
+    the README or an ADR. A script's header may keep its usage and
+    environment variables.
+  - Never edit an applied `database/migrations/V*.sql`, comments included:
+    Flyway's checksum check fails on every deployed database.
 - Deliverable and commits: a commit on a feature branch. Messages follow
   `type(#issue): message` with type `feat|fix|docs|chore|ci` (README, DoD-03).
 - Worktrees: use one for parallel or delegated work, at `.claude/worktrees/<name>`.

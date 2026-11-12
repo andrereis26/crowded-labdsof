@@ -16,7 +16,7 @@ const _rules = [
 ];
 
 /// P14 · Estimativas de participantes: reports confirmed by people at the
-/// venue (#77). Low-confidence estimates are not shown (FR-058).
+/// venue. Low-confidence estimates are not shown.
 class EstimatesScreen extends StatelessWidget {
   const EstimatesScreen({super.key, required this.eventId});
 

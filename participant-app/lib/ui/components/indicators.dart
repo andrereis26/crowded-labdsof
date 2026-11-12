@@ -4,7 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
-/// Confidence of a participant estimate (FR-058).
+/// Confidence of a participant estimate.
 enum ConfidenceLevel {
   low('Confiança baixa', 1, AppColors.background, AppColors.inkSecondary),
   medium('Confiança média', 2, AppColors.warningSoft, AppColors.warning),
@@ -23,7 +23,7 @@ enum ConfidenceLevel {
   final Color foreground;
 }
 
-/// Pill with signal bars and text: never colour alone (#77).
+/// Pill with signal bars and text: never colour alone.
 ///
 /// Low-confidence estimates are not shown to participants; screens should
 /// hide the estimate instead of showing [ConfidenceLevel.low].
@@ -75,7 +75,7 @@ class ConfidenceIndicator extends StatelessWidget {
   }
 }
 
-/// Four crowd levels (FR-018).
+/// Four crowd levels.
 enum CrowdLevel {
   low('Baixa', AppColors.crowdLow),
   moderate('Moderada', AppColors.crowdModerate),
@@ -92,7 +92,7 @@ enum CrowdLevel {
 }
 
 /// "Lotação Moderada" with a four-segment meter: the level name and the
-/// number of filled segments, so colour is never the only cue (#51).
+/// number of filled segments, so colour is never the only cue.
 /// Screen readers also hear the level number.
 class CrowdLevelIndicator extends StatelessWidget {
   const CrowdLevelIndicator({

@@ -20,7 +20,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 /**
  * An RSA key pair made for one test run and written as PEM files, so no key is committed. It signs
- * the tokens of the integration tests, as Core will once it issues them (#59).
+ * the tokens of the integration tests, as Core will once it issues them.
  */
 record TestJwtKeys(Path publicKey, Path privateKey, KeyPair pair) {
 

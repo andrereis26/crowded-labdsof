@@ -1,7 +1,7 @@
 #Requires -Version 7.4
 <#
 .SYNOPSIS
-Removes what stack-up.ps1 created (#111).
+Removes what stack-up.ps1 created.
 
 .DESCRIPTION
 The gateway, the stack with its networks, its volumes (the data) and its

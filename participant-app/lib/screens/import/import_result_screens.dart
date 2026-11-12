@@ -13,7 +13,7 @@ void _toMyEvents(BuildContext context) => context.go('/eventos');
 void _uploadAnother(BuildContext context) => context.go('/importar');
 
 /// P2a · Bilhete adicionado: the event code matched a registered event, so
-/// the ticket was added without a review step (FR-003). Shows the event
+/// the ticket was added without a review step. Shows the event
 /// data the organization registered.
 class TicketAddedScreen extends StatelessWidget {
   const TicketAddedScreen({super.key});
@@ -132,7 +132,7 @@ class _DetailRow extends StatelessWidget {
 
 /// P2b · Código do evento: the QR code was read but the event code was not,
 /// or the code that was read matches no event. The participant types the
-/// code printed on the ticket (FR-004); it is pre-filled with what was read.
+/// code printed on the ticket; it is pre-filled with what was read.
 class EventCodeScreen extends StatefulWidget {
   const EventCodeScreen({super.key});
 
@@ -248,8 +248,8 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
   }
 }
 
-/// P2b · errors: no QR code (FR-070), event not on Crowded (FR-083) or the
-/// ticket is linked to another account (FR-084). Nothing is stored.
+/// P2b · errors: no QR code, event not on Crowded or the
+/// ticket is linked to another account. Nothing is stored.
 class ImportErrorScreen extends StatelessWidget {
   const ImportErrorScreen({super.key, required this.outcome});
 
