@@ -77,6 +77,12 @@ else
     image="crowded/${service}:local"
     log "Building ${image}"
     docker build --quiet --tag "${image}" "${ROOT}/${service}" >/dev/null
+    # Deployed by a tag made from the image id: Swarm keeps a service running
+    # while its image reference is unchanged, so a rebuilt image needs a new tag,
+    # and an unchanged one keeps its tag and its containers.
+    id="$(docker image inspect --format '{{.Id}}' "${image}")"
+    image="crowded/${service}:local-$(printf '%s' "${id#sha256:}" | cut -c1-12)"
+    docker tag "crowded/${service}:local" "${image}"
     export "$(upper_name "${service}")_IMAGE=${image}"
   done
 fi
@@ -163,6 +169,9 @@ while true; do
     desired="${replicas#*/}"
     desired="${desired%% *}"
     [[ "${running}" == "${desired}" ]] || pending="${pending} ${name#"${STACK_NAME}"_}(${replicas})"
+    # A service moving to a new image still counts its old task as running.
+    update="$(docker service inspect --format '{{if .UpdateStatus}}{{.UpdateStatus.State}}{{end}}' "${name}")"
+    [[ "${update}" == updating ]] && pending="${pending} ${name#"${STACK_NAME}"_}(updating)"
   done < <(docker stack services "${STACK_NAME}" --format '{{.Name}} {{.Replicas}}')
   [[ -z "${pending}" ]] && break
   if (($(date +%s) >= deadline)); then
@@ -171,6 +180,23 @@ while true; do
   sleep 5
 done
 
+# Tags of earlier builds, now unused. Swarm keeps the stopped containers of
+# earlier tasks, which still use theirs.
+if [[ "${pull}" != true ]]; then
+  for service in ${IMAGE_SERVICES}; do
+    current="$(printenv "$(upper_name "${service}")_IMAGE")"
+    for tag in $(docker image ls "crowded/${service}" --format '{{.Tag}}'); do
+      old="crowded/${service}:${tag}"
+      case "${tag}" in
+        local-*)
+          if [[ "${old}" != "${current}" && -z "$(docker ps --all --quiet --filter "ancestor=${old}")" ]]; then
+            docker image rm "${old}" >/dev/null 2>&1 || true
+          fi
+          ;;
+      esac
+    done
+  done
+fi
 cat <<EOF
 
 Crowded is running, on 127.0.0.1 only:
