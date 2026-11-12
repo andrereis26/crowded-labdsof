@@ -14,10 +14,8 @@ interface SpringDataOfficialChangeRepository extends Repository<EventChangeEntit
       value =
           """
           SELECT id AS "id", event_id AS "eventId", CAST(type AS text) AS "type",
-                 previous_value ->> 'startDateTime' AS "previousStart",
-                 new_value ->> 'startDateTime' AS "newStart",
-                 previous_value ->> 'doorsOpenAt' AS "previousDoorsOpenAt",
-                 new_value ->> 'doorsOpenAt' AS "newDoorsOpenAt",
+                 (new_value -> 'startDateTime') IS NOT NULL AS "startChanged",
+                 (new_value -> 'doorsOpenAt') IS NOT NULL AS "doorsOpenChanged",
                  previous_value ->> 'venueName' AS "previousVenueName",
                  new_value ->> 'venueName' AS "newVenueName",
                  new_value ->> 'address' AS "newAddress",
