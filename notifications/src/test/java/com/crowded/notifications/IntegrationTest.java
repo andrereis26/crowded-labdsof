@@ -65,5 +65,8 @@ public abstract class IntegrationTest {
     registry.add("REDIS_HOST", REDIS::getHost);
     registry.add("REDIS_PORT", () -> REDIS.getMappedPort(6379));
     registry.add("JWT_PUBLIC_KEY_LOCATION", JWT_KEYS::publicKeyLocation);
+    // The same number of retries as in production, without waiting 50 s for them.
+    registry.add("spring.rabbitmq.listener.simple.retry.initial-interval", () -> "50ms");
+    registry.add("spring.rabbitmq.listener.simple.retry.max-interval", () -> "200ms");
   }
 }
