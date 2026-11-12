@@ -1,7 +1,9 @@
 package com.crowded.core.event.domain.model;
 
 import com.crowded.core.shared.domain.exception.ConflictException;
+import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
+import com.crowded.core.user.domain.model.User;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
@@ -63,6 +65,34 @@ public final class Event {
             () ->
                 new RuleViolationException(
                     "NOTHING_CHANGES", "The event already has these values."));
+  }
+
+  /**
+   * Lets through who may see this event's page, history and live updates: an active member of the
+   * organization that owns it, or a participant connected to it by a ticket or its access code.
+   *
+   * @param connected whether {@code user} has a connection to this event
+   * @throws NotAllowedException otherwise, including after the participant left the event
+   */
+  public void checkCanBeSeenBy(User user, boolean connected) {
+    if (user.isMemberOf(organizationId) || user.isParticipant() && connected) {
+      return;
+    }
+    throw new NotAllowedException(
+        "NOT_CONNECTED", "Only participants connected to this event can see it.");
+  }
+
+  /**
+   * Lets through who may manage this event: an active member of the organization that owns it.
+   *
+   * @throws NotAllowedException otherwise
+   */
+  public void checkCanBeManagedBy(User user) {
+    if (!user.isMemberOf(organizationId)) {
+      throw new NotAllowedException(
+          "NOT_EVENT_ORGANIZATION",
+          "Only active members of the organization that owns this event can change it.");
+    }
   }
 
   /** What {@code request} would do to this event, without doing it; empty when nothing changes. */

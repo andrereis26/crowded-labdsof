@@ -28,6 +28,11 @@ class EventRepositoryAdapter implements EventRepository {
   }
 
   @Override
+  public Optional<Event> findById(UUID id) {
+    return events.findById(id).map(mapper::toDomain);
+  }
+
+  @Override
   public void save(Event event) {
     // The row read (and locked) by findByIdForUpdate, from the same transaction.
     EventEntity entity =

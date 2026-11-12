@@ -36,6 +36,11 @@ public final class User {
         && organization.equals(organizationId);
   }
 
+  /** Whether this user is a participant, who connects to events with a ticket or a code. */
+  public boolean isParticipant() {
+    return active && role == Role.PARTICIPANT;
+  }
+
   /** Whether this user is an active platform administrator. */
   public boolean isAdministrator() {
     return active && role == Role.ADMINISTRATOR;

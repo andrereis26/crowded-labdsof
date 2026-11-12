@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.crowded.core.audit.application.service.AuditLog;
+import com.crowded.core.connection.domain.repository.ConnectionRepository;
 import com.crowded.core.event.application.dto.PublishChangeCommand;
 import com.crowded.core.event.application.dto.PublishedChange;
 import com.crowded.core.event.domain.model.ChangeType;
@@ -71,7 +72,7 @@ class EventChangeServiceTest {
       new EventChangeService(
           events,
           changes,
-          users,
+          new EventAccess(events, users, mock(ConnectionRepository.class), meters),
           organizations,
           notifications,
           audit,
