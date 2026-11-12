@@ -4,7 +4,10 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-/** A notification for one participant. Created once, never changed. */
+/**
+ * A notification for one participant. Its content never changes; only when it was first delivered
+ * on a live stream and first read are stamped.
+ */
 public final class Notification {
 
   private final UUID id;
@@ -15,6 +18,8 @@ public final class Notification {
   private final NotificationText text;
   private final String deduplicationKey;
   private final Instant createdAt;
+  private Instant deliveredAt;
+  private Instant readAt;
 
   private Notification(
       UUID id,
@@ -24,15 +29,19 @@ public final class Notification {
       UUID causeId,
       NotificationText text,
       String deduplicationKey,
-      Instant createdAt) {
+      Instant createdAt,
+      Instant deliveredAt,
+      Instant readAt) {
     this.id = Objects.requireNonNull(id, "id");
     this.userId = Objects.requireNonNull(userId, "userId");
     this.eventId = Objects.requireNonNull(eventId, "eventId");
     this.type = Objects.requireNonNull(type, "type");
-    this.causeId = Objects.requireNonNull(causeId, "causeId");
+    this.causeId = causeId;
     this.text = Objects.requireNonNull(text, "text");
     this.deduplicationKey = Objects.requireNonNull(deduplicationKey, "deduplicationKey");
     this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+    this.deliveredAt = deliveredAt;
+    this.readAt = readAt;
   }
 
   /**
@@ -53,10 +62,34 @@ public final class Notification {
         recipient.userId(),
         eventId,
         type,
-        causeId,
+        Objects.requireNonNull(causeId, "causeId"),
         text,
         deduplicationKey(recipient.userId(), messageId),
-        now);
+        now,
+        null,
+        null);
+  }
+
+  /**
+   * A notification as stored.
+   *
+   * @param causeId the EventChange, Alert or Incident behind it; null when there is none
+   * @param deliveredAt when it was first sent on a live stream; null if never
+   * @param readAt when its recipient first opened it; null if unread
+   */
+  public static Notification restore(
+      UUID id,
+      UUID userId,
+      UUID eventId,
+      NotificationType type,
+      UUID causeId,
+      NotificationText text,
+      String deduplicationKey,
+      Instant createdAt,
+      Instant deliveredAt,
+      Instant readAt) {
+    return new Notification(
+        id, userId, eventId, type, causeId, text, deduplicationKey, createdAt, deliveredAt, readAt);
   }
 
   /**
@@ -83,7 +116,10 @@ public final class Notification {
     return type;
   }
 
-  /** The EventChange, Alert or Incident behind it. */
+  /**
+   * The EventChange, Alert or Incident behind it; null for a type without one, such as a
+   * recognition.
+   */
   public UUID getCauseId() {
     return causeId;
   }
@@ -102,6 +138,39 @@ public final class Notification {
 
   public Instant getCreatedAt() {
     return createdAt;
+  }
+
+  /** When it was first sent on a live stream; null if never. */
+  public Instant getDeliveredAt() {
+    return deliveredAt;
+  }
+
+  /** When its recipient first opened it; null if unread. */
+  public Instant getReadAt() {
+    return readAt;
+  }
+
+  /** Whether {@code userId} is its recipient: nobody else may see or read it. */
+  public boolean isFor(UUID userId) {
+    return this.userId.equals(userId);
+  }
+
+  public boolean isRead() {
+    return readAt != null;
+  }
+
+  /** Marks it read at {@code at}, unless it was read before: the first time is kept. */
+  public void markRead(Instant at) {
+    if (readAt == null) {
+      readAt = Objects.requireNonNull(at, "at");
+    }
+  }
+
+  /** Marks it delivered at {@code at}, unless it was delivered before: the first time is kept. */
+  public void markDelivered(Instant at) {
+    if (deliveredAt == null) {
+      deliveredAt = Objects.requireNonNull(at, "at");
+    }
   }
 
   @Override

@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 
 import '../ui/ui.dart';
@@ -6,27 +9,34 @@ import '../utils/pt_format.dart';
 import 'auth_api.dart';
 import 'demo_data.dart';
 import 'models.dart';
+import 'notifications_api.dart';
 
 /// App state for the participant screens. Registration and sign-in go to
-/// Core; the events and notifications are [DemoData] until their APIs
-/// are wired in. Screens read it with `AppStore.of(context)` and
-/// rebuild when it changes.
+/// Core and the notifications to Notifications; the events are [DemoData]
+/// until their APIs are wired in. Screens read it with `AppStore.of(context)`
+/// and rebuild when it changes.
 class AppStore extends ChangeNotifier {
-  AppStore({DateTime Function()? clock, AuthApi? auth, this._session})
-    : _clock = clock ?? DateTime.now,
-      _auth = auth ?? HttpAuthApi() {
+  AppStore({
+    DateTime Function()? clock,
+    AuthApi? auth,
+    NotificationsApi? notifications,
+    this._session,
+  }) : _clock = clock ?? DateTime.now,
+       _auth = auth ?? HttpAuthApi(),
+       _notificationsApi = notifications ?? HttpNotificationsApi() {
     final demo = DemoData(now);
     _registered = {for (final e in demo.registered) e.id: e};
     _tickets = demo.tickets;
     _public = demo.publicIds;
     _left = demo.leftEvents;
-    _notifications = demo.notifications;
+    _requests = demo.yesNoRequests;
     _preferences = NotificationPreferences()
       ..perEvent[demo.jazzNoParque.id] = EventNotificationLevel.officialOnly;
     _confirmations = demo.confirmationRequests;
     _recognitions = demo.recognitions;
     _ideas = demo.ideaPrompts;
     _contributions = demo.contributions;
+    if (_session != null) _startNotifications();
   }
 
   final DateTime Function() _clock;
@@ -35,7 +45,7 @@ class AppStore extends ChangeNotifier {
   late List<Ticket> _tickets;
   late Set<String> _public;
   late Map<String, DateTime> _left;
-  late List<AppNotification> _notifications;
+  late List<AppNotification> _requests;
   late NotificationPreferences _preferences;
   late List<ConfirmationRequest> _confirmations;
   late List<Recognition> _recognitions;
@@ -77,6 +87,7 @@ class AppStore extends ChangeNotifier {
         return 'Esta conta é de uma organização. Entra no backoffice.';
       }
       _session = session;
+      _startNotifications();
       notifyListeners();
       return null;
     } on AuthException catch (e) {
@@ -119,6 +130,7 @@ class AppStore extends ChangeNotifier {
   };
 
   void signOut() {
+    _stopNotifications();
     _session = null;
     notifyListeners();
   }
@@ -129,7 +141,8 @@ class AppStore extends ChangeNotifier {
     _tickets = [];
     _public = {};
     _left = {};
-    _notifications = [];
+    _stopNotifications();
+    _requests = [];
     _confirmations = [];
     _recognitions = [];
     _contributions = [];
@@ -261,24 +274,169 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Notifications.
+  // Notifications (P8): the participant's notifications in Notifications,
+  // kept current by its live stream while signed in (ADR 0007). After the
+  // stream drops, the app reconnects and fetches the list again, so what
+  // was created meanwhile appears once.
 
+  final NotificationsApi _notificationsApi;
+  List<AppNotification> _notifications = [];
+  final Set<String> _readPending = {};
+  final Set<String> _receivedLive = {};
+  StreamSubscription<LiveEvent>? _live;
+  Timer? _reconnect;
+  int _failures = 0;
+  bool _notificationsFailed = false;
+  AppNotification? _banner;
+
+  /// Newest first.
   List<AppNotification> get notifications =>
       [..._notifications]..sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
 
   int get unreadCount => _notifications.where((n) => !n.read).length;
 
-  void markRead(AppNotification notification) {
-    if (notification.read) return;
-    notification.read = true;
+  /// Whether the last attempt to load the notifications failed.
+  bool get notificationsFailed => _notificationsFailed;
+
+  /// The newest notification received live, shown as a banner until it is
+  /// opened or dismissed.
+  AppNotification? get banner => _banner;
+
+  void dismissBanner() {
+    if (_banner == null) return;
+    _banner = null;
     notifyListeners();
   }
 
+  /// How long to wait before reconnecting after [failures] drops in a row.
+  static Duration reconnectDelay(int failures) =>
+      Duration(seconds: math.min(30, 5 * math.max(1, failures)));
+
+  void _startNotifications() {
+    _failures = 0;
+    refreshNotifications();
+    _connect();
+  }
+
+  void _stopNotifications() {
+    _reconnect?.cancel();
+    _reconnect = null;
+    _live?.cancel();
+    _live = null;
+    _notifications = [];
+    _readPending.clear();
+    _receivedLive.clear();
+    _notificationsFailed = false;
+    _banner = null;
+  }
+
+  void _connect() {
+    final token = _session?.accessToken;
+    if (token == null) return;
+    _live?.cancel();
+    _live = _notificationsApi
+        .live(token)
+        .listen(
+          _onLive,
+          onError: _onLiveEnded,
+          onDone: () => _onLiveEnded(null),
+          cancelOnError: true,
+        );
+  }
+
+  void _onLive(LiveEvent event) {
+    switch (event) {
+      case LiveOpened():
+        // Anything created while the stream was closed is in the list.
+        _failures = 0;
+        refreshNotifications();
+      case LiveNotificationEvent(:final notification):
+        _receive(notification);
+    }
+  }
+
+  void _onLiveEnded(Object? error) {
+    _live = null;
+    if (!signedIn) return;
+    // A refused token ends the session's stream: signing in again opens it.
+    if (error is NotificationsException && error.code == 'UNAUTHORIZED') {
+      return;
+    }
+    _failures++;
+    _reconnect?.cancel();
+    _reconnect = Timer(reconnectDelay(_failures), _connect);
+  }
+
+  /// A notification from the live stream: added and shown as a banner,
+  /// unless it is already listed.
+  void _receive(AppNotification notification) {
+    if (_notifications.any((n) => n.id == notification.id)) return;
+    _receivedLive.add(notification.id);
+    _notifications = [..._notifications, notification];
+    _banner = notification;
+    notifyListeners();
+  }
+
+  /// Loads the notification center again, keeping the ones marked read
+  /// and the ones received live while the request was on its way.
+  Future<void> refreshNotifications() async {
+    final token = _session?.accessToken;
+    if (token == null) return;
+    try {
+      final page = await _notificationsApi.list(token);
+      if (_session?.accessToken != token) return;
+      final listed = {for (final n in page.notifications) n.id};
+      for (final n in page.notifications) {
+        if (_readPending.contains(n.id)) n.read = true;
+      }
+      _notifications = [
+        ...page.notifications,
+        ..._notifications.where(
+          (n) => _receivedLive.contains(n.id) && !listed.contains(n.id),
+        ),
+      ];
+      _notificationsFailed = false;
+    } on NotificationsException {
+      if (_session?.accessToken != token) return;
+      _notificationsFailed = true;
+    }
+    notifyListeners();
+  }
+
+  /// Marks [notification] read, here at once and then in Notifications. If
+  /// that fails, the next refresh shows it unread again.
+  void markRead(AppNotification notification) {
+    if (_banner?.id == notification.id) _banner = null;
+    // The banner and the list may hold different copies after a refresh.
+    final listed = _notifications
+        .where((n) => n.id == notification.id)
+        .firstOrNull;
+    final wasRead = notification.read && (listed?.read ?? true);
+    notification.read = true;
+    listed?.read = true;
+    notifyListeners();
+    final token = _session?.accessToken;
+    if (wasRead || listed == null || token == null) return;
+    _readPending.add(notification.id);
+    _notificationsApi
+        .markRead(token, notification.id)
+        .catchError((Object _) {})
+        .whenComplete(() => _readPending.remove(notification.id));
+  }
+
+  /// Answers a yes/no request of the organization (P17).
   void answerRequest(AppNotification notification, bool answer) {
     notification
       ..answer = answer
       ..read = true;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _reconnect?.cancel();
+    _live?.cancel();
+    super.dispose();
   }
 
   // Reports, confirmations and contributions (P11–P15, P20).
@@ -357,9 +515,8 @@ class AppStore extends ChangeNotifier {
   // Organizer requests (P17).
 
   /// Yes/no requests sent to the participants of [eventId].
-  List<AppNotification> yesNoRequestsFor(String eventId) => notifications
-      .where((n) => n.eventId == eventId && n.kind == NotificationKind.request)
-      .toList();
+  List<AppNotification> yesNoRequestsFor(String eventId) =>
+      _requests.where((n) => n.eventId == eventId).toList();
 
   List<IdeaPrompt> ideasFor(String eventId) =>
       _ideas.where((i) => i.eventId == eventId).toList();

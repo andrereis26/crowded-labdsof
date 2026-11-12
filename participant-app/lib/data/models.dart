@@ -294,14 +294,22 @@ class Ticket {
 }
 
 enum NotificationKind {
-  alert,
-  request,
+  alert('Alerta da organização'),
+  request('Pedido da organização'),
 
   /// Asks to confirm another participant's report (P13).
-  confirmation,
-  recognition,
-  officialChange,
-  weather,
+  confirmation('Pedido de confirmação'),
+  recognition('Reconhecimento'),
+  officialChange('Alteração oficial'),
+  weather('Aviso meteorológico'),
+
+  /// What happened to a report the participant sent.
+  reportStatus('Estado do reporte');
+
+  const NotificationKind(this.typeLabel);
+
+  /// Read by screen readers on the notification icon.
+  final String typeLabel;
 }
 
 enum NotificationFilter {
@@ -363,6 +371,13 @@ class AppNotification {
 
   /// Answer to a request ("Sim" / "Não"), once given.
   bool? answer;
+
+  /// Where opening it goes: its screen, the official change, or the event.
+  String get target =>
+      route ??
+      (changeId != null
+          ? '/evento/$eventId/alteracao/$changeId'
+          : '/evento/$eventId');
 
   bool matches(NotificationFilter filter) => switch (filter) {
     NotificationFilter.all => true,

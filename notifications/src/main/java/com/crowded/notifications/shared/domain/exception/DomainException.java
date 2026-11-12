@@ -3,8 +3,8 @@ package com.crowded.notifications.shared.domain.exception;
 import java.io.Serial;
 
 /**
- * Something the domain refuses to do, with a {@code code} that the logs and, later, the API can
- * switch on, as in Core.
+ * Something the domain refuses to do, with a {@code code} that the logs and the API switch on, as
+ * in Core.
  */
 public abstract class DomainException extends RuntimeException {
 

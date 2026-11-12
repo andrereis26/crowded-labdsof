@@ -20,6 +20,7 @@ import 'screens/event/left_event_screen.dart';
 import 'screens/import/access_code_screen.dart';
 import 'screens/import/import_result_screens.dart';
 import 'screens/import/import_screen.dart';
+import 'screens/notifications/live_banner.dart';
 import 'screens/notifications/notifications_screen.dart';
 import 'screens/report/recognition_screen.dart';
 import 'screens/report/report_result_screen.dart';
@@ -240,6 +241,11 @@ class _CrowdedAppState extends State<CrowdedApp> {
         supportedLocales: const [Locale('pt', 'PT')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         routerConfig: _router,
+        // Live banners show above every page (P8).
+        builder: (context, child) => LiveBannerHost(
+          onOpen: (location) => _router.push(location),
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
     );
   }

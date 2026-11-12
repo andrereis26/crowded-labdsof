@@ -1,7 +1,6 @@
 import 'package:flutter/painting.dart';
 
 import '../ui/ui.dart';
-import '../utils/pt_format.dart';
 import 'models.dart';
 
 /// Demo content that mirrors the mockups, with dates relative to [now] so
@@ -337,17 +336,9 @@ class DemoData {
     mercadoOutono.id: _ago(const Duration(days: 5)),
   };
 
-  List<AppNotification> get notifications => [
-    AppNotification(
-      id: 'n-alert',
-      kind: NotificationKind.alert,
-      eventId: festivalMargens.id,
-      eventName: festivalMargens.name,
-      typeLabel: 'Alerta da organização',
-      title: 'Porta B fechada. Use a Porta C.',
-      source: 'Organização Margens',
-      receivedAt: _ago(const Duration(minutes: 3)),
-    ),
+  /// Yes/no requests of the organization (P17). The notification center
+  /// lists the participant's real notifications from Notifications.
+  List<AppNotification> get yesNoRequests => [
     AppNotification(
       id: 'n-request',
       kind: NotificationKind.request,
@@ -361,68 +352,6 @@ class DemoData {
       route: '/evento/${festivalMargens.id}/pedidos',
       urgent: true,
       responses: 412,
-    ),
-    AppNotification(
-      id: 'n-confirm',
-      kind: NotificationKind.confirmation,
-      eventId: festivalMargens.id,
-      eventName: festivalMargens.name,
-      typeLabel: 'Pedido de confirmação',
-      title: 'Fila longa na Porta C. Confirmas?',
-      body: 'Um participante perto de ti reportou-a há 4 min.',
-      receivedAt: _ago(const Duration(minutes: 4)),
-      route: '/evento/${festivalMargens.id}?confirmar=c-porta-c',
-      read: true,
-    ),
-    AppNotification(
-      id: 'n-recognition',
-      kind: NotificationKind.recognition,
-      eventId: festivalMargens.id,
-      eventName: festivalMargens.name,
-      typeLabel: 'Reconhecimento',
-      title: 'O teu reporte ajudou',
-      body: 'A organização resolveu a falta de água no bar principal.',
-      receivedAt: _ago(const Duration(minutes: 25)),
-      route: '/reconhecimento/r-agua',
-      read: true,
-    ),
-    AppNotification(
-      id: 'n-change',
-      kind: NotificationKind.officialChange,
-      eventId: tempestade.id,
-      eventName: tempestade.name,
-      typeLabel: 'Alteração oficial',
-      title:
-          'Adiado para ${formatWeekdayDate(tempestade.start)} · '
-          '${formatTime(tempestade.start)}',
-      body: 'Era ${formatWeekdayDate(_day(8, 21, 30))}.',
-      source: 'Organização',
-      receivedAt: _ago(const Duration(hours: 2)),
-      changeId: 'tempestade-date',
-      read: true,
-    ),
-    AppNotification(
-      id: 'n-weather',
-      kind: NotificationKind.weather,
-      eventId: jazzNoParque.id,
-      eventName: jazzNoParque.name,
-      typeLabel: 'Aviso meteorológico',
-      title: 'Aviso laranja: chuva forte no Porto amanhã',
-      body: 'Das 18:00 às 23:59, no distrito do evento.',
-      source: 'IPMA',
-      receivedAt: _ago(const Duration(hours: 6)),
-      read: true,
-    ),
-    AppNotification(
-      id: 'n-left',
-      kind: NotificationKind.officialChange,
-      eventId: mercadoOutono.id,
-      eventName: mercadoOutono.name,
-      typeLabel: 'Alteração oficial',
-      title: 'Abertura adiada para as 11:00',
-      source: 'Organização',
-      receivedAt: _ago(const Duration(days: 6)),
-      read: true,
     ),
   ];
 

@@ -188,7 +188,8 @@
   - Local identity: both apps sign in with Core (`POST /auth/login`) and the
     database's demo accounts (`database/README.md`); the screens after sign-in
     still use demo data (`backoffice/src/data/`, `participant-app/lib/data/`)
-    until #148.
+    until #148, except the participant app's notification center, which reads
+    Notifications.
 - Graph: auto
 - Hooks: `lefthook.yml` (pre-commit formats staged files and runs gitleaks; pre-push
   lints changed projects and runs gitleaks). `lefthook install` writes to the
