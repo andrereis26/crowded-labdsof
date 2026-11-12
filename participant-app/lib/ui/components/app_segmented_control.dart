@@ -68,7 +68,7 @@ class AppSegmentedControl<T> extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.label.copyWith(
-              color: isSelected ? AppColors.ink : AppColors.inkSecondary,
+              color: isSelected ? AppColors.ink : AppColors.segmentLabel,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             ),
           ),

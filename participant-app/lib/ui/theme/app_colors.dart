@@ -13,6 +13,10 @@ abstract final class AppColors {
   static const border = Color(0xFFE3E3E8);
   static const borderStrong = Color(0xFFC2C2C9);
   static const segmentTrack = Color(0xFFE5E5EB);
+
+  /// Labels of the segments not selected: [inkSecondary] is too light on
+  /// [segmentTrack] for WCAG AA (4.2:1); this one reaches 5.1:1.
+  static const segmentLabel = Color(0xFF5E5E66);
   static const skeleton = Color(0xFFDBDBE0);
   static const inactive = Color(0xFFCCCCD1);
   static const scrim = Color(0x73000000);
