@@ -33,10 +33,15 @@ pre-commit:
       run: npx --no-install prettier --write --ignore-unknown {staged_files}
       stage_fixed: true
 
+    # Git exports GIT_DIR (and GIT_INDEX_FILE) to hooks, and in a linked worktree
+    # GIT_DIR points at this repository. Flutter's dart and flutter launchers then
+    # read the Crowded commit as their own SDK revision: they rebuild the Flutter
+    # tool and report version 0.0.0-unknown, so pub get fails. Clear Git's
+    # repository variables for the Flutter commands only.
     - name: format participant-app
       root: participant-app/
       glob: "participant-app/**/*.dart"
-      run: dart format {staged_files}
+      run: unset $(git rev-parse --local-env-vars) && dart format {staged_files}
       stage_fixed: true
 
     # Runs after formatting, on what will actually be committed.
@@ -69,7 +74,8 @@ pre-push:
     - name: lint participant-app
       root: participant-app/
       glob: "participant-app/**"
-      run: flutter analyze --fatal-infos
+      # Clears Git's repository variables, as in "format participant-app".
+      run: unset $(git rev-parse --local-env-vars) && flutter analyze --fatal-infos
 
     - name: gitleaks
       run: scripts/gitleaks-pre-push.sh {1}
