@@ -33,4 +33,16 @@ class UserTest {
                 .isMemberOf(ORGANIZATION))
         .isFalse();
   }
+
+  @Test
+  void isAParticipantOnlyWithThatRoleAndActive() {
+    assertThat(User.restore(UUID.randomUUID(), null, Role.PARTICIPANT, true).isParticipant())
+        .isTrue();
+    assertThat(User.restore(UUID.randomUUID(), null, Role.PARTICIPANT, false).isParticipant())
+        .isFalse();
+    assertThat(
+            User.restore(UUID.randomUUID(), ORGANIZATION, Role.ORGANIZATION_MEMBER, true)
+                .isParticipant())
+        .isFalse();
+  }
 }

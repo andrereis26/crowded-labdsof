@@ -67,6 +67,8 @@ Onion architecture ([ADR 0016](../docs/deliverables/adr/0016-onion-architecture-
 
 The domain is a rich model ([ADR 0017](../docs/deliverables/adr/0017-rich-domain-model.md)): an entity is a class whose factories and methods check its invariants (`UserAccount`, `Event`), a value object is a record that cannot be built invalid (`Email`, `Schedule`, `Venue`), and an application service only orchestrates. The domain uses no framework: no Spring, JPA, validation, Jackson or MapStruct. Adapters never use each other. `OnionArchitectureTest` (ArchUnit) checks these rules on every build, and that entities are classes without public constructors or setters. The `ApiExceptionHandler` turns a domain refusal into an RFC 9457 problem with its `code`. Mappers are MapStruct interfaces, generated at compile time as Spring beans. A target property a mapper leaves unmapped fails the build.
 
+**Who may see or manage an event:** every endpoint about one event starts with `EventAccess`. `viewable(userId, eventId)` returns the event to an active member of the organization that owns it or to a participant connected to it, and refuses anyone else with `403 NOT_CONNECTED`. `checkManager(userId, event)` lets through only an active member of its organization (`403 NOT_EVENT_ORGANIZATION`). The role and organization come from the database, never from the token; the rules themselves are on `Event` (`checkCanBeSeenBy`, `checkCanBeManagedBy`).
+
 ## Configuration
 
 `src/main/resources/application.yml` reads every setting from the environment, and no credentials or keys are committed (SR-008, NFR-016).

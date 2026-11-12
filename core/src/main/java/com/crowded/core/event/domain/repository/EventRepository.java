@@ -14,6 +14,9 @@ public interface EventRepository {
    */
   Optional<Event> findByIdForUpdate(UUID id);
 
+  /** The event, to read it. */
+  Optional<Event> findById(UUID id);
+
   /** Stores the event's new state. */
   void save(Event event);
 

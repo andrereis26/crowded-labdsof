@@ -14,7 +14,6 @@ import com.crowded.core.outbox.application.service.NotificationRequester;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.domain.exception.NotFoundException;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
-import com.crowded.core.user.domain.repository.UserRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
@@ -41,7 +40,7 @@ public class EventChangeService {
 
   private final EventRepository events;
   private final EventChangeRepository changes;
-  private final UserRepository users;
+  private final EventAccess access;
   private final OrganizationRepository organizations;
   private final NotificationRequester notifications;
   private final AuditLog audit;
@@ -51,7 +50,7 @@ public class EventChangeService {
   EventChangeService(
       EventRepository events,
       EventChangeRepository changes,
-      UserRepository users,
+      EventAccess access,
       OrganizationRepository organizations,
       NotificationRequester notifications,
       AuditLog audit,
@@ -59,7 +58,7 @@ public class EventChangeService {
       MeterRegistry meters) {
     this.events = events;
     this.changes = changes;
-    this.users = users;
+    this.access = access;
     this.organizations = organizations;
     this.notifications = notifications;
     this.audit = audit;
@@ -82,20 +81,7 @@ public class EventChangeService {
         events
             .findByIdForUpdate(command.eventId())
             .orElseThrow(() -> new NotFoundException("EVENT_NOT_FOUND", "There is no such event."));
-    boolean member =
-        users
-            .findById(command.userId())
-            .filter(user -> user.isMemberOf(event.getOrganizationId()))
-            .isPresent();
-    if (!member) {
-      log.warn(
-          "Refused a change to event {} by user {}: not an active member of its organization",
-          event.getId(),
-          command.userId());
-      throw new NotAllowedException(
-          "NOT_EVENT_ORGANIZATION",
-          "Only active members of the organization that owns this event can change it.");
-    }
+    access.checkManager(command.userId(), event);
 
     Organization organization =
         organizations
