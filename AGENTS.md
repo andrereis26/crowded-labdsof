@@ -79,14 +79,22 @@
   - Rich domain model (ADR 0017), never records of data with the rules
     elsewhere. Before writing a domain type, decide which kind it is:
     - Entity or aggregate root (it has an identity: a user, an event, an
-      organization): a `final class`, never a record. Private fields, no
-      setters, `equals`/`hashCode` on the id, getters named `getX()`. A private
-      constructor; static factories named after the domain
-      (`UserAccount.registerParticipant`) check every invariant, and
-      `restore(...)` rebuilds a stored one for the persistence mapper. State
-      changes are methods named after domain verbs (`deactivate()`,
-      `Event.publishChange(...)`) that check their rule and throw a domain exception;
-      never a setter or a `with*` copy that skips the rule.
+      organization): a `final class`, never a record. Private fields,
+      `equals`/`hashCode` on the id. A private constructor; static factories
+      named after the domain (`UserAccount.registerParticipant`) check every
+      invariant, and `restore(...)` rebuilds a stored one for the persistence
+      mapper.
+    - Accessors, on entities and every other class: write one only when a
+      caller or a mapper needs it, and name it for what it means. A state
+      change is a domain verb, in pairs when it toggles: a machine with an `on`
+      flag has `turnOn()` and `turnOff()`, never `setOn(boolean)`; Core has
+      `deactivate()` and `reactivate()`. Each checks its rule and throws a
+      domain exception; never a setter or a `with*` copy that skips the rule.
+      A query reads as a question or a fact (`isMemberOf(organization)`,
+      `hasTemporaryPassword()`), and `getX()` is kept for plain values a mapper
+      reads. Delete an accessor once nothing but a test uses it.
+    - No Lombok: `@Data`, `@Getter` and `@Setter` generate an accessor for every
+      field, which this rule forbids, and a value object is already a record.
     - Value object (no identity, equal by value: an email, a password, a
       schedule, a venue, coordinates): a record whose compact constructor
       validates and normalizes, so an invalid one cannot exist, plus the
@@ -106,7 +114,8 @@
     early 400: the domain checks the same rule, because jobs, consumers and
     tests create objects without the API.
   - Mapping a rich model: MapStruct maps the domain → JPA direction from the
-    getters (nested value objects with `@Mapping(source = "venue.name")`). The
+    getters (nested value objects with `@Mapping(source = "venue.name")`; a
+    query such as `hasTemporaryPassword()` with `@Mapping(expression = ...)`). The
     JPA → domain direction of an entity is a `default` method in the mapper
     interface that calls `restore(...)`; when it needs another bean (such as
     `JsonColumnConverter`), the adapter passes it as a parameter. Never widen a

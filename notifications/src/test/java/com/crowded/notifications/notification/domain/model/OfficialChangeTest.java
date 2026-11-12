@@ -148,9 +148,22 @@ class OfficialChangeTest {
 
   @Test
   void isOfTheEventItChangedAndIdentifiedByItsId() {
-    OfficialChange change = change(ChangeType.CANCELLATION, false, false);
+    UUID event = UUID.randomUUID();
+    OfficialChange change =
+        OfficialChange.restore(
+            UUID.randomUUID(),
+            event,
+            ChangeType.CANCELLATION,
+            false,
+            false,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
 
-    assertThat(change.isOf(change.getEventId())).isTrue();
+    assertThat(change.isOf(event)).isTrue();
     assertThat(change.isOf(UUID.randomUUID())).isFalse();
     assertThat(change)
         .isEqualTo(

@@ -94,7 +94,7 @@ class MemberAdministrationServiceTest {
     assertThat(member.getOrganizationId()).isEqualTo(ORGANIZATION);
     assertThat(member.getName()).isEqualTo("Rita Ferreira");
     assertThat(member.getEmail()).isEqualTo(new Email("rita@ribeira.pt"));
-    assertThat(member.isMustChangePassword()).isTrue();
+    assertThat(member.hasTemporaryPassword()).isTrue();
     assertThat(member.getTemporaryPasswordExpiresAt()).isEqualTo(NOW.plus(Duration.ofDays(7)));
     assertThat(issued.expiresAt()).isEqualTo(member.getTemporaryPasswordExpiresAt());
     assertThat(issued.userId()).isEqualTo(member.getId());
@@ -181,7 +181,7 @@ class MemberAdministrationServiceTest {
     assertThat(changed.expiresAt()).isEqualTo(NOW.plus(Duration.ofDays(7)));
     UserAccount stored = stored();
     assertThat(stored.getPasswordHash()).isEqualTo("hash:AAA-AAA-AAAA");
-    assertThat(stored.isMustChangePassword()).isTrue();
+    assertThat(stored.hasTemporaryPassword()).isTrue();
     verify(revocations).revokeIssuedBefore(member.getId(), NOW);
     verifyAudited("MEMBER_PASSWORD_RESET", member.getId());
   }

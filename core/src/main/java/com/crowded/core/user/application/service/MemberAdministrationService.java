@@ -205,7 +205,7 @@ public class MemberAdministrationService {
         account.getName(),
         account.getEmail().value(),
         account.isActive(),
-        account.isMustChangePassword(),
+        account.hasTemporaryPassword(),
         account.getTemporaryPasswordExpiresAt(),
         account.getLastSignedInAt());
   }

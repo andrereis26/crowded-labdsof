@@ -27,6 +27,7 @@ Two things led there. "Map between layers only with MapStruct" makes a record th
 Option 2, in every backend service. The rules are in the [Agent playbook](../../../AGENTS.md) (Backend architecture, Rich domain model):
 
 - **Entities and aggregate roots** are final classes with private fields, no setters and equality on their id. A private constructor; static factories named after the domain check every invariant, and `restore(...)` rebuilds a stored one. State changes are methods named after domain verbs that check their rule and throw a domain exception.
+- **Accessors** exist only where a caller or a mapper needs one, named for what they mean: `turnOn()` and `turnOff()` rather than `setOn(boolean)`, `hasTemporaryPassword()` rather than `isMustChangePassword()`. No Lombok: it generates an accessor for every field.
 - **Value objects** are records whose compact constructor validates and normalizes, so an invalid one cannot exist, with the behaviour about their value. A primitive becomes a value object as soon as something checks it.
 - **Domain events and outgoing messages** stay immutable records.
 - **Rules** live on the aggregate or a value object. A domain service holds only a rule that spans aggregates or needs a port. An application service authorizes, loads, calls domain methods, saves and runs the side effects. API Bean Validation stays as an early 400, but the domain checks the same rule.

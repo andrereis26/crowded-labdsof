@@ -81,7 +81,7 @@ class AuthServiceTest {
     assertThat(account.getRole()).isEqualTo(Role.PARTICIPANT);
     assertThat(account.getOrganizationId()).isNull();
     assertThat(account.isActive()).isTrue();
-    assertThat(account.isMustChangePassword()).isFalse();
+    assertThat(account.hasTemporaryPassword()).isFalse();
     assertThat(account.getCreatedAt()).isEqualTo(NOW);
     assertThat(user).isEqualTo(account.user());
     verify(limiter).tryAcquire("registration:address:" + ADDRESS, 5, Duration.ofHours(1));
