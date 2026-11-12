@@ -118,7 +118,7 @@ public class AuthService {
    *     sign in to set a new one
    * @throws TooManyRequestsException when the client or the email had too many attempts
    */
-  @Transactional(readOnly = true)
+  @Transactional
   public SignedIn signIn(SignInCommand command) {
     String email = normalized(command.email());
     limit(
@@ -144,6 +144,7 @@ public class AuthService {
     }
     count("crowded.auth.sign-ins", "Sign-in attempts", "signed-in");
     log.info("User {} signed in", account.id());
+    users.recordSignIn(account.id(), clock.instant());
     return new SignedIn(tokens.issue(account.id()), account.user(), false);
   }
 

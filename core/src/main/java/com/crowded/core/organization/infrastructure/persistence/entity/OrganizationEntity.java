@@ -4,9 +4,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.UUID;
 
-/** Row of {@code organization}. Maps only the columns Core reads so far. */
+/** Row of {@code organization}. */
 @Entity
 @Table(name = "organization")
 public class OrganizationEntity {
@@ -15,6 +16,12 @@ public class OrganizationEntity {
 
   @Column(nullable = false)
   private String name;
+
+  @Column(name = "created_by_user_id")
+  private UUID createdByUserId;
+
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
   public UUID getId() {
     return id;
@@ -30,5 +37,21 @@ public class OrganizationEntity {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public UUID getCreatedByUserId() {
+    return createdByUserId;
+  }
+
+  public void setCreatedByUserId(UUID createdByUserId) {
+    this.createdByUserId = createdByUserId;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  public void setCreatedAt(Instant createdAt) {
+    this.createdAt = createdAt;
   }
 }

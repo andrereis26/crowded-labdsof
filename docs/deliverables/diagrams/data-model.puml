@@ -21,25 +21,29 @@ entity "User" as User {
   * id : UUID <<PK>>
   organizationId : UUID [NULL] <<FK>>
   --
+  name : TEXT [NULL] [PERSONAL]
   email : TEXT [PERSONAL]
   passwordHash : TEXT [CREDENTIAL]
   role : role
   active : BOOLEAN
   mustChangePassword : BOOLEAN
   temporaryPasswordExpiresAt : TIMESTAMPTZ [NULL]
+  lastSignedInAt : TIMESTAMPTZ [NULL] [PERSONAL]
   createdAt : TIMESTAMPTZ
   locationConsentGranted : BOOLEAN [NULL] [PERSONAL]
 }
 
 note right of User
   [NULL] marks an optional (nullable) database column.
+  name is the member's name, given by the administrator;
+  participants register with their email only.
 end note
 
 entity "Organization" as Organization {
   * id : UUID <<PK>>
   createdByUserId : UUID [NULL] <<FK>> [PERSONAL]
   --
-  name : TEXT
+  name : TEXT <<UK>>
   createdAt : TIMESTAMPTZ
 }
 

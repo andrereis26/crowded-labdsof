@@ -4,8 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.crowded.core.event.api.mapper.EventChangeApiMapper;
-import com.crowded.core.event.application.service.EventChangeService;
+import com.crowded.core.user.api.controller.AuthController;
 import com.crowded.core.user.api.mapper.AuthApiMapper;
 import com.crowded.core.user.application.service.AuthService;
 import org.junit.jupiter.api.Test;
@@ -18,7 +17,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 // The key location only has to resolve: the mocked decoder below replaces the one built from it.
-@WebMvcTest(properties = "JWT_PUBLIC_KEY_LOCATION=file:unused.pem")
+@WebMvcTest(
+    controllers = AuthController.class,
+    properties = "JWT_PUBLIC_KEY_LOCATION=file:unused.pem")
 @Import(SecurityConfiguration.class)
 class SecurityConfigurationTest {
 
@@ -26,9 +27,7 @@ class SecurityConfigurationTest {
 
   @MockitoBean private JwtDecoder jwtDecoder;
 
-  // The slice loads every controller; their services are not part of it.
-  @MockitoBean private EventChangeService eventChangeService;
-  @MockitoBean private EventChangeApiMapper eventChangeApiMapper;
+  // The slice loads only the controller of the public endpoints; its beans are mocked.
   @MockitoBean private AuthService authService;
   @MockitoBean private AuthApiMapper authApiMapper;
 

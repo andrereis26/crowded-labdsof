@@ -66,6 +66,10 @@ class AuthIT extends IntegrationTest {
     HttpResponse<String> signedIn = signIn(email, "frase-secreta");
 
     assertThat(signedIn.statusCode()).isEqualTo(200);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT last_signed_in_at FROM app_user WHERE id = ?", Instant.class, userId))
+        .isNotNull();
     JsonNode body = json.readTree(signedIn.body());
     assertThat(body.get("mustChangePassword").asBoolean()).isFalse();
     assertThat(body.get("user").get("id").asString()).isEqualTo(userId.toString());

@@ -1,10 +1,13 @@
 package com.crowded.core.user.infrastructure.persistence.repository;
 
 import com.crowded.core.shared.domain.exception.ConflictException;
+import com.crowded.core.user.domain.model.Role;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.model.UserAccount;
 import com.crowded.core.user.domain.repository.UserRepository;
 import com.crowded.core.user.infrastructure.persistence.mapper.UserPersistenceMapper;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -28,8 +31,20 @@ class UserRepositoryAdapter implements UserRepository {
   }
 
   @Override
+  public Optional<UserAccount> findAccountById(UUID id) {
+    return users.findById(id).map(mapper::toAccount);
+  }
+
+  @Override
   public Optional<UserAccount> findAccountByEmail(String email) {
     return users.findByEmail(email).map(mapper::toAccount);
+  }
+
+  @Override
+  public List<UserAccount> findMembers() {
+    return users.findByRoleOrderByNameAsc(Role.ORGANIZATION_MEMBER).stream()
+        .map(mapper::toAccount)
+        .toList();
   }
 
   @Override
@@ -38,12 +53,18 @@ class UserRepositoryAdapter implements UserRepository {
       // Flushed now, so a second account with the same email fails here (app_user_email_key).
       users.saveAndFlush(mapper.toEntity(account));
     } catch (DataIntegrityViolationException e) {
-      throw emailTaken();
+      throw new ConflictException(
+          "EMAIL_ALREADY_REGISTERED", "There is already an account with this email.");
     }
   }
 
-  static ConflictException emailTaken() {
-    return new ConflictException(
-        "EMAIL_ALREADY_REGISTERED", "There is already an account with this email.");
+  @Override
+  public void update(UserAccount account) {
+    users.save(mapper.toEntity(account));
+  }
+
+  @Override
+  public void recordSignIn(UUID id, Instant at) {
+    users.updateLastSignedInAt(id, at);
   }
 }

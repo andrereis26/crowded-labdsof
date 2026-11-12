@@ -39,20 +39,20 @@ ON CONFLICT DO NOTHING;
 -- not yet replaced the temporary password the administrator gave them.
 INSERT INTO app_user (
   id, organization_id, email, password_hash, role, created_at, location_consent_granted,
-  active, must_change_password, temporary_password_expires_at
+  active, must_change_password, temporary_password_expires_at, name, last_signed_in_at
 ) VALUES
   ('10000000-0000-4000-8000-000000000021', '20000000-0000-4000-8000-000000000001', 'equipa@ribeira-live.test',
    '{bcrypt}$2a$10$07ZwH814lzj054wlxFyUDOZDGcmOO8u2YjP/CGcXZl8ZUAp9dg5OW', 'ORGANIZATION_MEMBER', now() - interval '85 days', NULL,
-   true, false, NULL),
+   true, false, NULL, 'Miguel Sousa', now() - interval '2 hours'),
   ('10000000-0000-4000-8000-000000000022', '20000000-0000-4000-8000-000000000002', 'geral@sons-do-minho.test',
    '{bcrypt}$2a$10$C5KIKGXFd06/3JWm1JBiYOFU2sv0tNWzpyx/l14I5RYw0Vlq1YJsa', 'ORGANIZATION_MEMBER', now() - interval '5 days', NULL,
-   true, false, NULL),
+   true, false, NULL, 'Teresa Gomes', now() - interval '1 day'),
   ('10000000-0000-4000-8000-000000000023', '20000000-0000-4000-8000-000000000001', 'antigo@ribeira-live.test',
    '{bcrypt}$2a$10$07ZwH814lzj054wlxFyUDOZDGcmOO8u2YjP/CGcXZl8ZUAp9dg5OW', 'ORGANIZATION_MEMBER', now() - interval '70 days', NULL,
-   false, false, NULL),
+   false, false, NULL, 'João Pinto', now() - interval '40 days'),
   ('10000000-0000-4000-8000-000000000024', '20000000-0000-4000-8000-000000000001', 'novo@ribeira-live.test',
    '{bcrypt}$2a$10$07ZwH814lzj054wlxFyUDOZDGcmOO8u2YjP/CGcXZl8ZUAp9dg5OW', 'ORGANIZATION_MEMBER', now() - interval '1 day', NULL,
-   true, true, now() + interval '6 days')
+   true, true, now() + interval '6 days', 'Rita Ferreira', NULL)
 ON CONFLICT DO NOTHING;
 
 -- Events, one in every state ---------------------------------------------------------

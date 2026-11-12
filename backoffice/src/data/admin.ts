@@ -195,7 +195,12 @@ export function memberStatusTag(
   if (isExpired(member, now)) {
     return { label: 'Temporária · expirada', tone: 'danger', dot: false }
   }
-  const days = Math.ceil(((member.temporaryExpiresAt?.getTime() ?? 0) - now.getTime()) / DAY)
+  // Whole days left, at least 1: `now` is fixed when the page opens, so a password
+  // issued later would otherwise read one day longer than the 7 it has.
+  const days = Math.max(
+    1,
+    Math.floor(((member.temporaryExpiresAt?.getTime() ?? 0) - now.getTime()) / DAY),
+  )
   return {
     label: `Temporária · expira em ${days} ${days === 1 ? 'dia' : 'dias'}`,
     tone: 'info',

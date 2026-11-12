@@ -88,7 +88,7 @@ class EventChangeServiceTest {
   void recordsTheChangeUpdatesTheEventAndAsksForNotifications() {
     givenEventAndMember();
     when(organizations.findById(ORGANIZATION))
-        .thenReturn(Optional.of(new Organization(ORGANIZATION, "Ribeira Live")));
+        .thenReturn(Optional.of(new Organization(ORGANIZATION, "Ribeira Live", null, NOW)));
 
     PublishedChange published = service.publish(command(CANCELLATION));
 

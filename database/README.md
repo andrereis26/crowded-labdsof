@@ -60,10 +60,10 @@ Every demo account's password is `crowded-demo`. The database stores it only as 
 | Email | Role |
 |---|---|
 | `admin@crowded.test` | Administrator |
-| `equipa@ribeira-live.test` | Member of Ribeira Live |
-| `novo@ribeira-live.test` | Member of Ribeira Live who must still replace their temporary password (`crowded-demo`, expires in 6 days) |
-| `antigo@ribeira-live.test` | Deactivated member of Ribeira Live: cannot sign in |
-| `geral@sons-do-minho.test` | Member of Associação Sons do Minho |
+| `equipa@ribeira-live.test` | Member of Ribeira Live (Miguel Sousa) |
+| `novo@ribeira-live.test` | Member of Ribeira Live (Rita Ferreira) who must still replace their temporary password (`crowded-demo`, expires in 6 days) |
+| `antigo@ribeira-live.test` | Deactivated member of Ribeira Live (João Pinto): cannot sign in |
+| `geral@sons-do-minho.test` | Member of Associação Sons do Minho (Teresa Gomes) |
 | `ana@crowded.test`, `bruno@crowded.test`, `carla@crowded.test` | Participants |
 
 The demo data also has an event in every state (`SCHEDULED` to `ENDED`), ticketed and public, with their codes (`MARG-2026`, `FADO-2026` and `ROCK-2026` on tickets, `AVENIDA26`, `SAOJOAO26`, `NATAL25` and `LIVROBRAGA26` to type), tickets and access-code connections, event changes, alerts (sent and draft), queue times, weather forecasts and IPMA warnings, reports with confirmations and an incident, a survey, notifications and audit entries. The rows have fixed ids, grouped by kind in the file's header, so tests and apps can point at them. Times are relative to when the seed runs.

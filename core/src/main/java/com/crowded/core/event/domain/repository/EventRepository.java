@@ -1,6 +1,7 @@
 package com.crowded.core.event.domain.repository;
 
 import com.crowded.core.event.domain.model.Event;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,4 +16,7 @@ public interface EventRepository {
 
   /** Stores the event's new state. */
   void save(Event event);
+
+  /** How many events each organization has; an organization without events is not in the map. */
+  Map<UUID, Long> countByOrganization();
 }

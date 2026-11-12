@@ -62,15 +62,16 @@ class EventChangeIT extends IntegrationTest {
   void createAnOrganizationWithAnEvent() {
     UUID otherOrganization = UUID.randomUUID();
     jdbc.update(
-        "INSERT INTO organization (id, name, created_at) VALUES (?, 'Ribeira Teste', now()),"
-            + " (?, 'Outra', now())",
+        "INSERT INTO organization (id, name, created_at) VALUES (?, ?, now()), (?, ?, now())",
         organization,
-        otherOrganization);
+        "Ribeira Teste " + organization,
+        otherOrganization,
+        "Outra " + otherOrganization);
     jdbc.update(
-        "INSERT INTO app_user (id, organization_id, email, password_hash, role, created_at, active)"
-            + " VALUES (?, ?, ?, ?, 'ORGANIZATION_MEMBER', now(), true),"
-            + " (?, ?, ?, ?, 'ORGANIZATION_MEMBER', now(), true),"
-            + " (?, ?, ?, ?, 'ORGANIZATION_MEMBER', now(), false)",
+        "INSERT INTO app_user (id, organization_id, email, password_hash, role, created_at, active, name)"
+            + " VALUES (?, ?, ?, ?, 'ORGANIZATION_MEMBER', now(), true, 'Membro'),"
+            + " (?, ?, ?, ?, 'ORGANIZATION_MEMBER', now(), true, 'Membro'),"
+            + " (?, ?, ?, ?, 'ORGANIZATION_MEMBER', now(), false, 'Membro')",
         member,
         organization,
         member + "@crowded.test",
@@ -140,7 +141,7 @@ class EventChangeIT extends IntegrationTest {
         .containsEntry("refund_info", "Pedir até 5 DEZ na bilheteira")
         .containsEntry("message", "Lamentamos.")
         .containsEntry("provenance_source_type", "ORGANIZATION")
-        .containsEntry("provenance_source_name", "Ribeira Teste");
+        .containsEntry("provenance_source_name", "Ribeira Teste " + organization);
     assertThat(
             jdbc.queryForObject(
                 "SELECT actor_id FROM audit_log_entry WHERE entity_id = ?"

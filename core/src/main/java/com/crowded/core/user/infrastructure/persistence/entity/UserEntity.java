@@ -30,6 +30,8 @@ public class UserEntity {
   @Column(columnDefinition = "role", nullable = false)
   private Role role;
 
+  private String name;
+
   @Column(nullable = false)
   private String email;
 
@@ -41,6 +43,12 @@ public class UserEntity {
 
   @Column(name = "must_change_password", nullable = false)
   private boolean mustChangePassword;
+
+  @Column(name = "temporary_password_expires_at")
+  private Instant temporaryPasswordExpiresAt;
+
+  @Column(name = "last_signed_in_at")
+  private Instant lastSignedInAt;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
@@ -107,5 +115,29 @@ public class UserEntity {
 
   public void setCreatedAt(Instant createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public Instant getTemporaryPasswordExpiresAt() {
+    return temporaryPasswordExpiresAt;
+  }
+
+  public void setTemporaryPasswordExpiresAt(Instant temporaryPasswordExpiresAt) {
+    this.temporaryPasswordExpiresAt = temporaryPasswordExpiresAt;
+  }
+
+  public Instant getLastSignedInAt() {
+    return lastSignedInAt;
+  }
+
+  public void setLastSignedInAt(Instant lastSignedInAt) {
+    this.lastSignedInAt = lastSignedInAt;
   }
 }

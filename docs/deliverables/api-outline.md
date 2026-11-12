@@ -62,14 +62,14 @@ Participant estimates never include the report description, which may contain pe
 
 ### Administration (Core)
 
-A platform administrator creates each organization and its members' accounts in a page of the backoffice. Every action is audited (SR-006).
+A platform administrator creates each organization and its members' accounts in a page of the backoffice. Every action is audited (SR-006). Core reads the caller's role from the database: anyone but an active administrator gets `403 ADMINISTRATOR_ONLY`.
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
-| GET | `/admin/organizations` | Organizations and their members. | – | List of {`id`, `name`, `members[]` {`userId`, `email`, `active`, `mustChangePassword`}} | Admin |
-| POST | `/admin/organizations` | Create an organization (FR-087). | `name` | `organizationId` | Admin |
-| POST | `/admin/organizations/{organizationId}/members` | Create a member account with a temporary password, shown once (FR-087, SR-022). | `email` | `userId`, `temporaryPassword`, `expiresAt` | Admin |
-| PATCH | `/admin/members/{userId}` | Deactivate or reactivate a member, or issue a new temporary password (FR-087). A deactivated member's tokens are revoked. | `active`, `resetPassword` | `active`, `temporaryPassword`, `expiresAt` | Admin |
+| GET | `/admin/organizations` | Organizations by name, with their number of events and their members. | – | List of {`id`, `name`, `createdAt`, `eventCount`, `members[]` {`userId`, `name`, `email`, `active`, `mustChangePassword`, `temporaryPasswordExpiresAt`, `lastSignedInAt`}} | Admin |
+| POST | `/admin/organizations` | Create an organization (FR-087). Its name is unique, whatever its case. | `name` | `organizationId`. Errors: `ORGANIZATION_NAME_TAKEN` | Admin |
+| POST | `/admin/organizations/{organizationId}/members` | Create a member account with a temporary password, shown once and valid for 7 days (FR-087, SR-022). Only its bcrypt hash is stored. | `name`, `email` | `userId`, `temporaryPassword`, `expiresAt`. Errors: `ORGANIZATION_NOT_FOUND`, `EMAIL_ALREADY_REGISTERED` | Admin |
+| PATCH | `/admin/members/{userId}` | Deactivate or reactivate a member, or issue a new temporary password (FR-087). Deactivating and a new password revoke the member's tokens issued before: Core and Notifications refuse them (ADR 0004). | `active` (optional), `resetPassword` (optional) | `userId`, `active`, `temporaryPassword`, `expiresAt` (the last two only with `resetPassword`). Errors: `MEMBER_NOT_FOUND` | Admin |
 
 ## Principal User Journeys
 
