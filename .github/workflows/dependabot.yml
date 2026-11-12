@@ -53,6 +53,13 @@ jobs:
     concurrency:
       group: dependabot-rebase
       cancel-in-progress: true
+    # GITHUB_TOKEN reads the pull requests' checks: the crowded-bot app has no
+    # access to checks or commit statuses, and a token for it fails on them.
+    permissions:
+      checks: read
+      contents: read
+      pull-requests: read
+      statuses: read
     env:
       # Collaborators who are not tagged when Dependabot does not rebase.
       NOT_TAGGED: PauloGandraSousa
@@ -67,6 +74,7 @@ jobs:
           permission-pull-requests: write
       - env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          CHECKS_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
           # One pull request at a time: every merge puts the others behind
@@ -76,7 +84,7 @@ jobs:
           pr=""
           while read -r number head; do
             behind=$(gh api "repos/$REPO/compare/$GITHUB_SHA...$head" --jq .behind_by)
-            failed=$(gh pr view "$number" --repo "$REPO" --json statusCheckRollup \
+            failed=$(GH_TOKEN=$CHECKS_TOKEN gh pr view "$number" --repo "$REPO" --json statusCheckRollup \
               --jq '[.statusCheckRollup[] | select(.conclusion == "FAILURE")] | length')
             if [ "$behind" -gt 0 ] && [ "$failed" -eq 0 ]; then
               pr=$number
