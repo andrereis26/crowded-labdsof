@@ -1,8 +1,8 @@
 package com.crowded.core.user.domain.repository;
 
+import com.crowded.core.user.domain.model.Email;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.model.UserAccount;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,8 +14,8 @@ public interface UserRepository {
 
   Optional<UserAccount> findAccountById(UUID id);
 
-  /** The account with this email, which must already be in lower case. */
-  Optional<UserAccount> findAccountByEmail(String email);
+  /** The account with this email. */
+  Optional<UserAccount> findAccountByEmail(Email email);
 
   /** Every organization member's account, active or not. */
   List<UserAccount> findMembers();
@@ -31,6 +31,9 @@ public interface UserRepository {
   /** Stores the new state of an account that exists. */
   void update(UserAccount account);
 
-  /** Records a successful sign-in. */
-  void recordSignIn(UUID id, Instant at);
+  /**
+   * Stores the sign-in that {@code account} recorded ({@link UserAccount#signIn}), and only that,
+   * so it does not undo a change an administrator made meanwhile.
+   */
+  void saveSignIn(UserAccount account);
 }

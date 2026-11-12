@@ -21,8 +21,7 @@ class AuditLogRepositoryAdapterTest {
   void storesTheEntryWithItsDetailsAsJson() {
     SpringDataAuditLogRepository rows = mock(SpringDataAuditLogRepository.class);
     AuditLogEntry entry =
-        new AuditLogEntry(
-            UUID.randomUUID(),
+        AuditLogEntry.record(
             UUID.randomUUID(),
             UUID.randomUUID(),
             "EVENT_CHANGE_PUBLISHED",
@@ -40,12 +39,12 @@ class AuditLogRepositoryAdapterTest {
     ArgumentCaptor<AuditLogEntryEntity> saved = ArgumentCaptor.forClass(AuditLogEntryEntity.class);
     verify(rows).save(saved.capture());
     AuditLogEntryEntity row = saved.getValue();
-    assertThat(row.getId()).isEqualTo(entry.id());
-    assertThat(row.getActorId()).isEqualTo(entry.actorId());
-    assertThat(row.getEventId()).isEqualTo(entry.eventId());
+    assertThat(row.getId()).isEqualTo(entry.getId());
+    assertThat(row.getActorId()).isEqualTo(entry.getActorId());
+    assertThat(row.getEventId()).isEqualTo(entry.getEventId());
     assertThat(row.getAction()).isEqualTo("EVENT_CHANGE_PUBLISHED");
     assertThat(row.getEntityType()).isEqualTo("EventChange");
-    assertThat(row.getEntityId()).isEqualTo(entry.entityId());
+    assertThat(row.getEntityId()).isEqualTo(entry.getEntityId());
     assertThat(row.getDetails()).isEqualTo("{\"type\":\"CANCELLATION\"}");
     assertThat(row.getOccurredAt()).isEqualTo(Instant.EPOCH);
   }

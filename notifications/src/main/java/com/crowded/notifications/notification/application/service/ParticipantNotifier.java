@@ -59,7 +59,7 @@ public class ParticipantNotifier {
     OfficialChange change =
         changes
             .findById(command.causeId())
-            .filter(found -> found.eventId().equals(command.eventId()))
+            .filter(found -> found.isOf(command.eventId()))
             .orElseThrow(() -> new CauseNotFoundException(command.eventId(), command.causeId()));
     List<Recipient> recipients =
         RecipientSelector.select(
@@ -73,7 +73,7 @@ public class ParticipantNotifier {
               recipient,
               command.eventId(),
               command.type(),
-              change.id(),
+              change.getId(),
               change.describeFor(recipient),
               now);
       if (notifications.addIfAbsent(notification)) {
@@ -85,7 +85,7 @@ public class ParticipantNotifier {
         command.messageId(),
         stored,
         command.type(),
-        change.id(),
+        change.getId(),
         recipients.size(),
         command.eventId());
     return stored;

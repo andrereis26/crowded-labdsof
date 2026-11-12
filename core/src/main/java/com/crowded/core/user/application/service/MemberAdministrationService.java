@@ -10,6 +10,7 @@ import com.crowded.core.user.application.dto.ChangeMemberCommand;
 import com.crowded.core.user.application.dto.MemberChanged;
 import com.crowded.core.user.application.dto.MemberOverview;
 import com.crowded.core.user.application.dto.TemporaryPassword;
+import com.crowded.core.user.domain.model.Email;
 import com.crowded.core.user.domain.model.UserAccount;
 import com.crowded.core.user.domain.repository.PasswordHasher;
 import com.crowded.core.user.domain.repository.TokenRevocations;
@@ -21,7 +22,6 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.random.RandomGenerator;
@@ -116,28 +116,26 @@ public class MemberAdministrationService {
     if (organizations.findById(command.organizationId()).isEmpty()) {
       throw new NotFoundException("ORGANIZATION_NOT_FOUND", "There is no such organization.");
     }
-    Instant now = clock.instant();
     String password = TemporaryPasswords.generate(random);
     UserAccount member =
-        UserAccount.newMember(
-            UUID.randomUUID(),
+        UserAccount.addMember(
             command.organizationId(),
-            command.name().strip(),
-            command.email().strip().toLowerCase(Locale.ROOT),
+            command.name(),
+            new Email(command.email()),
             passwords.hash(password),
-            now);
+            clock.instant());
     users.add(member);
     record(
         command.administratorId(),
         "MEMBER_CREATED",
         member,
-        Map.of("organizationId", member.organizationId().toString()));
+        Map.of("organizationId", member.getOrganizationId().toString()));
     log.info(
         "Administrator {} created member {} of organization {}",
         command.administratorId(),
-        member.id(),
-        member.organizationId());
-    return new TemporaryPassword(member.id(), password, member.temporaryPasswordExpiresAt());
+        member.getId(),
+        member.getOrganizationId());
+    return new TemporaryPassword(member.getId(), password, member.getTemporaryPasswordExpiresAt());
   }
 
   /**
@@ -159,38 +157,40 @@ public class MemberAdministrationService {
     Instant now = clock.instant();
     boolean revoke = false;
 
-    if (command.active() != null && command.active() != member.active()) {
-      member = command.active() ? member.reactivated() : member.deactivated();
-      revoke = !member.active();
-      record(
-          command.administratorId(),
-          member.active() ? "MEMBER_REACTIVATED" : "MEMBER_DEACTIVATED",
-          member,
-          Map.of());
+    if (command.active() != null) {
+      boolean changed = command.active() ? member.reactivate() : member.deactivate();
+      if (changed) {
+        revoke = !member.isActive();
+        record(
+            command.administratorId(),
+            member.isActive() ? "MEMBER_REACTIVATED" : "MEMBER_DEACTIVATED",
+            member,
+            Map.of());
+      }
     }
     String password = null;
     if (Boolean.TRUE.equals(command.resetPassword())) {
       password = TemporaryPasswords.generate(random);
-      member = member.resetPassword(passwords.hash(password), now);
+      member.resetPassword(passwords.hash(password), now);
       revoke = true;
       record(command.administratorId(), "MEMBER_PASSWORD_RESET", member, Map.of());
     }
     users.update(member);
     if (revoke) {
       // Last, so a failure rolls the change back with the transaction.
-      revocations.revokeIssuedBefore(member.id(), now);
+      revocations.revokeIssuedBefore(member.getId(), now);
     }
-    log.info("Administrator {} changed member {}", command.administratorId(), member.id());
+    log.info("Administrator {} changed member {}", command.administratorId(), member.getId());
     return new MemberChanged(
-        member.id(),
-        member.active(),
+        member.getId(),
+        member.isActive(),
         password,
-        password == null ? null : member.temporaryPasswordExpiresAt());
+        password == null ? null : member.getTemporaryPasswordExpiresAt());
   }
 
   private void record(
       UUID administratorId, String action, UserAccount member, Map<String, Object> details) {
-    audit.record(administratorId, null, action, "User", member.id(), details);
+    audit.record(administratorId, null, action, "User", member.getId(), details);
     Counter.builder("crowded.admin.actions")
         .description("Administrator actions on organizations and members")
         .tag("action", action)
@@ -200,13 +200,13 @@ public class MemberAdministrationService {
 
   private static MemberOverview overview(UserAccount account) {
     return new MemberOverview(
-        account.id(),
-        account.organizationId(),
-        account.name(),
-        account.email(),
-        account.active(),
-        account.mustChangePassword(),
-        account.temporaryPasswordExpiresAt(),
-        account.lastSignedInAt());
+        account.getId(),
+        account.getOrganizationId(),
+        account.getName(),
+        account.getEmail().value(),
+        account.isActive(),
+        account.isMustChangePassword(),
+        account.getTemporaryPasswordExpiresAt(),
+        account.getLastSignedInAt());
   }
 }

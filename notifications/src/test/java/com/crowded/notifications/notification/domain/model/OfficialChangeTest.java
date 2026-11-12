@@ -19,7 +19,7 @@ class OfficialChangeTest {
   @Test
   void aTicketHolderLearnsWhetherTheTicketIsValidAndWhereToAskForARefund() {
     OfficialChange change =
-        new OfficialChange(
+        OfficialChange.restore(
             UUID.randomUUID(),
             UUID.randomUUID(),
             ChangeType.POSTPONEMENT,
@@ -44,7 +44,7 @@ class OfficialChangeTest {
   @Test
   void aCancellationSaysSoAndWhetherTheTicketStillCounts() {
     OfficialChange change =
-        new OfficialChange(
+        OfficialChange.restore(
             UUID.randomUUID(),
             UUID.randomUUID(),
             ChangeType.CANCELLATION,
@@ -85,7 +85,7 @@ class OfficialChangeTest {
   @Test
   void aVenueChangeSaysTheNewVenueItsAddressAndTheOldVenue() {
     NotificationText text =
-        new OfficialChange(
+        OfficialChange.restore(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 ChangeType.VENUE_CHANGE,
@@ -108,7 +108,7 @@ class OfficialChangeTest {
     assertThat(change(ChangeType.VENUE_CHANGE, false, false).describeFor(ACCESS_CODE))
         .isEqualTo(new NotificationText("Novo local", ""));
     OfficialChange withMessage =
-        new OfficialChange(
+        OfficialChange.restore(
             UUID.randomUUID(),
             UUID.randomUUID(),
             ChangeType.VENUE_CHANGE,
@@ -126,7 +126,7 @@ class OfficialChangeTest {
   @Test
   void otherDetailsAndABlankRefundSayOnlyThatTheEventChanged() {
     OfficialChange change =
-        new OfficialChange(
+        OfficialChange.restore(
             UUID.randomUUID(),
             UUID.randomUUID(),
             ChangeType.DETAILS_UPDATE,
@@ -146,9 +146,32 @@ class OfficialChangeTest {
                 "A organização atualizou o evento.\nNovo programa no site."));
   }
 
+  @Test
+  void isOfTheEventItChangedAndIdentifiedByItsId() {
+    OfficialChange change = change(ChangeType.CANCELLATION, false, false);
+
+    assertThat(change.isOf(change.getEventId())).isTrue();
+    assertThat(change.isOf(UUID.randomUUID())).isFalse();
+    assertThat(change)
+        .isEqualTo(
+            OfficialChange.restore(
+                change.getId(),
+                UUID.randomUUID(),
+                ChangeType.POSTPONEMENT,
+                true,
+                true,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null))
+        .isNotEqualTo(change(ChangeType.CANCELLATION, false, false));
+  }
+
   private static OfficialChange change(
       ChangeType type, boolean startChanged, boolean doorsOpenChanged) {
-    return new OfficialChange(
+    return OfficialChange.restore(
         UUID.randomUUID(),
         UUID.randomUUID(),
         type,

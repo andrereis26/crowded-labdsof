@@ -1,35 +1,38 @@
 package com.crowded.core.event.domain.model;
 
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
 /** The part of an event that an official change can alter: its status, schedule and venue. */
-public record EventState(
-    EventStatus status,
-    Instant startDateTime,
-    Instant doorsOpenAt,
-    Instant endDateTime,
-    String venueName,
-    String address,
-    Double latitude,
-    Double longitude) {
+public record EventState(EventStatus status, Schedule schedule, Venue venue) {
+
+  public EventState {
+    Objects.requireNonNull(status, "status");
+    Objects.requireNonNull(schedule, "schedule");
+    Objects.requireNonNull(venue, "venue");
+  }
+
+  /** The same event with another status. */
+  public EventState inStatus(EventStatus newStatus) {
+    return new EventState(newStatus, schedule, venue);
+  }
 
   /**
    * Every field, by its API name, with instants and enums as their ISO-8601 or constant text, as a
    * change records them.
    */
   public Map<String, Object> values() {
+    Coordinates coordinates = venue.coordinates();
     Map<String, Object> fields = new LinkedHashMap<>();
-    fields.put("status", text(status));
-    fields.put("startDateTime", text(startDateTime));
-    fields.put("doorsOpenAt", text(doorsOpenAt));
-    fields.put("endDateTime", text(endDateTime));
-    fields.put("venueName", venueName);
-    fields.put("address", address);
-    fields.put("latitude", latitude);
-    fields.put("longitude", longitude);
+    fields.put("status", status.name());
+    fields.put("startDateTime", text(schedule.start()));
+    fields.put("doorsOpenAt", text(schedule.doorsOpenAt()));
+    fields.put("endDateTime", text(schedule.end()));
+    fields.put("venueName", venue.name());
+    fields.put("address", venue.address());
+    fields.put("latitude", coordinates == null ? null : coordinates.latitude());
+    fields.put("longitude", coordinates == null ? null : coordinates.longitude());
     return fields;
   }
 

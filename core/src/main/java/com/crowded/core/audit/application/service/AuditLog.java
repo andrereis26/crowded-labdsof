@@ -31,14 +31,7 @@ public class AuditLog {
       UUID entityId,
       Map<String, Object> details) {
     entries.save(
-        new AuditLogEntry(
-            UUID.randomUUID(),
-            actorId,
-            eventId,
-            action,
-            entityType,
-            entityId,
-            details,
-            clock.instant()));
+        AuditLogEntry.record(
+            actorId, eventId, action, entityType, entityId, details, clock.instant()));
   }
 }

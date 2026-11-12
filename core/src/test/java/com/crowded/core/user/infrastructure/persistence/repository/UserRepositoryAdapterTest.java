@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.crowded.core.shared.domain.exception.ConflictException;
+import com.crowded.core.user.domain.model.Email;
 import com.crowded.core.user.domain.model.Role;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.model.UserAccount;
@@ -35,7 +37,10 @@ class UserRepositoryAdapterTest {
     when(rows.findById(row.getId())).thenReturn(Optional.of(row));
 
     assertThat(adapter.findById(row.getId()))
-        .contains(new User(row.getId(), row.getOrganizationId(), Role.ORGANIZATION_MEMBER, true));
+        .get()
+        .usingRecursiveComparison()
+        .isEqualTo(
+            User.restore(row.getId(), row.getOrganizationId(), Role.ORGANIZATION_MEMBER, true));
   }
 
   @Test
@@ -46,30 +51,40 @@ class UserRepositoryAdapterTest {
     when(rows.findByRoleOrderByNameAsc(Role.ORGANIZATION_MEMBER)).thenReturn(List.of(row));
 
     UserAccount expected =
-        new UserAccount(
+        UserAccount.restore(
             row.getId(),
             row.getOrganizationId(),
             Role.ORGANIZATION_MEMBER,
             "Rita Ferreira",
-            "rita@ribeira.pt",
+            new Email("rita@ribeira.pt"),
             "{bcrypt}hash",
             true,
             true,
             NOW.plusSeconds(3600),
             NOW.minusSeconds(60),
             NOW.minusSeconds(3600));
-    assertThat(adapter.findAccountById(row.getId())).contains(expected);
-    assertThat(adapter.findAccountByEmail("rita@ribeira.pt")).contains(expected);
-    assertThat(adapter.findMembers()).containsExactly(expected);
+    assertThat(adapter.findAccountById(row.getId()))
+        .get()
+        .usingRecursiveComparison()
+        .isEqualTo(expected);
+    assertThat(adapter.findAccountByEmail(new Email("rita@ribeira.pt")))
+        .get()
+        .usingRecursiveComparison()
+        .isEqualTo(expected);
+    assertThat(adapter.findMembers())
+        .singleElement()
+        .usingRecursiveComparison()
+        .isEqualTo(expected);
   }
 
   @Test
   void storesAnAccountAndRefusesATakenEmail() {
     UserAccount account =
-        UserAccount.newParticipant(UUID.randomUUID(), "ana@crowded.test", "{bcrypt}hash", NOW);
+        UserAccount.registerParticipant(new Email("ana@crowded.test"), "{bcrypt}hash", NOW);
 
     adapter.add(account);
-    adapter.update(account.deactivated());
+    account.deactivate();
+    adapter.update(account);
 
     ArgumentCaptor<UserEntity> added = ArgumentCaptor.forClass(UserEntity.class);
     verify(rows).saveAndFlush(added.capture());
@@ -88,12 +103,15 @@ class UserRepositoryAdapterTest {
   }
 
   @Test
-  void recordsTheLastSignIn() {
-    UUID id = UUID.randomUUID();
+  void storesOnlyTheLastSignIn() {
+    UserAccount account =
+        UserAccount.registerParticipant(new Email("ana@crowded.test"), "{bcrypt}hash", NOW);
+    account.signIn(true, NOW.plusSeconds(60));
 
-    adapter.recordSignIn(id, NOW);
+    adapter.saveSignIn(account);
 
-    verify(rows).updateLastSignedInAt(id, NOW);
+    verify(rows).updateLastSignedInAt(account.getId(), NOW.plusSeconds(60));
+    verify(rows, never()).save(any());
   }
 
   private static UserEntity memberRow() {

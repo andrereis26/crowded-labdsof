@@ -51,7 +51,9 @@ class OrganizationAdministrationServiceTest {
 
     ArgumentCaptor<Organization> stored = ArgumentCaptor.forClass(Organization.class);
     verify(organizations).add(stored.capture());
-    assertThat(stored.getValue()).isEqualTo(new Organization(id, "Festival Paredes", ADMIN, NOW));
+    assertThat(stored.getValue())
+        .usingRecursiveComparison()
+        .isEqualTo(Organization.restore(id, "Festival Paredes", ADMIN, NOW));
     verify(audit)
         .record(
             ADMIN,
@@ -81,20 +83,20 @@ class OrganizationAdministrationServiceTest {
 
   @Test
   void listsEachOrganizationWithItsEventsAndMembers() {
-    Organization ribeira = new Organization(UUID.randomUUID(), "Ribeira Live", ADMIN, NOW);
-    Organization minho = new Organization(UUID.randomUUID(), "Sons do Minho", ADMIN, NOW);
+    Organization ribeira = Organization.restore(UUID.randomUUID(), "Ribeira Live", ADMIN, NOW);
+    Organization minho = Organization.restore(UUID.randomUUID(), "Sons do Minho", ADMIN, NOW);
     MemberOverview rita =
         new MemberOverview(
-            UUID.randomUUID(), ribeira.id(), "Rita", "rita@x.pt", true, true, NOW, null);
+            UUID.randomUUID(), ribeira.getId(), "Rita", "rita@x.pt", true, true, NOW, null);
     when(organizations.findAll()).thenReturn(List.of(ribeira, minho));
-    when(events.countByOrganization()).thenReturn(Map.of(ribeira.id(), 4L));
-    when(members.membersByOrganization(ADMIN)).thenReturn(Map.of(ribeira.id(), List.of(rita)));
+    when(events.countByOrganization()).thenReturn(Map.of(ribeira.getId(), 4L));
+    when(members.membersByOrganization(ADMIN)).thenReturn(Map.of(ribeira.getId(), List.of(rita)));
 
     List<OrganizationOverview> list = service.list(ADMIN);
 
     assertThat(list)
         .containsExactly(
-            new OrganizationOverview(ribeira.id(), "Ribeira Live", NOW, 4, List.of(rita)),
-            new OrganizationOverview(minho.id(), "Sons do Minho", NOW, 0, List.of()));
+            new OrganizationOverview(ribeira.getId(), "Ribeira Live", NOW, 4, List.of(rita)),
+            new OrganizationOverview(minho.getId(), "Sons do Minho", NOW, 0, List.of()));
   }
 }

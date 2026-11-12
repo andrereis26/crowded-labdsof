@@ -14,15 +14,16 @@ import static org.mockito.Mockito.when;
 import com.crowded.core.audit.application.service.AuditLog;
 import com.crowded.core.event.application.dto.PublishChangeCommand;
 import com.crowded.core.event.application.dto.PublishedChange;
-import com.crowded.core.event.domain.model.ChangePlan;
 import com.crowded.core.event.domain.model.ChangeType;
 import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventChange;
 import com.crowded.core.event.domain.model.EventState;
 import com.crowded.core.event.domain.model.EventStatus;
+import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.model.RequestedChange;
+import com.crowded.core.event.domain.model.Schedule;
 import com.crowded.core.event.domain.model.Severity;
-import com.crowded.core.event.domain.model.SourceType;
+import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.organization.domain.model.Organization;
@@ -54,13 +55,8 @@ class EventChangeServiceTest {
   private static final EventState SCHEDULED =
       new EventState(
           EventStatus.SCHEDULED,
-          Instant.parse("2026-11-20T20:00:00Z"),
-          null,
-          null,
-          "Coliseu",
-          "Porto",
-          null,
-          null);
+          new Schedule(Instant.parse("2026-11-20T20:00:00Z"), null, null),
+          new Venue("Coliseu", "Porto", null));
   private static final RequestedChange CANCELLATION =
       new RequestedChange(ChangeType.CANCELLATION, null, false, "Reembolso no site", null);
 
@@ -82,35 +78,33 @@ class EventChangeServiceTest {
           Clock.fixed(NOW, ZoneOffset.UTC),
           meters);
 
-  private final Event event = new Event(UUID.randomUUID(), ORGANIZATION, SCHEDULED);
+  private Event event = Event.restore(UUID.randomUUID(), ORGANIZATION, SCHEDULED);
 
   @Test
   void recordsTheChangeUpdatesTheEventAndAsksForNotifications() {
     givenEventAndMember();
-    when(organizations.findById(ORGANIZATION))
-        .thenReturn(Optional.of(new Organization(ORGANIZATION, "Ribeira Live", null, NOW)));
 
     PublishedChange published = service.publish(command(CANCELLATION));
 
     ArgumentCaptor<EventChange> saved = ArgumentCaptor.forClass(EventChange.class);
     verify(changes).save(saved.capture());
     EventChange change = saved.getValue();
-    assertThat(published).isEqualTo(new PublishedChange(change.id(), Severity.CRITICAL, true));
-    assertThat(change.type()).isEqualTo(ChangeType.CANCELLATION);
-    assertThat(change.newValue()).containsExactly(Map.entry("status", "CANCELLED"));
-    assertThat(change.ticketStillValid()).isFalse();
-    assertThat(change.refundInfo()).isEqualTo("Reembolso no site");
-    assertThat(change.provenanceSourceName()).isEqualTo("Ribeira Live");
+    assertThat(published).isEqualTo(new PublishedChange(change.getId(), Severity.CRITICAL, true));
+    assertThat(change.getType()).isEqualTo(ChangeType.CANCELLATION);
+    assertThat(change.getNewValue()).containsExactly(Map.entry("status", "CANCELLED"));
+    assertThat(change.getTicketStillValid()).isFalse();
+    assertThat(change.getRefundInfo()).isEqualTo("Reembolso no site");
+    assertThat(change.getProvenance()).isEqualTo(Provenance.organization("Ribeira Live", NOW));
     assertThat(event.getState().status()).isEqualTo(EventStatus.CANCELLED);
     verify(events).save(event);
-    verify(notifications).request("OFFICIAL_CHANGE", event.getId(), change.id());
+    verify(notifications).request("OFFICIAL_CHANGE", event.getId(), change.getId());
     verify(audit)
         .record(
             MEMBER,
             event.getId(),
             "EVENT_CHANGE_PUBLISHED",
             "EventChange",
-            change.id(),
+            change.getId(),
             Map.of("type", "CANCELLATION", "severity", "CRITICAL"));
     assertThat(
             meters
@@ -124,14 +118,16 @@ class EventChangeServiceTest {
 
   @Test
   void returnsTheFirstChangeWhenItIsSentAgain() {
+    EventChange first =
+        event
+            .publishChange(CANCELLATION, Provenance.organization("Ribeira Live", NOW), NOW)
+            .orElseThrow();
     givenEventAndMember();
-    EventChange first = cancellationOf(event.getState());
-    event.apply(plan(event.getState(), cancelled()));
     when(changes.findLatest(event.getId(), ChangeType.CANCELLATION)).thenReturn(Optional.of(first));
 
     PublishedChange published = service.publish(command(CANCELLATION));
 
-    assertThat(published).isEqualTo(new PublishedChange(first.id(), Severity.CRITICAL, false));
+    assertThat(published).isEqualTo(new PublishedChange(first.getId(), Severity.CRITICAL, false));
     verify(changes, never()).save(any());
     verify(events, never()).save(any());
     verifyNoInteractions(notifications, audit);
@@ -139,8 +135,8 @@ class EventChangeServiceTest {
 
   @Test
   void refusesValuesTheEventHadWithoutAChangeThatSetThem() {
+    event = Event.restore(event.getId(), ORGANIZATION, SCHEDULED.inStatus(EventStatus.CANCELLED));
     givenEventAndMember();
-    event.apply(plan(event.getState(), cancelled()));
 
     assertRefused(
         () -> service.publish(command(CANCELLATION)),
@@ -150,11 +146,11 @@ class EventChangeServiceTest {
 
   @Test
   void refusesValuesTheEventHasWhenTheLatestChangeSetOthers() {
+    event = Event.restore(event.getId(), ORGANIZATION, SCHEDULED.inStatus(EventStatus.CANCELLED));
     givenEventAndMember();
-    event.apply(plan(event.getState(), cancelled()));
     // Like a seeded change: its values are not the ones the event has now.
     EventChange unrelated =
-        new EventChange(
+        EventChange.restore(
             UUID.randomUUID(),
             event.getId(),
             ChangeType.CANCELLATION,
@@ -164,10 +160,7 @@ class EventChangeServiceTest {
             null,
             null,
             null,
-            SourceType.ORGANIZATION,
-            "Ribeira Live",
-            NOW,
-            true);
+            Provenance.organization("Ribeira Live", NOW));
     when(changes.findLatest(event.getId(), ChangeType.CANCELLATION))
         .thenReturn(Optional.of(unrelated));
 
@@ -191,7 +184,7 @@ class EventChangeServiceTest {
     when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
     when(users.findById(MEMBER))
         .thenReturn(
-            Optional.of(new User(MEMBER, UUID.randomUUID(), Role.ORGANIZATION_MEMBER, true)));
+            Optional.of(User.restore(MEMBER, UUID.randomUUID(), Role.ORGANIZATION_MEMBER, true)));
 
     assertRefused(
         () -> service.publish(command(CANCELLATION)),
@@ -205,7 +198,8 @@ class EventChangeServiceTest {
   void refusesADeactivatedMember() {
     when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
     when(users.findById(MEMBER))
-        .thenReturn(Optional.of(new User(MEMBER, ORGANIZATION, Role.ORGANIZATION_MEMBER, false)));
+        .thenReturn(
+            Optional.of(User.restore(MEMBER, ORGANIZATION, Role.ORGANIZATION_MEMBER, false)));
 
     assertRefused(
         () -> service.publish(command(CANCELLATION)),
@@ -219,7 +213,7 @@ class EventChangeServiceTest {
     when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
     UUID participant = UUID.randomUUID();
     when(users.findById(participant))
-        .thenReturn(Optional.of(new User(participant, null, Role.PARTICIPANT, true)));
+        .thenReturn(Optional.of(User.restore(participant, null, Role.PARTICIPANT, true)));
 
     assertRefused(
         () -> service.publish(new PublishChangeCommand(event.getId(), participant, CANCELLATION)),
@@ -244,33 +238,15 @@ class EventChangeServiceTest {
 
   private void givenEventAndMember() {
     when(events.findByIdForUpdate(event.getId())).thenReturn(Optional.of(event));
+    when(organizations.findById(ORGANIZATION))
+        .thenReturn(Optional.of(Organization.restore(ORGANIZATION, "Ribeira Live", null, NOW)));
     when(users.findById(MEMBER))
-        .thenReturn(Optional.of(new User(MEMBER, ORGANIZATION, Role.ORGANIZATION_MEMBER, true)));
+        .thenReturn(
+            Optional.of(User.restore(MEMBER, ORGANIZATION, Role.ORGANIZATION_MEMBER, true)));
   }
 
   private PublishChangeCommand command(RequestedChange change) {
     return new PublishChangeCommand(event.getId(), MEMBER, change);
-  }
-
-  private EventChange cancellationOf(EventState before) {
-    return EventChange.publish(event.getId(), plan(before, cancelled()), "Ribeira Live", NOW);
-  }
-
-  private static EventState cancelled() {
-    return new EventState(
-        EventStatus.CANCELLED,
-        SCHEDULED.startDateTime(),
-        null,
-        null,
-        SCHEDULED.venueName(),
-        SCHEDULED.address(),
-        null,
-        null);
-  }
-
-  private static ChangePlan plan(EventState before, EventState after) {
-    return new ChangePlan(
-        ChangeType.CANCELLATION, Severity.CRITICAL, before, after, false, null, null);
   }
 
   private static void assertRefused(

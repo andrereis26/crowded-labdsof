@@ -10,5 +10,8 @@ public interface OutboxMessagePersistenceMapper {
 
   OutboxMessageEntity toEntity(OutboxMessage message);
 
-  OutboxMessage toDomain(OutboxMessageEntity entity);
+  default OutboxMessage toDomain(OutboxMessageEntity entity) {
+    return OutboxMessage.restore(
+        entity.getId(), entity.getRoutingKey(), entity.getPayload(), entity.getCreatedAt());
+  }
 }

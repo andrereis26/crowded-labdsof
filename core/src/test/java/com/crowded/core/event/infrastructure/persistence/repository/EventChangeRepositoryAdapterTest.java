@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.crowded.core.event.domain.model.ChangeType;
 import com.crowded.core.event.domain.model.EventChange;
+import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.model.Severity;
 import com.crowded.core.event.domain.model.SourceType;
 import com.crowded.core.event.infrastructure.persistence.entity.EventChangeEntity;
@@ -24,11 +25,9 @@ import tools.jackson.databind.json.JsonMapper;
 class EventChangeRepositoryAdapterTest {
 
   private final SpringDataEventChangeRepository rows = mock(SpringDataEventChangeRepository.class);
+  private final JsonColumnConverter json = new JsonColumnConverter(JsonMapper.builder().build());
   private final EventChangeRepositoryAdapter changes =
-      new EventChangeRepositoryAdapter(
-          rows,
-          new EventChangePersistenceMapperImpl(
-              new JsonColumnConverter(JsonMapper.builder().build())));
+      new EventChangeRepositoryAdapter(rows, new EventChangePersistenceMapperImpl(json), json);
 
   @Test
   void storesTheChangedValuesAsJsonAndReadsThemBack() {
@@ -36,7 +35,7 @@ class EventChangeRepositoryAdapterTest {
     newValue.put("venueName", "Hard Club");
     newValue.put("latitude", null);
     EventChange change =
-        new EventChange(
+        EventChange.restore(
             UUID.randomUUID(),
             UUID.randomUUID(),
             ChangeType.VENUE_CHANGE,
@@ -46,10 +45,11 @@ class EventChangeRepositoryAdapterTest {
             null,
             "Reembolso no site",
             "Mudámos de sala.",
-            SourceType.ORGANIZATION,
-            "Ribeira Live",
-            Instant.parse("2026-11-10T10:00:00Z"),
-            true);
+            new Provenance(
+                SourceType.ORGANIZATION,
+                "Ribeira Live",
+                Instant.parse("2026-11-10T10:00:00Z"),
+                true));
 
     changes.save(change);
 
@@ -61,9 +61,12 @@ class EventChangeRepositoryAdapterTest {
     assertThat(row.isProvenanceConfirmed()).isTrue();
 
     when(rows.findFirstByEventIdAndTypeOrderByProvenanceLastUpdatedAtDesc(
-            change.eventId(), ChangeType.VENUE_CHANGE))
+            change.getEventId(), ChangeType.VENUE_CHANGE))
         .thenReturn(Optional.of(row));
 
-    assertThat(changes.findLatest(change.eventId(), ChangeType.VENUE_CHANGE)).contains(change);
+    assertThat(changes.findLatest(change.getEventId(), ChangeType.VENUE_CHANGE))
+        .get()
+        .usingRecursiveComparison()
+        .isEqualTo(change);
   }
 }

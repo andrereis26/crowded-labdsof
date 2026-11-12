@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,6 +25,7 @@ import com.crowded.core.shared.domain.repository.RateLimiter;
 import com.crowded.core.user.application.dto.RegisterCommand;
 import com.crowded.core.user.application.dto.SignInCommand;
 import com.crowded.core.user.application.dto.SignedIn;
+import com.crowded.core.user.domain.model.Email;
 import com.crowded.core.user.domain.model.IssuedToken;
 import com.crowded.core.user.domain.model.Role;
 import com.crowded.core.user.domain.model.User;
@@ -74,13 +76,13 @@ class AuthServiceTest {
     ArgumentCaptor<UserAccount> stored = ArgumentCaptor.forClass(UserAccount.class);
     verify(users).add(stored.capture());
     UserAccount account = stored.getValue();
-    assertThat(account.email()).isEqualTo("ana@exemplo.pt");
-    assertThat(account.passwordHash()).isEqualTo("hash:" + PASSWORD);
-    assertThat(account.role()).isEqualTo(Role.PARTICIPANT);
-    assertThat(account.organizationId()).isNull();
-    assertThat(account.active()).isTrue();
-    assertThat(account.mustChangePassword()).isFalse();
-    assertThat(account.createdAt()).isEqualTo(NOW);
+    assertThat(account.getEmail()).isEqualTo(new Email("ana@exemplo.pt"));
+    assertThat(account.getPasswordHash()).isEqualTo("hash:" + PASSWORD);
+    assertThat(account.getRole()).isEqualTo(Role.PARTICIPANT);
+    assertThat(account.getOrganizationId()).isNull();
+    assertThat(account.isActive()).isTrue();
+    assertThat(account.isMustChangePassword()).isFalse();
+    assertThat(account.getCreatedAt()).isEqualTo(NOW);
     assertThat(user).isEqualTo(account.user());
     verify(limiter).tryAcquire("registration:address:" + ADDRESS, 5, Duration.ofHours(1));
     assertThat(meters.counter("crowded.auth.registrations", "outcome", "registered").count())
@@ -102,6 +104,15 @@ class AuthServiceTest {
         () -> service.register(new RegisterCommand("a@b.pt", "ç".repeat(37), ADDRESS)),
         RuleViolationException.class,
         "PASSWORD_TOO_LONG");
+    verify(users, never()).add(any());
+  }
+
+  @Test
+  void refusesAnInvalidEmail() {
+    assertRefused(
+        () -> service.register(new RegisterCommand("sem-arroba", PASSWORD, ADDRESS)),
+        RuleViolationException.class,
+        "EMAIL_INVALID");
     verify(users, never()).add(any());
   }
 
@@ -131,9 +142,10 @@ class AuthServiceTest {
   @Test
   void signsInWithTheRightPasswordWhateverTheEmailsCase() {
     UserAccount member = account(Role.ORGANIZATION_MEMBER, UUID.randomUUID(), true, false);
-    when(users.findAccountByEmail("equipa@ribeira-live.test")).thenReturn(Optional.of(member));
+    when(users.findAccountByEmail(new Email("equipa@ribeira-live.test")))
+        .thenReturn(Optional.of(member));
     IssuedToken token = new IssuedToken("jwt", NOW.plus(Duration.ofHours(1)));
-    when(tokens.issue(member.id())).thenReturn(token);
+    when(tokens.issue(member.getId())).thenReturn(token);
 
     SignedIn signedIn =
         service.signIn(new SignInCommand("Equipa@Ribeira-Live.test", PASSWORD, ADDRESS));
@@ -141,6 +153,8 @@ class AuthServiceTest {
     assertThat(signedIn.token()).isEqualTo(token);
     assertThat(signedIn.user()).isEqualTo(member.user());
     assertThat(signedIn.mustChangePassword()).isFalse();
+    assertThat(member.getLastSignedInAt()).isEqualTo(NOW);
+    verify(users).saveSignIn(member);
     assertThat(meters.counter("crowded.auth.sign-ins", "outcome", "signed-in").count()).isOne();
   }
 
@@ -148,8 +162,10 @@ class AuthServiceTest {
   void refusesAWrongPasswordAnUnknownEmailAndADeactivatedAccountAlike() {
     UserAccount participant = account(Role.PARTICIPANT, null, true, false);
     UserAccount deactivated = account(Role.ORGANIZATION_MEMBER, UUID.randomUUID(), false, false);
-    when(users.findAccountByEmail("ana@crowded.test")).thenReturn(Optional.of(participant));
-    when(users.findAccountByEmail("antigo@ribeira-live.test")).thenReturn(Optional.of(deactivated));
+    when(users.findAccountByEmail(new Email("ana@crowded.test")))
+        .thenReturn(Optional.of(participant));
+    when(users.findAccountByEmail(new Email("antigo@ribeira-live.test")))
+        .thenReturn(Optional.of(deactivated));
 
     String wrongPassword =
         refusal(() -> service.signIn(new SignInCommand("ana@crowded.test", "errada", ADDRESS)));
@@ -158,17 +174,25 @@ class AuthServiceTest {
     String deactivatedAccount =
         refusal(
             () -> service.signIn(new SignInCommand("antigo@ribeira-live.test", PASSWORD, ADDRESS)));
+    String notAnEmail =
+        refusal(() -> service.signIn(new SignInCommand("sem-arroba", PASSWORD, ADDRESS)));
 
-    assertThat(wrongPassword).isEqualTo(unknownEmail).isEqualTo(deactivatedAccount);
+    assertThat(wrongPassword)
+        .isEqualTo(unknownEmail)
+        .isEqualTo(deactivatedAccount)
+        .isEqualTo(notAnEmail);
+    verify(users, never()).saveSignIn(any());
     verify(tokens, never()).issue(any());
-    // An unknown email is still compared against a hash, so it takes as long as a wrong password.
-    verify(passwords).matches(eq(PASSWORD), argThat(hash -> !hash.equals("hash:" + PASSWORD)));
-    assertThat(meters.counter("crowded.auth.sign-ins", "outcome", "refused").count()).isEqualTo(3);
+    // An unknown or invalid email is still compared against a hash, so it takes as long as a
+    // wrong password.
+    verify(passwords, times(2))
+        .matches(eq(PASSWORD), argThat(hash -> !hash.equals("hash:" + PASSWORD)));
+    assertThat(meters.counter("crowded.auth.sign-ins", "outcome", "refused").count()).isEqualTo(4);
   }
 
   @Test
   void refusesAMissingPasswordWithoutFailing() {
-    when(users.findAccountByEmail("ana@crowded.test"))
+    when(users.findAccountByEmail(new Email("ana@crowded.test")))
         .thenReturn(Optional.of(account(Role.PARTICIPANT, null, true, false)));
 
     assertRefused(
@@ -180,13 +204,17 @@ class AuthServiceTest {
   @Test
   void refusesASignInWithATemporaryPasswordUntilItIsChanged() {
     UserAccount member = account(Role.ORGANIZATION_MEMBER, UUID.randomUUID(), true, true);
-    when(users.findAccountByEmail("novo@ribeira-live.test")).thenReturn(Optional.of(member));
+    when(users.findAccountByEmail(new Email("novo@ribeira-live.test")))
+        .thenReturn(Optional.of(member));
 
     assertRefused(
         () -> service.signIn(new SignInCommand("novo@ribeira-live.test", PASSWORD, ADDRESS)),
         NotAllowedException.class,
         "PASSWORD_CHANGE_REQUIRED");
     verify(tokens, never()).issue(any());
+    assertThat(
+            meters.counter("crowded.auth.sign-ins", "outcome", "password-change-required").count())
+        .isOne();
   }
 
   @Test
@@ -202,21 +230,21 @@ class AuthServiceTest {
     ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
     verify(limiter).tryAcquire(key.capture(), eq(10), eq(Duration.ofMinutes(15)));
     assertThat(key.getValue()).startsWith("sign-in:email:").doesNotContain("ana");
-    verify(users, never()).findAccountByEmail(anyString());
+    verify(users, never()).findAccountByEmail(any());
   }
 
   private UserAccount account(
       Role role, UUID organization, boolean active, boolean mustChangePassword) {
-    return new UserAccount(
+    return UserAccount.restore(
         UUID.randomUUID(),
         organization,
         role,
-        null,
-        "x@crowded.test",
+        role == Role.ORGANIZATION_MEMBER ? "Rita" : null,
+        new Email("x@crowded.test"),
         "hash:" + PASSWORD,
         active,
         mustChangePassword,
-        null,
+        mustChangePassword ? NOW.plus(UserAccount.TEMPORARY_PASSWORD_LIFETIME) : null,
         null,
         NOW);
   }

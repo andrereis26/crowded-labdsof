@@ -65,11 +65,11 @@ public class OrganizationAdministrationService {
         .map(
             o ->
                 new OrganizationOverview(
-                    o.id(),
-                    o.name(),
-                    o.createdAt(),
-                    eventCounts.getOrDefault(o.id(), 0L),
-                    byOrganization.getOrDefault(o.id(), List.of())))
+                    o.getId(),
+                    o.getName(),
+                    o.getCreatedAt(),
+                    eventCounts.getOrDefault(o.getId(), 0L),
+                    byOrganization.getOrDefault(o.getId(), List.of())))
         .toList();
   }
 
@@ -82,23 +82,24 @@ public class OrganizationAdministrationService {
   public UUID create(CreateOrganizationCommand command) {
     guard.require(command.administratorId());
     Organization organization =
-        Organization.create(
-            UUID.randomUUID(), command.name().strip(), command.administratorId(), clock.instant());
+        Organization.create(command.name(), command.administratorId(), clock.instant());
     organizations.add(organization);
     audit.record(
         command.administratorId(),
         null,
         "ORGANIZATION_CREATED",
         "Organization",
-        organization.id(),
-        Map.of("name", organization.name()));
+        organization.getId(),
+        Map.of("name", organization.getName()));
     Counter.builder("crowded.admin.actions")
         .description("Administrator actions on organizations and members")
         .tag("action", "ORGANIZATION_CREATED")
         .register(meters)
         .increment();
     log.info(
-        "Administrator {} created organization {}", command.administratorId(), organization.id());
-    return organization.id();
+        "Administrator {} created organization {}",
+        command.administratorId(),
+        organization.getId());
+    return organization.getId();
   }
 }

@@ -1,5 +1,6 @@
 package com.crowded.core.user.infrastructure.persistence.mapper;
 
+import com.crowded.core.user.domain.model.Email;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.model.UserAccount;
 import com.crowded.core.user.infrastructure.persistence.entity.UserEntity;
@@ -9,9 +10,29 @@ import org.mapstruct.Mapper;
 @Mapper
 public interface UserPersistenceMapper {
 
-  User toDomain(UserEntity entity);
+  default User toDomain(UserEntity entity) {
+    return User.restore(
+        entity.getId(), entity.getOrganizationId(), entity.getRole(), entity.isActive());
+  }
 
-  UserAccount toAccount(UserEntity entity);
+  default UserAccount toAccount(UserEntity entity) {
+    return UserAccount.restore(
+        entity.getId(),
+        entity.getOrganizationId(),
+        entity.getRole(),
+        entity.getName(),
+        new Email(entity.getEmail()),
+        entity.getPasswordHash(),
+        entity.isActive(),
+        entity.isMustChangePassword(),
+        entity.getTemporaryPasswordExpiresAt(),
+        entity.getLastSignedInAt(),
+        entity.getCreatedAt());
+  }
 
   UserEntity toEntity(UserAccount account);
+
+  default String toText(Email email) {
+    return email.value();
+  }
 }

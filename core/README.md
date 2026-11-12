@@ -58,14 +58,14 @@ Onion architecture ([ADR 0016](../docs/deliverables/adr/0016-onion-architecture-
 
 | Layer | Package | Holds | May use |
 |---|---|---|---|
-| Domain | `domain.model`, `domain.exception` | Entities, value objects, enums, the refusals (`NotFoundException`, `RuleViolationException`, ...) | Nothing else |
-| | `domain.service`, `domain.repository` | Domain rules (`ChangePlanner`) and the repository ports (interfaces) | The domain model |
+| Domain | `domain.model`, `domain.exception` | Entities and aggregate roots (classes that hold their rules), value objects (records that validate themselves), domain events, enums, the refusals (`NotFoundException`, `RuleViolationException`, ...) | Nothing else |
+| | `domain.service`, `domain.repository` | Rules that span several aggregates or need a port, and the repository ports (interfaces) | The domain model |
 | Application | `application.service`, `application.dto` | Use cases (`@Service`, `@Transactional`), their commands and results | The domain |
 | Adapters | `api.controller`, `api.dto`, `api.mapper` | REST controllers, request and response DTOs, MapStruct mappers to the application DTOs | Application, domain |
 | | `infrastructure.persistence.entity`, `.repository`, `.mapper` | JPA entities, Spring Data repositories with the adapters that implement the ports, MapStruct mappers to the domain | Domain |
 | | `infrastructure.messaging`, `infrastructure.config` | The outbox relay to RabbitMQ; security and clock configuration | Domain |
 
-The domain uses no framework: no Spring, JPA, validation, Jackson or MapStruct. Adapters never use each other. `OnionArchitectureTest` (ArchUnit) checks these rules on every build. The `ApiExceptionHandler` turns a domain refusal into an RFC 9457 problem with its `code`. Mappers are MapStruct interfaces, generated at compile time as Spring beans. A target property a mapper leaves unmapped fails the build.
+The domain is a rich model ([ADR 0017](../docs/deliverables/adr/0017-rich-domain-model.md)): an entity is a class whose factories and methods check its invariants (`UserAccount`, `Event`), a value object is a record that cannot be built invalid (`Email`, `Schedule`, `Venue`), and an application service only orchestrates. The domain uses no framework: no Spring, JPA, validation, Jackson or MapStruct. Adapters never use each other. `OnionArchitectureTest` (ArchUnit) checks these rules on every build, and that entities are classes without public constructors or setters. The `ApiExceptionHandler` turns a domain refusal into an RFC 9457 problem with its `code`. Mappers are MapStruct interfaces, generated at compile time as Spring beans. A target property a mapper leaves unmapped fails the build.
 
 ## Configuration
 

@@ -8,7 +8,10 @@ import org.mapstruct.Mapper;
 @Mapper
 public interface OrganizationPersistenceMapper {
 
-  Organization toDomain(OrganizationEntity entity);
+  default Organization toDomain(OrganizationEntity entity) {
+    return Organization.restore(
+        entity.getId(), entity.getName(), entity.getCreatedByUserId(), entity.getCreatedAt());
+  }
 
   OrganizationEntity toEntity(Organization organization);
 }

@@ -24,18 +24,19 @@ class NotificationTest {
         Notification.create(
             messageId, recipient, eventId, NotificationType.OFFICIAL_CHANGE, causeId, text, now);
 
-    assertThat(again.deduplicationKey()).isEqualTo(first.deduplicationKey());
-    assertThat(again.id()).isNotEqualTo(first.id());
+    assertThat(again.getDeduplicationKey()).isEqualTo(first.getDeduplicationKey());
+    assertThat(again.getId()).isNotEqualTo(first.getId());
     assertThat(first)
         .extracting(
-            Notification::userId,
-            Notification::eventId,
-            Notification::causeId,
-            Notification::title,
-            Notification::body,
-            Notification::createdAt)
+            Notification::getUserId,
+            Notification::getEventId,
+            Notification::getCauseId,
+            Notification::getTitle,
+            Notification::getBody,
+            Notification::getCreatedAt)
         .containsExactly(recipient.userId(), eventId, causeId, text.title(), text.body(), now);
     assertThat(Notification.deduplicationKey(recipient.userId(), UUID.randomUUID()))
-        .isNotEqualTo(first.deduplicationKey());
+        .isNotEqualTo(first.getDeduplicationKey());
+    assertThat(first).isNotEqualTo(again).isEqualTo(first);
   }
 }
