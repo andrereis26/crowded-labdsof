@@ -24,7 +24,7 @@ class UserAccountTest {
     assertThat(participant.getRole()).isEqualTo(Role.PARTICIPANT);
     assertThat(participant.getOrganizationId()).isNull();
     assertThat(participant.isActive()).isTrue();
-    assertThat(participant.isMustChangePassword()).isFalse();
+    assertThat(participant.hasTemporaryPassword()).isFalse();
     assertThat(participant.getCreatedAt()).isEqualTo(NOW);
   }
 
@@ -34,7 +34,7 @@ class UserAccountTest {
 
     assertThat(member.getName()).isEqualTo("Rita");
     assertThat(member.isMember()).isTrue();
-    assertThat(member.isMustChangePassword()).isTrue();
+    assertThat(member.hasTemporaryPassword()).isTrue();
     assertThat(member.getTemporaryPasswordExpiresAt()).isEqualTo(NOW.plus(Duration.ofDays(7)));
   }
 
@@ -130,7 +130,7 @@ class UserAccountTest {
     participant.resetPassword("new", NOW.plusSeconds(10));
 
     assertThat(participant.getPasswordHash()).isEqualTo("new");
-    assertThat(participant.isMustChangePassword()).isTrue();
+    assertThat(participant.hasTemporaryPassword()).isTrue();
     assertThat(participant.getTemporaryPasswordExpiresAt())
         .isEqualTo(NOW.plusSeconds(10).plus(UserAccount.TEMPORARY_PASSWORD_LIFETIME));
   }

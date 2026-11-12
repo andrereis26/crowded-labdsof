@@ -167,10 +167,6 @@ public final class OfficialChange {
     return id;
   }
 
-  public UUID getEventId() {
-    return eventId;
-  }
-
   @Override
   public boolean equals(Object other) {
     return other instanceof OfficialChange change && id.equals(change.id);

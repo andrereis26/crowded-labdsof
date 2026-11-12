@@ -53,10 +53,6 @@ public final class User {
     return role;
   }
 
-  public boolean isActive() {
-    return active;
-  }
-
   @Override
   public boolean equals(Object other) {
     return other instanceof User user && id.equals(user.id);

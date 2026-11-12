@@ -247,7 +247,7 @@ public final class UserAccount {
   }
 
   /** True while the account has a temporary password. */
-  public boolean isMustChangePassword() {
+  public boolean hasTemporaryPassword() {
     return mustChangePassword;
   }
 
