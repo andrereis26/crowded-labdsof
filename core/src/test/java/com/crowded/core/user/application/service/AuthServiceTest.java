@@ -49,7 +49,7 @@ class AuthServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-11-11T10:00:00Z");
   private static final String ADDRESS = "203.0.113.7";
-  private static final String PASSWORD = "uma-frase-longa";
+  private static final String PASSWORD = "Uma-frase-l0nga"; // ggignore
 
   private final UserRepository users = mock(UserRepository.class);
   private final PasswordHasher passwords = mock(PasswordHasher.class);
@@ -92,7 +92,7 @@ class AuthServiceTest {
   @Test
   void refusesAPasswordThatIsTooShortOrTooLong() {
     assertRefused(
-        () -> service.register(new RegisterCommand("a@b.pt", "curta12", ADDRESS)),
+        () -> service.register(new RegisterCommand("a@b.pt", "curta12", ADDRESS)), // ggignore
         RuleViolationException.class,
         "PASSWORD_TOO_SHORT");
     assertRefused(

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/app_store.dart';
+import '../../data/password_strength.dart';
 import '../../ui/ui.dart';
 import '../shared/shell.dart';
 
@@ -20,6 +21,7 @@ class _SignInScreenState extends State<SignInScreen> {
   _Mode _mode = _Mode.signIn;
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _confirmation = TextEditingController();
   bool _showPassword = false;
   bool _busy = false;
   String? _error;
@@ -28,6 +30,7 @@ class _SignInScreenState extends State<SignInScreen> {
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _confirmation.dispose();
     super.dispose();
   }
 
@@ -40,7 +43,11 @@ class _SignInScreenState extends State<SignInScreen> {
     });
     final error = _mode == _Mode.signIn
         ? await store.signIn(email: _email.text, password: _password.text)
-        : await store.register(email: _email.text, password: _password.text);
+        : await store.register(
+            email: _email.text,
+            password: _password.text,
+            confirmation: _confirmation.text,
+          );
     if (!mounted) return;
     setState(() {
       _busy = false;
@@ -55,6 +62,7 @@ class _SignInScreenState extends State<SignInScreen> {
       mode: _mode,
       email: _email,
       password: _password,
+      confirmation: _confirmation,
       showPassword: _showPassword,
       busy: _busy,
       error: _error,
@@ -189,6 +197,7 @@ class _Form extends StatelessWidget {
     required this.mode,
     required this.email,
     required this.password,
+    required this.confirmation,
     required this.showPassword,
     required this.busy,
     required this.error,
@@ -200,6 +209,7 @@ class _Form extends StatelessWidget {
   final _Mode mode;
   final TextEditingController email;
   final TextEditingController password;
+  final TextEditingController confirmation;
   final bool showPassword;
   final bool busy;
   final String? error;
@@ -236,12 +246,15 @@ class _Form extends StatelessWidget {
             label: 'Palavra-passe',
             controller: password,
             prefixIcon: Icons.lock_outline,
-            hint: registering ? 'Pelo menos 8 caracteres' : null,
             obscureText: !showPassword,
             autofillHints: [
               registering ? AutofillHints.newPassword : AutofillHints.password,
             ],
-            onSubmitted: (_) => onSubmit(),
+            // Registering, Enter moves on to the confirmation.
+            textInputAction: registering
+                ? TextInputAction.next
+                : TextInputAction.done,
+            onSubmitted: registering ? null : (_) => onSubmit(),
             suffix: IconButton(
               tooltip: showPassword
                   ? 'Esconder palavra-passe'
@@ -256,6 +269,16 @@ class _Form extends StatelessWidget {
               onPressed: onTogglePassword,
             ),
           ),
+          if (registering) _StrengthMeter(password: password),
+          if (registering)
+            AppTextField(
+              label: 'Confirmar palavra-passe',
+              controller: confirmation,
+              prefixIcon: Icons.lock_outline,
+              obscureText: !showPassword,
+              autofillHints: const [AutofillHints.newPassword],
+              onSubmitted: (_) => onSubmit(),
+            ),
           if (error != null)
             Semantics(
               liveRegion: true,
@@ -291,6 +314,130 @@ class _Form extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The password's strength, five bars and a label shown once the participant
+/// starts typing, and the list of requirements, each ticked once it is met.
+class _StrengthMeter extends StatelessWidget {
+  const _StrengthMeter({required this.password});
+
+  final TextEditingController password;
+
+  static Color _color(PasswordStrength strength) => switch (strength) {
+    PasswordStrength.veryWeak => AppColors.danger,
+    PasswordStrength.weak => AppColors.orange,
+    PasswordStrength.moderate => AppColors.warning,
+    PasswordStrength.strong => AppColors.success,
+    PasswordStrength.veryStrong => AppColors.walletStatus,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: password,
+      builder: (context, value, _) {
+        final typed = value.text.isNotEmpty;
+        final strength = PasswordStrength.of(value.text);
+        final missing = PasswordStrength.missing(value.text);
+        final color = _color(strength);
+        return Semantics(
+          container: true,
+          label: [
+            if (typed) 'Força da palavra-passe: ${strength.label}.',
+            if (missing.isEmpty)
+              'Cumpre todos os requisitos.'
+            else
+              'Requisitos em falta: ${_join(missing)}.',
+          ].join(' '),
+          child: ExcludeSemantics(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: AppSpacing.xs,
+              children: [
+                if (typed) ...[
+                  Row(
+                    spacing: AppSpacing.xs,
+                    children: [
+                      for (final level in PasswordStrength.values)
+                        Expanded(
+                          child: Container(
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: level.index <= strength.index
+                                  ? color
+                                  : AppColors.border,
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(2),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  Text(
+                    'Força: ${strength.label}',
+                    style: AppTextStyles.caption.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+                Text(
+                  'A palavra-passe deve conter:',
+                  style: AppTextStyles.caption,
+                ),
+                for (final requirement in PasswordRequirement.values)
+                  _RequirementRow(
+                    label: requirement.label,
+                    met: !missing.contains(requirement),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// "a, b e c", as Portuguese lists are written.
+  static String _join(List<PasswordRequirement> items) {
+    final labels = [
+      for (final item in items)
+        item.label[0].toLowerCase() + item.label.substring(1),
+    ];
+    if (labels.length == 1) return labels.first;
+    final head = labels.sublist(0, labels.length - 1).join(', ');
+    return '$head e ${labels.last}';
+  }
+}
+
+/// One requirement of the password, ticked once it is met.
+class _RequirementRow extends StatelessWidget {
+  const _RequirementRow({required this.label, required this.met});
+
+  final String label;
+  final bool met;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = met ? AppColors.success : AppColors.inkSecondary;
+    return Row(
+      spacing: AppSpacing.xs,
+      children: [
+        Icon(
+          met ? Icons.check_circle : Icons.radio_button_unchecked,
+          size: 14,
+          color: color,
+        ),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTextStyles.caption.copyWith(color: color),
+          ),
+        ),
+      ],
     );
   }
 }

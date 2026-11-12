@@ -12,17 +12,34 @@ public final class TemporaryPasswords {
 
   private TemporaryPasswords() {}
 
-  /** A new temporary password; {@code random} must be a secure generator. */
+  static final String UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  static final String LOWER = "abcdefghijkmnopqrstuvwxyz";
+  static final String DIGITS = "23456789";
+
+  /**
+   * A new temporary password; {@code random} must be a secure generator. It has an uppercase
+   * letter, a lowercase letter and a digit in random places, and the hyphens are its special
+   * characters, so it meets the same rule as a password a user chooses.
+   */
   public static String generate(RandomGenerator random) {
-    StringBuilder password = new StringBuilder(12);
-    for (int group : new int[] {3, 3, 4}) {
-      if (!password.isEmpty()) {
-        password.append('-');
-      }
-      for (int i = 0; i < group; i++) {
-        password.append(ALPHABET.charAt(random.nextInt(ALPHABET.length())));
-      }
+    char[] chars = new char[10];
+    chars[0] = pick(UPPER, random);
+    chars[1] = pick(LOWER, random);
+    chars[2] = pick(DIGITS, random);
+    for (int i = 3; i < chars.length; i++) {
+      chars[i] = pick(ALPHABET, random);
     }
-    return password.toString();
+    for (int i = chars.length - 1; i > 0; i--) {
+      int j = random.nextInt(i + 1);
+      char swap = chars[i];
+      chars[i] = chars[j];
+      chars[j] = swap;
+    }
+    String all = new String(chars);
+    return all.substring(0, 3) + "-" + all.substring(3, 6) + "-" + all.substring(6);
+  }
+
+  private static char pick(String from, RandomGenerator random) {
+    return from.charAt(random.nextInt(from.length()));
   }
 }
