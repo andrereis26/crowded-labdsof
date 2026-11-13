@@ -74,8 +74,6 @@ switch ($App) {
             Write-Step "Installing the backoffice's dependencies"
             npm --prefix $dir ci --no-audit --no-fund
         }
-        # "Ver pagina publica" opens the participant app that start.ps1 runs.
-        $environment = @{ VITE_PARTICIPANT_URL = "http://localhost:$($config.PARTICIPANT_APP_PORT)" }
         $command = "npm run dev -- --host 127.0.0.1 --port $port --strictPort"
     }
     'participant-app' {

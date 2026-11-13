@@ -10,7 +10,6 @@ describe('configuration', () => {
   it('takes the file values unless a variable replaces them', () => {
     expect(loadConfig({})).toEqual({
       apiBaseUrl: '/api',
-      participantUrl: 'http://localhost:8765',
       geocoderUrl: 'https://photon.komoot.io/api',
     })
 

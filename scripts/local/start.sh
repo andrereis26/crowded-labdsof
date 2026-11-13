@@ -67,8 +67,6 @@ case "${app}" in
       log "Installing the backoffice's dependencies"
       npm --prefix "${dir}" ci --no-audit --no-fund
     fi
-    # "Ver página pública" opens the participant app that start.sh runs.
-    env_vars=("VITE_PARTICIPANT_URL=http://localhost:${PARTICIPANT_APP_PORT}")
     command=(npm run dev -- --host 127.0.0.1 --port "${port}" --strictPort)
     ;;
   participant-app)
