@@ -39,7 +39,7 @@ void main() {
       addTearDown(tester.view.reset);
       final store = AppStore(auth: _RefusingAuthApi());
       await tester.pumpWidget(
-        CrowdedApp(store: store, initialLocation: '/entrar'),
+        CrowdedApp(store: store, initialLocation: '/sign-in'),
       );
       await tester.pumpAndSettle();
 
@@ -81,7 +81,7 @@ void main() {
     final semantics = tester.ensureSemantics();
     final store = AppStore(auth: _RefusingAuthApi());
     await tester.pumpWidget(
-      CrowdedApp(store: store, initialLocation: '/entrar'),
+      CrowdedApp(store: store, initialLocation: '/sign-in'),
     );
     await tester.pumpAndSettle();
 
@@ -103,7 +103,7 @@ void main() {
   ) async {
     final store = AppStore(auth: _RefusingAuthApi());
     await tester.pumpWidget(
-      CrowdedApp(store: store, initialLocation: '/entrar'),
+      CrowdedApp(store: store, initialLocation: '/sign-in'),
     );
     await tester.pumpAndSettle();
 

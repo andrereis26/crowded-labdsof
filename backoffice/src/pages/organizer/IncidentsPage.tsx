@@ -101,7 +101,7 @@ export function IncidentsPage({ incidents, now }: { incidents: Incident[]; now: 
                   <IncidentSummary incident={i} now={now} />
                 </button>
                 <Link
-                  to={`/organizacao/incidentes/${i.id}`}
+                  to={`/organization/incidents/${i.id}`}
                   className={`${row} border-transparent lg:hidden`}
                 >
                   <IncidentSummary incident={i} now={now} />
@@ -133,7 +133,7 @@ export function IncidentsPage({ incidents, now }: { incidents: Incident[]; now: 
             <div className="flex gap-2.5">
               <Button
                 className="flex-1"
-                onClick={() => navigate(`/organizacao/incidentes/${selected.id}`)}
+                onClick={() => navigate(`/organization/incidents/${selected.id}`)}
               >
                 Abrir incidente
               </Button>
@@ -141,7 +141,7 @@ export function IncidentsPage({ incidents, now }: { incidents: Incident[]; now: 
                 variant="secondary"
                 icon={CornerDownRight}
                 className="flex-1"
-                onClick={() => navigate(`/organizacao/incidentes/${selected.id}#reportes`)}
+                onClick={() => navigate(`/organization/incidents/${selected.id}#reports`)}
               >
                 Separar grupo
               </Button>

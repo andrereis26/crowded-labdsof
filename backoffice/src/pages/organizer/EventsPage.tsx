@@ -34,7 +34,7 @@ export function EventsPage({
     undefined,
   )
 
-  const linkTo = (e: OrgEvent) => `/organizacao/eventos/${e.id}`
+  const linkTo = (e: OrgEvent) => `/organization/events/${e.id}`
 
   return (
     <div className="flex flex-col gap-4 lg:gap-[22px]">
@@ -44,7 +44,7 @@ export function EventsPage({
         actions={
           <>
             <ButtonLink
-              to="/organizacao/eventos/novo"
+              to="/organization/events/new"
               size="lg"
               icon={Plus}
               className="max-sm:hidden"
@@ -52,7 +52,7 @@ export function EventsPage({
               Criar evento
             </ButtonLink>
             <Link
-              to="/organizacao/eventos/novo"
+              to="/organization/events/new"
               aria-label="Criar evento"
               className="inline-flex size-9 items-center justify-center rounded-full bg-ink text-white sm:hidden"
             >

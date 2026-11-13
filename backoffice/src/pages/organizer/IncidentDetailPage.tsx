@@ -57,7 +57,7 @@ export function IncidentDetailPage({
     return (
       <p className="text-sm text-ink-secondary">
         Não encontrámos este incidente.{' '}
-        <Link to="/organizacao/incidentes" className="font-semibold text-primary">
+        <Link to="/organization/incidents" className="font-semibold text-primary">
           Voltar aos incidentes
         </Link>
       </p>
@@ -81,7 +81,7 @@ export function IncidentDetailPage({
   return (
     <div className="flex flex-col gap-4 lg:gap-[18px]">
       <Link
-        to="/organizacao/incidentes"
+        to="/organization/incidents"
         className="-ml-1.5 flex items-center text-[17px] text-primary lg:hidden"
       >
         <ChevronLeft size={26} aria-hidden />
@@ -89,7 +89,7 @@ export function IncidentDetailPage({
       </Link>
       <div className="max-lg:hidden">
         <Breadcrumb
-          items={[{ label: 'Incidentes', to: '/organizacao/incidentes' }, { label: i.title }]}
+          items={[{ label: 'Incidentes', to: '/organization/incidents' }, { label: i.title }]}
         />
       </div>
 
@@ -175,7 +175,7 @@ export function IncidentDetailPage({
               )
             }
           >
-            <ul id="reportes">
+            <ul id="reports">
               {reports.map((r) => (
                 <li key={r.id} className="flex items-center gap-3 border-t border-border py-[11px]">
                   <div className="min-w-0 flex-1">
@@ -221,12 +221,12 @@ export function IncidentDetailPage({
 
         <div className="flex flex-col gap-4 lg:w-[380px] lg:shrink-0">
           <Panel title="Ações" className="gap-2.5">
-            <ButtonLink to="/organizacao/alertas" variant="secondary" icon={Megaphone}>
+            <ButtonLink to="/organization/alerts" variant="secondary" icon={Megaphone}>
               Enviar alerta sobre isto
             </ButtonLink>
             {queueName && (
               <ButtonLink
-                to="/organizacao/ao-vivo/lotacao"
+                to="/organization/live/crowd"
                 variant="secondary"
                 icon={Pencil}
                 className="max-lg:hidden"

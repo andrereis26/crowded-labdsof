@@ -11,7 +11,7 @@ abstract final class Sections {
   static const wallet = 0;
   static const account = 1;
 
-  static const paths = ['/eventos', '/conta'];
+  static const paths = ['/events', '/account'];
 }
 
 /// Opens the report form (P11) with the event in progress chosen, or null
@@ -40,7 +40,7 @@ class CrowdedWebHeader extends StatelessWidget implements PreferredSizeWidget {
       userInitials: store.account?.initials ?? '',
       unreadNotifications: store.unreadCount,
       onReport: reportAction(context),
-      onNotifications: () => context.push('/notificacoes'),
+      onNotifications: () => context.push('/notifications'),
       onAccount: () => context.go(Sections.paths[Sections.account]),
     );
   }

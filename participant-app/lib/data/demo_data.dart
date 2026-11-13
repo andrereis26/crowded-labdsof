@@ -349,7 +349,7 @@ class DemoData {
       body: 'Responde até às 21h.',
       source: 'Organização Margens',
       receivedAt: _ago(const Duration(hours: 1)),
-      route: '/evento/${festivalMargens.id}/pedidos',
+      route: '/event/${festivalMargens.id}/requests',
       urgent: true,
       responses: 412,
     ),
@@ -423,7 +423,7 @@ class DemoData {
       status: 'A organização resolveu-o e enviou um alerta a 1 240 pessoas.',
       at: _ago(const Duration(minutes: 25)),
       tone: AppTagTone.success,
-      route: '/reconhecimento/r-agua',
+      route: '/recognition/r-agua',
     ),
     Contribution(
       id: 'k-palco',

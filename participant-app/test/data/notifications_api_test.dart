@@ -63,9 +63,9 @@ void main() {
       expect(change.eventName, 'Noite de Fado');
       expect(change.body, 'Nova data.\nTraz o bilhete.');
       expect(change.receivedAt, DateTime.utc(2026, 11, 12, 10).toLocal());
-      expect(change.target, '/evento/e-1/alteracao/c-1');
+      expect(change.target, '/event/e-1/change/c-1');
       expect(change.read, isFalse);
-      expect(page.notifications.last.target, '/evento/e-1');
+      expect(page.notifications.last.target, '/event/e-1');
     });
 
     test('marks a notification read', () async {
@@ -246,13 +246,13 @@ void main() {
 
       expect(read('OPERATIONAL_ALERT').kind, NotificationKind.alert);
       expect(read('OPERATIONAL_ALERT').typeLabel, 'Alerta da organização');
-      expect(read('OPERATIONAL_ALERT').target, '/evento/e-1');
+      expect(read('OPERATIONAL_ALERT').target, '/event/e-1');
       expect(read('WEATHER_WARNING').kind, NotificationKind.weather);
-      expect(read('ORGANIZATION_SURVEY').target, '/evento/e-1/pedidos');
-      expect(read('CONFIRMATION_REQUEST').target, '/evento/e-1?confirmar=c-1');
-      expect(read('RECOGNITION').target, '/reconhecimento/c-1');
-      expect(read('INCIDENT_STATUS').target, '/conta/contribuicoes');
-      expect(read('OFFICIAL_CHANGE', causeId: null).target, '/evento/e-1');
+      expect(read('ORGANIZATION_SURVEY').target, '/event/e-1/requests');
+      expect(read('CONFIRMATION_REQUEST').target, '/event/e-1?confirm=c-1');
+      expect(read('RECOGNITION').target, '/recognition/c-1');
+      expect(read('INCIDENT_STATUS').target, '/account/contributions');
+      expect(read('OFFICIAL_CHANGE', causeId: null).target, '/event/e-1');
     });
 
     test('names a deleted event and keeps the read state', () {

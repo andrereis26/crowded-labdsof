@@ -29,7 +29,7 @@ describe('C1 sign-in accessibility', () => {
   it('has no WCAG 2.1 AA violations, before and after a refused sign-in', async () => {
     const user = userEvent.setup()
     const { container } = render(
-      <MemoryRouter initialEntries={['/entrar']}>
+      <MemoryRouter initialEntries={['/sign-in']}>
         <App now={new Date(2026, 10, 12)} signIn={refused} />
       </MemoryRouter>,
     )
@@ -46,7 +46,7 @@ describe('C1 sign-in accessibility', () => {
   it('can be filled in and sent with the keyboard alone', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/entrar']}>
+      <MemoryRouter initialEntries={['/sign-in']}>
         <App now={new Date(2026, 10, 12)} signIn={refused} />
       </MemoryRouter>,
     )
@@ -74,7 +74,7 @@ describe('C4 new password accessibility', () => {
   it('has no WCAG 2.1 AA violations, with the strength meter and a refusal', async () => {
     const user = userEvent.setup()
     const { container } = render(
-      <MemoryRouter initialEntries={['/entrar']}>
+      <MemoryRouter initialEntries={['/sign-in']}>
         <App now={new Date(2026, 10, 12)} signIn={temporary} choosePassword={choosePassword} />
       </MemoryRouter>,
     )

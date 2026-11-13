@@ -293,11 +293,11 @@ AppNotification? notificationFromJson(Map<String, dynamic> json) {
     changeId: kind == NotificationKind.officialChange ? causeId : null,
     route: switch (kind) {
       NotificationKind.confirmation when causeId != null =>
-        '/evento/$eventId?confirmar=$causeId',
-      NotificationKind.request => '/evento/$eventId/pedidos',
+        '/event/$eventId?confirm=$causeId',
+      NotificationKind.request => '/event/$eventId/requests',
       NotificationKind.recognition when causeId != null =>
-        '/reconhecimento/$causeId',
-      NotificationKind.reportStatus => '/conta/contribuicoes',
+        '/recognition/$causeId',
+      NotificationKind.reportStatus => '/account/contributions',
       _ => null,
     },
     read: json['readAt'] != null,

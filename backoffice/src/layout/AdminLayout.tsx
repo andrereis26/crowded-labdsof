@@ -4,7 +4,7 @@ import { admin } from '../data/admin'
 import { Avatar } from '../ui/components'
 import { Sidebar, TopBar, type NavItem } from './Shell'
 
-const nav: NavItem[] = [{ label: 'Organizações', to: '/organizacoes', icon: Building2 }]
+const nav: NavItem[] = [{ label: 'Organizações', to: '/organizations', icon: Building2 }]
 
 /** Platform administration (A2): dark side menu and a white top bar on
  * desktop. On small screens the menu is hidden and the page shows its own

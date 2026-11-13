@@ -34,21 +34,21 @@ npm run build
 
 ## Screens
 
-| Route                                                          | Mockup                                                                 |
-| -------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `/entrar`                                                      | C1 · Sign in, with the expired temporary password error (C4)           |
-| `/definir-palavra-passe`                                       | C4 · First sign-in: choose a new password                              |
-| `/organizacoes`                                                | A2 · Organizations and members, with the create and password dialogs   |
-| `/organizacao/eventos`                                         | O2 · Events list                                                       |
-| `/organizacao/eventos/novo`, `/organizacao/eventos/:id/editar` | O3 · Create / edit event, ticketed or public (access code and QR code) |
-| `/organizacao/eventos/:id`                                     | O4 · Event page with the "Alterar evento" dialog                       |
-| `/organizacao/ao-vivo/lotacao`                                 | O5 · Update crowd level and queues                                     |
-| `/organizacao/alertas`                                         | O6 · Send alert, manual or AI draft                                    |
-| `/organizacao/ao-vivo`                                         | O7 · Live dashboard                                                    |
-| `/organizacao/incidentes`                                      | O8 · Incidents grouped by AI                                           |
-| `/organizacao/incidentes/:id`                                  | O9 · Incident detail                                                   |
-| `/organizacao/definicoes`                                      | O10 · Categories that ask for confirmation                             |
-| `/organizacao/pedidos`                                         | O12 · Publish request                                                  |
+| Route                                                       | Mockup                                                                 |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `/sign-in`                                                  | C1 · Sign in, with the expired temporary password error (C4)           |
+| `/new-password`                                             | C4 · First sign-in: choose a new password                              |
+| `/organizations`                                            | A2 · Organizations and members, with the create and password dialogs   |
+| `/organization/events`                                      | O2 · Events list                                                       |
+| `/organization/events/new`, `/organization/events/:id/edit` | O3 · Create / edit event, ticketed or public (access code and QR code) |
+| `/organization/events/:id`                                  | O4 · Event page with the "Alterar evento" dialog                       |
+| `/organization/live/crowd`                                  | O5 · Update crowd level and queues                                     |
+| `/organization/alerts`                                      | O6 · Send alert, manual or AI draft                                    |
+| `/organization/live`                                        | O7 · Live dashboard                                                    |
+| `/organization/incidents`                                   | O8 · Incidents grouped by AI                                           |
+| `/organization/incidents/:id`                               | O9 · Incident detail                                                   |
+| `/organization/settings`                                    | O10 · Categories that ask for confirmation                             |
+| `/organization/requests`                                    | O12 · Publish request                                                  |
 
 Sections without a mockup show "Disponível em breve". The platform administration (A2) reads and changes organizations and members in Core (`/admin/...`, #140, `src/data/adminApi.ts`) with the administrator's token, and opens only for an administrator. The organizer pages use `src/data/organizer.ts` (demo data) until #148. Sign-in goes to Core (`POST /auth/login`, #59) with the demo accounts of [`database/README.md`](../database/README.md#demo-accounts): `admin@crowded.test` opens the administration and `equipa@ribeira-live.test` the organizer area. The dev server sends `/api` to a Core on `http://localhost:8081` (`scripts/local/start.sh core`; `CORE_URL` changes it), and a build calls `VITE_API_BASE_URL` (default `/api`, behind the router). A member with a temporary password is refused until #141 adds C4 to the API; C4 itself still runs on demo data. The "Gerar rascunho com IA" button in O6 uses a local stand-in (`draftAlert`) until the AI drafting service exists. "Ver página pública" opens the participant app at `VITE_PARTICIPANT_URL` (default `http://localhost:8765`).
 

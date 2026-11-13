@@ -200,7 +200,7 @@ class ChangeDetailScreen extends StatelessWidget {
         ),
         AppButton(
           label: 'Ver evento',
-          onPressed: () => context.go('/evento/${event.id}'),
+          onPressed: () => context.go('/event/${event.id}'),
         ),
         if (change.refund case final refund?)
           AppButton.secondary(

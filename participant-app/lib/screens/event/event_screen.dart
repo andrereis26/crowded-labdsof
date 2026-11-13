@@ -66,7 +66,7 @@ class _EventScreenState extends State<EventScreen> {
           AppErrorState(
             message: 'Não encontrámos este evento',
             retryLabel: 'Voltar aos meus eventos',
-            onRetry: () => context.go('/eventos'),
+            onRetry: () => context.go('/events'),
           ),
         ],
       );
@@ -145,14 +145,14 @@ class _EventPageData {
     );
     if (leave != true || !context.mounted) return;
     store.leaveEvent(event.id);
-    context.go('/eventos');
+    context.go('/events');
   }
 
   void openEntryCode(BuildContext context) =>
-      context.push('/evento/${event.id}/codigo');
+      context.push('/event/${event.id}/code');
 
   void openDirections(BuildContext context) =>
-      context.push('/evento/${event.id}/como-chegar');
+      context.push('/event/${event.id}/directions');
 
   /// "Fonte: IPMA · atualizado há 30 min", or "guardado às 22:14" offline.
   String source(String name, DateTime? updatedAt) {
@@ -206,7 +206,7 @@ class _EventPageData {
         kind: AlertBannerKind.officialChange,
         message: postponedMessage(event),
         origin: formatSource('organização', change.detectedAt, now: now),
-        onTap: () => context.push('/evento/${event.id}/alteracao/${change.id}'),
+        onTap: () => context.push('/event/${event.id}/change/${change.id}'),
       ),
   ];
 
@@ -281,7 +281,7 @@ class _EventPageData {
               iconColor: AppColors.ink,
               title: 'Estimativas de participantes · ${estimates.length}',
               subtitle: estimates.first.title,
-              onTap: () => context.push('/evento/${event.id}/estimativas'),
+              onTap: () => context.push('/event/${event.id}/estimates'),
             ),
     );
   }
@@ -325,7 +325,7 @@ class _EventPageData {
         icon: Icons.chat_bubble_outline,
         title: 'Pedidos da organização',
         subtitle: requestCount == 1 ? '1 pedido' : '$requestCount pedidos',
-        onTap: () => context.push('/evento/${event.id}/pedidos'),
+        onTap: () => context.push('/event/${event.id}/requests'),
       ),
     if (ticket != null)
       AppListTile(
@@ -337,7 +337,7 @@ class _EventPageData {
       icon: Icons.history,
       title: 'Histórico de alterações',
       subtitle: changeSummary(event),
-      onTap: () => context.push('/evento/${event.id}/historico'),
+      onTap: () => context.push('/event/${event.id}/history'),
     ),
   ];
 }
@@ -432,7 +432,7 @@ class _DesktopEventPage extends StatelessWidget {
                       children: [
                         AppInlineLink(
                           label: 'Os meus eventos',
-                          onPressed: () => context.go('/eventos'),
+                          onPressed: () => context.go('/events'),
                         ),
                         const Icon(
                           Icons.chevron_right,
@@ -496,7 +496,7 @@ class _DesktopEventPage extends StatelessWidget {
                                   estimates: estimates,
                                   now: page.now,
                                   onSeeAll: () => context.push(
-                                    '/evento/${event.id}/estimativas',
+                                    '/event/${event.id}/estimates',
                                   ),
                                 ),
                               Row(

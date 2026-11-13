@@ -24,7 +24,7 @@ class WalletScreen extends StatelessWidget {
 }
 
 void _openEvent(BuildContext context, Event event) =>
-    context.push('/evento/${event.id}');
+    context.push('/event/${event.id}');
 
 class _MobileWallet extends StatelessWidget {
   const _MobileWallet({required this.store});
@@ -53,14 +53,14 @@ class _MobileWallet extends StatelessWidget {
                 icon: Icons.notifications_none,
                 semanticLabel: 'Notificações',
                 badgeCount: store.unreadCount,
-                onPressed: () => context.push('/notificacoes'),
+                onPressed: () => context.push('/notifications'),
               ),
               if (tickets.isNotEmpty || publicEvents.isNotEmpty)
                 AppCircleButton(
                   icon: Icons.add,
                   semanticLabel: 'Adicionar evento',
                   dark: true,
-                  onPressed: () => context.push('/importar'),
+                  onPressed: () => context.push('/import'),
                 ),
             ],
           ),
@@ -115,11 +115,11 @@ class NoEventsState extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           AppButton(
             label: 'Importar bilhete',
-            onPressed: () => context.push('/importar'),
+            onPressed: () => context.push('/import'),
           ),
           AppButton.secondary(
             label: 'Inserir código de acesso',
-            onPressed: () => context.push('/codigo-de-acesso'),
+            onPressed: () => context.push('/access-code'),
           ),
         ],
       ),
@@ -268,14 +268,14 @@ class _DesktopWallet extends StatelessWidget {
                         label: 'Inserir código de acesso',
                         icon: Icons.qr_code_scanner,
                         expand: false,
-                        onPressed: () => context.push('/codigo-de-acesso'),
+                        onPressed: () => context.push('/access-code'),
                       ),
                       const SizedBox(width: AppSpacing.md),
                       AppButton(
                         label: 'Importar bilhete',
                         icon: Icons.add,
                         expand: false,
-                        onPressed: () => context.push('/importar'),
+                        onPressed: () => context.push('/import'),
                       ),
                     ],
                   ),
@@ -289,7 +289,7 @@ class _DesktopWallet extends StatelessWidget {
                         now: now,
                       ),
                       onTap: () => context.push(
-                        '/evento/${ticket.event.id}/alteracao/'
+                        '/event/${ticket.event.id}/change/'
                         '${ticket.event.latestDateChange!.id}',
                       ),
                     ),
@@ -462,7 +462,7 @@ class _TodayPanel extends StatelessWidget {
                 child: AppButton.secondary(
                   label: 'Mostrar código',
                   icon: Icons.qr_code_2,
-                  onPressed: () => context.push('/evento/${event.id}/codigo'),
+                  onPressed: () => context.push('/event/${event.id}/code'),
                 ),
               ),
             Expanded(

@@ -376,8 +376,8 @@ class AppNotification {
   String get target =>
       route ??
       (changeId != null
-          ? '/evento/$eventId/alteracao/$changeId'
-          : '/evento/$eventId');
+          ? '/event/$eventId/change/$changeId'
+          : '/event/$eventId');
 
   bool matches(NotificationFilter filter) => switch (filter) {
     NotificationFilter.all => true,

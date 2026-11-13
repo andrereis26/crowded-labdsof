@@ -25,7 +25,7 @@ class RequestsScreen extends StatelessWidget {
           AppErrorState(
             message: 'Não encontrámos este evento',
             retryLabel: 'Voltar aos meus eventos',
-            onRetry: () => context.go('/eventos'),
+            onRetry: () => context.go('/events'),
           ),
         ],
       );
@@ -80,11 +80,11 @@ class RequestsScreen extends StatelessWidget {
                         items: [
                           AppBreadcrumb(
                             'Os meus eventos',
-                            onTap: () => context.go('/eventos'),
+                            onTap: () => context.go('/events'),
                           ),
                           AppBreadcrumb(
                             event.name,
-                            onTap: () => context.go('/evento/${event.id}'),
+                            onTap: () => context.go('/event/${event.id}'),
                           ),
                           const AppBreadcrumb('Pedidos da organização'),
                         ],

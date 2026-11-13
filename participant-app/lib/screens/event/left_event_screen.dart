@@ -28,7 +28,7 @@ class LeftEventScreen extends StatelessWidget {
 
     return AppPage(
       leadingLabel: 'Notificações',
-      onLeading: () => context.go('/notificacoes'),
+      onLeading: () => context.go('/notifications'),
       background: AppColors.surface,
       maxWidth: 560,
       children: [
@@ -51,12 +51,12 @@ class LeftEventScreen extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         AppButton(
           label: 'Voltar às notificações',
-          onPressed: () => context.go('/notificacoes'),
+          onPressed: () => context.go('/notifications'),
         ),
         AppButton.secondary(
           label: publicEvent ? 'Inserir código de acesso' : 'Importar bilhete',
           onPressed: () =>
-              context.push(publicEvent ? '/codigo-de-acesso' : '/importar'),
+              context.push(publicEvent ? '/access-code' : '/import'),
         ),
       ],
     );

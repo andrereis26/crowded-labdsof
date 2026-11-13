@@ -41,7 +41,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   void _delete(AppStore store) {
     store.deleteAccount();
     final messenger = ScaffoldMessenger.of(context);
-    context.go('/entrar');
+    context.go('/sign-in');
     messenger.showSnackBar(
       const SnackBar(content: Text('A tua conta foi apagada.')),
     );

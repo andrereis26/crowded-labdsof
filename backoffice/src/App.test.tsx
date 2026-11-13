@@ -195,7 +195,7 @@ describe('C1 and C4 sign-in', () => {
       title: 'Não foi possível entrar',
       message: 'O email ou a palavra-passe não estão certos.',
     })
-    renderAt('/entrar', core.signIn)
+    renderAt('/sign-in', core.signIn)
     await user.type(screen.getByLabelText('Email'), 'equipa@ribeira-live.test')
     await user.type(screen.getByLabelText('Palavra-passe'), 'errada')
     await user.click(screen.getByRole('button', { name: 'Mostrar palavra-passe' }))
@@ -214,7 +214,7 @@ describe('C1 and C4 sign-in', () => {
   it('sends a member to the events', async () => {
     const user = userEvent.setup()
     renderAt(
-      '/entrar',
+      '/sign-in',
       fakeSignIn({ kind: 'signed-in', session: session('ORGANIZATION_MEMBER') }).signIn,
     )
     await user.type(screen.getByLabelText('Email'), 'equipa@ribeira-live.test')
@@ -225,7 +225,10 @@ describe('C1 and C4 sign-in', () => {
 
   it('sends the administrator to the organizations', async () => {
     const user = userEvent.setup()
-    renderAt('/entrar', fakeSignIn({ kind: 'signed-in', session: session('ADMINISTRATOR') }).signIn)
+    renderAt(
+      '/sign-in',
+      fakeSignIn({ kind: 'signed-in', session: session('ADMINISTRATOR') }).signIn,
+    )
     await user.type(screen.getByLabelText('Email'), 'admin@crowded.test')
     await user.type(screen.getByLabelText('Palavra-passe'), 'crowded-demo')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
@@ -242,7 +245,7 @@ describe('C1 and C4 sign-in', () => {
       },
       { kind: 'signed-in', session: session('ORGANIZATION_MEMBER') },
     )
-    renderAt('/entrar', fakeSignIn({ kind: 'new-password' }).signIn, {
+    renderAt('/sign-in', fakeSignIn({ kind: 'new-password' }).signIn, {
       choosePassword: core.choosePassword,
     })
     await user.type(screen.getByLabelText('Email'), ' novo@ribeira-live.test ')
@@ -291,7 +294,7 @@ describe('C1 and C4 sign-in', () => {
   it('refuses the temporary password as the new one', async () => {
     const user = userEvent.setup()
     const core = fakeChoosePassword()
-    renderAt('/entrar', fakeSignIn({ kind: 'new-password' }).signIn, {
+    renderAt('/sign-in', fakeSignIn({ kind: 'new-password' }).signIn, {
       choosePassword: core.choosePassword,
     })
     await user.type(screen.getByLabelText('Email'), 'novo@ribeira-live.test')
@@ -309,7 +312,7 @@ describe('C1 and C4 sign-in', () => {
   })
 
   it('does not show the new password page without a temporary sign-in', () => {
-    renderAt('/definir-palavra-passe')
+    renderAt('/new-password')
     expect(screen.getByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
   })
 })
@@ -317,7 +320,7 @@ describe('C1 and C4 sign-in', () => {
 describe('A2 platform administration', () => {
   it('lists organizations and the members of the selected one', async () => {
     const user = userEvent.setup()
-    renderAsAdministrator('/organizacoes')
+    renderAsAdministrator('/organizations')
     expect(await screen.findByText('3 organizações · 9 membros')).toBeInTheDocument()
     expect(screen.getByText('12 SET 2026')).toBeInTheDocument()
     const margens = screen.getByRole('table', { name: 'Membros de Organização Margens' })
@@ -330,7 +333,7 @@ describe('A2 platform administration', () => {
 
   it('creates an organization and a member, showing the password once', async () => {
     const user = userEvent.setup()
-    renderAsAdministrator('/organizacoes')
+    renderAsAdministrator('/organizations')
     await screen.findByText('3 organizações · 9 membros')
 
     await user.click(screen.getByRole('button', { name: 'Criar organização' }))
@@ -362,7 +365,7 @@ describe('A2 platform administration', () => {
 
   it('issues a new temporary password, deactivates and reactivates members', async () => {
     const user = userEvent.setup()
-    renderAsAdministrator('/organizacoes')
+    renderAsAdministrator('/organizations')
 
     await user.click(
       await screen.findByRole('button', { name: 'Nova palavra-passe para Miguel Sousa' }),
@@ -386,7 +389,7 @@ describe('A2 platform administration', () => {
 
   it("shows Core's refusal in the member form", async () => {
     const user = userEvent.setup()
-    renderAsAdministrator('/organizacoes', fakeAdminApi(['ja.existe@margens.pt']))
+    renderAsAdministrator('/organizations', fakeAdminApi(['ja.existe@margens.pt']))
 
     await user.click(await screen.findByRole('button', { name: 'Criar membro' }))
     const dialog = screen.getByRole('dialog', { name: 'Criar membro' })
@@ -404,7 +407,7 @@ describe('A2 platform administration', () => {
       ...fakeAdminApi(),
       list: () => Promise.reject(new AdminApiError('NETWORK')),
     }
-    renderAsAdministrator('/organizacoes', failing)
+    renderAsAdministrator('/organizations', failing)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Não foi possível carregar as organizações.',
@@ -412,7 +415,7 @@ describe('A2 platform administration', () => {
   })
 
   it('sends anyone but the administrator to the sign-in page', () => {
-    renderAt('/organizacoes', undefined, { session: session('ORGANIZATION_MEMBER') })
+    renderAt('/organizations', undefined, { session: session('ORGANIZATION_MEMBER') })
     expect(screen.getByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
   })
 

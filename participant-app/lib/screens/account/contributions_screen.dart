@@ -196,7 +196,7 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
   /// Helpful reports open the recognition; others their event, if known.
   static String? _routeFor(AppStore store, Contribution c) =>
       c.route ??
-      (store.eventById(c.eventId) == null ? null : '/evento/${c.eventId}');
+      (store.eventById(c.eventId) == null ? null : '/event/${c.eventId}');
 }
 
 class _ContributionRow extends StatelessWidget {

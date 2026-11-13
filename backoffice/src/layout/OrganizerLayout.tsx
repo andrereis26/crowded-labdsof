@@ -48,17 +48,17 @@ export function OrganizerLayout({
   children: ReactNode
 }) {
   const nav: NavItem[] = [
-    { label: 'Eventos', to: '/organizacao/eventos', icon: Calendar },
-    { label: 'Ao vivo', to: '/organizacao/ao-vivo', icon: ChartNoAxesColumn },
+    { label: 'Eventos', to: '/organization/events', icon: Calendar },
+    { label: 'Ao vivo', to: '/organization/live', icon: ChartNoAxesColumn },
     {
       label: 'Incidentes',
-      to: '/organizacao/incidentes',
+      to: '/organization/incidents',
       icon: TriangleAlert,
       count: openIncidents,
     },
-    { label: 'Alertas', to: '/organizacao/alertas', icon: Megaphone },
-    { label: 'Pedidos', to: '/organizacao/pedidos', icon: MessageSquare },
-    { label: 'Definições', to: '/organizacao/definicoes', icon: Settings },
+    { label: 'Alertas', to: '/organization/alerts', icon: Megaphone },
+    { label: 'Pedidos', to: '/organization/requests', icon: MessageSquare },
+    { label: 'Definições', to: '/organization/settings', icon: Settings },
   ]
   const tag = statusTag[currentEvent.status]
 
@@ -85,7 +85,7 @@ export function OrganizerLayout({
         <TopBar
           actions={
             <a
-              href={`${participantUrl}/eventos`}
+              href={`${participantUrl}/events`}
               target="_blank"
               rel="noreferrer"
               className={buttonClass('secondary', 'sm')}
@@ -228,15 +228,15 @@ function EventSelector({
 }
 
 const tabs = [
-  { label: 'Eventos', to: '/organizacao/eventos', icon: Calendar },
-  { label: 'Ao vivo', to: '/organizacao/ao-vivo', icon: ChartNoAxesColumn },
-  { label: 'Incidentes', to: '/organizacao/incidentes', icon: TriangleAlert },
-  { label: 'Alertas', to: '/organizacao/alertas', icon: Megaphone },
-  { label: 'Mais', to: '/organizacao/mais', icon: Menu },
+  { label: 'Eventos', to: '/organization/events', icon: Calendar },
+  { label: 'Ao vivo', to: '/organization/live', icon: ChartNoAxesColumn },
+  { label: 'Incidentes', to: '/organization/incidents', icon: TriangleAlert },
+  { label: 'Alertas', to: '/organization/alerts', icon: Megaphone },
+  { label: 'Mais', to: '/organization/more', icon: Menu },
 ]
 
 /** Pages reached from "Mais" on phones. */
-const morePaths = ['/organizacao/mais', '/organizacao/pedidos', '/organizacao/definicoes']
+const morePaths = ['/organization/more', '/organization/requests', '/organization/settings']
 
 function TabBar({ openIncidents }: { openIncidents: number }) {
   const { pathname } = useLocation()
@@ -252,7 +252,7 @@ function TabBar({ openIncidents }: { openIncidents: number }) {
           to={to}
           className={({ isActive }) =>
             `relative flex flex-1 flex-col items-center gap-1 pt-2 text-[11px] font-medium ${
-              isActive || (to === '/organizacao/mais' && inMore)
+              isActive || (to === '/organization/more' && inMore)
                 ? 'text-primary'
                 : 'text-ink-secondary'
             }`
