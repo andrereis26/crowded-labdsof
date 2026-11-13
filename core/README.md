@@ -1,10 +1,10 @@
 # Crowded Core
 
-Core service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). So far it registers participants and signs users in (`POST /auth/register`, `POST /auth/login`, #59), lets the platform administrator manage organizations and members (`/admin/...`, #140), publishes an organization's official event changes (`POST /events/{eventId}/changes`, #37) and relays its outbox to RabbitMQ; the other endpoints follow the [API Outline](../docs/deliverables/api-outline.md).
+Core service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). So far it registers participants and signs users in (`POST /auth/register`, `POST /auth/login`, #59), lets the platform administrator manage organizations and members (`/admin/...`, #140), publishes an organization's official event changes (`POST /events/{eventId}/changes`, #37), imports ticket PDFs (`POST /tickets`, #20) and relays its outbox to RabbitMQ; the other endpoints follow the [API Outline](../docs/deliverables/api-outline.md).
 
 - **Responsibility:** domain rules, authentication (issues JWTs), REST API, Organization API, live event-page updates (SSE), AI ticket extraction and alert drafts. Applies the changes detected by Jobs.
 - **Owns (writes):** users, organizations, events, connections, on-site information, weather, alerts, surveys, reports, incidents.
-- **Dependencies:** Spring Web MVC, Validation, Spring Data JPA with the PostgreSQL driver, Spring AMQP, Spring Data Redis, Spring Security with OAuth2 Resource Server (JWT), MapStruct; ArchUnit in the tests.
+- **Dependencies:** Spring Web MVC, Validation, Spring Data JPA with the PostgreSQL driver, Spring AMQP, Spring Data Redis, Spring Security with OAuth2 Resource Server (JWT), MapStruct, Apache PDFBox and ZXing (reading imported tickets and their QR codes); ArchUnit in the tests.
 
 ## Stack
 
@@ -85,5 +85,6 @@ The domain is a rich model ([ADR 0017](../docs/deliverables/adr/0017-rich-domain
 | `REDIS_PASSWORD` | Redis password | empty (no auth) |
 | `JWT_PUBLIC_KEY_LOCATION` | Public key that checks token signatures, e.g. `file:/run/secrets/jwt-public.pem` | – |
 | `JWT_PRIVATE_KEY_LOCATION` | Private key Core signs tokens with (`crowded.jwt.private-key-location`). Only Core gets it. | – |
+| `CROWDED_TICKETS_ENTRYCODEKEY` | Base64 256-bit key that encrypts the entry codes of imported tickets with AES-GCM (`crowded.tickets.entry-code-key`). Without it, Core starts but refuses ticket imports (503 `TICKET_IMPORT_UNAVAILABLE`). Locally it is `TICKET_ENTRY_CODE_KEY` of `.env`, which `setup` creates; deployments read the Doppler secret of the same name. | – |
 
 Tokens are signed with an RSA key pair: Core holds the private key, and every service validates with the public key ([ADR 0005](../docs/deliverables/adr/0005-authentication-in-core-with-jwt.md)).

@@ -34,6 +34,12 @@ spring:
     # Errors as RFC 9457 problems, with the API's error code in "code".
     problemdetails:
       enabled: true
+  servlet:
+    multipart:
+      # The router's limit (client_max_body_size), so a ticket PDF it lets
+      # through is not refused here; the default is 1 MB.
+      max-file-size: 10MB
+      max-request-size: 10MB
   security:
     oauth2:
       resourceserver:
@@ -52,6 +58,16 @@ crowded:
     sign-ins-per-email: 10 # per 15 minutes
     sign-ins-per-address: 30 # per 15 minutes
     registrations-per-address: 10 # per hour
+    # Enough for the tickets of a family or group and a few retries; each import
+    # may call the AI provider, so it also caps its cost.
+    ticket-imports-per-user: 20 # per hour
+  ai:
+    # The AI gives up after 25 seconds, without retries, so an import ends within
+    # 30 seconds; the participant then types the event code.
+    ticket-extraction-timeout: 25s
+  # crowded.tickets.entry-code-key, a Base64 256-bit key, encrypts the entry
+  # codes of imported tickets. It has no default: without it, Core refuses ticket
+  # imports. See README.md.
 
 server:
   # The router's X-Forwarded-For gives the client's address, which the rate
@@ -65,3 +81,9 @@ management:
       # calls readiness (ADR 0011).
       probes:
         enabled: true
+
+logging:
+  level:
+    # The image has none of the PDF base fonts, so PDFBox warns on every ticket that
+    # it uses a substitute; that changes nothing for reading the QR code and text.
+    org.apache.pdfbox.pdmodel.font: ERROR
