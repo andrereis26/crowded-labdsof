@@ -13,7 +13,8 @@ ADR 0010 left the maps vendor open, behind an adapter. Creating an event (#36) i
 
 ## Options considered
 
-- **OpenStreetMap:** Nominatim for geocoding and openstreetmap.org's embeddable map. Free and without a key. Nominatim's public instance allows at most one request per second, with a referer or user agent that identifies the application, and no bulk geocoding.
+- **OpenStreetMap with Nominatim:** OpenStreetMap's own geocoder and openstreetmap.org's embeddable map. Free and without a key, at most one request per second on the public instance. Nominatim needs every word of the address to match, so an address pasted from Google Maps ("Jardins do Palácio de Cristal, R. de D Manuel II Porta 03, 4050-346 Porto") finds nothing.
+- **OpenStreetMap with Photon:** komoot's geocoder on the same OpenStreetMap data, with the same embeddable map. Free and without a key, fair use on the public instance. It matches loosely and tolerates abbreviations and extra words: the address above, "Pavilhao Rosa Mota, Porto" and "Altice Arena, Lisboa" find the venue. It filters by a box, not by country.
 - **Google Maps Platform:** Geocoding API and Maps Embed API. Better address matching, but needs an API key, a billing account and a key restricted to our domains.
 - **Mapbox:** similar to Google, with a key and a free tier.
 - **Coordinates typed by the member, or a pin they drop on a map:** no geocoding, but either error-prone or a map library to add, and the member still has to find the place.
@@ -21,13 +22,13 @@ ADR 0010 left the maps vendor open, behind an adapter. Creating an event (#36) i
 
 ## Decision
 
-- **OpenStreetMap, called from the backoffice.** O3 and the venue change in O4 look the address up in Nominatim when the member leaves the field (`backoffice/src/data/geocoding.ts`), limited to Portugal, and show the pin in openstreetmap.org's embedded map, with a link to open it there. The browser sends the backoffice's address as the referer, as Nominatim's policy asks.
+- **OpenStreetMap, called from the backoffice.** O3 and the venue change in O4 look the address up in Photon when the member leaves the field (`backoffice/src/data/geocoding.ts`), within a box around Portugal and its islands, keeping the first answer in Portugal, and show the pin in openstreetmap.org's embedded map, with a link to open it there. The geocoder's address is a setting (`geocoderUrl` in `backoffice/src/config.json`, `VITE_GEOCODER_URL` to replace it), so a hosted Photon needs no code change.
 - The `Geocoder` type is the adapter: the pages receive it, and tests pass a fake. Core stores the coordinates it receives and checks only their range.
 - The participant app's map (FR-056) uses OpenStreetMap too unless its story decides otherwise.
 
 ## Consequences
 
-- No key, account or cost. A member creates a few events a week, far below Nominatim's limit; looking up only when the field is left, not on every key, keeps it so.
-- Nominatim's matching is weaker than Google's for incomplete addresses. The map lets the member see a wrong match and correct the address; when nothing matches, the form says so and the event cannot be published.
-- Members' browsers call nominatim.openstreetmap.org and load tiles from openstreetmap.org. A Content Security Policy, if one is added to the backoffice, must allow both.
-- Moving to another provider changes `geocoding.ts` and the map component only. If the public instance becomes a problem (rate limits, availability), the next step is geocoding through Core with a cache, or a hosted Nominatim.
+- No key, account or cost. A member creates a few events a week, well within the public instance's fair use; looking up only when the field is left, not on every key, keeps it so.
+- Photon's matching is weaker than Google's for incomplete addresses, and loose matching can pick a namesake elsewhere ("Pavilhão Rosa Mota" alone is first a hall in Coimbra). The map lets the member see a wrong match and correct the address; when nothing matches, the form says so and the event cannot be published.
+- Members' browsers call photon.komoot.io and load tiles from openstreetmap.org. A Content Security Policy, if one is added to the backoffice, must allow both.
+- Moving to another provider changes `geocoding.ts` and the map component only. If the public instance becomes a problem (rate limits, availability), the next step is geocoding through Core with a cache, or a hosted Photon at `geocoderUrl`.

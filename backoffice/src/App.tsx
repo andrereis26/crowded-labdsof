@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from 'react-router'
 import { type AdminOrganization, type Member } from './data/admin'
 import { AdminApiError, httpAdminApi, type AdminApi, type MemberChange } from './data/adminApi'
 import { httpEventsApi, type EventsApi } from './data/eventsApi'
-import { nominatimGeocoder, type Geocoder } from './data/geocoding'
+import { photonGeocoder, type Geocoder } from './data/geocoding'
 import {
   choosePasswordWithCore,
   signInWithCore,
@@ -18,7 +18,7 @@ import { NewPasswordPage, SignInPage } from './pages/SignInPage'
 import { Panel } from './ui/components'
 
 /** One geocoder for the whole app, so the map service's rate limit holds. */
-const defaultGeocoder = nominatimGeocoder()
+const defaultGeocoder = photonGeocoder()
 
 function codeOf(error: unknown): string {
   return error instanceof AdminApiError ? error.code : 'UNKNOWN'

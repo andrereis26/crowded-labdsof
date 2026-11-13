@@ -208,7 +208,7 @@ export function EventFormPage({
                   />
                 )}
               </Field>
-              <Field label="Abertura de portas" optional>
+              <Field label="Abertura de portas">
                 {(p) => (
                   <TextInput
                     {...p}

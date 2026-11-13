@@ -1,3 +1,5 @@
+import { config } from '../config'
+
 /** Where an address is on the map, in degrees (WGS 84). */
 export interface Place {
   latitude: number
@@ -12,29 +14,36 @@ export const MAP_UNAVAILABLE =
  * when the map service cannot be reached. */
 export type Geocoder = (address: string) => Promise<Place | undefined>
 
-/** OpenStreetMap's geocoder (ADR 0018). Its usage policy allows at most one
- * request per second, so the form looks an address up only when the member
- * leaves the field. */
-const nominatimUrl = 'https://nominatim.openstreetmap.org/search'
+/** Everything Portugal covers, mainland and islands: Photon filters by a box,
+ * not by country, so the answers are checked for Portugal too. */
+const PORTUGAL_BOX = '-31.6,32.3,-6.1,42.2'
 
-/** {@link Geocoder} on OpenStreetMap Nominatim, limited to Portugal, where
- * every event takes place (its district selects the IPMA warnings). */
-export function nominatimGeocoder(fetchImpl: typeof fetch = fetch): Geocoder {
+interface PhotonFeature {
+  geometry: { coordinates: [number, number] }
+  properties: { countrycode?: string }
+}
+
+/** {@link Geocoder} on Photon, the OpenStreetMap geocoder at `url` (ADR 0018),
+ * limited to Portugal, where every event takes place (its district selects the
+ * IPMA warnings). Photon matches loosely, so an address pasted from elsewhere
+ * ("R. de D Manuel II Porta 03") still finds its street. Its public instance
+ * asks for fair use, so the form looks an address up only when the member
+ * leaves the field. */
+export function photonGeocoder(
+  url: string = config.geocoderUrl,
+  fetchImpl: typeof fetch = fetch,
+): Geocoder {
   return async (address) => {
-    const query = new URLSearchParams({
-      q: address,
-      format: 'jsonv2',
-      limit: '1',
-      countrycodes: 'pt',
+    const query = new URLSearchParams({ q: address, limit: '5', bbox: PORTUGAL_BOX })
+    const response = await fetchImpl(`${url}?${query}`, {
+      headers: { Accept: 'application/json' },
     })
-    const response = await fetchImpl(`${nominatimUrl}?${query}`, {
-      headers: { Accept: 'application/json', 'Accept-Language': 'pt-PT' },
-    })
-    if (!response.ok) throw new Error(`Nominatim answered ${response.status}`)
-    const results = (await response.json()) as { lat: string; lon: string }[]
-    const [first] = results
-    if (!first) return undefined
-    return { latitude: Number(first.lat), longitude: Number(first.lon) }
+    if (!response.ok) throw new Error(`The geocoder answered ${response.status}`)
+    const { features } = (await response.json()) as { features: PhotonFeature[] }
+    const inPortugal = features.find((f) => f.properties.countrycode === 'PT')
+    if (!inPortugal) return undefined
+    const [longitude, latitude] = inPortugal.geometry.coordinates
+    return { latitude, longitude }
   }
 }
 

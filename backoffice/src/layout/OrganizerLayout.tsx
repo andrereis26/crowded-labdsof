@@ -10,13 +10,14 @@ import {
 } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router'
+import { config } from '../config'
 import { eventSubtitle, organization, statusTag, type OrgEvent } from '../data/organizer'
 import { Avatar, EventThumb, Tag } from '../ui/components'
 import { buttonClass } from '../ui/styles'
 import { Sidebar, TopBar, type NavItem } from './Shell'
 
 /** Base address of the participant web app, for "Ver página pública". */
-const participantUrl = import.meta.env.VITE_PARTICIPANT_URL ?? 'http://localhost:8765'
+const participantUrl = config.participantUrl
 
 export type OrganizerScope =
   /** Pages about the whole organization ("Eventos"). */
