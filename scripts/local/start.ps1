@@ -66,6 +66,8 @@ switch ($App) {
         }
         # Only Core signs tokens.
         if ($App -eq 'core') { $environment.JWT_PRIVATE_KEY_LOCATION = "file:$jwtDir/private.pem" }
+        # Only Core imports tickets.
+        if ($App -eq 'core') { $environment.CROWDED_TICKETS_ENTRYCODEKEY = $config.TICKET_ENTRY_CODE_KEY }
         $command = if ($IsWindows) { 'mvnw.cmd -B -ntp spring-boot:run' } else { './mvnw -B -ntp spring-boot:run' }
     }
     'backoffice' {

@@ -108,6 +108,7 @@ foreach ($key in 'POSTGRES_PASSWORD', 'CORE_DB_PASSWORD', 'JOBS_DB_PASSWORD', 'N
 }
 Add-StackSecret 'JWT_PRIVATE_KEY' (ConvertFrom-Base64Text $config.JWT_PRIVATE_KEY_BASE64 'JWT_PRIVATE_KEY_BASE64')
 Add-StackSecret 'JWT_PUBLIC_KEY' (ConvertFrom-Base64Text $config.JWT_PUBLIC_KEY_BASE64 'JWT_PUBLIC_KEY_BASE64')
+Add-StackSecret 'TICKET_ENTRY_CODE_KEY' $config.TICKET_ENTRY_CODE_KEY
 # RabbitMQ reads its default user from a config file, not from a secret file.
 Add-StackSecret 'RABBITMQ_CONF' "default_user = $($config.RABBITMQ_USERNAME)`ndefault_pass = $($config.RABBITMQ_PASSWORD)"
 

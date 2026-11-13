@@ -37,7 +37,7 @@ source "${SCRIPT_DIR}/lib/common.sh"
 # Doppler key -> Swarm secret. The stack file reads the secret's versioned name
 # from <KEY>_SECRET.
 SECRET_KEYS=(POSTGRES_PASSWORD CORE_DB_PASSWORD JOBS_DB_PASSWORD NOTIFICATIONS_DB_PASSWORD
-  RABBITMQ_PASSWORD REDIS_PASSWORD JWT_PRIVATE_KEY JWT_PUBLIC_KEY)
+  RABBITMQ_PASSWORD REDIS_PASSWORD JWT_PRIVATE_KEY JWT_PUBLIC_KEY TICKET_ENTRY_CODE_KEY)
 # Doppler keys that are configuration, not secrets: written to the release as is.
 CONFIG_KEYS=(POSTGRES_DB POSTGRES_USER RABBITMQ_USERNAME)
 # Configuration that may be missing from Doppler, and its default then.

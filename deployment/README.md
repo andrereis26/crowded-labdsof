@@ -105,12 +105,19 @@ Project `crowded`, config `prd`, the only environment deployed for now (the desi
 | `REDIS_PASSWORD` | Yes | Redis password |
 | `JWT_PRIVATE_KEY` | Yes | PEM private key Core signs tokens with ([ADR 0005](../docs/deliverables/adr/0005-authentication-in-core-with-jwt.md)). Only Core gets it |
 | `JWT_PUBLIC_KEY` | Yes | PEM public key every service checks tokens with |
+| `TICKET_ENTRY_CODE_KEY` | Yes | Base64 256-bit key that encrypts the entry codes of imported tickets. Only Core gets it. Changing it makes the codes already stored unreadable, so it is not rotated like the passwords |
 
 Generate the key pair once, store both keys in Doppler, and delete the local files:
 
 ```bash
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt-private.pem
 openssl rsa -in jwt-private.pem -pubout -out jwt-public.pem
+```
+
+Generate the entry-code key once and store the printed value in Doppler:
+
+```bash
+openssl rand -base64 32
 ```
 
 Secrets reach the containers as files in `/run/secrets`, never as environment variables, so `docker inspect` does not show them. The backend services read them through Spring Boot's config tree import; PostgreSQL through `POSTGRES_PASSWORD_FILE`; Redis and RabbitMQ through a config file. Rotating a secret is changing it in Doppler and deploying: the new value becomes a new Swarm secret, and the services restart with it.

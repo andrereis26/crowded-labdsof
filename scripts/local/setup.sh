@@ -127,6 +127,7 @@ create_env() {
         case "${key}" in
           JWT_PRIVATE_KEY_BASE64) value="${private}" ;;
           JWT_PUBLIC_KEY_BASE64) value="${public}" ;;
+          TICKET_ENTRY_CODE_KEY) value="$(openssl rand -base64 32)" ;;
           # Hex: letters and digits only, as the database users and RabbitMQ need.
           *) value="$(openssl rand -hex 24)" ;;
         esac
@@ -146,6 +147,12 @@ check_tools
 
 if [[ -f "${ENV_FILE}" ]]; then
   log "Keeping the existing .env."
+  # A .env from before ticket import gets its key here, so it needs no edit by hand.
+  if ! grep -q "^TICKET_ENTRY_CODE_KEY=" "${ENV_FILE}" && command -v openssl >/dev/null 2>&1; then
+    printf 'TICKET_ENTRY_CODE_KEY=%s
+' "$(openssl rand -base64 32)" >>"${ENV_FILE}"
+    log "Added TICKET_ENTRY_CODE_KEY to .env."
+  fi
   absent=""
   for key in $(env_keys); do
     grep -q "^${key}=" "${ENV_FILE}" || absent="${absent} ${key}"
