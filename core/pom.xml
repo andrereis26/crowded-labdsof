@@ -26,6 +26,10 @@
     <!-- Latest stable releases; 1.7 of MapStruct is still a beta. -->
     <mapstruct.version>1.6.3</mapstruct.version>
     <archunit.version>1.5.1</archunit.version>
+    <!-- Ticket import: PDFBox reads the ticket PDF and renders its pages, and ZXing
+         decodes the QR code from them, locally and without AI. -->
+    <pdfbox.version>3.0.8</pdfbox.version>
+    <zxing.version>3.5.4</zxing.version>
     <!-- CI runs unit and integration tests in separate jobs (ADR 0011):
          -DskipUTs skips the unit tests, -DskipITs the integration tests. -->
     <skipUTs>false</skipUTs>
@@ -76,6 +80,16 @@
       <groupId>org.mapstruct</groupId>
       <artifactId>mapstruct</artifactId>
       <version>${mapstruct.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.pdfbox</groupId>
+      <artifactId>pdfbox</artifactId>
+      <version>${pdfbox.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.zxing</groupId>
+      <artifactId>core</artifactId>
+      <version>${zxing.version}</version>
     </dependency>
 
     <dependency>

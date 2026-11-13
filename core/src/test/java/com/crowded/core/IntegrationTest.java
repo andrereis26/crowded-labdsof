@@ -2,6 +2,8 @@ package com.crowded.core;
 
 import static org.junit.jupiter.api.parallel.ResourceAccessMode.READ;
 
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.UUID;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -46,6 +48,7 @@ public abstract class IntegrationTest {
   private static final GenericContainer<?> REDIS =
       new GenericContainer<>("redis:8.2-alpine").withExposedPorts(6379);
   private static final TestJwtKeys JWT_KEYS = TestJwtKeys.generate();
+  private static final String ENTRY_CODE_KEY = randomEntryCodeKey();
   private static final TestDatabase DATABASE;
 
   static {
@@ -75,5 +78,13 @@ public abstract class IntegrationTest {
     // Every test client has the same address: only the per-email limit is tested.
     registry.add("crowded.rate-limits.sign-ins-per-address", () -> 10_000);
     registry.add("crowded.rate-limits.registrations-per-address", () -> 10_000);
+    registry.add("crowded.tickets.entry-code-key", () -> ENTRY_CODE_KEY);
+  }
+
+  /** A fresh 256-bit key for the entry codes of imported tickets, so no key is committed. */
+  private static String randomEntryCodeKey() {
+    byte[] key = new byte[32];
+    new SecureRandom().nextBytes(key);
+    return Base64.getEncoder().encodeToString(key);
   }
 }
