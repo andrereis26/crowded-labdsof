@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../ui/ui.dart';
@@ -12,6 +13,7 @@ import 'events_api.dart';
 import 'password_strength.dart';
 import 'models.dart';
 import 'notifications_api.dart';
+import 'tickets_api.dart';
 
 /// App state for the participant screens. Registration, sign-in and the
 /// pages of events Core knows go to Core, and the notifications to
@@ -25,6 +27,7 @@ class AppStore extends ChangeNotifier {
     NotificationsApi? notifications,
     EventsApi? events,
     this._session,
+    this.ticketsApi,
   }) : _clock = clock ?? DateTime.now,
        _auth = auth ?? HttpAuthApi(),
        _notificationsApi = notifications ?? HttpNotificationsApi(),
@@ -46,6 +49,11 @@ class AppStore extends ChangeNotifier {
 
   final DateTime Function() _clock;
   final AuthApi _auth;
+
+  /// Core's ticket import. Without it, ticket import uses demo data; it is
+  /// set once the screens use the real sign-in.
+  final TicketsApi? ticketsApi;
+
   late final Map<String, Event> _registered;
   late List<Ticket> _tickets;
   late Set<String> _public;
@@ -741,8 +749,9 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Ticket import (P2 → P2a / P2b). Files are "read" with demo data: a PDF
-  // matches a registered event, an image gives a misread event code.
+  // Ticket import (P2 → P2a / P2b). With [ticketsApi], a PDF is sent to
+  // Core; without it, files are "read" with demo data: a PDF matches a
+  // registered event, an image gives a misread event code.
 
   /// The file being imported when its event code has to be typed (P2b).
   TicketImport? pendingImport;
@@ -752,17 +761,38 @@ class AppStore extends ChangeNotifier {
 
   static const _demoCode = 'FADO-2026';
 
-  ImportOutcome importFile(TicketOrigin origin) {
-    if (origin == TicketOrigin.image) {
-      pendingImport = TicketImport(
-        fileName: 'bilhete-fado.jpg',
-        origin: origin,
-        readCode: 'FADO-2O26',
-      );
-      notifyListeners();
-      return ImportOutcome.needsEventCode;
+  /// Imports a ticket PDF.
+  ///
+  /// Throws [TicketsApiException] when Core refuses it or cannot be reached.
+  Future<ImportOutcome> importPdf(Uint8List bytes, String fileName) async {
+    final api = ticketsApi;
+    if (api == null) return _addTicket(_demoCode, TicketOrigin.pdf);
+    final result = await api.uploadPdf(bytes, fileName);
+    switch (result) {
+      case TicketWithoutQrCode():
+        pendingImport = null;
+        notifyListeners();
+        return ImportOutcome.noQrCode;
+      case TicketNeedsEventCode(:final importId):
+        pendingImport = TicketImport(
+          fileName: fileName,
+          origin: TicketOrigin.pdf,
+          importId: importId,
+        );
+        notifyListeners();
+        return ImportOutcome.needsEventCode;
     }
-    return _addTicket(_demoCode, origin);
+  }
+
+  /// Imports a screenshot or photo of a ticket, with demo data.
+  ImportOutcome importImage() {
+    pendingImport = const TicketImport(
+      fileName: 'bilhete-fado.jpg',
+      origin: TicketOrigin.image,
+      readCode: 'FADO-2O26',
+    );
+    notifyListeners();
+    return ImportOutcome.needsEventCode;
   }
 
   /// Completes [pendingImport] with the event code printed on the ticket.
