@@ -26,19 +26,12 @@ public interface EventApiMapper {
   @Mapping(target = "code", source = "request", qualifiedByName = "codeOfItsType")
   RegisterEventCommand toCommand(UUID userId, CreateEventRequest request);
 
-  @Mapping(target = "code", source = "request", qualifiedByName = "codeSent")
   CorrectEventCommand toCommand(UUID userId, UUID eventId, CorrectEventRequest request);
 
   /** The field of the event's type: the code printed on its tickets, or its access code. */
   @Named("codeOfItsType")
   default String codeOfItsType(CreateEventRequest request) {
     return request.type() == EventType.TICKETED ? request.ticketEventCode() : request.accessCode();
-  }
-
-  /** The new code, whichever field it came in: the event keeps its type. */
-  @Named("codeSent")
-  default String codeSent(CorrectEventRequest request) {
-    return request.ticketEventCode() != null ? request.ticketEventCode() : request.accessCode();
   }
 
   @Mapping(target = "id", source = "event.id")

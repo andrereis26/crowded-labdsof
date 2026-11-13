@@ -2,7 +2,7 @@ import { AlertTriangle, Calendar, Clock, MapPin, Plus, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { errorField, eventErrorMessage, EventsApiError } from '../../data/eventsApi'
-import type { Geocoder } from '../../data/geocoding'
+import { MAP_UNAVAILABLE, type Geocoder } from '../../data/geocoding'
 import {
   accessCodeFor,
   codeOwner,
@@ -11,6 +11,7 @@ import {
   emptyEvent,
   eventKinds,
   parseAnswers,
+  parseRadius,
   organization,
   shortDate,
   slug,
@@ -46,8 +47,11 @@ export function EventFormPage({
   const [answers, setAnswers] = useState(() =>
     String((existing ?? event).confirmations.highConfidenceAnswers),
   )
+  const [radius, setRadius] = useState(() => String((existing ?? event).confirmations.radiusMeters))
   const [errors, setErrors] = useState<ReturnType<typeof validateEvent>>({})
   const [answersError, setAnswersError] = useState<string>()
+  const [radiusError, setRadiusError] = useState<string>()
+  const [mapUnavailable, setMapUnavailable] = useState(false)
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
@@ -72,15 +76,24 @@ export function EventFormPage({
   const save = async () => {
     if (saving) return
     const found = validateEvent(event, events)
+    if (found.address && mapUnavailable && event.address.trim()) found.address = MAP_UNAVAILABLE
     const parsed = parseAnswers(answers)
+    const meters = parseRadius(radius)
     setErrors(found)
     setAnswersError(typeof parsed === 'string' ? parsed : undefined)
+    setRadiusError(typeof meters === 'string' ? meters : undefined)
     setFormError('')
-    if (Object.keys(found).length || typeof parsed === 'string') return
+    if (Object.keys(found).length || typeof parsed === 'string' || typeof meters === 'string') {
+      return
+    }
 
     const ready: OrgEvent = {
       ...event,
-      confirmations: { ...event.confirmations, highConfidenceAnswers: parsed },
+      confirmations: {
+        ...event.confirmations,
+        radiusMeters: meters,
+        highConfidenceAnswers: parsed,
+      },
     }
     setSaving(true)
     try {
@@ -305,7 +318,8 @@ export function EventFormPage({
               geocode={geocode}
               disabled={editing}
               error={errors.address}
-              onChange={(address, place) => {
+              onChange={(address, place, unavailable) => {
+                setMapUnavailable(!!unavailable)
                 setEvent((e) => ({
                   ...e,
                   address,
@@ -358,6 +372,12 @@ export function EventFormPage({
           <ConfirmationRulesPanel
             value={event.confirmations}
             onChange={(confirmations) => set('confirmations', confirmations)}
+            radius={radius}
+            onRadiusChange={(value) => {
+              setRadius(value)
+              setRadiusError(undefined)
+            }}
+            radiusError={radiusError}
             answers={answers}
             onAnswersChange={(value) => {
               setAnswers(value)

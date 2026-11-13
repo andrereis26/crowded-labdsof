@@ -34,12 +34,13 @@ ALTER TABLE queue_time
   ADD CONSTRAINT queue_time_queue_point_id_key UNIQUE (queue_point_id);
 DROP TYPE queue_point_kind;
 
--- How far from the venue a participant may report or confirm (FR-064), how many
+-- How far from the venue, in meters, a participant may report or confirm: up to
+-- a whole city for a public event spread over it (FR-064), how many
 -- answers make a report's confidence high (FR-058), and how often one
 -- participant is asked to confirm (FR-057).
 ALTER TABLE event
   ADD COLUMN venue_radius_meters integer NOT NULL DEFAULT 500
-    CHECK (venue_radius_meters BETWEEN 100 AND 5000),
+    CHECK (venue_radius_meters BETWEEN 100 AND 50000),
   ADD COLUMN high_confidence_answers integer NOT NULL DEFAULT 8
     CHECK (high_confidence_answers BETWEEN 2 AND 50),
   ADD COLUMN max_prompts_per_hour integer NOT NULL DEFAULT 3

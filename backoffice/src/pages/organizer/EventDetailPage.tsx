@@ -11,7 +11,7 @@ import {
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { eventErrorMessage, EventsApiError, instantOf } from '../../data/eventsApi'
-import type { Geocoder } from '../../data/geocoding'
+import { MAP_UNAVAILABLE, type Geocoder } from '../../data/geocoding'
 import {
   connected,
   eventDateLabel,
@@ -231,6 +231,7 @@ function ChangeEventDialog({
   const [venue, setVenue] = useState('')
   const [address, setAddress] = useState('')
   const [place, setPlace] = useState<{ latitude: number; longitude: number }>()
+  const [mapUnavailable, setMapUnavailable] = useState(false)
   const [sending, setSending] = useState(false)
   const [failure, setFailure] = useState('')
   const [text, setText] = useState('')
@@ -264,8 +265,9 @@ function ChangeEventDialog({
     if (kind === 'venue' && !venue.trim()) found.venue = 'Indica o novo local.'
     if (kind === 'venue' && !address.trim()) found.address = 'Indica a morada do novo local.'
     else if (kind === 'venue' && !place) {
-      found.address =
-        'Não encontrámos esta morada no mapa. Confirma a rua, o número e a localidade.'
+      found.address = mapUnavailable
+        ? MAP_UNAVAILABLE
+        : 'Não encontrámos esta morada no mapa. Confirma a rua, o número e a localidade.'
     }
     if (!confirmed) found.confirmed = 'Confirma que a alteração é oficial.'
     setErrors(found)
@@ -294,7 +296,15 @@ function ChangeEventDialog({
 
   const timeFields = (
     <>
-      <Field label="Nova hora" error={kind === 'time' ? errors.start : undefined}>
+      <Field
+        label="Nova hora"
+        error={kind === 'time' ? errors.start : undefined}
+        help={
+          kind === 'time'
+            ? 'Conta como a hora mais próxima da atual: 00:30 depois das 23:00 é no dia seguinte.'
+            : undefined
+        }
+      >
         {(p) => (
           <TextInput
             {...p}
@@ -368,9 +378,10 @@ function ChangeEventDialog({
               place={place}
               geocode={geocode}
               error={errors.address}
-              onChange={(value, found) => {
+              onChange={(value, found, unavailable) => {
                 setAddress(value)
                 setPlace(found)
+                setMapUnavailable(!!unavailable)
               }}
             />
           </>

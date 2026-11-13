@@ -4,11 +4,6 @@ import { IconTile, Panel, Tag } from '../../ui/components'
 import { categoryIcon } from '../../ui/categories'
 import { Field, Select, TextInput, Toggle } from '../../ui/forms'
 
-const radii = [
-  { value: '200', label: '200 m' },
-  { value: '500', label: '500 m' },
-  { value: '1000', label: '1 km' },
-]
 const limits = [
   { value: '1', label: '1 por hora' },
   { value: '3', label: '3 por hora' },
@@ -63,18 +58,24 @@ export function ConfirmationCategoriesPanel({
   )
 }
 
-/** "Regras": how far from the venue, how many answers make a report's
- * confidence high, and how often one participant is asked. */
+/** "Regras": how far from the venue, in meters, how many answers make a
+ * report's confidence high, and how often one participant is asked. */
 export function ConfirmationRulesPanel({
   value,
   onChange,
+  radius,
+  onRadiusChange,
+  radiusError,
   answers,
   onAnswersChange,
   answersError,
 }: {
   value: ConfirmationSettings
   onChange: (value: ConfirmationSettings) => void
-  /** The answers field as typed, checked when the form is saved. */
+  /** The radius and answers fields as typed, checked when the form is saved. */
+  radius: string
+  onRadiusChange: (radius: string) => void
+  radiusError?: string
   answers: string
   onAnswersChange: (answers: string) => void
   answersError?: string
@@ -82,15 +83,17 @@ export function ConfirmationRulesPanel({
   return (
     <Panel title="Regras" titleClassName="text-base" className="gap-3.5">
       <Field
-        label="Raio do recinto"
-        help="Só pede confirmação a quem permitiu a localização e está dentro deste raio."
+        label="Raio do recinto (em metros)"
+        error={radiusError}
+        help="Só pede confirmação a quem permitiu a localização e está dentro deste raio. De 100 a 50 000 m: num evento espalhado pela cidade, usa um raio maior."
       >
         {(p) => (
-          <Select
+          <TextInput
             {...p}
-            value={String(value.radiusMeters)}
-            onChange={(e) => onChange({ ...value, radiusMeters: Number(e.target.value) })}
-            options={radii}
+            inputMode="numeric"
+            unit="m"
+            value={radius}
+            onChange={(e) => onRadiusChange(e.target.value.replace(/\D/g, ''))}
           />
         )}
       </Field>

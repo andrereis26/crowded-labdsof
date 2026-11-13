@@ -9,8 +9,8 @@ import java.util.List;
  * Body of {@code PATCH /events/{eventId}}: only the fields sent change. The schedule, the venue and
  * a cancellation are official changes, published with {@code POST /events/{eventId}/changes}.
  *
- * @param ticketEventCode a ticketed event's new code
- * @param accessCode a public event's new access code
+ * @param ticketEventCode a ticketed event's new code; refused for a public event
+ * @param accessCode a public event's new access code; refused for a ticketed event
  * @param queuePoints every entrance and queue point, in order; the ones left out are removed
  */
 public record CorrectEventRequest(

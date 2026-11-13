@@ -225,6 +225,19 @@ export function toCorrectionBody(before: OrgEvent, after: OrgEvent): Record<stri
   return body
 }
 
+const HALF_DAY = 12 * 60 * 60 * 1000
+
+/** The day of a new start time with no date: the one that puts it nearest to
+ * the current start, so 00:30 after a 23:00 start is the next day and 22:00
+ * before a 01:00 start is the day before. */
+export function nearestDate(e: Pick<OrgEvent, 'date' | 'start'>, time: string): string {
+  const current = instantOf(e.date, e.start).getTime()
+  let candidate = instantOf(e.date, time)
+  if (candidate.getTime() - current < -HALF_DAY) candidate = plusDays(candidate, 1)
+  else if (candidate.getTime() - current > HALF_DAY) candidate = plusDays(candidate, -1)
+  return localDate(candidate)
+}
+
 /** Body of `POST /events/{eventId}/changes`. A postponement or a new start
  * moves the doors and the end with it unless they are sent (API Outline). */
 export function toChangeBody(e: OrgEvent, change: EventChange) {
@@ -250,7 +263,7 @@ export function toChangeBody(e: OrgEvent, change: EventChange) {
     }
     case 'time': {
       const moved = scheduleOf({
-        date: e.date,
+        date: change.start ? nearestDate(e, change.start) : e.date,
         start: change.start ?? e.start,
         doors: change.doors ?? e.doors,
         end: e.end,

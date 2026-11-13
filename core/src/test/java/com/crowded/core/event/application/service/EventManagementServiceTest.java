@@ -166,6 +166,7 @@ class EventManagementServiceTest {
                 null,
                 5000,
                 "inverno-26",
+                null,
                 List.of("Porta B"),
                 new ConfirmationsInput(Set.of(), 200, 5, 5)));
 
@@ -195,11 +196,25 @@ class EventManagementServiceTest {
 
     service.correct(
         new CorrectEventCommand(
-            MEMBER, event.getId(), null, "Novo texto.", null, null, null, null));
+            MEMBER, event.getId(), null, "Novo texto.", null, null, null, null, null));
 
     assertThat(event.getProfile().description()).isEqualTo("Novo texto.");
     verify(events, never()).lockCodes();
     verify(events).save(event);
+  }
+
+  @Test
+  void refusesACodeInTheOtherTypesFieldWithoutCheckingIt() {
+    Event event = givenEvent();
+
+    assertThatThrownBy(
+            () ->
+                service.correct(
+                    new CorrectEventCommand(
+                        MEMBER, event.getId(), null, null, null, null, "PUB-26", null, null)))
+        .hasFieldOrPropertyWithValue("code", "CODE_TYPE_MISMATCH");
+    verify(events, never()).lockCodes();
+    verify(events, never()).save(any());
   }
 
   @Test
@@ -211,14 +226,14 @@ class EventManagementServiceTest {
             () ->
                 service.correct(
                     new CorrectEventCommand(
-                        MEMBER, other.getId(), "Meu", null, null, null, null, null)))
+                        MEMBER, other.getId(), "Meu", null, null, null, null, null, null)))
         .isInstanceOf(NotAllowedException.class)
         .hasFieldOrPropertyWithValue("code", "NOT_EVENT_ORGANIZATION");
     assertThatThrownBy(
             () ->
                 service.correct(
                     new CorrectEventCommand(
-                        MEMBER, UUID.randomUUID(), "Meu", null, null, null, null, null)))
+                        MEMBER, UUID.randomUUID(), "Meu", null, null, null, null, null, null)))
         .isInstanceOf(NotFoundException.class);
     verify(events, never()).save(any());
   }

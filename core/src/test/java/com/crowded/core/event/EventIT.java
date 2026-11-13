@@ -159,6 +159,12 @@ class EventIT extends IntegrationTest {
             jdbc.queryForObject(
                 "SELECT count(*) FROM event_connection WHERE id = ?", Integer.class, connection))
         .isOne();
+
+    HttpResponse<String> wrongField =
+        send(member, "PATCH", "/events/" + event, "{\"ticketEventCode\": \"T-" + suffix + "\"}");
+    assertThat(wrongField.statusCode()).isEqualTo(400);
+    assertThat(json.readTree(wrongField.body()).get("code").asString())
+        .isEqualTo("CODE_TYPE_MISMATCH");
   }
 
   @Test

@@ -67,7 +67,7 @@ class EventRegistrationTest {
 
     event.correctProfile(new EventProfile("Margens de Inverno", "Concerto no Porto."));
     event.changeCapacity(new Capacity(5000));
-    event.replaceCode(new EventCode("margins-26"));
+    event.replaceCode("margins-26", null);
     event.defineQueuePoints(QueuePoints.named(List.of("Porta B")));
     event.configureConfirmations(
         new ConfirmationSettings(Set.of(), new ConfirmationRules(1000, 10, 1)));
@@ -79,6 +79,20 @@ class EventRegistrationTest {
     assertThat(event.getQueuePoints().names()).containsExactly("Porta B");
     assertThat(event.getConfirmations().promptsFor("CROWD_LEVEL")).isFalse();
     assertThat(event.getState()).isEqualTo(before);
+  }
+
+  @Test
+  void takesANewCodeOnlyInTheFieldOfItsType() {
+    Event event = register(SCHEDULE, VENUE, new Capacity(4500));
+
+    assertThatThrownBy(() -> event.replaceCode(null, "MARGENS-26"))
+        .isInstanceOf(RuleViolationException.class)
+        .hasFieldOrPropertyWithValue("code", "CODE_TYPE_MISMATCH");
+    assertThatThrownBy(() -> event.replaceCode("MARGENS-26", "MARGENS-26"))
+        .hasFieldOrPropertyWithValue("code", "ONE_CODE_ONLY");
+    assertThatThrownBy(() -> event.replaceCode("x", null))
+        .hasFieldOrPropertyWithValue("code", "CODE_INVALID");
+    assertThat(event.getAdmission().ticketEventCode()).isEqualTo("MARGINV26");
   }
 
   @Test
