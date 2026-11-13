@@ -271,8 +271,8 @@ class EventSync {
   final DateTime? syncedAt;
   final bool loading;
 
-  /// The last load's error code (`NETWORK`, `NOT_CONNECTED`, ...); null when
-  /// it worked or is still on its way.
+  /// The last failed load's error code (`NETWORK`, `NOT_CONNECTED`, ...),
+  /// kept while a retry is on its way; null once a load works.
   final String? failure;
 
   bool get failed => failure != null;
