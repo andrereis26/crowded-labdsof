@@ -26,6 +26,7 @@ import { QrCode } from '../../ui/qr'
 import { downloadQrPng } from '../../ui/qrMatrix'
 import { AddressField } from './AddressField'
 import { ConfirmationCategoriesPanel, ConfirmationRulesPanel } from './ConfirmationPanels'
+import { EventImagePanel, type ImageChoice } from './EventImagePanel'
 
 /** O3 · Criar / editar evento. Creating publishes the event in Core. Editing
  * corrects what is not an official change; the date, times and venue change
@@ -35,11 +36,14 @@ export function EventFormPage({
   geocode,
   onCreate,
   onCorrect,
+  onImage,
 }: {
   events: OrgEvent[]
   geocode: Geocoder
   onCreate: (event: OrgEvent) => Promise<OrgEvent>
   onCorrect: (before: OrgEvent, after: OrgEvent) => Promise<OrgEvent>
+  /** Uploads (a file) or removes (null) the saved event's image. */
+  onImage: (eventId: string, file: File | null) => Promise<void>
 }) {
   const { id } = useParams()
   const existing = events.find((e) => e.id === id)
@@ -54,6 +58,7 @@ export function EventFormPage({
   const [mapUnavailable, setMapUnavailable] = useState(false)
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [imageChoice, setImageChoice] = useState<ImageChoice>({ kind: 'keep' })
   const navigate = useNavigate()
   const editing = !!existing
 
@@ -98,7 +103,15 @@ export function EventFormPage({
     setSaving(true)
     try {
       const saved = existing ? await onCorrect(existing, ready) : await onCreate(ready)
-      const message = editing ? 'Alterações guardadas.' : `${saved.name} publicado.`
+      let message = editing ? 'Alterações guardadas.' : `${saved.name} publicado.`
+      // The event is saved by now: a refused image is reported, not retried.
+      try {
+        if (imageChoice.kind === 'new') await onImage(saved.id, imageChoice.file)
+        if (imageChoice.kind === 'remove') await onImage(saved.id, null)
+      } catch (e) {
+        const code = e instanceof EventsApiError ? e.code : 'UNKNOWN'
+        message = `${message} A imagem não foi guardada: ${eventErrorMessage(code)}`
+      }
       navigate(`/organization/events/${saved.id}`, { state: { message } })
     } catch (e) {
       const code = e instanceof EventsApiError ? e.code : 'UNKNOWN'
@@ -397,6 +410,8 @@ export function EventFormPage({
             </Link>
           </Panel>
 
+          <EventImagePanel current={event.image} choice={imageChoice} onChange={setImageChoice} />
+
           {isPublic && event.code && (
             <Panel title="Código QR do evento" className="gap-3">
               <div className="flex items-center gap-3">
@@ -433,7 +448,13 @@ export function EventFormPage({
               ]}
               status={event.status === 'draft' ? 'Publicado' : statusTag[event.status].label}
               source={organization.name}
-              image={event.image}
+              image={
+                imageChoice.kind === 'new'
+                  ? imageChoice.url
+                  : imageChoice.kind === 'remove'
+                    ? undefined
+                    : event.image
+              }
               gradient={event.gradient}
             />
           </Panel>

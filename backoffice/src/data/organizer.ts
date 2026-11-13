@@ -47,7 +47,10 @@ export interface OrgEvent {
   /** Event code printed on the tickets (ticketed) or access code (public). */
   code: string
   confirmations: ConfirmationSettings
+  /** The picture to show: a demo asset, or the image fetched from Core. */
   image?: string
+  /** When the image in Core was uploaded; absent when the event has none. */
+  imageUpdatedAt?: string
   gradient: [string, string]
 }
 

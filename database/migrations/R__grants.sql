@@ -21,7 +21,7 @@ REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SC
 -- alerts, surveys, reports, incidents, the audit log and its outbox.
 GRANT INSERT, UPDATE, DELETE ON
   app_user, organization,
-  event, event_change,
+  event, event_change, event_image,
   event_connection, ticket, access_code_connection, ticket_extraction,
   queue_point, queue_time, weather_forecast, weather_warning,
   alert, alert_draft, event_survey, survey_option, survey_response,

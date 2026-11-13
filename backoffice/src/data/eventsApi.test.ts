@@ -275,6 +275,46 @@ describe('events in Core', () => {
     expect(changed.calls[0].url).toBe(`/api/events/${before.id}/changes`)
   })
 
+  it('fetches, uploads and removes the event image with the member token', async () => {
+    const fetched = recording(200, undefined)
+    const image = await httpEventsApi('jwt', fetched.fetchImpl, '/api').image('e-1')
+    expect(image.size).toBe(0)
+    expect(fetched.calls[0].url).toBe('/api/events/e-1/image')
+    expect(new Headers(fetched.calls[0].init?.headers).get('Authorization')).toBe('Bearer jwt')
+
+    const uploaded = recording(204, undefined)
+    const file = new Blob(['png'], { type: 'image/png' })
+    await httpEventsApi('jwt', uploaded.fetchImpl, '/api').uploadImage('e-1', file)
+    expect(uploaded.calls[0].init?.method).toBe('PUT')
+    expect(uploaded.calls[0].init?.body).toBe(file)
+    const headers = new Headers(uploaded.calls[0].init?.headers)
+    expect(headers.get('Content-Type')).toBe('image/png')
+    expect(headers.get('Authorization')).toBe('Bearer jwt')
+
+    const removed = recording(204, undefined)
+    await httpEventsApi('jwt', removed.fetchImpl, '/api').removeImage('e-1')
+    expect(removed.calls[0]).toMatchObject({ url: '/api/events/e-1/image' })
+    expect(removed.calls[0].init?.method).toBe('DELETE')
+
+    const refused = recording(400, { code: 'IMAGE_TOO_LARGE' })
+    await expect(
+      httpEventsApi('jwt', refused.fetchImpl).uploadImage('e-1', new Blob(['x'])),
+    ).rejects.toMatchObject({ code: 'IMAGE_TOO_LARGE' })
+    expect(eventErrorMessage('IMAGE_TOO_LARGE')).toBe(
+      'A imagem tem mais de 5 MB. Escolhe uma mais pequena.',
+    )
+    expect(eventErrorMessage('IMAGE_TYPE_NOT_ACCEPTED')).toBe(
+      'Escolhe uma imagem JPEG, PNG ou WebP.',
+    )
+    expect(eventErrorMessage('IMAGE_INVALID')).toBe(
+      'Não foi possível ler esta imagem. Escolhe outra.',
+    )
+    expect(fromJson({ ...json, imageUpdatedAt: '2026-11-13T10:00:00Z' }).imageUpdatedAt).toBe(
+      '2026-11-13T10:00:00Z',
+    )
+    expect(fromJson(json).imageUpdatedAt).toBeUndefined()
+  })
+
   it('reports Core refusals and lost connections by their code', async () => {
     const refused = recording(409, { code: 'EVENT_CODE_TAKEN' })
     await expect(httpEventsApi('jwt', refused.fetchImpl).create(margens())).rejects.toMatchObject({

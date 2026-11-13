@@ -6,11 +6,15 @@ import { applyChange, demoEvents, slug, type OrgEvent } from '../data/organizer'
  * tests. `refuse` makes the next call fail with that code, as Core would. */
 export function fakeEventsApi(events: OrgEvent[] = demoEvents()) {
   let stored = events
+  const images = new Map<string, Blob>()
   const fake = {
     refuse: undefined as string | undefined,
     calls: [] as string[],
     get events() {
       return stored
+    },
+    get images() {
+      return images
     },
   }
   const check = (call: string) => {
@@ -45,6 +49,24 @@ export function fakeEventsApi(events: OrgEvent[] = demoEvents()) {
     async publishChange(event, change) {
       check('publishChange')
       stored = stored.map((e) => (e.id === event.id ? applyChange(e, change) : e))
+    },
+    async image(eventId) {
+      check('image')
+      const image = images.get(eventId)
+      if (!image) throw new EventsApiError('EVENT_IMAGE_NOT_FOUND')
+      return image
+    },
+    async uploadImage(eventId, file) {
+      check('uploadImage')
+      images.set(eventId, file)
+      stored = stored.map((e) =>
+        e.id === eventId ? { ...e, imageUpdatedAt: new Date().toISOString() } : e,
+      )
+    },
+    async removeImage(eventId) {
+      check('removeImage')
+      images.delete(eventId)
+      stored = stored.map((e) => (e.id === eventId ? { ...e, imageUpdatedAt: undefined } : e))
     },
   }
   return Object.assign(fake, { api })

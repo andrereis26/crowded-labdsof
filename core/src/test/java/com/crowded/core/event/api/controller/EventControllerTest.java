@@ -97,7 +97,7 @@ class EventControllerTest {
 
   @Test
   void createsTheEventWithTheCodeOfItsType() throws Exception {
-    when(service.register(any())).thenReturn(new ManagedEvent(event, 0));
+    when(service.register(any())).thenReturn(new ManagedEvent(event, 0, null));
 
     mockMvc
         .perform(asUser(post("/events"), CREATE))
@@ -130,19 +130,21 @@ class EventControllerTest {
 
   @Test
   void listsTheMembersEvents() throws Exception {
-    when(service.listForMember(USER)).thenReturn(List.of(new ManagedEvent(event, 12)));
+    when(service.listForMember(USER))
+        .thenReturn(List.of(new ManagedEvent(event, 12, Instant.parse("2026-11-12T09:30:00Z"))));
 
     mockMvc
         .perform(get("/organizations/me/events").with(jwt().jwt(t -> t.subject(USER.toString()))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].name").value("São João no Parque"))
         .andExpect(jsonPath("$[0].connectedUsers").value(12))
+        .andExpect(jsonPath("$[0].imageUpdatedAt").value("2026-11-12T09:30:00Z"))
         .andExpect(jsonPath("$[0].startDateTime").value("2026-12-12T21:00:00Z"));
   }
 
   @Test
   void correctsTheFieldsSent() throws Exception {
-    when(service.correct(any())).thenReturn(new ManagedEvent(event, 3));
+    when(service.correct(any())).thenReturn(new ManagedEvent(event, 3, null));
 
     mockMvc
         .perform(
