@@ -295,7 +295,12 @@ class AppStore extends ChangeNotifier {
         (previous?.loading ?? false)) {
       return;
     }
-    _syncs[eventId] = EventSync(syncedAt: previous?.syncedAt, loading: true);
+    // A retry keeps the last failure, so saved data stays labelled as saved.
+    _syncs[eventId] = EventSync(
+      syncedAt: previous?.syncedAt,
+      loading: true,
+      failure: previous?.failure,
+    );
     notifyListeners();
     try {
       final page = await _eventsApi.page(token, eventId);

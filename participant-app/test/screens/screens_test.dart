@@ -210,7 +210,7 @@ class _FakeEventsApi implements EventsApi {
   List<Map<String, Object?>> history = [
     _coreChange('c-doors', 'TIME_CHANGE', {
       'doorsOpenAt': '2026-11-06T19:30:00Z',
-    }, at: '2026-10-17T13:32:00Z'),
+    }, at: _now.subtract(_doorsChangedAgo).toUtc().toIso8601String()),
     _coreChange('c-date', 'POSTPONEMENT', {
       'startDateTime': '2026-11-07T21:30:00Z',
     }, at: '2026-10-02T09:05:00Z'),
@@ -220,9 +220,13 @@ class _FakeEventsApi implements EventsApi {
   String? failWith;
   int pages = 0;
 
+  /// While set, [page] answers only once it completes.
+  Completer<void>? gate;
+
   @override
   Future<EventPage> page(String token, String eventId) async {
     pages++;
+    await gate?.future;
     if (failWith != null) throw EventsException(failWith!);
     return eventPageFromJson({
       'id': id,
@@ -260,6 +264,9 @@ Map<String, Object?> _coreChange(
     'confirmed': true,
   },
 };
+
+/// When the latest change in [_FakeEventsApi] was published: today.
+const _doorsChangedAgo = Duration(minutes: 88);
 
 const _mobile = Size(390, 844);
 const _desktop = Size(1440, 1000);
@@ -578,9 +585,7 @@ void main() {
       expect(find.text('Organização'), findsNWidgets(2));
       expect(find.text('Ribeira Live'), findsNWidgets(2));
       expect(
-        find.text(
-          'HOJE · ${formatTime(DateTime.utc(2026, 10, 17, 13, 32).toLocal())}',
-        ),
+        find.text('HOJE · ${formatTime(_now.subtract(_doorsChangedAgo))}'),
         findsOneWidget,
       );
     });
@@ -618,6 +623,35 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Adiado'), findsWidgets, reason: 'the saved status');
+    });
+
+    test('keeps showing data as saved while a retry is on its way', () async {
+      final events = _FakeEventsApi();
+      final store = AppStore(
+        clock: () => _now,
+        auth: _FakeAuthApi(),
+        notifications: _FakeNotificationsApi(),
+        events: events,
+        session: _session(_email),
+      );
+      const id = _FakeEventsApi.id;
+      await store.refreshEvent(id);
+      events.failWith = 'NETWORK';
+      await store.refreshEvent(id);
+      expect(store.showsSavedData(id), isTrue);
+
+      events.gate = Completer<void>();
+      final retry = store.refreshEvent(id);
+      expect(store.syncOf(id)!.loading, isTrue);
+      expect(store.showsSavedData(id), isTrue);
+      expect(store.savedAtFor(id), _now);
+
+      events
+        ..failWith = null
+        ..gate!.complete();
+      await retry;
+      expect(store.showsSavedData(id), isFalse);
+      store.signOut();
     });
 
     testWidgets('loads again after a first load fails', (tester) async {
