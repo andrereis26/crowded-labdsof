@@ -32,8 +32,8 @@ These endpoints are used by several journeys and are described once.
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
 | POST | `/auth/register` | Create a participant account (FR-043): the email in lower case, the password (8 characters to 72 bytes, with an uppercase letter, a lowercase letter, a digit and a special character, SR-024) as a bcrypt hash (SR-013). Organization members cannot register: a role in the request is ignored. Rate-limited per client address (SR-015). | `email`, `password` | `userId`, `role`. Errors: `EMAIL_ALREADY_REGISTERED`, `EMAIL_INVALID`, `PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `PASSWORD_TOO_WEAK`, `RATE_LIMITED` | Public |
-| POST | `/auth/login` | Sign in and get a JWT valid for 1 hour, whose subject is the user id. A wrong password, an unknown email and a deactivated account get the same `INVALID_CREDENTIALS`. Rate-limited per client address and per email (SR-015). With a temporary password, the token only allows `PUT /me/password` (FR-088, SR-022); until that endpoint exists (#141), the sign-in is refused with `PASSWORD_CHANGE_REQUIRED`. | `email`, `password` | `accessToken`, `expiresAt`, `mustChangePassword`, `user` {`id`, `role`, `organizationId`}. Errors: `INVALID_CREDENTIALS`, `PASSWORD_CHANGE_REQUIRED`, `RATE_LIMITED` | Public |
-| PUT | `/me/password` | Set a new password; required after signing in with a temporary password (FR-088, SR-022). | `currentPassword`, `newPassword` | – | Signed-in |
+| POST | `/auth/login` | Sign in and get a JWT valid for 1 hour, whose subject is the user id. A wrong password, an unknown email and a deactivated account get the same `INVALID_CREDENTIALS`. Rate-limited per client address and per email (SR-015). A temporary password gives no token: the sign-in is refused with `PASSWORD_CHANGE_REQUIRED`, and the member sets a new password with `POST /auth/password` (FR-088, SR-022). After 7 days it is refused with `TEMPORARY_PASSWORD_EXPIRED`, only once the password matched. | `email`, `password` | `accessToken`, `expiresAt`, `mustChangePassword` (always false), `user` {`id`, `role`, `organizationId`}. Errors: `INVALID_CREDENTIALS`, `PASSWORD_CHANGE_REQUIRED`, `TEMPORARY_PASSWORD_EXPIRED`, `RATE_LIMITED` | Public |
+| POST | `/auth/password` | Replace a member's temporary password with one they choose, at the first sign-in, and sign them in (FR-088, SR-022). The new password follows SR-024 and cannot be the temporary one; the temporary password stops working. Audited (`MEMBER_PASSWORD_CHOSEN`) and rate-limited like the sign-in. A weak new password is refused before the account is looked up, so the answer does not reveal which emails have one. | `email`, `temporaryPassword`, `newPassword` | As `POST /auth/login`. Errors: `INVALID_CREDENTIALS`, `NO_TEMPORARY_PASSWORD`, `TEMPORARY_PASSWORD_EXPIRED`, `PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `PASSWORD_TOO_WEAK`, `PASSWORD_UNCHANGED`, `RATE_LIMITED` | Public |
 | POST | `/auth/logout` | Revoke the current token. The app deletes its cached event data and entry codes (SR-023). | – | – | Signed-in |
 | GET | `/me` | Current user. | – | `id`, `email`, `role`, `organizationId`, `locationConsentGranted` | Signed-in |
 | PUT | `/me/location-consent` | Grant or withdraw location consent (SR-009). | `granted` | `granted` | Participant |
@@ -79,7 +79,7 @@ Each journey lists the endpoints it uses. Endpoints from [Shared Endpoints](#sha
 
 A platform administrator has created the organization and its members (see [Administration](#administration-core)). A member signs in, sets a new password and registers the event.
 
-Also uses: `POST /auth/login`, `PUT /me/password`.
+Also uses: `POST /auth/login`, `POST /auth/password`.
 
 | Method | Path | Purpose | Main request | Main response | Role |
 |---|---|---|---|---|---|
@@ -208,7 +208,7 @@ Sprint 2 implements journey 3 end to end on top of the walking skeleton: **a cha
 
 | Step | Interface |
 |---|---|
-| 1. The administrator creates the organization and a member, who sets a new password | `POST /admin/organizations`, `POST /admin/organizations/{organizationId}/members`, `POST /auth/login`, `PUT /me/password` |
+| 1. The administrator creates the organization and a member, who sets a new password | `POST /admin/organizations`, `POST /admin/organizations/{organizationId}/members`, `POST /auth/login`, `POST /auth/password` |
 | 2. The member registers a ticketed event | `POST /events` |
 | 3. The participant signs up, signs in and imports a ticket | `POST /auth/register`, `POST /auth/login`, `POST /tickets` (and `POST /ticket-imports/{importId}/event-code` when the AI is unavailable) |
 | 4. The member publishes a change | `POST /events/{eventId}/changes` |

@@ -36,4 +36,10 @@ public interface UserRepository {
    * so it does not undo a change an administrator made meanwhile.
    */
   void saveSignIn(UserAccount account);
+
+  /**
+   * Stores the password a member chose in place of the temporary one ({@link
+   * UserAccount#replaceTemporaryPassword}) and the sign-in it allows, and only that.
+   */
+  void savePasswordChange(UserAccount account);
 }

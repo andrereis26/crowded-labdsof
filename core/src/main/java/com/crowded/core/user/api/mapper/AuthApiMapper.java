@@ -1,10 +1,12 @@
 package com.crowded.core.user.api.mapper;
 
+import com.crowded.core.user.api.dto.ChoosePasswordRequest;
 import com.crowded.core.user.api.dto.RegisterRequest;
 import com.crowded.core.user.api.dto.RegisteredResponse;
 import com.crowded.core.user.api.dto.SignInRequest;
 import com.crowded.core.user.api.dto.SignInResponse;
 import com.crowded.core.user.api.dto.SignedInUserResponse;
+import com.crowded.core.user.application.dto.ChoosePasswordCommand;
 import com.crowded.core.user.application.dto.RegisterCommand;
 import com.crowded.core.user.application.dto.SignInCommand;
 import com.crowded.core.user.application.dto.SignedIn;
@@ -19,6 +21,8 @@ public interface AuthApiMapper {
   RegisterCommand toCommand(RegisterRequest request, String clientAddress);
 
   SignInCommand toCommand(SignInRequest request, String clientAddress);
+
+  ChoosePasswordCommand toCommand(ChoosePasswordRequest request, String clientAddress);
 
   @Mapping(target = "userId", source = "id")
   RegisteredResponse toRegisteredResponse(User user);

@@ -1,9 +1,16 @@
-import { Building2, CircleAlert, Eye, EyeOff, Lock, Mail } from 'lucide-react'
+import { Building2, Check, CircleAlert, Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router'
+import { Navigate, useNavigate } from 'react-router'
 import festivalImage from '../assets/festival-margens-2026.jpg'
-import { contactEmail, validateNewPassword, type Member } from '../data/admin'
-import type { Session, SignIn } from '../data/auth'
+import { contactEmail, validateNewPassword } from '../data/admin'
+import type { ChoosePassword, Session, SignIn } from '../data/auth'
+import {
+  missingRequirements,
+  passwordRequirements,
+  passwordStrength,
+  strengthLevels,
+  type PasswordStrength,
+} from '../data/passwordStrength'
 import { Logo } from '../layout/Shell'
 import { Button } from '../ui/components'
 import { Field, TextInput, type ControlProps } from '../ui/forms'
@@ -90,9 +97,12 @@ function ErrorBox({ title, children }: { title: string; children: ReactNode }) {
 export function SignInPage({
   signIn,
   onSignedIn,
+  onTemporaryPassword,
 }: {
   signIn: SignIn
   onSignedIn: (session: Session) => void
+  /** A member signed in with a temporary password: C4 replaces it. */
+  onTemporaryPassword: (email: string, temporaryPassword: string) => void
 }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -111,11 +121,8 @@ export function SignInPage({
       onSignedIn(result.session)
       navigate(result.session.role === 'ADMINISTRATOR' ? '/organizacoes' : '/organizacao/eventos')
     } else if (result.kind === 'new-password') {
-      // Core accepts the temporary password only to set a new one, in C4.
-      setError({
-        title: 'Primeiro acesso',
-        text: 'Esta conta ainda tem a palavra-passe temporária. Escolher uma nova ainda não está disponível.',
-      })
+      onTemporaryPassword(email.trim(), password)
+      navigate('/definir-palavra-passe')
     } else setError({ title: result.title, text: result.message })
   }
 
@@ -201,44 +208,105 @@ export function SignInPage({
   )
 }
 
+/** The strength of the new password, from Muito fraca to Muito forte, and
+ * the requirements of the rule, each ticked once met. */
+const strengthColour: Record<PasswordStrength, { bar: string; text: string }> = {
+  'very-weak': { bar: 'bg-danger', text: 'text-danger' },
+  weak: { bar: 'bg-orange', text: 'text-orange' },
+  moderate: { bar: 'bg-warning', text: 'text-warning' },
+  strong: { bar: 'bg-success', text: 'text-success' },
+  'very-strong': { bar: 'bg-wallet-status', text: 'text-wallet-status' },
+}
+
+function PasswordStrengthMeter({ password, id }: { password: string; id: string }) {
+  const strength = passwordStrength(password)
+  const level = strengthLevels.findIndex((l) => l.strength === strength)
+  const missing = missingRequirements(password)
+  const colour = strengthColour[strength]
+  return (
+    <div id={id} className="flex flex-col gap-1.5 text-xs">
+      {password && (
+        <>
+          <div className="flex gap-1" aria-hidden>
+            {strengthLevels.map((l, i) => (
+              <span
+                key={l.strength}
+                className={`h-1 flex-1 rounded-full ${i <= level ? colour.bar : 'bg-border'}`}
+              />
+            ))}
+          </div>
+          <p className={`font-semibold ${colour.text}`} aria-live="polite">
+            Força: {strengthLevels[level].label}
+          </p>
+        </>
+      )}
+      <p className="text-ink-secondary">A palavra-passe deve conter:</p>
+      <ul className="flex flex-col gap-1">
+        {passwordRequirements.map((r) => {
+          const met = !missing.includes(r)
+          return (
+            <li
+              key={r.id}
+              className={`flex items-center gap-1.5 ${met ? 'text-success' : 'text-ink-secondary'}`}
+            >
+              {met ? (
+                <span className="flex size-3.5 items-center justify-center rounded-full bg-success text-white">
+                  <Check size={10} strokeWidth={3} aria-hidden />
+                </span>
+              ) : (
+                <span className="size-3.5 rounded-full border-[1.5px] border-ink-secondary" />
+              )}
+              <span>
+                <span className="sr-only">{met ? 'Cumprido: ' : 'Em falta: '}</span>
+                {r.label}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 /** C4 · Primeiro acesso: a member signed in with a temporary password must
- * choose a new one before going on. */
+ * choose a new one before going on. Core replaces it and signs them in
+ * (`POST /auth/password`). */
 export function NewPasswordPage({
-  members,
-  now,
-  onChange,
+  pending,
+  choosePassword,
+  onSignedIn,
 }: {
-  members: Member[]
-  now: Date
-  onChange: (member: Member) => void
+  /** The email and temporary password C1 was given; kept in memory only. */
+  pending?: { email: string; temporaryPassword: string }
+  choosePassword: ChoosePassword
+  onSignedIn: (session: Session) => void
 }) {
-  const location = useLocation()
   const navigate = useNavigate()
-  const memberId = (location.state as { memberId?: string } | null)?.memberId
-  const member = members.find((m) => m.id === memberId)
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [errors, setErrors] = useState<ReturnType<typeof validateNewPassword>>({})
+  const [refusal, setRefusal] = useState<{ title: string; text: string }>()
+  const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  if (!member || (member.status !== 'temporary' && !saved)) {
-    return <Navigate to="/entrar" replace />
-  }
+  // Once saved, App forgets the temporary password while this page leaves.
+  if (!pending) return saved ? null : <Navigate to="/entrar" replace />
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
-    const found = validateNewPassword(password, confirmation, member.temporaryPassword)
+    if (busy) return
+    const found = validateNewPassword(password, confirmation, pending.temporaryPassword)
     setErrors(found)
+    setRefusal(undefined)
     if (found.password || found.confirmation) return
-    setSaved(true)
-    onChange({
-      ...member,
-      status: 'active',
-      temporaryPassword: undefined,
-      temporaryExpiresAt: undefined,
-      lastAccess: now,
-    })
-    navigate('/organizacao/eventos')
+    setBusy(true)
+    const result = await choosePassword(pending.email, pending.temporaryPassword, password)
+    setBusy(false)
+    if (result.kind === 'signed-in') {
+      setSaved(true)
+      onSignedIn(result.session)
+      navigate(result.session.role === 'ADMINISTRATOR' ? '/organizacoes' : '/organizacao/eventos')
+    } else if (result.kind === 'error') setRefusal({ title: result.title, text: result.message })
   }
 
   return (
@@ -248,20 +316,27 @@ export function NewPasswordPage({
           Define a tua nova palavra-passe
         </h1>
         <p className="text-sm leading-[1.4] text-ink-secondary">
-          Entraste com uma palavra-passe temporária. Para continuar, escolhe uma nova.
+          Entraste com uma palavra-passe temporária. Para continuar, escolhe uma nova, que só tu
+          vais saber.
         </p>
       </div>
       <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-        <Field label="Nova palavra-passe" error={errors.password}>
-          {(p) => (
-            <PasswordInput
-              {...p}
-              autoComplete="new-password"
-              value={password}
-              onChange={setPassword}
-            />
-          )}
-        </Field>
+        <div className="flex flex-col gap-2">
+          <Field label="Nova palavra-passe" error={errors.password}>
+            {(p) => (
+              <PasswordInput
+                {...p}
+                aria-describedby={[p['aria-describedby'], 'requisitos-palavra-passe']
+                  .filter(Boolean)
+                  .join(' ')}
+                autoComplete="new-password"
+                value={password}
+                onChange={setPassword}
+              />
+            )}
+          </Field>
+          <PasswordStrengthMeter password={password} id="requisitos-palavra-passe" />
+        </div>
         <Field label="Confirmar palavra-passe" error={errors.confirmation}>
           {(p) => (
             <PasswordInput
@@ -272,10 +347,8 @@ export function NewPasswordPage({
             />
           )}
         </Field>
-        <p className="text-xs text-ink-secondary">
-          Pelo menos 12 caracteres. Não uses a palavra-passe temporária.
-        </p>
-        <Button type="submit" size="lg">
+        {refusal && <ErrorBox title={refusal.title}>{refusal.text}</ErrorBox>}
+        <Button type="submit" size="lg" disabled={busy}>
           Guardar e continuar
         </Button>
       </form>
