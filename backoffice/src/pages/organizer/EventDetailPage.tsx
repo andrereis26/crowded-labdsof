@@ -10,8 +10,9 @@ import {
 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
+import { eventErrorMessage, EventsApiError } from '../../data/eventsApi'
+import type { Geocoder } from '../../data/geocoding'
 import {
-  applyChange,
   connected,
   eventDateLabel,
   eventKinds,
@@ -30,17 +31,21 @@ import {
   SuccessBanner,
 } from '../../ui/components'
 import { Checkbox, Field, SegmentedControl, TextArea, TextInput } from '../../ui/forms'
+import { AddressField } from './AddressField'
 
 /** O4 · Página do evento, com o diálogo "Alterar evento": adiar, mudar a hora
  * e as portas, mudar o local ou cancelar. */
 export function EventDetailPage({
   events,
   now,
-  onSave,
+  geocode,
+  onPublishChange,
 }: {
   events: OrgEvent[]
   now: Date
-  onSave: (event: OrgEvent) => void
+  geocode: Geocoder
+  /** Publishes the official change in Core, which notifies the participants. */
+  onPublishChange: (event: OrgEvent, change: EventChange) => Promise<void>
 }) {
   const { id } = useParams()
   const location = useLocation()
@@ -63,8 +68,8 @@ export function EventDetailPage({
 
   const closed = event.status === 'ended' || event.status === 'cancelled'
 
-  const applied = (change: EventChange) => {
-    onSave(applyChange(event, change))
+  const applied = async (change: EventChange) => {
+    await onPublishChange(event, change)
     setChanging(false)
     const people = `${formatNumber(connected(event))} pessoas notificadas.`
     setMessage(
@@ -163,6 +168,7 @@ export function EventDetailPage({
         <ChangeEventDialog
           event={event}
           now={now}
+          geocode={geocode}
           onClose={() => setChanging(false)}
           onApply={applied}
         />
@@ -208,19 +214,25 @@ const submitLabel: Record<ChangeKind, string> = {
 function ChangeEventDialog({
   event,
   now,
+  geocode,
   onClose,
   onApply,
 }: {
   event: OrgEvent
   now: Date
+  geocode: Geocoder
   onClose: () => void
-  onApply: (change: EventChange) => void
+  onApply: (change: EventChange) => Promise<void>
 }) {
   const [kind, setKind] = useState<ChangeKind>('postpone')
   const [date, setDate] = useState(event.date)
   const [start, setStart] = useState(event.start)
   const [doors, setDoors] = useState(event.doors)
   const [venue, setVenue] = useState('')
+  const [address, setAddress] = useState('')
+  const [place, setPlace] = useState<{ latitude: number; longitude: number }>()
+  const [sending, setSending] = useState(false)
+  const [failure, setFailure] = useState('')
   const [text, setText] = useState('')
   const [ticketValid, setTicketValid] = useState(true)
   const [refund, setRefund] = useState('')
@@ -235,27 +247,43 @@ function ChangeEventDialog({
     setErrors({})
   }
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
+    if (sending) return
     const found: Record<string, string> = {}
     if (kind === 'postpone' && date === event.date) found.date = 'Escolhe uma nova data.'
     if (kind === 'time' && start === event.start && doors === event.doors) {
       found.start = 'Escolhe uma nova hora ou abertura de portas.'
     }
     if (kind === 'venue' && !venue.trim()) found.venue = 'Indica o novo local.'
+    if (kind === 'venue' && !address.trim()) found.address = 'Indica a morada do novo local.'
+    else if (kind === 'venue' && !place) {
+      found.address =
+        'Não encontrámos esta morada no mapa. Confirma a rua, o número e a localidade.'
+    }
     if (!confirmed) found.confirmed = 'Confirma que a alteração é oficial.'
     setErrors(found)
+    setFailure('')
     if (Object.keys(found).length) return
-    onApply({
-      kind,
-      date,
-      start,
-      doors,
-      venue: venue.trim(),
-      message: text.trim(),
-      ticketValid: showTicket ? ticketValid : undefined,
-      refund: showTicket ? refund.trim() : undefined,
-    })
+    setSending(true)
+    try {
+      await onApply({
+        kind,
+        date,
+        start,
+        doors,
+        venue: venue.trim(),
+        address: address.trim(),
+        latitude: place?.latitude,
+        longitude: place?.longitude,
+        message: text.trim(),
+        ticketValid: showTicket ? ticketValid : undefined,
+        refund: showTicket ? refund.trim() : undefined,
+      })
+    } catch (error) {
+      setFailure(eventErrorMessage(error instanceof EventsApiError ? error.code : 'UNKNOWN'))
+      setSending(false)
+    }
   }
 
   const timeFields = (
@@ -287,7 +315,7 @@ function ChangeEventDialog({
 
   return (
     <Dialog title="Alterar evento" onClose={onClose}>
-      <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+      <form onSubmit={(e) => void submit(e)} noValidate className="flex flex-col gap-4">
         <div className="flex items-center gap-3 sm:hidden">
           <span className="text-[15px] font-semibold">{event.name}</span>
           <span className="text-xs text-ink-secondary">{eventDateLabel(event, now)}</span>
@@ -317,16 +345,29 @@ function ChangeEventDialog({
         )}
         {kind === 'time' && <div className="grid gap-3.5 sm:grid-cols-2">{timeFields}</div>}
         {kind === 'venue' && (
-          <Field label="Novo local" error={errors.venue} help={`Local atual: ${event.venue}`}>
-            {(p) => (
-              <TextInput
-                {...p}
-                icon={MapPin}
-                value={venue}
-                onChange={(e) => setVenue(e.target.value)}
-              />
-            )}
-          </Field>
+          <>
+            <Field label="Novo local" error={errors.venue} help={`Local atual: ${event.venue}`}>
+              {(p) => (
+                <TextInput
+                  {...p}
+                  icon={MapPin}
+                  value={venue}
+                  onChange={(e) => setVenue(e.target.value)}
+                />
+              )}
+            </Field>
+            <AddressField
+              label="Morada do novo local"
+              address={address}
+              place={place}
+              geocode={geocode}
+              error={errors.address}
+              onChange={(value, found) => {
+                setAddress(value)
+                setPlace(found)
+              }}
+            />
+          </>
         )}
 
         <Field label="Mensagem para os participantes" optional>
@@ -382,12 +423,18 @@ function ChangeEventDialog({
           <span className="font-medium">Confirmo que esta alteração é oficial.</span>
         </Checkbox>
 
+        {failure && (
+          <p role="alert" className="text-sm text-danger">
+            {failure}
+          </p>
+        )}
+
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button variant="secondary" size="lg" onClick={onClose} className="max-sm:hidden">
             Voltar
           </Button>
-          <Button type="submit" size="lg" icon={Send}>
-            {submitLabel[kind]}
+          <Button type="submit" size="lg" icon={Send} disabled={sending}>
+            {sending ? 'A publicar…' : submitLabel[kind]}
           </Button>
         </div>
       </form>

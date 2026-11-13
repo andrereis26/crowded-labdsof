@@ -11,4 +11,16 @@
     <Class name="com.crowded.core.shared.infrastructure.persistence.JsonColumnConverter"/>
     <Bug pattern="EI_EXPOSE_REP2"/>
   </Match>
+  <!-- EventCodes keeps the EventRepository port it checks codes with; the port is a
+       shared adapter, not state of its own. -->
+  <Match>
+    <Class name="com.crowded.core.event.domain.service.EventCodes"/>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
+  <!-- ManagedEvent hands the aggregate the use case just saved to the API mapper in the
+       same request; it is read there and never changed. -->
+  <Match>
+    <Class name="com.crowded.core.event.application.dto.ManagedEvent"/>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
 </FindBugsFilter>

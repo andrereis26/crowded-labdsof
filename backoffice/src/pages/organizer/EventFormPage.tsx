@@ -1,6 +1,8 @@
-import { Calendar, Clock, MapPin, Plus, X } from 'lucide-react'
-import { useRef, useState, type FormEvent } from 'react'
+import { AlertTriangle, Calendar, Clock, MapPin, Plus, X } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
+import { errorField, eventErrorMessage, EventsApiError } from '../../data/eventsApi'
+import type { Geocoder } from '../../data/geocoding'
 import {
   accessCodeFor,
   codeOwner,
@@ -8,6 +10,7 @@ import {
   duplicateCodeError,
   emptyEvent,
   eventKinds,
+  parseAnswers,
   organization,
   shortDate,
   slug,
@@ -16,40 +19,37 @@ import {
   type EventKind,
   type OrgEvent,
 } from '../../data/organizer'
-import {
-  Breadcrumb,
-  Button,
-  EventThumb,
-  PageHeader,
-  Panel,
-  Tag,
-  TextLink,
-  TicketCard,
-} from '../../ui/components'
-import {
-  Field,
-  RadioDot,
-  RadioOption,
-  Select,
-  TextArea,
-  TextInput,
-  ToggleRow,
-} from '../../ui/forms'
+import { Breadcrumb, Button, Notice, PageHeader, Panel, Tag, TicketCard } from '../../ui/components'
+import { Field, RadioDot, RadioOption, Select, TextArea, TextInput } from '../../ui/forms'
 import { QrCode } from '../../ui/qr'
 import { downloadQrPng } from '../../ui/qrMatrix'
+import { AddressField } from './AddressField'
+import { ConfirmationCategoriesPanel, ConfirmationRulesPanel } from './ConfirmationPanels'
 
-/** O3 · Criar / editar evento. */
+/** O3 · Criar / editar evento. Creating publishes the event in Core. Editing
+ * corrects what is not an official change; the date, times and venue change
+ * through "Alterar ou cancelar" in O4, which notifies the participants. */
 export function EventFormPage({
   events,
-  onSave,
+  geocode,
+  onCreate,
+  onCorrect,
 }: {
   events: OrgEvent[]
-  onSave: (event: OrgEvent) => void
+  geocode: Geocoder
+  onCreate: (event: OrgEvent) => Promise<OrgEvent>
+  onCorrect: (before: OrgEvent, after: OrgEvent) => Promise<OrgEvent>
 }) {
   const { id } = useParams()
   const existing = events.find((e) => e.id === id)
   const [event, setEvent] = useState<OrgEvent>(() => existing ?? emptyEvent())
+  const [answers, setAnswers] = useState(() =>
+    String((existing ?? event).confirmations.highConfidenceAnswers),
+  )
   const [errors, setErrors] = useState<ReturnType<typeof validateEvent>>({})
+  const [answersError, setAnswersError] = useState<string>()
+  const [formError, setFormError] = useState('')
+  const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
   const editing = !!existing
 
@@ -69,38 +69,36 @@ export function EventFormPage({
     setErrors((all) => ({ ...all, [key]: undefined }))
   }
 
-  const save = (publish: boolean) => {
-    const owner = codeOwner(event.code, event, events)
-    const found = publish
-      ? validateEvent(event, events)
-      : !event.name.trim()
-        ? { name: 'Escreve o nome do evento.' }
-        : owner
-          ? { code: duplicateCodeError(owner) }
-          : {}
+  const save = async () => {
+    if (saving) return
+    const found = validateEvent(event, events)
+    const parsed = parseAnswers(answers)
     setErrors(found)
-    if (Object.keys(found).length) return
+    setAnswersError(typeof parsed === 'string' ? parsed : undefined)
+    setFormError('')
+    if (Object.keys(found).length || typeof parsed === 'string') return
 
-    const newId = editing ? event.id : uniqueId(slug(event.name), events)
-    const status = editing ? event.status : publish ? 'published' : 'draft'
-    onSave({
+    const ready: OrgEvent = {
       ...event,
-      id: newId,
-      name: event.name.trim(),
-      code: event.code.trim().toUpperCase(),
-      status,
-    })
-    const message = editing
-      ? 'Alterações guardadas.'
-      : publish
-        ? `${event.name.trim()} publicado.`
-        : 'Rascunho guardado.'
-    navigate(`/organization/events/${newId}`, { state: { message } })
+      confirmations: { ...event.confirmations, highConfidenceAnswers: parsed },
+    }
+    setSaving(true)
+    try {
+      const saved = existing ? await onCorrect(existing, ready) : await onCreate(ready)
+      const message = editing ? 'Alterações guardadas.' : `${saved.name} publicado.`
+      navigate(`/organization/events/${saved.id}`, { state: { message } })
+    } catch (e) {
+      const code = e instanceof EventsApiError ? e.code : 'UNKNOWN'
+      const field = errorField(code)
+      if (field) setErrors({ [field]: eventErrorMessage(code) })
+      else setFormError(eventErrorMessage(code))
+      setSaving(false)
+    }
   }
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    save(true)
+    void save()
   }
 
   const chooseKind = (kind: EventKind) => {
@@ -130,10 +128,11 @@ export function EventFormPage({
         <p className="text-[17px] font-semibold">{editing ? 'Editar evento' : 'Novo evento'}</p>
         <button
           type="button"
-          onClick={() => save(editing)}
-          className="justify-self-end text-[17px] font-semibold text-primary"
+          onClick={() => void save()}
+          disabled={saving}
+          className="justify-self-end text-[17px] font-semibold text-primary disabled:opacity-50"
         >
-          Guardar
+          {editing ? 'Guardar' : 'Publicar'}
         </button>
       </div>
 
@@ -154,6 +153,13 @@ export function EventFormPage({
         />
       </div>
       <h2 className="sr-only lg:hidden">{title}</h2>
+      {formError && (
+        <div role="alert">
+          <Notice tone="warning" icon={AlertTriangle} title="Não foi possível guardar">
+            {formError}
+          </Notice>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
@@ -167,7 +173,7 @@ export function EventFormPage({
                 />
               )}
             </Field>
-            <Field label="Descrição">
+            <Field label="Descrição" error={errors.description}>
               {(p) => (
                 <TextArea
                   {...p}
@@ -184,17 +190,19 @@ export function EventFormPage({
                     type="date"
                     icon={Calendar}
                     value={event.date}
+                    disabled={editing}
                     onChange={(e) => set('date', e.target.value)}
                   />
                 )}
               </Field>
-              <Field label="Abertura de portas">
+              <Field label="Abertura de portas" optional>
                 {(p) => (
                   <TextInput
                     {...p}
                     type="time"
                     icon={Clock}
                     value={event.doors}
+                    disabled={editing}
                     onChange={(e) => set('doors', e.target.value)}
                   />
                 )}
@@ -206,22 +214,25 @@ export function EventFormPage({
                     type="time"
                     icon={Clock}
                     value={event.start}
+                    disabled={editing}
                     onChange={(e) => set('start', e.target.value)}
                   />
                 )}
               </Field>
-              <Field label="Fim" className="max-sm:hidden">
+              <Field label="Fim" error={errors.end}>
                 {(p) => (
                   <TextInput
                     {...p}
                     type="time"
                     icon={Clock}
                     value={event.end}
+                    disabled={editing}
                     onChange={(e) => set('end', e.target.value)}
                   />
                 )}
               </Field>
             </div>
+            {editing && <OfficialChangeNote eventId={event.id} />}
           </Panel>
 
           <Panel title="Tipo de evento" titleClassName="text-base" className="gap-3.5">
@@ -236,6 +247,7 @@ export function EventFormPage({
                   name="event-kind"
                   value={k}
                   checked={event.kind === k}
+                  disabled={editing && event.kind !== k}
                   onChange={(v) => chooseKind(v as EventKind)}
                   card
                   className="min-w-0 flex-1 items-start"
@@ -277,10 +289,32 @@ export function EventFormPage({
                   {...p}
                   icon={MapPin}
                   value={event.venue}
+                  disabled={editing}
+                  placeholder="Ex.: Pavilhão Rosa Mota"
                   onChange={(e) => set('venue', e.target.value)}
                 />
               )}
             </Field>
+            <AddressField
+              address={event.address}
+              place={
+                event.latitude !== undefined && event.longitude !== undefined
+                  ? { latitude: event.latitude, longitude: event.longitude }
+                  : undefined
+              }
+              geocode={geocode}
+              disabled={editing}
+              error={errors.address}
+              onChange={(address, place) => {
+                setEvent((e) => ({
+                  ...e,
+                  address,
+                  latitude: place?.latitude,
+                  longitude: place?.longitude,
+                }))
+                setErrors((all) => ({ ...all, address: undefined }))
+              }}
+            />
             <Field
               label="Distrito"
               error={errors.district}
@@ -290,6 +324,7 @@ export function EventFormPage({
                 <Select
                   {...p}
                   value={event.district}
+                  disabled={editing}
                   onChange={(e) => set('district', e.target.value)}
                   options={[{ value: '', label: 'Escolher distrito' }, ...districts]}
                 />
@@ -297,6 +332,7 @@ export function EventFormPage({
             </Field>
             <Entrances
               value={event.entrances}
+              error={errors.entrances}
               onChange={(entrances) => set('entrances', entrances)}
             />
             <Field
@@ -315,44 +351,30 @@ export function EventFormPage({
             </Field>
           </Panel>
 
-          <Panel title="Participação no recinto" titleClassName="text-base" className="gap-3">
-            <ToggleRow
-              title="Pedir confirmação de reportes"
-              hint="Outros participantes confirmam com Sim ou Não."
-              checked={event.askConfirmation}
-              onChange={(v) => set('askConfirmation', v)}
-              action={<TextLink to="/organization/settings">Escolher categorias</TextLink>}
-            />
-            <ToggleRow
-              title="Mostrar estimativas de participantes"
-              hint="Só com confiança média ou alta e quando não há dados teus."
-              checked={event.showEstimates}
-              onChange={(v) => set('showEstimates', v)}
-            />
-          </Panel>
+          <ConfirmationCategoriesPanel
+            value={event.confirmations}
+            onChange={(confirmations) => set('confirmations', confirmations)}
+          />
+          <ConfirmationRulesPanel
+            value={event.confirmations}
+            onChange={(confirmations) => set('confirmations', confirmations)}
+            answers={answers}
+            onAnswersChange={(value) => {
+              setAnswers(value)
+              setAnswersError(undefined)
+            }}
+            answersError={answersError}
+          />
         </div>
 
         <div className="flex flex-col gap-4 lg:w-[360px] lg:shrink-0">
           <Panel title="Publicação" titleClassName="text-base" className="gap-3">
-            {editing ? (
-              <>
-                <Button type="submit" size="lg">
-                  Guardar alterações
-                </Button>
-                <Link to={cancelTo} className="text-center text-sm font-semibold text-primary">
-                  Cancelar
-                </Link>
-              </>
-            ) : (
-              <>
-                <Button type="submit" size="lg" disabled={!!owner}>
-                  Publicar evento
-                </Button>
-                <Button variant="secondary" size="lg" onClick={() => save(false)}>
-                  Guardar rascunho
-                </Button>
-              </>
-            )}
+            <Button type="submit" size="lg" disabled={!!owner || saving}>
+              {saving ? 'A guardar…' : editing ? 'Guardar alterações' : 'Publicar evento'}
+            </Button>
+            <Link to={cancelTo} className="text-center text-sm font-semibold text-primary">
+              Cancelar
+            </Link>
           </Panel>
 
           {isPublic && event.code && (
@@ -395,31 +417,43 @@ export function EventFormPage({
               gradient={event.gradient}
             />
           </Panel>
-
-          <ImagePanel
-            event={event}
-            onChange={(image, imageName) => setEvent((e) => ({ ...e, image, imageName }))}
-          />
         </div>
       </div>
     </form>
   )
 }
 
-function uniqueId(base: string, events: OrgEvent[]): string {
-  let id = base || 'evento'
-  for (let n = 2; events.some((e) => e.id === id); n++) id = `${base}-${n}`
-  return id
+/** Where to change what an official change covers, in edit mode. */
+function OfficialChangeNote({ eventId }: { eventId: string }) {
+  return (
+    <p className="text-xs leading-[1.35] text-ink-secondary">
+      A data, as horas e o local mudam com uma alteração oficial, que notifica os participantes:{' '}
+      <Link to={`/organization/events/${eventId}`} className="font-semibold text-primary">
+        Alterar ou cancelar
+      </Link>
+      .
+    </p>
+  )
 }
 
 /** Entrances and queue points as removable chips. */
-function Entrances({ value, onChange }: { value: string[]; onChange: (value: string[]) => void }) {
+function Entrances({
+  value,
+  error,
+  onChange,
+}: {
+  value: string[]
+  error?: string
+  onChange: (value: string[]) => void
+}) {
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState('')
 
   const add = () => {
     const name = draft.trim()
-    if (name && !value.includes(name)) onChange([...value, name])
+    if (name && !value.some((v) => v.toLowerCase() === name.toLowerCase())) {
+      onChange([...value, name])
+    }
     setDraft('')
     setAdding(false)
   }
@@ -459,6 +493,7 @@ function Entrances({ value, onChange }: { value: string[]; onChange: (value: str
                 }
                 if (e.key === 'Escape') setAdding(false)
               }}
+              maxLength={60}
               placeholder="Ex.: Porta C"
               className="w-36 rounded-full border border-primary px-3 py-[6px] text-[13px] outline-none"
             />
@@ -474,50 +509,7 @@ function Entrances({ value, onChange }: { value: string[]; onChange: (value: str
           )}
         </li>
       </ul>
+      {error && <p className="text-xs text-danger">{error}</p>}
     </fieldset>
-  )
-}
-
-function ImagePanel({
-  event,
-  onChange,
-}: {
-  event: OrgEvent
-  onChange: (image: string, name: string) => void
-}) {
-  const input = useRef<HTMLInputElement>(null)
-  return (
-    <Panel title="Imagem do evento" className="max-lg:hidden">
-      <div className="flex items-center gap-3">
-        <EventThumb
-          image={event.image}
-          gradient={event.gradient}
-          size={56}
-          rounded="rounded-[10px]"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold">{event.imageName ?? 'Sem imagem'}</p>
-          <p className="text-xs text-ink-secondary">1600 × 900 recomendado</p>
-        </div>
-        <input
-          ref={input}
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          aria-label="Escolher imagem do evento"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) onChange(URL.createObjectURL(file), file.name)
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => input.current?.click()}
-          className="text-[13px] font-semibold text-primary hover:underline"
-        >
-          {event.imageName ? 'Substituir' : 'Escolher'}
-        </button>
-      </div>
-    </Panel>
   )
 }

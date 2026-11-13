@@ -16,7 +16,7 @@ class EventAccessRulesTest {
 
   private static final UUID ORGANIZATION = UUID.randomUUID();
   private static final Event EVENT =
-      Event.restore(
+      StoredEvents.restore(
           UUID.randomUUID(),
           ORGANIZATION,
           new EventState(

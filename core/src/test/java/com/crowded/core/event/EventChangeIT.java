@@ -227,6 +227,32 @@ class EventChangeIT extends IntegrationTest {
   }
 
   @Test
+  void movesTheEventToANewVenueWithItsLocation() throws Exception {
+    HttpResponse<String> nowhere =
+        post(
+            member,
+            "{\"type\": \"VENUE_CHANGE\", \"newValue\": {\"venueName\": \"Hard Club\","
+                + " \"address\": \"Mercado Ferreira Borges\"}}");
+    HttpResponse<String> moved =
+        post(
+            member,
+            "{\"type\": \"VENUE_CHANGE\", \"newValue\": {\"venueName\": \"Hard Club\","
+                + " \"address\": \"Mercado Ferreira Borges\", \"latitude\": 41.141,"
+                + " \"longitude\": -8.614}}");
+
+    assertThat(nowhere.statusCode()).isEqualTo(400);
+    assertThat(json.readTree(nowhere.body()).get("code").asString()).isEqualTo("LOCATION_REQUIRED");
+    assertThat(moved.statusCode()).isEqualTo(201);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT status::text || '/' || venue_name || '/' || latitude FROM event"
+                    + " WHERE id = ?",
+                String.class,
+                event))
+        .isEqualTo("RELOCATED/Hard Club/41.141");
+  }
+
+  @Test
   void refusesAnInvalidChangeAsAProblem() throws Exception {
     HttpResponse<String> response =
         post(member, "{\"type\": \"VENUE_CHANGE\", \"newValue\": {\"venueName\": \"Hard Club\"}}");

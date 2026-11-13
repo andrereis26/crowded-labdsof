@@ -1,5 +1,6 @@
 package com.crowded.core.user.domain.model;
 
+import com.crowded.core.shared.domain.exception.NotAllowedException;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -34,6 +35,19 @@ public final class User {
         && role == Role.ORGANIZATION_MEMBER
         && organization != null
         && organization.equals(organizationId);
+  }
+
+  /**
+   * The organization this user registers and manages events for.
+   *
+   * @throws NotAllowedException unless this user is an active member of an organization
+   */
+  public UUID organizationManaged() {
+    if (!isMemberOf(organizationId)) {
+      throw new NotAllowedException(
+          "NOT_ORGANIZATION_MEMBER", "Only active members of an organization manage its events.");
+    }
+    return organizationId;
   }
 
   /** Whether this user is a participant, who connects to events with a ticket or a code. */

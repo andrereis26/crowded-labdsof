@@ -1,6 +1,6 @@
 # ADR 0010: External integrations behind adapters
 
-- Status: accepted (Firebase Cloud Messaging, implemented after in-app notifications); weather decided in [ADR 0015](0015-organization-as-the-only-event-source.md) (IPMA); vendors for AI, maps and the transport feed to be decided
+- Status: accepted (Firebase Cloud Messaging, implemented after in-app notifications); weather decided in [ADR 0015](0015-organization-as-the-only-event-source.md) (IPMA), maps in [ADR 0018](0018-openstreetmap-for-maps-and-geocoding.md) (OpenStreetMap); vendors for AI and the transport feed to be decided
 - Date: 2026-10-11
 - Deciders: Crowded team
 

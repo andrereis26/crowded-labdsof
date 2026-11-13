@@ -15,6 +15,7 @@ import {
   validateOrganizationName,
   demoOrganizations,
 } from './data/admin'
+import { fakeEventsApi } from './test/fakeEventsApi'
 
 const now = new Date(2026, 10, 7, 22, 0)
 
@@ -109,6 +110,7 @@ function renderAt(
   options: { session?: Session; adminApi?: AdminApi; choosePassword?: ChoosePassword } = {},
 ) {
   const api = options.adminApi ?? fakeAdminApi()
+  const events = fakeEventsApi()
   return render(
     <MemoryRouter initialEntries={[path]}>
       <App
@@ -117,6 +119,7 @@ function renderAt(
         choosePassword={options.choosePassword}
         initialSession={options.session}
         adminApiFor={() => api}
+        eventsApiFor={() => events.api}
       />
     </MemoryRouter>,
   )

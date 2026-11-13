@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
 import { type AdminOrganization, type Member } from './data/admin'
 import { AdminApiError, httpAdminApi, type AdminApi, type MemberChange } from './data/adminApi'
+import { httpEventsApi, type EventsApi } from './data/eventsApi'
+import { nominatimGeocoder, type Geocoder } from './data/geocoding'
 import {
   choosePasswordWithCore,
   signInWithCore,
@@ -15,24 +17,31 @@ import { OrganizationsPage, type Outcome } from './pages/admin/OrganizationsPage
 import { NewPasswordPage, SignInPage } from './pages/SignInPage'
 import { Panel } from './ui/components'
 
+/** One geocoder for the whole app, so the map service's rate limit holds. */
+const defaultGeocoder = nominatimGeocoder()
+
 function codeOf(error: unknown): string {
   return error instanceof AdminApiError ? error.code : 'UNKNOWN'
 }
 
 /** `now` is fixed at start-up so demo times stay stable between renders.
- * Sign-in and the platform administration (A2) go to Core; the
- * organizer pages still show demo data. */
+ * Sign-in, the platform administration (A2) and the organization's events
+ * (O2–O4) go to Core; the other organizer pages still show demo data. */
 export default function App({
   now,
   signIn = signInWithCore,
   choosePassword = choosePasswordWithCore,
   adminApiFor = httpAdminApi,
+  eventsApiFor = httpEventsApi,
+  geocoder = defaultGeocoder,
   initialSession,
 }: {
   now: Date
   signIn?: SignIn
   choosePassword?: ChoosePassword
   adminApiFor?: (accessToken: string) => AdminApi
+  eventsApiFor?: (accessToken: string) => EventsApi
+  geocoder?: Geocoder
   /** A session to start with, for tests. */
   initialSession?: Session
 }) {
@@ -46,6 +55,11 @@ export default function App({
   const api = useMemo(
     () => (session && administrator ? adminApiFor(session.accessToken) : undefined),
     [session, administrator, adminApiFor],
+  )
+  const member = session?.role === 'ORGANIZATION_MEMBER'
+  const eventsApi = useMemo(
+    () => (session && member ? eventsApiFor(session.accessToken) : undefined),
+    [session, member, eventsApiFor],
   )
 
   const show = useCallback((data: Awaited<ReturnType<AdminApi['list']>>) => {
@@ -164,7 +178,16 @@ export default function App({
           />
         }
       />
-      <Route path="/organization/*" element={<OrganizerApp now={now} />} />
+      <Route
+        path="/organization/*"
+        element={
+          eventsApi ? (
+            <OrganizerApp now={now} api={eventsApi} geocode={geocoder} />
+          ) : (
+            <Navigate to="/sign-in" replace />
+          )
+        }
+      />
       <Route
         path="*"
         element={

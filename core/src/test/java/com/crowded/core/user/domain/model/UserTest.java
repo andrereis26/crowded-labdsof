@@ -1,7 +1,9 @@
 package com.crowded.core.user.domain.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.crowded.core.shared.domain.exception.NotAllowedException;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -16,6 +18,24 @@ class UserTest {
     assertThat(member.isMemberOf(ORGANIZATION)).isTrue();
     assertThat(member.isMemberOf(UUID.randomUUID())).isFalse();
     assertThat(member.isMemberOf(null)).isFalse();
+  }
+
+  @Test
+  void managesTheEventsOfItsOrganizationOnlyAsAnActiveMember() {
+    assertThat(
+            User.restore(UUID.randomUUID(), ORGANIZATION, Role.ORGANIZATION_MEMBER, true)
+                .organizationManaged())
+        .isEqualTo(ORGANIZATION);
+    for (User other :
+        new User[] {
+          User.restore(UUID.randomUUID(), ORGANIZATION, Role.ORGANIZATION_MEMBER, false),
+          User.restore(UUID.randomUUID(), null, Role.PARTICIPANT, true),
+          User.restore(UUID.randomUUID(), null, Role.ADMINISTRATOR, true)
+        }) {
+      assertThatThrownBy(other::organizationManaged)
+          .isInstanceOf(NotAllowedException.class)
+          .hasFieldOrPropertyWithValue("code", "NOT_ORGANIZATION_MEMBER");
+    }
   }
 
   @Test

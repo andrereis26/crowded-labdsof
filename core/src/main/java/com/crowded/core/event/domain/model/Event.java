@@ -11,8 +11,10 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * An event, as far as official changes need it. Its state changes only through {@link
- * #publishChange}, which applies the rules of an official change.
+ * An event an organization registered: what participants read about it, how they connect to it,
+ * when and where it happens, and how its organization runs it on site. Its schedule, venue and
+ * status change only through {@link #publishChange}, which applies the rules of an official change;
+ * the other details through corrections that participants are not notified of.
  */
 public final class Event {
 
@@ -21,21 +23,132 @@ public final class Event {
 
   private final UUID id;
   private final UUID organizationId;
+  private EventProfile profile;
+  private Admission admission;
   private EventState state;
+  private final District district;
+  private Capacity capacity;
+  private QueuePoints queuePoints;
+  private ConfirmationSettings confirmations;
 
-  private Event(UUID id, UUID organizationId, EventState state) {
+  private Event(
+      UUID id,
+      UUID organizationId,
+      EventProfile profile,
+      Admission admission,
+      EventState state,
+      District district,
+      Capacity capacity,
+      QueuePoints queuePoints,
+      ConfirmationSettings confirmations) {
     this.id = Objects.requireNonNull(id, "id");
     this.organizationId = organizationId;
+    this.profile = Objects.requireNonNull(profile, "profile");
+    this.admission = Objects.requireNonNull(admission, "admission");
     this.state = Objects.requireNonNull(state, "state");
+    this.district = Objects.requireNonNull(district, "district");
+    this.capacity = capacity;
+    this.queuePoints = Objects.requireNonNull(queuePoints, "queuePoints");
+    this.confirmations = Objects.requireNonNull(confirmations, "confirmations");
+  }
+
+  /**
+   * A new event of {@code organizationId}, published at once: participants can connect to it with
+   * its code from now on. Whether another event uses the code is checked by {@code EventCodes}.
+   *
+   * @throws RuleViolationException when the event has no end, no location on the map or no
+   *     capacity, or starts in the past
+   */
+  public static Event register(
+      UUID organizationId,
+      EventProfile profile,
+      Admission admission,
+      Schedule schedule,
+      Venue venue,
+      District district,
+      Capacity capacity,
+      QueuePoints queuePoints,
+      ConfirmationSettings confirmations,
+      Instant now) {
+    Objects.requireNonNull(organizationId, "organizationId");
+    if (schedule.end() == null) {
+      throw new RuleViolationException("END_REQUIRED", "An event needs the time it ends.");
+    }
+    if (venue.coordinates() == null) {
+      throw new RuleViolationException(
+          "LOCATION_REQUIRED", "An event needs its venue's location on the map.");
+    }
+    if (capacity == null) {
+      throw new RuleViolationException("CAPACITY_REQUIRED", "An event needs its capacity.");
+    }
+    checkFuture(schedule.start(), now);
+    return new Event(
+        UUID.randomUUID(),
+        organizationId,
+        profile,
+        admission,
+        new EventState(EventStatus.SCHEDULED, schedule, venue),
+        district,
+        capacity,
+        queuePoints,
+        confirmations);
   }
 
   /**
    * A stored event, as it was saved.
    *
    * @param organizationId the owning organization; null for an event no organization owns
+   * @param capacity null when it was never set
    */
-  public static Event restore(UUID id, UUID organizationId, EventState state) {
-    return new Event(id, organizationId, state);
+  public static Event restore(
+      UUID id,
+      UUID organizationId,
+      EventProfile profile,
+      Admission admission,
+      EventState state,
+      District district,
+      Capacity capacity,
+      QueuePoints queuePoints,
+      ConfirmationSettings confirmations) {
+    return new Event(
+        id,
+        organizationId,
+        profile,
+        admission,
+        state,
+        district,
+        capacity,
+        queuePoints,
+        confirmations);
+  }
+
+  /** Corrects the name and description, such as a typo; participants are not notified. */
+  public void correctProfile(EventProfile newProfile) {
+    profile = Objects.requireNonNull(newProfile, "profile");
+  }
+
+  /** Sets how many people the venue holds. */
+  public void changeCapacity(Capacity newCapacity) {
+    capacity = Objects.requireNonNull(newCapacity, "capacity");
+  }
+
+  /**
+   * Replaces the code of the tickets or the access code. Participants already connected keep their
+   * connection; the new code is for those who connect from now on. Whether another event uses it is
+   * checked by {@code EventCodes}.
+   */
+  public void replaceCode(EventCode code) {
+    admission = admission.withCode(code);
+  }
+
+  /** Sets the entrances and queue points, in the order the organization lists them. */
+  public void defineQueuePoints(QueuePoints points) {
+    queuePoints = Objects.requireNonNull(points, "queuePoints");
+  }
+
+  /** Sets which report categories ask for confirmations, and how. */
+  public void configureConfirmations(ConfirmationSettings settings) {
+    confirmations = Objects.requireNonNull(settings, "confirmations");
   }
 
   /**
@@ -171,16 +284,23 @@ public final class Event {
         state.venue());
   }
 
+  /**
+   * The event at the new venue, which needs its own location: the old one would point participants
+   * to the wrong place, and every event is on the map.
+   */
   private EventState relocated(NewValues value) {
     Venue venue =
         new Venue(
             value.venueName(),
             value.address(),
             Coordinates.ofNullable(value.latitude(), value.longitude()));
+    if (venue.coordinates() == null) {
+      throw new RuleViolationException(
+          "LOCATION_REQUIRED", "A venue change needs the new venue's location on the map.");
+    }
     if (venue.isSamePlaceAs(state.venue())) {
       return state;
     }
-    // Coordinates of the old venue would point participants to the wrong place.
     return new EventState(EventStatus.RELOCATED, state.schedule(), venue);
   }
 
@@ -217,8 +337,33 @@ public final class Event {
     return organizationId;
   }
 
+  public EventProfile getProfile() {
+    return profile;
+  }
+
+  public Admission getAdmission() {
+    return admission;
+  }
+
   public EventState getState() {
     return state;
+  }
+
+  public District getDistrict() {
+    return district;
+  }
+
+  /** How many people the venue holds; null when it was never set. */
+  public Capacity getCapacity() {
+    return capacity;
+  }
+
+  public QueuePoints getQueuePoints() {
+    return queuePoints;
+  }
+
+  public ConfirmationSettings getConfirmations() {
+    return confirmations;
   }
 
   @Override

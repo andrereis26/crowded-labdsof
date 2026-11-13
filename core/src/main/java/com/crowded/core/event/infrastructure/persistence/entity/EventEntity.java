@@ -1,6 +1,7 @@
 package com.crowded.core.event.infrastructure.persistence.entity;
 
 import com.crowded.core.event.domain.model.EventStatus;
+import com.crowded.core.event.domain.model.EventType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,6 +22,34 @@ public class EventEntity {
 
   @Column(name = "organization_id")
   private UUID organizationId;
+
+  private String name;
+
+  private String description;
+
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(columnDefinition = "event_type", nullable = false)
+  private EventType type;
+
+  @Column(name = "ticket_event_code")
+  private String ticketEventCode;
+
+  @Column(name = "access_code")
+  private String accessCode;
+
+  private String district;
+
+  private Integer capacity;
+
+  @Column(name = "venue_radius_meters")
+  private int venueRadiusMeters;
+
+  @Column(name = "high_confidence_answers")
+  private int highConfidenceAnswers;
+
+  @Column(name = "max_prompts_per_hour")
+  private int maxPromptsPerHour;
 
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.NAMED_ENUM)
@@ -123,5 +152,85 @@ public class EventEntity {
 
   public void setLongitude(Double longitude) {
     this.longitude = longitude;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(String description) {
+    this.description = description;
+  }
+
+  public EventType getType() {
+    return type;
+  }
+
+  public void setType(EventType type) {
+    this.type = type;
+  }
+
+  public String getTicketEventCode() {
+    return ticketEventCode;
+  }
+
+  public void setTicketEventCode(String ticketEventCode) {
+    this.ticketEventCode = ticketEventCode;
+  }
+
+  public String getAccessCode() {
+    return accessCode;
+  }
+
+  public void setAccessCode(String accessCode) {
+    this.accessCode = accessCode;
+  }
+
+  public String getDistrict() {
+    return district;
+  }
+
+  public void setDistrict(String district) {
+    this.district = district;
+  }
+
+  public Integer getCapacity() {
+    return capacity;
+  }
+
+  public void setCapacity(Integer capacity) {
+    this.capacity = capacity;
+  }
+
+  public int getVenueRadiusMeters() {
+    return venueRadiusMeters;
+  }
+
+  public void setVenueRadiusMeters(int venueRadiusMeters) {
+    this.venueRadiusMeters = venueRadiusMeters;
+  }
+
+  public int getHighConfidenceAnswers() {
+    return highConfidenceAnswers;
+  }
+
+  public void setHighConfidenceAnswers(int highConfidenceAnswers) {
+    this.highConfidenceAnswers = highConfidenceAnswers;
+  }
+
+  public int getMaxPromptsPerHour() {
+    return maxPromptsPerHour;
+  }
+
+  public void setMaxPromptsPerHour(int maxPromptsPerHour) {
+    this.maxPromptsPerHour = maxPromptsPerHour;
   }
 }
