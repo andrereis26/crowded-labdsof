@@ -67,6 +67,9 @@ entity "Event" as Event {
   district : TEXT
   latitude : DOUBLE PRECISION
   longitude : DOUBLE PRECISION
+  venueRadiusMeters : INTEGER
+  highConfidenceAnswers : INTEGER
+  maxPromptsPerHour : INTEGER
   crowdLevel : crowd_level [NULL]
   headCount : INTEGER [NULL]
   crowdProvenanceSourceType : source_type [NULL]
@@ -83,6 +86,9 @@ note right of Event
   on its tickets; a PUBLIC event has accessCode. Each code
   is unique among upcoming events, checked by Core (FR-086).
   district selects the IPMA warnings and forecast (FR-036).
+  venueRadiusMeters, highConfidenceAnswers and
+  maxPromptsPerHour are the event's confirmation rules
+  (FR-057, FR-058, FR-064); capacity is at least 1.
 end note
 
 entity "EventChange" as EventChange {
@@ -165,11 +171,24 @@ note right of TicketExtraction
 end note
 
 ' On-site information
-entity "QueueTime\n<<Dependent Value Object>>" as QueueTime {
+entity "QueuePoint" as QueuePoint {
   * id : UUID <<PK>>
   eventId : UUID <<FK, UK>>
-  kind : queue_point_kind <<UK>>
-  pointName : TEXT <<UK>>
+  name : TEXT <<UK>>
+  --
+  position : INTEGER
+}
+
+note right of QueuePoint
+  An entrance or another place where people queue,
+  named freely by the organization when it creates
+  or edits the event, in the order it lists them.
+end note
+
+entity "QueueTime\n<<Dependent Value Object>>" as QueueTime {
+  * id : UUID <<PK>>
+  eventId : UUID <<FK>>
+  queuePointId : UUID <<FK, UK>>
   --
   waitMinutes : INTEGER
   provenanceSourceType : source_type
@@ -488,14 +507,6 @@ enum "crowd_level" as crowd_level {
   FULL
 }
 
-enum "queue_point_kind" as queue_point_kind {
-  ENTRANCE
-  TICKET_OFFICE
-  BAR
-  TOILET
-  OTHER
-}
-
 enum "source_type" as source_type {
   OFFICIAL_SOURCE
   ORGANIZATION
@@ -579,6 +590,8 @@ EventConnection ||--o| AccessCodeConnection : subtype
 Ticket ||--o| TicketExtraction : extraction
 
 ' On-site information relationships
+Event ||--o{ QueuePoint : queue points
+QueuePoint ||--o| QueueTime : current wait
 Event ||--o{ QueueTime : queues
 Event ||--o{ WeatherForecast : forecasts
 Event ||--o{ WeatherWarning : warnings

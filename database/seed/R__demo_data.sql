@@ -169,16 +169,35 @@ ON CONFLICT DO NOTHING;
 
 -- On-site information -----------------------------------------------------------------------
 
+-- The entrances and queue points each organization named for its events, and
+-- the current waiting time at some of them.
+INSERT INTO queue_point (id, event_id, name, position) VALUES
+  ('a0000000-0000-4000-8000-0000000000a1', '30000000-0000-4000-8000-000000000001', 'Porta Ribeira', 0),
+  ('a0000000-0000-4000-8000-0000000000a2', '30000000-0000-4000-8000-000000000001', 'Porta Infante', 1),
+  ('a0000000-0000-4000-8000-0000000000a3', '30000000-0000-4000-8000-000000000001', 'Bar do rio', 2),
+  ('a0000000-0000-4000-8000-0000000000a4', '30000000-0000-4000-8000-000000000002', 'Entrada Sul', 0),
+  ('a0000000-0000-4000-8000-0000000000a5', '30000000-0000-4000-8000-000000000002', 'Bar central', 1),
+  ('a0000000-0000-4000-8000-0000000000a6', '30000000-0000-4000-8000-000000000002', 'WC Norte', 2)
+ON CONFLICT DO NOTHING;
+
 INSERT INTO queue_time (
-  id, event_id, kind, point_name, wait_minutes,
+  id, event_id, queue_point_id, wait_minutes,
   provenance_source_type, provenance_source_name, provenance_last_updated_at, provenance_confirmed
-) VALUES
-  ('a0000000-0000-4000-8000-000000000031', '30000000-0000-4000-8000-000000000002', 'ENTRANCE', 'Entrada Sul', 15,
+)
+SELECT queue_time.id, queue_point.event_id, queue_point.id, queue_time.wait_minutes,
+       queue_time.source_type::source_type, queue_time.source_name, queue_time.updated_at, queue_time.confirmed
+FROM (VALUES
+  ('a0000000-0000-4000-8000-000000000031'::uuid, 'Entrada Sul', 15,
    'ORGANIZATION', 'Ribeira Live', now() - interval '6 minutes', true),
-  ('a0000000-0000-4000-8000-000000000032', '30000000-0000-4000-8000-000000000002', 'BAR', 'Bar central', 25,
+  ('a0000000-0000-4000-8000-000000000032'::uuid, 'Bar central', 25,
    'PARTICIPANT_ESTIMATE', 'Participantes', now() - interval '12 minutes', false),
-  ('a0000000-0000-4000-8000-000000000033', '30000000-0000-4000-8000-000000000002', 'TOILET', 'WC Norte', 5,
+  ('a0000000-0000-4000-8000-000000000033'::uuid, 'WC Norte', 5,
    'ORGANIZATION', 'Ribeira Live', now() - interval '8 minutes', true)
+) AS queue_time (id, point_name, wait_minutes, source_type, source_name, updated_at, confirmed)
+-- By name: on a database migrated from before queue points, the migration
+-- already gave these points their own ids.
+JOIN queue_point ON queue_point.event_id = '30000000-0000-4000-8000-000000000002'
+  AND queue_point.name = queue_time.point_name
 ON CONFLICT DO NOTHING;
 
 INSERT INTO weather_forecast (

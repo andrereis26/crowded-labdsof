@@ -69,6 +69,17 @@ package "Event Catalog" {
     capacity : int [0..1]
   }
 
+  class ConfirmationSettings <<Value Object>> {
+    promptCategories : ReportCategory [0..*]
+    venueRadiusMeters : int
+    highConfidenceAnswers : int
+    maxPromptsPerHour : int
+  }
+
+  class QueuePoint <<Value Object>> {
+    name
+  }
+
   class EventLocation <<Value Object>> {
     venueName
     address
@@ -169,8 +180,7 @@ package "On-Site Information" {
   }
 
   class QueueTime <<Value Object>> {
-    pointName
-    kind : QueuePointKind
+    queuePoint : QueuePoint
     waitMinutes : int
     provenance : Provenance
   }
@@ -211,14 +221,6 @@ package "On-Site Information" {
     MODERATE
     HIGH
     FULL
-  }
-
-  enum QueuePointKind {
-    ENTRANCE
-    TICKET_OFFICE
-    BAR
-    TOILET
-    OTHER
   }
 
   enum SourceType {
@@ -433,6 +435,8 @@ Ticket "1" *-down- "0..1" TicketExtraction
 
 ' --- On-Site Information (below Event)
 Event "1" *-down- "0..1" CrowdStatus : current crowd
+Event "1" *-down- "0..*" QueuePoint : entrances and queue points (ordered)
+Event "1" *-down- "1" ConfirmationSettings : report confirmations
 Event "1" *-down- "0..*" QueueTime : current queues
 Event "1" -down- "0..*" WeatherForecast
 Event "1" -down- "0..*" WeatherWarning : for its district

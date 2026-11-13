@@ -23,7 +23,7 @@ GRANT INSERT, UPDATE, DELETE ON
   app_user, organization,
   event, event_change,
   event_connection, ticket, access_code_connection, ticket_extraction,
-  queue_time, weather_forecast, weather_warning,
+  queue_point, queue_time, weather_forecast, weather_warning,
   alert, alert_draft, event_survey, survey_option, survey_response,
   report, report_category, event_category_setting, confirmation, incident, recognition,
   audit_log_entry, outbox

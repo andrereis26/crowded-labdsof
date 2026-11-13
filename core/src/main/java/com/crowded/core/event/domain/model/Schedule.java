@@ -3,7 +3,6 @@ package com.crowded.core.event.domain.model;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Objects;
 
 /**
  * When an event happens: the doors open before it starts, and it ends after it starts.
@@ -15,11 +14,13 @@ import java.util.Objects;
 public record Schedule(Instant start, Instant doorsOpenAt, Instant end) {
 
   /**
-   * @throws RuleViolationException when the doors open after the start or the event ends before it
-   *     starts
+   * @throws RuleViolationException when the start is missing, the doors open after it or the event
+   *     ends before it starts
    */
   public Schedule {
-    Objects.requireNonNull(start, "start");
+    if (start == null) {
+      throw new RuleViolationException("START_REQUIRED", "An event needs the time it starts.");
+    }
     if (doorsOpenAt != null && doorsOpenAt.isAfter(start)) {
       throw new RuleViolationException(
           "DOORS_AFTER_START", "The doors must open before the event starts.");

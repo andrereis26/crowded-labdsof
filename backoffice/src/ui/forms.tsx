@@ -346,6 +346,7 @@ export function RadioOption({
   onChange,
   children,
   card = false,
+  disabled = false,
   className = '',
 }: {
   name: string
@@ -355,11 +356,12 @@ export function RadioOption({
   children: ReactNode
   /** Bordered card, highlighted in blue when selected. */
   card?: boolean
+  disabled?: boolean
   className?: string
 }) {
   return (
     <label
-      className={`flex cursor-pointer items-center gap-2.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary ${
+      className={`flex items-center ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} gap-2.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary ${
         card
           ? `rounded-xl px-3.5 py-3 ${checked ? 'border-2 border-primary bg-primary-soft' : 'border border-border bg-surface'}`
           : 'rounded-md'
@@ -370,6 +372,7 @@ export function RadioOption({
         name={name}
         value={value}
         checked={checked}
+        disabled={disabled}
         onChange={() => onChange(value)}
         className="sr-only"
       />

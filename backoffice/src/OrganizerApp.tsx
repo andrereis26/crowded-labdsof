@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation, useMatch, useNavigate } from 'react-router'
+import type { EventsApi } from './data/eventsApi'
+import type { Geocoder } from './data/geocoding'
 import {
   demoAlerts,
-  demoConfirmationSettings,
-  demoEvents,
   demoIncidents,
   demoLive,
-  type ConfirmationSettings,
+  type EventChange,
   type Incident,
   type LiveState,
   type OrgEvent,
@@ -14,7 +14,6 @@ import {
 } from './data/organizer'
 import { OrganizerLayout, type OrganizerScope } from './layout/OrganizerLayout'
 import { AlertPage } from './pages/organizer/AlertPage'
-import { ConfirmationsPage } from './pages/organizer/ConfirmationsPage'
 import { CrowdPage } from './pages/organizer/CrowdPage'
 import { EventDetailPage } from './pages/organizer/EventDetailPage'
 import { EventFormPage } from './pages/organizer/EventFormPage'
@@ -24,7 +23,7 @@ import { IncidentsPage } from './pages/organizer/IncidentsPage'
 import { LivePage } from './pages/organizer/LivePage'
 import { MorePage } from './pages/organizer/MorePage'
 import { RequestPage } from './pages/organizer/RequestPage'
-import { Panel } from './ui/components'
+import { Button, Panel } from './ui/components'
 
 const titles: [string, string][] = [
   ['/organization/live/crowd', 'Lotação e filas'],
@@ -32,37 +31,93 @@ const titles: [string, string][] = [
   ['/organization/incidents', 'Incidentes'],
   ['/organization/alerts', 'Alertas'],
   ['/organization/requests', 'Pedidos'],
-  ['/organization/settings', 'Definições'],
   ['/organization/more', 'Mais'],
 ]
 
-/** Organizer area: owns the demo state shared by O2–O12. */
-export function OrganizerApp({ now }: { now: Date }) {
-  const [events, setEvents] = useState<OrgEvent[]>(demoEvents)
+/** The demo event whose live state, incidents and alerts stand in for any
+ * event until those pages read Core. */
+const DEMO_EVENT = 'festival-margens-2026'
+
+/** Organizer area: the member's events come from Core; the live operations,
+ * incidents and alerts of O5–O12 are still demo state. */
+export function OrganizerApp({
+  now,
+  api,
+  geocode,
+}: {
+  now: Date
+  api: EventsApi
+  geocode: Geocoder
+}) {
+  const [events, setEvents] = useState<OrgEvent[]>()
+  const [loadError, setLoadError] = useState(false)
   const [live, setLive] = useState<Record<string, LiveState>>(() => demoLive(now))
   const [incidents, setIncidents] = useState<Incident[]>(() => demoIncidents(now))
   const [alerts, setAlerts] = useState<SentAlert[]>(() => demoAlerts(now))
-  const [settings, setSettings] = useState<ConfirmationSettings>(demoConfirmationSettings)
   const location = useLocation()
   const navigate = useNavigate()
+
+  const load = useCallback(async () => {
+    try {
+      setEvents(await api.list())
+      setLoadError(false)
+    } catch {
+      setLoadError(true)
+    }
+  }, [api])
+
+  useEffect(() => {
+    let current = true
+    api.list().then(
+      (found) => {
+        if (!current) return
+        setEvents(found)
+        setLoadError(false)
+      },
+      () => current && setLoadError(true),
+    )
+    return () => {
+      current = false
+    }
+  }, [api])
 
   // Opening an event page makes it the current event of the top bar, and it
   // stays current on the other pages (adjusting state while rendering).
   const eventMatch = useMatch('/organization/events/:id/*')
   const routeEventId = eventMatch?.params.id
-  const isEvent = (id?: string): id is string => !!id && events.some((e) => e.id === id)
-  const [currentId, setCurrentId] = useState(
-    isEvent(routeEventId) ? routeEventId : 'festival-margens-2026',
-  )
-  const [seenRouteId, setSeenRouteId] = useState(routeEventId)
-  if (routeEventId !== seenRouteId) {
+  const isEvent = (id?: string): id is string => !!id && !!events?.some((e) => e.id === id)
+  const [currentId, setCurrentId] = useState<string>()
+  const [seenRouteId, setSeenRouteId] = useState<string>()
+  if (routeEventId !== seenRouteId && events) {
     setSeenRouteId(routeEventId)
     if (isEvent(routeEventId)) setCurrentId(routeEventId)
   }
 
+  if (!events) {
+    return (
+      <main className="mx-auto max-w-md p-6">
+        {loadError ? (
+          <div role="alert" className="flex flex-col gap-3">
+            <p className="text-sm text-danger">
+              Não foi possível carregar os eventos. Verifica a ligação e tenta novamente.
+            </p>
+            <Button variant="secondary" onClick={() => void load()}>
+              Tentar novamente
+            </Button>
+          </div>
+        ) : (
+          <p role="status" className="text-sm text-ink-secondary">
+            A carregar os eventos…
+          </p>
+        )}
+      </main>
+    )
+  }
+
   const current = events.find((e) => e.id === currentId) ?? events[0]
-  const eventIncidents = incidents.filter((i) => i.eventId === current.id)
+  const eventIncidents = current ? incidents.filter((i) => i.eventId === current.id) : []
   const openIncidents = eventIncidents.filter((i) => i.status !== 'resolved').length
+  const currentLive = current ? (live[current.id] ?? live[DEMO_EVENT]) : undefined
 
   const path = location.pathname
   const onEventPage = isEvent(routeEventId)
@@ -71,9 +126,10 @@ export function OrganizerApp({ now }: { now: Date }) {
       ? { kind: 'organization', title: 'Eventos' }
       : {
           kind: 'event',
-          title: onEventPage
-            ? current.name
-            : (titles.find(([p]) => path.startsWith(p))?.[1] ?? 'Crowded'),
+          title:
+            onEventPage && current
+              ? current.name
+              : (titles.find(([p]) => path.startsWith(p))?.[1] ?? 'Crowded'),
         }
   const focused =
     path === '/organization/events/new' ||
@@ -85,15 +141,32 @@ export function OrganizerApp({ now }: { now: Date }) {
     if (onEventPage) navigate(path.replace(`/events/${routeEventId}`, `/events/${id}`))
   }
 
-  const saveEvent = (event: OrgEvent) =>
-    setEvents((all) =>
-      all.some((e) => e.id === event.id)
-        ? all.map((e) => (e.id === event.id ? event : e))
-        : [event, ...all],
+  const keep = (saved: OrgEvent) => {
+    setEvents((all = []) =>
+      all.some((e) => e.id === saved.id)
+        ? all.map((e) => (e.id === saved.id ? saved : e))
+        : [saved, ...all],
     )
+    setCurrentId(saved.id)
+    return saved
+  }
+
+  const create = async (event: OrgEvent) => keep(await api.create(event))
+  const correct = async (before: OrgEvent, after: OrgEvent) =>
+    keep(await api.correct(before, after))
+  /** After an official change, the event as Core has it now. */
+  const publishChange = async (event: OrgEvent, change: EventChange) => {
+    await api.publishChange(event, change)
+    await load()
+  }
 
   const updateIncident = (updated: Incident) =>
     setIncidents((all) => all.map((i) => (i.id === updated.id ? updated : i)))
+
+  /** Pages about the current event need one: without events, O2 explains how
+   * to create the first. */
+  const forEvent = (page: (event: OrgEvent, state: LiveState) => ReactNode) =>
+    current && currentLive ? page(current, currentLive) : <Navigate to="/organization/events" />
 
   return (
     <OrganizerLayout
@@ -108,36 +181,55 @@ export function OrganizerApp({ now }: { now: Date }) {
       <Routes>
         <Route index element={<Navigate to="events" replace />} />
         <Route path="events" element={<EventsPage events={events} alerts={alerts} now={now} />} />
-        <Route path="events/new" element={<EventFormPage events={events} onSave={saveEvent} />} />
+        <Route
+          path="events/new"
+          element={
+            <EventFormPage
+              events={events}
+              geocode={geocode}
+              onCreate={create}
+              onCorrect={correct}
+            />
+          }
+        />
         <Route
           path="events/:id"
-          element={<EventDetailPage events={events} now={now} onSave={saveEvent} />}
+          element={
+            <EventDetailPage
+              events={events}
+              now={now}
+              geocode={geocode}
+              onPublishChange={publishChange}
+            />
+          }
         />
         <Route
           path="events/:id/edit"
-          element={<EventFormPage events={events} onSave={saveEvent} />}
+          element={
+            <EventFormPage
+              events={events}
+              geocode={geocode}
+              onCreate={create}
+              onCorrect={correct}
+            />
+          }
         />
         <Route
           path="live"
-          element={
-            <LivePage
-              event={current}
-              live={live[current.id]}
-              incidents={eventIncidents}
-              now={now}
-            />
-          }
+          element={forEvent((event, state) => (
+            <LivePage event={event} live={state} incidents={eventIncidents} now={now} />
+          ))}
         />
         <Route
           path="live/crowd"
-          element={
+          element={forEvent((event, state) => (
             <CrowdPage
-              event={current}
-              live={live[current.id]}
+              event={event}
+              live={state}
               now={now}
-              onChange={(state) => setLive((all) => ({ ...all, [current.id]: state }))}
+              onChange={(next) => setLive((all) => ({ ...all, [event.id]: next }))}
             />
-          }
+          ))}
         />
         <Route path="incidents" element={<IncidentsPage incidents={eventIncidents} now={now} />} />
         <Route
@@ -146,19 +238,20 @@ export function OrganizerApp({ now }: { now: Date }) {
         />
         <Route
           path="alerts"
-          element={
+          element={forEvent((event) => (
             <AlertPage
-              event={current}
-              alerts={alerts.filter((a) => a.eventId === current.id)}
+              event={event}
+              alerts={alerts.filter((a) => a.eventId === event.id)}
               now={now}
               onSend={(alert) => setAlerts((all) => [alert, ...all])}
             />
-          }
+          ))}
         />
-        <Route path="requests" element={<RequestPage event={current} />} />
         <Route
-          path="settings"
-          element={<ConfirmationsPage event={current} settings={settings} onSave={setSettings} />}
+          path="requests"
+          element={forEvent((event) => (
+            <RequestPage event={event} />
+          ))}
         />
         <Route path="more" element={<MorePage />} />
         <Route

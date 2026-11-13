@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import App from './App'
+import type { Session } from './data/auth'
 import {
   accessCodeFor,
   applyChange,
@@ -12,15 +13,32 @@ import {
   suggestedLevel,
   validateEvent,
 } from './data/organizer'
+import { fakeEventsApi, fakeGeocoder } from './test/fakeEventsApi'
 
 const now = new Date(2026, 9, 17, 22, 47)
 
-function renderAt(path: string) {
-  return render(
+const member: Session = {
+  accessToken: 'jwt',
+  expiresAt: new Date(2026, 9, 18),
+  userId: 'u-1',
+  role: 'ORGANIZATION_MEMBER',
+  organizationId: 'org-1',
+}
+
+/** Renders `path` for a signed-in member, and waits for the events to load. */
+async function renderAt(path: string, events = fakeEventsApi()) {
+  const view = render(
     <MemoryRouter initialEntries={[path]}>
-      <App now={now} />
+      <App
+        now={now}
+        initialSession={member}
+        eventsApiFor={() => events.api}
+        geocoder={fakeGeocoder}
+      />
     </MemoryRouter>,
   )
+  await waitFor(() => expect(screen.queryByText('A carregar os eventos…')).not.toBeInTheDocument())
+  return { ...view, events }
 }
 
 const nbsp = (text: string) => text.replace(/ /g, ' ')
@@ -70,8 +88,8 @@ describe('organizer helpers', () => {
 })
 
 describe('O2–O4 events', () => {
-  it('lists the events with indicators', () => {
-    renderAt('/organization/events')
+  it('lists the events with indicators', async () => {
+    await renderAt('/organization/events')
     expect(screen.getByRole('heading', { name: 'Eventos', level: 2 })).toBeInTheDocument()
     // Testing Library turns the no-break space into a plain space.
     expect(screen.getByText('1 680')).toBeInTheDocument()
@@ -82,43 +100,71 @@ describe('O2–O4 events', () => {
 
   it('validates and publishes a new event', async () => {
     const user = userEvent.setup()
-    renderAt('/organization/events/new')
+    const { events } = await renderAt('/organization/events/new')
 
     await user.click(screen.getByRole('button', { name: 'Publicar evento' }))
     expect(screen.getByText('Escreve o nome do evento.')).toBeInTheDocument()
     expect(screen.getByText('Indica o local.')).toBeInTheDocument()
+    expect(screen.getByText('Indica a morada.')).toBeInTheDocument()
+    expect(screen.getByText('Indica a hora de fim.')).toBeInTheDocument()
+    expect(events.calls).not.toContain('create')
 
     await user.type(screen.getByLabelText('Nome do evento'), 'Noite Margens')
+    await user.type(screen.getByLabelText('Descrição'), 'Concerto de outono.')
     fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-11-21' } })
     fireEvent.change(screen.getByLabelText('Início'), { target: { value: '22:00' } })
+    fireEvent.change(screen.getByLabelText('Fim'), { target: { value: '01:00' } })
     await user.type(screen.getByLabelText('Código do evento impresso nos bilhetes'), 'marg2026')
     expect(screen.getByText(/já é usado por outro evento futuro/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Publicar evento' })).toBeDisabled()
     await user.clear(screen.getByLabelText('Código do evento impresso nos bilhetes'))
     await user.type(screen.getByLabelText('Código do evento impresso nos bilhetes'), 'NOITE26')
     await user.type(screen.getByLabelText('Local'), 'Coliseu, Porto')
+    await user.type(screen.getByLabelText('Morada'), 'Sem nome')
+    await user.tab()
+    expect(await screen.findByText(/Não encontrámos esta morada no mapa/)).toBeInTheDocument()
+    await user.clear(screen.getByLabelText('Morada'))
+    await user.type(screen.getByLabelText('Morada'), 'Rua de Passos Manuel 137, Porto')
+    await user.tab()
+    expect(
+      await screen.findByTitle('Mapa com a localização de Rua de Passos Manuel 137, Porto'),
+    ).toHaveAttribute('src', expect.stringContaining('marker=41.14960,-8.61100'))
     await user.selectOptions(screen.getByLabelText('Distrito'), 'Porto')
     await user.type(screen.getByLabelText('Capacidade'), '3000')
     await user.click(screen.getByRole('button', { name: 'Adicionar' }))
     await user.type(screen.getByLabelText('Nome da entrada ou ponto de fila'), 'Porta B{Enter}')
     expect(screen.getByRole('button', { name: 'Remover Porta B' })).toBeInTheDocument()
 
+    await user.click(screen.getByRole('switch', { name: 'Pedir confirmação para Fila' }))
+    await user.selectOptions(screen.getByLabelText('Raio do recinto'), '1 km')
+
     await user.click(screen.getByRole('button', { name: 'Publicar evento' }))
 
-    expect(screen.getByRole('heading', { name: 'Noite Margens', level: 2 })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Noite Margens', level: 2 }),
+    ).toBeInTheDocument()
+    const [created] = events.events
+    expect(created).toMatchObject({
+      code: 'NOITE26',
+      address: 'Rua de Passos Manuel 137, Porto',
+      latitude: 41.1496,
+      entrances: ['Porta A', 'Porta B'],
+    })
+    expect(created.confirmations).toMatchObject({ radiusMeters: 1000 })
+    expect(created.confirmations.categories.queue).toBe(false)
     expect(screen.getByRole('status')).toHaveTextContent('Noite Margens publicado.')
     expect(screen.getAllByText('SÁB 21 NOV · 22:00 · Coliseu, Porto').length).toBeGreaterThan(0)
   })
 
   it('keeps field hints in tooltips that stay readable by screen readers', async () => {
     const user = userEvent.setup()
-    renderAt('/organization/events/new')
+    await renderAt('/organization/events/new')
     const hint = 'Usada para calcular a lotação a partir do contador de entradas.'
 
     expect(screen.getByLabelText('Capacidade')).toHaveAccessibleDescription(hint)
-    expect(
-      screen.getByRole('switch', { name: 'Pedir confirmação de reportes' }),
-    ).toHaveAccessibleDescription('Outros participantes confirmam com Sim ou Não.')
+    expect(screen.getByLabelText('Respostas para confiança alta')).toHaveAccessibleDescription(
+      'De 2 a 50.',
+    )
 
     const [capacityInfo] = screen.getAllByRole('button', { name: 'Mais informação' })
     await user.click(capacityInfo)
@@ -129,7 +175,7 @@ describe('O2–O4 events', () => {
 
   it('generates the access code and QR code of a public event', async () => {
     const user = userEvent.setup()
-    renderAt('/organization/events/new')
+    await renderAt('/organization/events/new')
     await user.type(screen.getByLabelText('Nome do evento'), 'São João no Parque')
     fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-06-23' } })
     await user.click(screen.getByRole('radio', { name: /Público/ }))
@@ -142,7 +188,7 @@ describe('O2–O4 events', () => {
 
   it('postpones an event only after confirming the change is official', async () => {
     const user = userEvent.setup()
-    renderAt('/organization/events/margens-inverno')
+    await renderAt('/organization/events/margens-inverno')
 
     await user.click(screen.getByRole('button', { name: 'Alterar ou cancelar' }))
     const dialog = screen.getByRole('dialog', { name: 'Alterar evento' })
@@ -159,14 +205,14 @@ describe('O2–O4 events', () => {
     await user.click(within(dialog).getByLabelText('Confirmo que esta alteração é oficial.'))
     await user.click(within(dialog).getByRole('button', { name: 'Adiar e notificar' }))
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(screen.getByRole('status')).toHaveTextContent('Evento adiado. 128 pessoas notificadas.')
     expect(screen.getByText('SÁB 19 DEZ · 21:00 · Pavilhão Municipal, Porto')).toBeInTheDocument()
   })
 
   it('changes the time of a public event and cancels it', async () => {
     const user = userEvent.setup()
-    renderAt('/organization/events/jazz-no-parque')
+    await renderAt('/organization/events/jazz-no-parque')
     expect(screen.getByText('JAZZPARQUE26')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Alterar ou cancelar' }))
@@ -179,7 +225,7 @@ describe('O2–O4 events', () => {
     ).toBeInTheDocument()
     fireEvent.change(within(dialog).getByLabelText('Nova hora'), { target: { value: '19:30' } })
     await user.click(within(dialog).getByRole('button', { name: 'Alterar hora e notificar' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Horário alterado. 312 pessoas')
+    expect(await screen.findByRole('status')).toHaveTextContent('Horário alterado. 312 pessoas')
 
     await user.click(screen.getByRole('button', { name: 'Alterar ou cancelar' }))
     dialog = screen.getByRole('dialog', { name: 'Alterar evento' })
@@ -187,19 +233,130 @@ describe('O2–O4 events', () => {
     await user.click(within(dialog).getByLabelText('Confirmo que esta alteração é oficial.'))
     await user.click(within(dialog).getByRole('button', { name: 'Mudar local e notificar' }))
     expect(within(dialog).getByText('Indica o novo local.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Indica a morada do novo local.')).toBeInTheDocument()
     await user.click(within(dialog).getByRole('radio', { name: 'Cancelar' }))
     // Public events have no ticket: no ticket or refund fields.
     expect(within(dialog).queryByText('O bilhete continua válido')).not.toBeInTheDocument()
     expect(within(dialog).getByText(/alteração crítica/)).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Cancelar e notificar' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Evento cancelado.')
+    expect(await screen.findByText(/Evento cancelado\./)).toBeInTheDocument()
+  })
+})
+
+describe('O2–O4 with Core', () => {
+  it('corrects an event without touching what an official change covers', async () => {
+    const user = userEvent.setup()
+    const { events } = await renderAt('/organization/events/margens-inverno/edit')
+
+    expect(screen.getByLabelText('Data')).toBeDisabled()
+    expect(screen.getByLabelText('Morada')).toBeDisabled()
+    expect(screen.getByRole('radio', { name: /Público/ })).toBeDisabled()
+    expect(screen.getByRole('link', { name: 'Alterar ou cancelar' })).toHaveAttribute(
+      'href',
+      '/organization/events/margens-inverno',
+    )
+    await user.clear(screen.getByLabelText('Capacidade'))
+    await user.type(screen.getByLabelText('Capacidade'), '5000')
+    await user.click(screen.getByRole('button', { name: 'Remover Porta B' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar alterações' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Alterações guardadas.')
+    expect(events.events.find((e) => e.id === 'margens-inverno')).toMatchObject({
+      capacity: 5000,
+      entrances: ['Porta A', 'Bar principal'],
+    })
+  })
+
+  it('shows Core refusals on their field or above the form', async () => {
+    const user = userEvent.setup()
+    const { events } = await renderAt('/organization/events/margens-inverno/edit')
+
+    events.refuse = 'EVENT_CODE_TAKEN'
+    await user.click(screen.getByRole('button', { name: 'Guardar alterações' }))
+    expect(
+      await screen.findByText(
+        'Este código já é usado por outro evento futuro. Escolhe outro código.',
+      ),
+    ).toBeInTheDocument()
+
+    events.refuse = 'NOT_EVENT_ORGANIZATION'
+    await user.click(screen.getByRole('button', { name: 'Guardar alterações' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Só os membros ativos da organização podem gerir os seus eventos.',
+    )
+
+    await user.clear(screen.getByLabelText('Respostas para confiança alta'))
+    await user.type(screen.getByLabelText('Respostas para confiança alta'), '99')
+    await user.click(screen.getByRole('button', { name: 'Guardar alterações' }))
+    expect(screen.getByText('Escolhe um número entre 2 e 50.')).toBeInTheDocument()
+  })
+
+  it('keeps a change dialog open with the reason when Core refuses it', async () => {
+    const user = userEvent.setup()
+    const { events } = await renderAt('/organization/events/jazz-no-parque')
+
+    await user.click(screen.getByRole('button', { name: 'Alterar ou cancelar' }))
+    const dialog = screen.getByRole('dialog', { name: 'Alterar evento' })
+    await user.click(within(dialog).getByRole('radio', { name: 'Local' }))
+    await user.type(within(dialog).getByLabelText('Novo local'), 'Coliseu')
+    await user.type(within(dialog).getByLabelText('Morada do novo local'), 'Rua de Passos Manuel')
+    await user.tab()
+    expect(await within(dialog).findByTitle(/Mapa com a localização/)).toBeInTheDocument()
+    await user.click(within(dialog).getByLabelText('Confirmo que esta alteração é oficial.'))
+
+    events.refuse = 'EVENT_CLOSED'
+    await user.click(within(dialog).getByRole('button', { name: 'Mudar local e notificar' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Este evento já foi cancelado ou terminou.',
+    )
+
+    await user.click(within(dialog).getByRole('button', { name: 'Mudar local e notificar' }))
+    expect(await screen.findByText(/Local alterado\./)).toBeInTheDocument()
+    expect(events.events.find((e) => e.id === 'jazz-no-parque')).toMatchObject({
+      venue: 'Coliseu',
+      address: 'Rua de Passos Manuel',
+      latitude: 41.1496,
+    })
+  })
+
+  it('offers to try again when the events cannot be loaded', async () => {
+    const user = userEvent.setup()
+    const events = fakeEventsApi()
+    events.refuse = 'NETWORK'
+    render(
+      <MemoryRouter initialEntries={['/organization/events']}>
+        <App now={now} initialSession={member} eventsApiFor={() => events.api} />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível carregar os eventos.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+    expect(await screen.findByRole('heading', { name: 'Eventos', level: 2 })).toBeInTheDocument()
+  })
+
+  it('starts an organization without events from O2', async () => {
+    await renderAt('/organization/live', fakeEventsApi([]))
+
+    expect(await screen.findByRole('heading', { name: 'Eventos', level: 2 })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /Criar evento/ }).length).toBeGreaterThan(0)
+  })
+
+  it('sends who is not signed in as a member to the sign-in', () => {
+    render(
+      <MemoryRouter initialEntries={['/organization/events']}>
+        <App now={now} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('heading', { name: /Entrar/ })).toBeInTheDocument()
   })
 })
 
 describe('O5–O7 live operations', () => {
   it('publishes the crowd level and manual queue times', async () => {
     const user = userEvent.setup()
-    renderAt('/organization/live/crowd')
+    await renderAt('/organization/live/crowd')
 
     await user.click(screen.getByRole('radio', { name: /Elevada/ }))
     await user.click(screen.getByRole('button', { name: 'Publicar lotação' }))
@@ -215,7 +372,7 @@ describe('O5–O7 live operations', () => {
 
   it('drafts an alert with AI and sends it', async () => {
     const user = userEvent.setup()
-    renderAt('/organization/alerts')
+    await renderAt('/organization/alerts')
 
     await user.click(screen.getByRole('button', { name: 'Gerar rascunho com IA' }))
     expect(screen.getByText('Descreve o que aconteceu para gerar o rascunho.')).toBeInTheDocument()
@@ -235,17 +392,17 @@ describe('O5–O7 live operations', () => {
     expect(screen.getByText('Porta B fechada')).toBeInTheDocument()
   })
 
-  it('shows the live dashboard from the shared state', () => {
-    renderAt('/organization/live')
+  it('shows the live dashboard from the shared state', async () => {
+    await renderAt('/organization/live')
     expect(screen.getByText('Porta C · 25 min')).toBeInTheDocument()
     expect(screen.getByText('1 urgente')).toBeInTheDocument()
   })
 })
 
-describe('O8–O10 incidents and confirmations', () => {
+describe('O8–O9 incidents and per-event confirmations', () => {
   it('resolves an incident and updates the open count', async () => {
     const user = userEvent.setup()
-    renderAt('/organization/incidents/fila-porta-c')
+    await renderAt('/organization/incidents/fila-porta-c')
     const nav = screen.getByRole('navigation', { name: 'Organização' })
     expect(within(nav).getByLabelText('4 pendentes')).toBeInTheDocument()
 
@@ -259,7 +416,7 @@ describe('O8–O10 incidents and confirmations', () => {
 
   it('filters incident groups and previews the selected one', async () => {
     const user = userEvent.setup()
-    renderAt('/organization/incidents')
+    await renderAt('/organization/incidents')
 
     await user.click(screen.getByRole('button', { name: /Rampa da entrada Norte bloqueada/ }))
     expect(
@@ -282,8 +439,8 @@ describe('O8–O10 incidents and confirmations', () => {
     expect(screen.queryByText('Carteira castanha perdida')).not.toBeInTheDocument()
   })
 
-  it('never asks confirmation for personal categories', () => {
-    renderAt('/organization/settings')
+  it('never asks confirmation for personal categories', async () => {
+    await renderAt('/organization/events/festival-margens-2026/edit')
     expect(
       screen.getByRole('switch', { name: 'Pedir confirmação para Perdidos e achados' }),
     ).toBeDisabled()
@@ -294,7 +451,7 @@ describe('O8–O10 incidents and confirmations', () => {
 describe('O12 requests', () => {
   it('previews and publishes an urgent request', async () => {
     const user = userEvent.setup()
-    renderAt('/organization/requests')
+    await renderAt('/organization/requests')
 
     await user.click(screen.getByRole('radio', { name: /Escolha múltipla/ }))
     expect(screen.getByRole('option', { name: 'Várias respostas' })).toBeInTheDocument()

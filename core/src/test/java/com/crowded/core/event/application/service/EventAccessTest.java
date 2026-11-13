@@ -11,6 +11,7 @@ import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventState;
 import com.crowded.core.event.domain.model.EventStatus;
 import com.crowded.core.event.domain.model.Schedule;
+import com.crowded.core.event.domain.model.StoredEvents;
 import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.shared.domain.exception.DomainException;
@@ -33,7 +34,7 @@ class EventAccessTest {
   private static final UUID PARTICIPANT = UUID.randomUUID();
   private static final UUID MEMBER = UUID.randomUUID();
   private static final Event EVENT =
-      Event.restore(
+      StoredEvents.restore(
           UUID.randomUUID(),
           ORGANIZATION,
           new EventState(

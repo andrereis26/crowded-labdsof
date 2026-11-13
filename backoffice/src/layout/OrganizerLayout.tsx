@@ -6,7 +6,6 @@ import {
   Megaphone,
   Menu,
   MessageSquare,
-  Settings,
   TriangleAlert,
 } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
@@ -41,7 +40,8 @@ export function OrganizerLayout({
   scope: OrganizerScope
   focused: boolean
   events: OrgEvent[]
-  currentEvent: OrgEvent
+  /** None while the organization has no events yet. */
+  currentEvent?: OrgEvent
   openIncidents: number
   now: Date
   onSelectEvent: (id: string) => void
@@ -58,9 +58,8 @@ export function OrganizerLayout({
     },
     { label: 'Alertas', to: '/organization/alerts', icon: Megaphone },
     { label: 'Pedidos', to: '/organization/requests', icon: MessageSquare },
-    { label: 'Definições', to: '/organization/settings', icon: Settings },
   ]
-  const tag = statusTag[currentEvent.status]
+  const tag = currentEvent && statusTag[currentEvent.status]
 
   return (
     <div className="min-h-screen pb-20 lg:pb-0 lg:pl-[248px]">
@@ -77,7 +76,7 @@ export function OrganizerLayout({
         }
       />
 
-      {scope.kind === 'organization' ? (
+      {scope.kind === 'organization' || !currentEvent || !tag ? (
         <TopBar>
           <h1 className="text-base font-semibold">{scope.title}</h1>
         </TopBar>
@@ -110,7 +109,7 @@ export function OrganizerLayout({
 
       {!focused && (
         <header className="flex items-center gap-3 px-4 pt-4 lg:hidden">
-          {scope.kind === 'organization' ? (
+          {scope.kind === 'organization' || !currentEvent || !tag ? (
             <div className="flex min-w-0 flex-1 items-center gap-2.5">
               <Avatar initials={organization.initials} size={30} />
               <p className="min-w-0 truncate text-sm font-semibold">{organization.name}</p>
@@ -236,7 +235,7 @@ const tabs = [
 ]
 
 /** Pages reached from "Mais" on phones. */
-const morePaths = ['/organization/more', '/organization/requests', '/organization/settings']
+const morePaths = ['/organization/more', '/organization/requests']
 
 function TabBar({ openIncidents }: { openIncidents: number }) {
   const { pathname } = useLocation()

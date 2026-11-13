@@ -200,51 +200,46 @@ class EventTest {
   }
 
   @Test
-  void movesToANewVenueAndDropsTheOldCoordinates() {
-    ChangePlan plan =
-        plan(
-            SCHEDULED,
-            request(
-                ChangeType.VENUE_CHANGE,
-                venue(" Hard Club ", "Mercado Ferreira Borges, Porto", null, null),
-                null,
-                null,
-                null));
-
-    assertThat(plan.after().status()).isEqualTo(EventStatus.RELOCATED);
-    assertThat(plan.after().venue().name()).isEqualTo("Hard Club");
-    assertThat(plan.after().venue().coordinates()).isNull();
-    assertThat(plan.severity()).isEqualTo(Severity.CRITICAL);
-  }
-
-  @Test
   void movesToANewVenueWithItsCoordinates() {
     ChangePlan plan =
         plan(
             SCHEDULED,
             request(
                 ChangeType.VENUE_CHANGE,
-                venue("Hard Club", "Mercado Ferreira Borges, Porto", 41.141, -8.614),
+                venue(" Hard Club ", "Mercado Ferreira Borges, Porto", 41.141, -8.614),
                 null,
                 null,
                 null));
 
+    assertThat(plan.after().status()).isEqualTo(EventStatus.RELOCATED);
+    assertThat(plan.after().venue().name()).isEqualTo("Hard Club");
     assertThat(plan.after().venue().coordinates()).isEqualTo(new Coordinates(41.141, -8.614));
+    assertThat(plan.severity()).isEqualTo(Severity.CRITICAL);
+  }
+
+  @Test
+  void refusesANewVenueWithoutItsLocation() {
+    assertRefused(
+        request(
+            ChangeType.VENUE_CHANGE,
+            venue("Hard Club", "Mercado Ferreira Borges, Porto", null, null),
+            null,
+            null,
+            null),
+        "LOCATION_REQUIRED");
+    // Even the current venue: the request must say where it is.
+    assertRefused(
+        request(
+            ChangeType.VENUE_CHANGE,
+            venue("Coliseu", "Rua de Passos Manuel 137, Porto", null, null),
+            null,
+            null,
+            null),
+        "LOCATION_REQUIRED");
   }
 
   @Test
   void findsNothingToDoWhenTheVenueIsTheCurrentOne() {
-    assertThat(
-            plan(
-                SCHEDULED,
-                request(
-                    ChangeType.VENUE_CHANGE,
-                    venue("Coliseu", "Rua de Passos Manuel 137, Porto", null, null),
-                    null,
-                    null,
-                    null),
-                NOW))
-        .isEmpty();
     assertThat(
             plan(
                 SCHEDULED,
@@ -305,7 +300,7 @@ class EventTest {
   @Test
   void publishesAChangeAndTakesItsState() {
     UUID id = UUID.randomUUID();
-    Event event = Event.restore(id, UUID.randomUUID(), SCHEDULED);
+    Event event = StoredEvents.restore(id, UUID.randomUUID(), SCHEDULED);
 
     Optional<EventChange> change =
         event.publishChange(
@@ -322,13 +317,13 @@ class EventTest {
 
   @Test
   void publishesNothingAndKeepsItsStateWhenNothingChanges() {
-    Event event = Event.restore(UUID.randomUUID(), UUID.randomUUID(), SCHEDULED);
+    Event event = StoredEvents.restore(UUID.randomUUID(), UUID.randomUUID(), SCHEDULED);
 
     assertThat(
             event.publishChange(
                 request(
                     ChangeType.VENUE_CHANGE,
-                    venue("Coliseu", "Rua de Passos Manuel 137, Porto", null, null),
+                    venue("Coliseu", "Rua de Passos Manuel 137, Porto", 41.146, -8.606),
                     null,
                     null,
                     null),
@@ -340,7 +335,7 @@ class EventTest {
 
   @Test
   void keepsItsStateWhenAChangeIsRefused() {
-    Event event = Event.restore(UUID.randomUUID(), UUID.randomUUID(), SCHEDULED);
+    Event event = StoredEvents.restore(UUID.randomUUID(), UUID.randomUUID(), SCHEDULED);
     RequestedChange earlier =
         request(
             ChangeType.TIME_CHANGE, times("2026-11-01T20:00:00Z", null, null), null, null, null);
@@ -353,7 +348,7 @@ class EventTest {
 
   @Test
   void findsTheEarlierChangeOfARepeatedRequest() {
-    Event event = Event.restore(UUID.randomUUID(), UUID.randomUUID(), SCHEDULED);
+    Event event = StoredEvents.restore(UUID.randomUUID(), UUID.randomUUID(), SCHEDULED);
     EventChange cancellation =
         event
             .publishChange(
@@ -367,8 +362,8 @@ class EventTest {
 
   @Test
   void refusesARepeatedRequestThatNoChangeExplains() {
-    Event event = Event.restore(UUID.randomUUID(), UUID.randomUUID(), SCHEDULED);
-    Event other = Event.restore(UUID.randomUUID(), UUID.randomUUID(), SCHEDULED);
+    Event event = StoredEvents.restore(UUID.randomUUID(), UUID.randomUUID(), SCHEDULED);
+    Event other = StoredEvents.restore(UUID.randomUUID(), UUID.randomUUID(), SCHEDULED);
     EventChange othersChange =
         other
             .publishChange(
@@ -389,15 +384,15 @@ class EventTest {
   void isTheSameEventWhateverItsState() {
     UUID id = UUID.randomUUID();
 
-    assertThat(Event.restore(id, null, SCHEDULED))
-        .isEqualTo(Event.restore(id, null, SCHEDULED.inStatus(EventStatus.ENDED)))
-        .hasSameHashCodeAs(Event.restore(id, null, SCHEDULED))
-        .isNotEqualTo(Event.restore(UUID.randomUUID(), null, SCHEDULED));
+    assertThat(StoredEvents.restore(id, null, SCHEDULED))
+        .isEqualTo(StoredEvents.restore(id, null, SCHEDULED.inStatus(EventStatus.ENDED)))
+        .hasSameHashCodeAs(StoredEvents.restore(id, null, SCHEDULED))
+        .isNotEqualTo(StoredEvents.restore(UUID.randomUUID(), null, SCHEDULED));
   }
 
   private static Optional<ChangePlan> plan(
       EventState before, RequestedChange request, Instant now) {
-    return Event.restore(UUID.randomUUID(), UUID.randomUUID(), before).plan(request, now);
+    return StoredEvents.restore(UUID.randomUUID(), UUID.randomUUID(), before).plan(request, now);
   }
 
   private static ChangePlan plan(EventState before, RequestedChange request) {

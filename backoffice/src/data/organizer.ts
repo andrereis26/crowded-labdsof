@@ -1,5 +1,6 @@
-/** Organizer area (O2–O12), backed by demo data until the Core API exists.
- * Times are built from `now` so the demo always reads "há 3 min". */
+/** Organizer area (O2–O12). The events come from Core (`eventsApi.ts`); the
+ * live operations, incidents and alerts are still demo data, whose times are
+ * built from `now` so the demo always reads "há 3 min". */
 
 import type { Confidence } from '../ui/components'
 import type { CrowdLevel } from '../ui/styles'
@@ -11,6 +12,7 @@ export const organization = {
   user: { name: 'Miguel Sousa', initials: 'MS', role: 'Coordenador de operações' },
 }
 
+/** `draft` is an event still being created in O3, not yet sent to Core. */
 export type EventStatus = 'draft' | 'published' | 'live' | 'ended' | 'cancelled'
 /** Ticketed events: participants import the ticket bought elsewhere, matched
  * by the event code printed on it. Public events: no ticket, participants
@@ -27,7 +29,13 @@ export interface OrgEvent {
   doors: string
   start: string
   end: string
+  /** Name of the venue, e.g. "Pavilhão Rosa Mota". */
   venue: string
+  /** Street address, looked up on the map for its location. */
+  address: string
+  latitude?: number
+  longitude?: number
+  /** Entrances and queue points, named by the organization, in order. */
   entrances: string[]
   /** District of the venue, for the IPMA weather warnings. */
   district: string
@@ -38,10 +46,8 @@ export interface OrgEvent {
   kind: EventKind
   /** Event code printed on the tickets (ticketed) or access code (public). */
   code: string
-  askConfirmation: boolean
-  showEstimates: boolean
+  confirmations: ConfirmationSettings
   image?: string
-  imageName?: string
   gradient: [string, string]
 }
 
@@ -169,6 +175,9 @@ export function demoEvents(): OrgEvent[] {
       start: '22:00',
       end: '02:00',
       venue: 'Parque da Cidade, Porto',
+      address: 'Estrada Interior da Circunvalação, 4100-083 Porto',
+      latitude: 41.17,
+      longitude: -8.678,
       entrances: ['Porta A', 'Porta B', 'Porta C', 'Bar principal', 'WC Norte'],
       district: 'Porto',
       capacity: 4500,
@@ -176,10 +185,8 @@ export function demoEvents(): OrgEvent[] {
       status: 'live',
       kind: 'ticketed',
       code: 'MARG2026',
-      askConfirmation: true,
-      showEstimates: true,
+      confirmations: defaultConfirmations(),
       image: festivalImage,
-      imageName: 'margens-2026.jpg',
       gradient: ['#596b9e', '#1a1f38'],
     },
     {
@@ -191,6 +198,9 @@ export function demoEvents(): OrgEvent[] {
       start: '19:00',
       end: '22:00',
       venue: 'Jardim do Palácio, Porto',
+      address: 'Rua de Dom Manuel II, 4050-346 Porto',
+      latitude: 41.148,
+      longitude: -8.625,
       entrances: ['Entrada principal'],
       district: 'Porto',
       capacity: 800,
@@ -198,8 +208,7 @@ export function demoEvents(): OrgEvent[] {
       status: 'published',
       kind: 'public',
       code: 'JAZZPARQUE26',
-      askConfirmation: false,
-      showEstimates: true,
+      confirmations: { ...defaultConfirmations(), radiusMeters: 200 },
       gradient: ['rgb(51,140,128)', 'rgb(13,46,51)'],
     },
     {
@@ -211,6 +220,9 @@ export function demoEvents(): OrgEvent[] {
       start: '21:00',
       end: '02:00',
       venue: 'Pavilhão Municipal, Porto',
+      address: 'Rua de Dom Manuel II, 4050-346 Porto',
+      latitude: 41.148,
+      longitude: -8.625,
       entrances: ['Porta A', 'Porta B', 'Bar principal'],
       district: 'Porto',
       capacity: 4500,
@@ -218,9 +230,7 @@ export function demoEvents(): OrgEvent[] {
       status: 'published',
       kind: 'ticketed',
       code: 'MARGINV26',
-      askConfirmation: true,
-      showEstimates: true,
-      imageName: 'inverno-2026.jpg',
+      confirmations: defaultConfirmations(),
       gradient: ['rgb(64,51,128)', 'rgb(13,13,38)'],
     },
     {
@@ -232,6 +242,9 @@ export function demoEvents(): OrgEvent[] {
       start: '22:00',
       end: '02:00',
       venue: 'Parque da Cidade, Porto',
+      address: 'Estrada Interior da Circunvalação, 4100-083 Porto',
+      latitude: 41.17,
+      longitude: -8.678,
       entrances: ['Porta A', 'Porta C', 'Bar principal', 'WC Norte'],
       district: 'Porto',
       capacity: 4500,
@@ -239,8 +252,7 @@ export function demoEvents(): OrgEvent[] {
       status: 'ended',
       kind: 'ticketed',
       code: 'MARG2025',
-      askConfirmation: true,
-      showEstimates: true,
+      confirmations: defaultConfirmations(),
       gradient: ['rgb(217,107,77)', 'rgb(77,31,89)'],
     },
   ]
@@ -256,6 +268,7 @@ export function emptyEvent(): OrgEvent {
     start: '',
     end: '',
     venue: '',
+    address: '',
     entrances: ['Porta A'],
     district: '',
     capacity: 0,
@@ -263,8 +276,7 @@ export function emptyEvent(): OrgEvent {
     status: 'draft',
     kind: 'ticketed',
     code: '',
-    askConfirmation: true,
-    showEstimates: true,
+    confirmations: defaultConfirmations(),
     gradient: ['rgb(64,51,128)', 'rgb(13,13,38)'],
   }
 }
@@ -301,9 +313,15 @@ export function validateEvent(
 ): Partial<Record<keyof OrgEvent, string>> {
   const errors: Partial<Record<keyof OrgEvent, string>> = {}
   if (!e.name.trim()) errors.name = 'Escreve o nome do evento.'
+  if (!e.description.trim()) errors.description = 'Escreve uma descrição do evento.'
   if (!e.date) errors.date = 'Escolhe a data.'
   if (!e.start) errors.start = 'Indica a hora de início.'
+  if (!e.end) errors.end = 'Indica a hora de fim.'
   if (!e.venue.trim()) errors.venue = 'Indica o local.'
+  if (!e.address.trim()) errors.address = 'Indica a morada.'
+  else if (e.latitude === undefined || e.longitude === undefined) {
+    errors.address = 'Não encontrámos esta morada no mapa. Confirma a rua, o número e a localidade.'
+  }
   if (!e.district) errors.district = 'Escolhe o distrito.'
   if (!(e.capacity > 0)) errors.capacity = 'Indica a capacidade do recinto.'
   const owner = codeOwner(e.code, e, events)
@@ -326,6 +344,9 @@ export interface EventChange {
   start?: string
   doors?: string
   venue?: string
+  address?: string
+  latitude?: number
+  longitude?: number
   message: string
   /** Ticketed events: whether the ticket stays valid. */
   ticketValid?: boolean
@@ -341,7 +362,15 @@ export function applyChange(e: OrgEvent, change: EventChange): OrgEvent {
       doors: change.doors ?? e.doors,
     }
   }
-  if (change.kind === 'venue') return { ...e, venue: change.venue ?? e.venue }
+  if (change.kind === 'venue') {
+    return {
+      ...e,
+      venue: change.venue ?? e.venue,
+      address: change.address ?? e.address,
+      latitude: change.latitude,
+      longitude: change.longitude,
+    }
+  }
   return { ...e, status: 'cancelled' }
 }
 
@@ -498,15 +527,25 @@ export interface Incident {
   history: { at: Date; text: string }[]
 }
 
+/** Report categories, with their code in Core (`report_category`). */
 export const categories: Record<
   IncidentCategory,
-  { label: string; example: string; personal?: boolean }
+  { code: string; label: string; example: string; personal?: boolean }
 > = {
-  crowd: { label: 'Lotação', example: 'Ex.: muita gente junto ao palco' },
-  queue: { label: 'Fila', example: 'Ex.: espera longa numa porta' },
-  accessibility: { label: 'Acessibilidade', example: 'Ex.: rampa ou elevador bloqueado' },
-  venue: { label: 'Problema no recinto', example: 'Ex.: falta de água, avaria' },
+  crowd: { code: 'CROWD_LEVEL', label: 'Lotação', example: 'Ex.: muita gente junto ao palco' },
+  queue: { code: 'QUEUE_LENGTH', label: 'Fila', example: 'Ex.: espera longa numa porta' },
+  accessibility: {
+    code: 'ACCESSIBILITY_BARRIER',
+    label: 'Acessibilidade',
+    example: 'Ex.: rampa ou elevador bloqueado',
+  },
+  venue: {
+    code: 'ON_SITE_PROBLEM',
+    label: 'Problema no recinto',
+    example: 'Ex.: falta de água, avaria',
+  },
   lost: {
+    code: 'LOST_AND_FOUND',
     label: 'Perdidos e achados',
     example: 'Nunca pede confirmação nem é público.',
     personal: true,
@@ -663,29 +702,36 @@ export function demoIncidents(now: Date): Incident[] {
   ]
 }
 
-// ——— Report confirmations (O10) ———
+// ——— Report confirmations, per event (O3) ———
 
+/** Which report categories ask other participants to confirm a report at an
+ * event, and the rules of those prompts. */
 export interface ConfirmationSettings {
   categories: Record<IncidentCategory, boolean>
-  radius: string
+  /** How far from the venue a participant may report or confirm. */
+  radiusMeters: number
+  /** How many answers make a report's confidence high. */
   highConfidenceAnswers: number
-  maxRequests: string
+  /** How many confirmations one participant is asked for at most, per hour. */
+  maxPromptsPerHour: number
 }
 
-export const reportsToday: Record<IncidentCategory, number> = {
-  crowd: 14,
-  queue: 21,
-  accessibility: 3,
-  venue: 4,
-  lost: 2,
+/** What Core gives an event that chose nothing: every category that is not
+ * personal, within 500 m, 8 answers, 3 prompts an hour. */
+export function defaultConfirmations(): ConfirmationSettings {
+  return {
+    categories: { crowd: true, queue: true, accessibility: true, venue: true, lost: false },
+    radiusMeters: 500,
+    highConfidenceAnswers: 8,
+    maxPromptsPerHour: 3,
+  }
 }
 
-export const demoConfirmationSettings = (): ConfirmationSettings => ({
-  categories: { crowd: true, queue: true, accessibility: true, venue: false, lost: false },
-  radius: '500 m',
-  highConfidenceAnswers: 8,
-  maxRequests: '3 por hora',
-})
+/** The answers for high confidence, or the error to show. */
+export function parseAnswers(answers: string): number | string {
+  const n = Number(answers)
+  return Number.isInteger(n) && n >= 2 && n <= 50 ? n : 'Escolhe um número entre 2 e 50.'
+}
 
 // ——— Alerts (O6) ———
 

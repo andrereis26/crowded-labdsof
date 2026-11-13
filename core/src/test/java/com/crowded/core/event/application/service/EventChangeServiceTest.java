@@ -24,6 +24,7 @@ import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.model.RequestedChange;
 import com.crowded.core.event.domain.model.Schedule;
 import com.crowded.core.event.domain.model.Severity;
+import com.crowded.core.event.domain.model.StoredEvents;
 import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
@@ -79,7 +80,7 @@ class EventChangeServiceTest {
           Clock.fixed(NOW, ZoneOffset.UTC),
           meters);
 
-  private Event event = Event.restore(UUID.randomUUID(), ORGANIZATION, SCHEDULED);
+  private Event event = StoredEvents.restore(UUID.randomUUID(), ORGANIZATION, SCHEDULED);
 
   @Test
   void recordsTheChangeUpdatesTheEventAndAsksForNotifications() {
@@ -136,7 +137,9 @@ class EventChangeServiceTest {
 
   @Test
   void refusesValuesTheEventHadWithoutAChangeThatSetThem() {
-    event = Event.restore(event.getId(), ORGANIZATION, SCHEDULED.inStatus(EventStatus.CANCELLED));
+    event =
+        StoredEvents.restore(
+            event.getId(), ORGANIZATION, SCHEDULED.inStatus(EventStatus.CANCELLED));
     givenEventAndMember();
 
     assertRefused(
@@ -147,7 +150,9 @@ class EventChangeServiceTest {
 
   @Test
   void refusesValuesTheEventHasWhenTheLatestChangeSetOthers() {
-    event = Event.restore(event.getId(), ORGANIZATION, SCHEDULED.inStatus(EventStatus.CANCELLED));
+    event =
+        StoredEvents.restore(
+            event.getId(), ORGANIZATION, SCHEDULED.inStatus(EventStatus.CANCELLED));
     givenEventAndMember();
     // Like a seeded change: its values are not the ones the event has now.
     EventChange unrelated =
