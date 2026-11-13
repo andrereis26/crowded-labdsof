@@ -196,6 +196,24 @@ describe('O2–O4 events', () => {
       within(dialog).getByLabelText('O bilhete continua válido para a nova data'),
     ).toBeChecked()
     await user.type(within(dialog).getByLabelText(/Reembolso/), 'Reembolso até 5 DEZ.')
+    await user.click(within(dialog).getByLabelText('Confirmo que esta alteração é oficial.'))
+    await user.click(within(dialog).getByRole('button', { name: 'Adiar e notificar' }))
+    expect(
+      within(dialog).getByText('Escolhe uma data ou hora posterior à atual.'),
+    ).toBeInTheDocument()
+    // Same date, later hour: a postponement too.
+    fireEvent.change(within(dialog).getByLabelText('Nova hora'), { target: { value: '22:00' } })
+    await user.click(within(dialog).getByRole('button', { name: 'Adiar e notificar' }))
+    expect(await screen.findByText(/Evento adiado\./)).toBeInTheDocument()
+    expect(screen.getByText('SÁB 12 DEZ · 22:00 · Pavilhão Municipal, Porto')).toBeInTheDocument()
+  })
+
+  it('postpones an event to a later date', async () => {
+    const user = userEvent.setup()
+    await renderAt('/organizacao/eventos/margens-inverno')
+    await user.click(screen.getByRole('button', { name: 'Alterar ou cancelar' }))
+    const dialog = screen.getByRole('dialog', { name: 'Alterar evento' })
+    await user.type(within(dialog).getByLabelText(/Reembolso/), 'Reembolso até 5 DEZ.')
     fireEvent.change(within(dialog).getByLabelText('Nova data'), {
       target: { value: '2026-12-19' },
     })

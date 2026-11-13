@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
-import { eventErrorMessage, EventsApiError } from '../../data/eventsApi'
+import { eventErrorMessage, EventsApiError, instantOf } from '../../data/eventsApi'
 import type { Geocoder } from '../../data/geocoding'
 import {
   connected,
@@ -251,7 +251,13 @@ function ChangeEventDialog({
     e.preventDefault()
     if (sending) return
     const found: Record<string, string> = {}
-    if (kind === 'postpone' && date === event.date) found.date = 'Escolhe uma nova data.'
+    // A postponement may keep the date and only move the hour, as long as it is later.
+    if (
+      kind === 'postpone' &&
+      (!date || !start || instantOf(date, start) <= instantOf(event.date, event.start))
+    ) {
+      found.date = 'Escolhe uma data ou hora posterior à atual.'
+    }
     if (kind === 'time' && start === event.start && doors === event.doors) {
       found.start = 'Escolhe uma nova hora ou abertura de portas.'
     }
