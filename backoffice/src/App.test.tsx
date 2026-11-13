@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import App from './App'
 import { AdminApiError, type AdminApi } from './data/adminApi'
-import type { Session, SignIn, SignInOutcome } from './data/auth'
+import type { ChoosePassword, Session, SignIn, SignInOutcome } from './data/auth'
 import {
   demoMembers,
   lastAccessLabel,
@@ -73,7 +73,7 @@ function fakeAdminApi(taken: string[] = []): AdminApi {
         status: 'temporary',
         temporaryExpiresAt: week,
       })
-      return Promise.resolve({ userId, temporaryPassword: 'T7q-mK4-v9Px', expiresAt: week })
+      return Promise.resolve({ userId, temporaryPassword: 'T7q-mK4-v9Px', expiresAt: week }) // ggignore
     },
     changeMember: (userId, change) => {
       const member = members.find((m) => m.id === userId)!
@@ -92,15 +92,32 @@ function fakeAdminApi(taken: string[] = []): AdminApi {
   }
 }
 
+/** Core's new password (C4), without a network: answers each call with the
+ * next outcome and records the call. */
+function fakeChoosePassword(...outcomes: SignInOutcome[]) {
+  const calls: [string, string, string][] = []
+  const choosePassword: ChoosePassword = (email, temporary, chosen) => {
+    calls.push([email, temporary, chosen])
+    return Promise.resolve(outcomes[Math.min(calls.length, outcomes.length) - 1])
+  }
+  return { choosePassword, calls }
+}
+
 function renderAt(
   path: string | { pathname: string; state: unknown },
   signIn: SignIn = fakeSignIn({ kind: 'error', title: 'Erro', message: 'Sem rede.' }).signIn,
-  options: { session?: Session; adminApi?: AdminApi } = {},
+  options: { session?: Session; adminApi?: AdminApi; choosePassword?: ChoosePassword } = {},
 ) {
   const api = options.adminApi ?? fakeAdminApi()
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <App now={now} signIn={signIn} initialSession={options.session} adminApiFor={() => api} />
+      <App
+        now={now}
+        signIn={signIn}
+        choosePassword={options.choosePassword}
+        initialSession={options.session}
+        adminApiFor={() => api}
+      />
     </MemoryRouter>,
   )
 }
@@ -146,13 +163,17 @@ describe('admin helpers', () => {
     expect(validateMember({ name: 'M', email: 'MIGUEL.sousa@margens.pt' }, members).email).toBe(
       'Já existe um membro com este email.',
     )
-    expect(validateNewPassword('curta', 'curta').password).toBe('Usa pelo menos 12 caracteres.')
-    expect(validateNewPassword('T7q-mK4-v9Px-1', 'x', 'T7q-mK4-v9Px-1').password).toBe(
+    expect(validateNewPassword('curta', 'curta').password).toBe(
+      'A palavra-passe não cumpre os requisitos de segurança indicados.',
+    )
+    const temporary = 'T7q-mK4-v9Px' // ggignore
+    const chosen = 'Margens-1nverno' // ggignore
+    const other = 'Margens-0utono' // ggignore
+    expect(validateNewPassword(temporary, 'x', temporary).password).toBe(
       'Escolhe uma palavra-passe diferente da temporária.',
     )
-    expect(validateNewPassword('margens-inverno', 'margens-outono').confirmation).toBe(
-      'As palavras-passe não coincidem.',
-    )
+    expect(validateNewPassword(chosen, other).confirmation).toBe('As palavras-passe não coincidem.')
+    expect(validateNewPassword(chosen, chosen)).toEqual({})
   })
 })
 
@@ -211,29 +232,80 @@ describe('C1 and C4 sign-in', () => {
     expect(await screen.findByRole('heading', { name: 'Organizações' })).toBeInTheDocument()
   })
 
-  it('says when a member still has the temporary password', async () => {
+  it('makes a member with a temporary password choose a new one with Core', async () => {
     const user = userEvent.setup()
-    renderAt('/entrar', fakeSignIn({ kind: 'new-password' }).signIn)
-    await user.type(screen.getByLabelText('Email'), 'novo@ribeira-live.test')
-    await user.type(screen.getByLabelText('Palavra-passe'), 'crowded-demo')
+    const core = fakeChoosePassword(
+      {
+        kind: 'error',
+        title: 'Não foi possível guardar',
+        message: 'Demasiadas tentativas. Tenta novamente daqui a alguns minutos.',
+      },
+      { kind: 'signed-in', session: session('ORGANIZATION_MEMBER') },
+    )
+    renderAt('/entrar', fakeSignIn({ kind: 'new-password' }).signIn, {
+      choosePassword: core.choosePassword,
+    })
+    await user.type(screen.getByLabelText('Email'), ' novo@ribeira-live.test ')
+    await user.type(screen.getByLabelText('Palavra-passe'), 'T7q-mK4-v9Px') // ggignore
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Primeiro acesso')
-  })
-
-  it('makes a member with a temporary password choose a new one', async () => {
-    const user = userEvent.setup()
-    renderAt({ pathname: '/definir-palavra-passe', state: { memberId: 'rita-ferreira' } })
 
     expect(
-      screen.getByRole('heading', { name: 'Define a tua nova palavra-passe' }),
+      await screen.findByRole('heading', { name: 'Define a tua nova palavra-passe' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('A palavra-passe deve conter:')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Guardar e continuar' }))
-    expect(screen.getByText('Usa pelo menos 12 caracteres.')).toBeInTheDocument()
+    expect(
+      screen.getByText('A palavra-passe não cumpre os requisitos de segurança indicados.'),
+    ).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText('Nova palavra-passe'), 'margens-inverno-26')
-    await user.type(screen.getByLabelText('Confirmar palavra-passe'), 'margens-inverno-26')
+    await user.type(screen.getByLabelText('Nova palavra-passe'), 'margens')
+    expect(screen.getByText('Força: Muito fraca')).toBeInTheDocument()
+    expect(screen.getAllByText(/Em falta:/)).toHaveLength(4)
+    await user.type(screen.getByLabelText('Nova palavra-passe'), '-inverno')
+    expect(screen.getByText('Força: Fraca')).toBeInTheDocument()
+    await user.clear(screen.getByLabelText('Nova palavra-passe'))
+    await user.type(screen.getByLabelText('Nova palavra-passe'), 'Margens-1nv') // ggignore
+    expect(screen.getByText('Força: Moderada')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Nova palavra-passe'), 'erno')
+    expect(screen.getByText('Força: Forte')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Nova palavra-passe'), '-2026')
+    expect(screen.getByText('Força: Muito forte')).toBeInTheDocument()
+    expect(screen.queryAllByText(/Em falta:/)).toHaveLength(0)
+
+    await user.type(screen.getByLabelText('Confirmar palavra-passe'), 'Margens-1nverno') // ggignore
     await user.click(screen.getByRole('button', { name: 'Guardar e continuar' }))
-    expect(screen.getByRole('heading', { name: 'Eventos', level: 2 })).toBeInTheDocument()
+    expect(screen.getByText('As palavras-passe não coincidem.')).toBeInTheDocument()
+    expect(core.calls).toEqual([])
+
+    await user.type(screen.getByLabelText('Confirmar palavra-passe'), '-2026')
+    await user.click(screen.getByRole('button', { name: 'Guardar e continuar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Demasiadas tentativas.')
+    await user.click(screen.getByRole('button', { name: 'Guardar e continuar' }))
+    expect(await screen.findByRole('heading', { name: 'Eventos', level: 2 })).toBeInTheDocument()
+    expect(core.calls).toEqual([
+      ['novo@ribeira-live.test', 'T7q-mK4-v9Px', 'Margens-1nverno-2026'], // ggignore
+      ['novo@ribeira-live.test', 'T7q-mK4-v9Px', 'Margens-1nverno-2026'], // ggignore
+    ])
+  })
+
+  it('refuses the temporary password as the new one', async () => {
+    const user = userEvent.setup()
+    const core = fakeChoosePassword()
+    renderAt('/entrar', fakeSignIn({ kind: 'new-password' }).signIn, {
+      choosePassword: core.choosePassword,
+    })
+    await user.type(screen.getByLabelText('Email'), 'novo@ribeira-live.test')
+    await user.type(screen.getByLabelText('Palavra-passe'), 'T7q-mK4-v9Px') // ggignore
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    await screen.findByRole('heading', { name: 'Define a tua nova palavra-passe' })
+
+    await user.type(screen.getByLabelText('Nova palavra-passe'), 'T7q-mK4-v9Px') // ggignore
+    await user.type(screen.getByLabelText('Confirmar palavra-passe'), 'T7q-mK4-v9Px') // ggignore
+    await user.click(screen.getByRole('button', { name: 'Guardar e continuar' }))
+    expect(
+      screen.getByText('Escolhe uma palavra-passe diferente da temporária.'),
+    ).toBeInTheDocument()
+    expect(core.calls).toEqual([])
   })
 
   it('does not show the new password page without a temporary sign-in', () => {

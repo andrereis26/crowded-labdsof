@@ -1,5 +1,6 @@
 package com.crowded.core.user.api.controller;
 
+import com.crowded.core.user.api.dto.ChoosePasswordRequest;
 import com.crowded.core.user.api.dto.RegisterRequest;
 import com.crowded.core.user.api.dto.RegisteredResponse;
 import com.crowded.core.user.api.dto.SignInRequest;
@@ -15,8 +16,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Registration and sign-in (API Outline, Identity). Public: the rate limits use the client's
- * address, which the router sends in {@code X-Forwarded-For} (server.forward-headers-strategy).
+ * Registration, sign-in and the first password a member chooses (API Outline, Identity). Public:
+ * the rate limits use the client's address, which the router sends in {@code X-Forwarded-For}
+ * (server.forward-headers-strategy).
  */
 @RestController
 public class AuthController {
@@ -42,5 +44,16 @@ public class AuthController {
   @PostMapping("/auth/login")
   public SignInResponse signIn(@Valid @RequestBody SignInRequest request, HttpServletRequest http) {
     return mapper.toSignInResponse(service.signIn(mapper.toCommand(request, http.getRemoteAddr())));
+  }
+
+  /**
+   * Replaces a member's temporary password with the one they chose, at their first sign-in, and
+   * signs them in. Public: the temporary password proves who it is, and it gives no token.
+   */
+  @PostMapping("/auth/password")
+  public SignInResponse choosePassword(
+      @Valid @RequestBody ChoosePasswordRequest request, HttpServletRequest http) {
+    return mapper.toSignInResponse(
+        service.replaceTemporaryPassword(mapper.toCommand(request, http.getRemoteAddr())));
   }
 }

@@ -111,6 +111,71 @@ class UserAccountTest {
   }
 
   @Test
+  void refusesATemporaryPasswordOnceItExpired() {
+    UserAccount member = UserAccount.addMember(ORGANIZATION, "Rita", EMAIL, "hash", NOW);
+    Instant expiry = NOW.plus(UserAccount.TEMPORARY_PASSWORD_LIFETIME);
+
+    assertThatThrownBy(() -> member.signIn(true, expiry.minusSeconds(1)))
+        .isInstanceOfSatisfying(
+            NotAllowedException.class,
+            e -> assertThat(e.getCode()).isEqualTo("PASSWORD_CHANGE_REQUIRED"));
+    assertThatThrownBy(() -> member.signIn(true, expiry))
+        .isInstanceOfSatisfying(
+            NotAllowedException.class,
+            e -> assertThat(e.getCode()).isEqualTo("TEMPORARY_PASSWORD_EXPIRED"));
+    // A wrong password says nothing about the account.
+    assertThatThrownBy(() -> member.signIn(false, expiry))
+        .isInstanceOf(NotAuthenticatedException.class);
+  }
+
+  @Test
+  void replacesTheTemporaryPasswordWithTheOneTheMemberChose() {
+    UserAccount member = UserAccount.addMember(ORGANIZATION, "Rita", EMAIL, "temporary", NOW);
+
+    member.replaceTemporaryPassword(true, false, "chosen", NOW.plusSeconds(60));
+
+    assertThat(member.getPasswordHash()).isEqualTo("chosen");
+    assertThat(member.hasTemporaryPassword()).isFalse();
+    assertThat(member.getTemporaryPasswordExpiresAt()).isNull();
+    assertThat(member.getLastSignedInAt()).isEqualTo(NOW.plusSeconds(60));
+    member.signIn(true, NOW.plusSeconds(120));
+    assertThat(member.getLastSignedInAt()).isEqualTo(NOW.plusSeconds(120));
+  }
+
+  @Test
+  void replacesATemporaryPasswordOnlyWhileItWorks() {
+    UserAccount member = UserAccount.addMember(ORGANIZATION, "Rita", EMAIL, "temporary", NOW);
+    Instant expiry = NOW.plus(UserAccount.TEMPORARY_PASSWORD_LIFETIME);
+
+    assertThatThrownBy(() -> member.replaceTemporaryPassword(false, false, "chosen", NOW))
+        .isInstanceOf(NotAuthenticatedException.class);
+    assertThatThrownBy(() -> member.replaceTemporaryPassword(true, false, "chosen", expiry))
+        .isInstanceOfSatisfying(
+            NotAllowedException.class,
+            e -> assertThat(e.getCode()).isEqualTo("TEMPORARY_PASSWORD_EXPIRED"));
+    assertThatThrownBy(() -> member.replaceTemporaryPassword(true, true, "chosen", NOW))
+        .isInstanceOfSatisfying(
+            RuleViolationException.class,
+            e -> assertThat(e.getCode()).isEqualTo("PASSWORD_UNCHANGED"));
+    member.deactivate();
+    assertThatThrownBy(() -> member.replaceTemporaryPassword(true, false, "chosen", NOW))
+        .isInstanceOf(NotAuthenticatedException.class);
+    assertThat(member.getPasswordHash()).isEqualTo("temporary");
+    assertThat(member.hasTemporaryPassword()).isTrue();
+  }
+
+  @Test
+  void hasNoTemporaryPasswordToReplaceOnceItChoseOne() {
+    UserAccount participant = UserAccount.registerParticipant(EMAIL, "hash", NOW);
+
+    assertThatThrownBy(() -> participant.replaceTemporaryPassword(true, false, "chosen", NOW))
+        .isInstanceOfSatisfying(
+            NotAllowedException.class,
+            e -> assertThat(e.getCode()).isEqualTo("NO_TEMPORARY_PASSWORD"));
+    assertThat(participant.getPasswordHash()).isEqualTo("hash");
+  }
+
+  @Test
   void deactivatesAndReactivatesOnlyWhenItChangesSomething() {
     UserAccount member = UserAccount.addMember(ORGANIZATION, "Rita", EMAIL, "hash", NOW);
 

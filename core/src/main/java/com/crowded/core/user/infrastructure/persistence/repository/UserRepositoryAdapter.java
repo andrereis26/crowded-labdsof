@@ -67,4 +67,10 @@ class UserRepositoryAdapter implements UserRepository {
   public void saveSignIn(UserAccount account) {
     users.updateLastSignedInAt(account.getId(), account.getLastSignedInAt());
   }
+
+  @Override
+  public void savePasswordChange(UserAccount account) {
+    users.updateChosenPassword(
+        account.getId(), account.getPasswordHash(), account.getLastSignedInAt());
+  }
 }

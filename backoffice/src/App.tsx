@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
-import { demoMembers, type AdminOrganization, type Member } from './data/admin'
+import { type AdminOrganization, type Member } from './data/admin'
 import { AdminApiError, httpAdminApi, type AdminApi, type MemberChange } from './data/adminApi'
-import { signInWithCore, type Session, type SignIn } from './data/auth'
+import {
+  choosePasswordWithCore,
+  signInWithCore,
+  type ChoosePassword,
+  type Session,
+  type SignIn,
+} from './data/auth'
 import { AdminLayout } from './layout/AdminLayout'
 import { OrganizerApp } from './OrganizerApp'
 import { OrganizationsPage, type Outcome } from './pages/admin/OrganizationsPage'
@@ -19,11 +25,13 @@ function codeOf(error: unknown): string {
 export default function App({
   now,
   signIn = signInWithCore,
+  choosePassword = choosePasswordWithCore,
   adminApiFor = httpAdminApi,
   initialSession,
 }: {
   now: Date
   signIn?: SignIn
+  choosePassword?: ChoosePassword
   adminApiFor?: (accessToken: string) => AdminApi
   /** A session to start with, for tests. */
   initialSession?: Session
@@ -32,8 +40,8 @@ export default function App({
   const [organizations, setOrganizations] = useState<AdminOrganization[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [loadError, setLoadError] = useState('')
-  // C4 runs on demo data until Core has the new-password API.
-  const [newPasswordMembers, setNewPasswordMembers] = useState<Member[]>(() => demoMembers(now))
+  // The temporary password C4 replaces, in memory only, never in the URL or storage.
+  const [pending, setPending] = useState<{ email: string; temporaryPassword: string }>()
   const administrator = session?.role === 'ADMINISTRATOR'
   const api = useMemo(
     () => (session && administrator ? adminApiFor(session.accessToken) : undefined),
@@ -131,16 +139,28 @@ export default function App({
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/entrar" replace />} />
-      <Route path="/entrar" element={<SignInPage signIn={signIn} onSignedIn={setSession} />} />
+      <Route
+        path="/entrar"
+        element={
+          <SignInPage
+            signIn={signIn}
+            onSignedIn={setSession}
+            onTemporaryPassword={(email, temporaryPassword) =>
+              setPending({ email, temporaryPassword })
+            }
+          />
+        }
+      />
       <Route
         path="/definir-palavra-passe"
         element={
           <NewPasswordPage
-            members={newPasswordMembers}
-            now={now}
-            onChange={(updated) =>
-              setNewPasswordMembers((all) => all.map((m) => (m.id === updated.id ? updated : m)))
-            }
+            pending={pending}
+            choosePassword={choosePassword}
+            onSignedIn={(signedIn) => {
+              setPending(undefined)
+              setSession(signedIn)
+            }}
           />
         }
       />
