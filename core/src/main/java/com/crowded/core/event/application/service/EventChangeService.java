@@ -8,6 +8,7 @@ import com.crowded.core.event.domain.model.EventChange;
 import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
+import com.crowded.core.event.domain.repository.EventUpdates;
 import com.crowded.core.organization.domain.model.Organization;
 import com.crowded.core.organization.domain.repository.OrganizationRepository;
 import com.crowded.core.outbox.application.service.NotificationRequester;
@@ -28,7 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Publishes an organization's official change to its event (Asynchronous Flows, §3 Step 1): checks
  * the member, records the change, updates the event, audits it and asks Notifications to notify the
- * connected participants, all in one transaction.
+ * connected participants, all in one transaction. Once it commits, the event's page is refreshed in
+ * the cache and on its live streams.
  */
 @Service
 public class EventChangeService {
@@ -43,6 +45,7 @@ public class EventChangeService {
   private final EventAccess access;
   private final OrganizationRepository organizations;
   private final NotificationRequester notifications;
+  private final EventUpdates updates;
   private final AuditLog audit;
   private final Clock clock;
   private final MeterRegistry meters;
@@ -53,6 +56,7 @@ public class EventChangeService {
       EventAccess access,
       OrganizationRepository organizations,
       NotificationRequester notifications,
+      EventUpdates updates,
       AuditLog audit,
       Clock clock,
       MeterRegistry meters) {
@@ -61,6 +65,7 @@ public class EventChangeService {
     this.access = access;
     this.organizations = organizations;
     this.notifications = notifications;
+    this.updates = updates;
     this.audit = audit;
     this.clock = clock;
     this.meters = meters;
@@ -104,6 +109,7 @@ public class EventChangeService {
     changes.save(change);
     events.save(event);
     notifications.request(OFFICIAL_CHANGE, event.getId(), change.getId());
+    updates.announce(event.getId());
     audit.record(
         command.userId(),
         event.getId(),

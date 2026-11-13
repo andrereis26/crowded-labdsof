@@ -69,6 +69,8 @@ The domain is a rich model ([ADR 0017](../docs/deliverables/adr/0017-rich-domain
 
 **Who may see or manage an event:** every endpoint about one event starts with `EventAccess`. `viewable(userId, eventId)` returns the event to an active member of the organization that owns it or to a participant connected to it, and refuses anyone else with `403 NOT_CONNECTED`. `checkManager(userId, event)` lets through only an active member of its organization (`403 NOT_EVENT_ORGANIZATION`). The role and organization come from the database, never from the token; the rules themselves are on `Event` (`checkCanBeSeenBy`, `checkCanBeManagedBy`).
 
+**Event pages:** `EventPages` builds the page and keeps it in Redis as JSON, shared by every instance ([ADR 0004](../docs/deliverables/adr/0004-redis-for-revocation-rate-limiting-and-cache.md)); `EventViewService` checks `EventAccess` on every request before it reads the cache. A use case that changes what participants see calls the `EventUpdates` port: once the transaction commits, `RedisEventUpdates` drops the cached page and announces the event on the `core:events:changed` channel, and every instance sends the new page to the `GET /events/{eventId}/live` streams it holds ([ADR 0007](../docs/deliverables/adr/0007-live-updates-with-server-sent-events.md)). A missed drop lasts at most the cache's ten minutes.
+
 ## Configuration
 
 `src/main/resources/application.yml` reads every setting from the environment, and no credentials or keys are committed (SR-008, NFR-016).

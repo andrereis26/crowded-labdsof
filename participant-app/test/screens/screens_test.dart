@@ -4,11 +4,13 @@ import 'package:crowded/data/auth_api.dart';
 
 import 'dart:async';
 
+import 'package:crowded/data/events_api.dart';
 import 'package:crowded/data/models.dart';
 import 'package:crowded/data/notifications_api.dart';
 import 'package:crowded/screens/event/entry_code_screen.dart';
 import 'package:crowded/screens/import/access_code_screen.dart';
 import 'package:crowded/ui/ui.dart';
+import 'package:crowded/utils/pt_format.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -199,6 +201,66 @@ class _FakeNotificationsApi implements NotificationsApi {
   }
 }
 
+/// Core's event pages, without a network: one event the participant is
+/// connected to, whose answers a test can change between loads.
+class _FakeEventsApi implements EventsApi {
+  static const id = '30000000-0000-4000-8000-000000000001';
+
+  String status = 'POSTPONED';
+  List<Map<String, Object?>> history = [
+    _coreChange('c-doors', 'TIME_CHANGE', {
+      'doorsOpenAt': '2026-11-06T19:30:00Z',
+    }, at: '2026-10-17T13:32:00Z'),
+    _coreChange('c-date', 'POSTPONEMENT', {
+      'startDateTime': '2026-11-07T21:30:00Z',
+    }, at: '2026-10-02T09:05:00Z'),
+  ];
+
+  /// While set, every request fails with this code.
+  String? failWith;
+  int pages = 0;
+
+  @override
+  Future<EventPage> page(String token, String eventId) async {
+    pages++;
+    if (failWith != null) throw EventsException(failWith!);
+    return eventPageFromJson({
+      'id': id,
+      'name': 'Festival Margens do Douro',
+      'status': status,
+      'startDateTime': '2026-11-07T21:30:00Z',
+      'venue': {'name': 'Cais da Ribeira', 'district': 'Porto'},
+      'organization': {'id': 'o-1', 'name': 'Ribeira Live'},
+      'latestChange': history.firstOrNull,
+    })!;
+  }
+
+  @override
+  Future<List<CoreChange>> changes(String token, String eventId) async {
+    if (failWith != null) throw EventsException(failWith!);
+    return [for (final c in history) coreChangeFromJson(c)!];
+  }
+}
+
+Map<String, Object?> _coreChange(
+  String id,
+  String type,
+  Map<String, Object?> newValue, {
+  required String at,
+}) => {
+  'id': id,
+  'type': type,
+  'previousValue': const {'startDateTime': '2026-10-31T21:30:00Z'},
+  'newValue': newValue,
+  'ticketStillValid': true,
+  'provenance': {
+    'sourceType': 'ORGANIZATION',
+    'sourceName': 'Ribeira Live',
+    'lastUpdatedAt': at,
+    'confirmed': true,
+  },
+};
+
 const _mobile = Size(390, 844);
 const _desktop = Size(1440, 1000);
 
@@ -209,6 +271,7 @@ Future<AppStore> _pump(
   bool signedIn = true,
   AuthApi? auth,
   NotificationsApi? notifications,
+  EventsApi? events,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -217,6 +280,7 @@ Future<AppStore> _pump(
     clock: () => _now,
     auth: auth ?? _FakeAuthApi(),
     notifications: notifications ?? _FakeNotificationsApi(),
+    events: events ?? _FakeEventsApi(),
     session: signedIn ? _session(_email) : null,
   );
   await tester.pumpWidget(CrowdedApp(store: store, initialLocation: location));
@@ -487,6 +551,94 @@ void main() {
     expect(find.text('O teu bilhete continua válido'), findsOneWidget);
     expect(find.text('Reembolso, se não puderes ir'), findsOneWidget);
     expect(find.text('Sem alteração'), findsNWidgets(2));
+  });
+
+  group('P5–P6 events from Core', () {
+    const page = '/event/${_FakeEventsApi.id}';
+
+    testWidgets('shows the current status and the changes, newest first', (
+      tester,
+    ) async {
+      await _pump(tester, location: '$page/history');
+
+      expect(find.text('Festival Margens do Douro'), findsOneWidget);
+      expect(find.text('Adiado'), findsOneWidget);
+      expect(find.text('ESTADO ATUAL'), findsOneWidget);
+      final doors = find.text(
+        'Portas às ${formatTime(DateTime.utc(2026, 11, 6, 19, 30).toLocal())}',
+      );
+      final date = find.text('Data alterada');
+      expect(doors, findsOneWidget);
+      expect(date, findsOneWidget);
+      expect(
+        tester.getTopLeft(doors).dy,
+        lessThan(tester.getTopLeft(date).dy),
+        reason: 'newest first',
+      );
+      expect(find.text('Organização'), findsNWidgets(2));
+      expect(find.text('Ribeira Live'), findsNWidgets(2));
+      expect(
+        find.text(
+          'HOJE · ${formatTime(DateTime.utc(2026, 10, 17, 13, 32).toLocal())}',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('says when no change has been recorded', (tester) async {
+      final events = _FakeEventsApi()
+        ..status = 'SCHEDULED'
+        ..history = [];
+      await _pump(tester, location: '$page/history', events: events);
+
+      expect(find.text('Confirmado'), findsOneWidget);
+      expect(find.text('Ainda não há alterações'), findsOneWidget);
+    });
+
+    testWidgets('shows when it last loaded once Core cannot be reached', (
+      tester,
+    ) async {
+      final events = _FakeEventsApi();
+      await _pump(tester, location: page, events: events);
+      expect(find.text('Sem rede'), findsNothing);
+      expect(find.textContaining('Fonte: organização'), findsWidgets);
+
+      events.failWith = 'NETWORK';
+      await tester.ensureVisible(find.text('Histórico de alterações'));
+      await tester.tap(find.text('Histórico de alterações'));
+      await tester.pumpAndSettle();
+      expect(find.text('Data alterada'), findsOneWidget);
+      await tester.tap(find.text('Evento').first);
+      await tester.pumpAndSettle();
+
+      expect(events.pages, 2);
+      expect(find.text('Sem rede'), findsOneWidget);
+      expect(
+        find.text('A mostrar o que guardámos às ${formatTime(_now)}.'),
+        findsOneWidget,
+      );
+      expect(find.text('Adiado'), findsWidgets, reason: 'the saved status');
+    });
+
+    testWidgets('loads again after a first load fails', (tester) async {
+      final events = _FakeEventsApi()..failWith = 'HTTP_503';
+      await _pump(tester, location: page, events: events);
+      expect(find.text('Não foi possível carregar o evento'), findsOneWidget);
+
+      events.failWith = null;
+      await tester.tap(find.text('Tentar de novo'));
+      await tester.pumpAndSettle();
+      expect(find.text('Festival Margens do Douro'), findsWidgets);
+    });
+
+    testWidgets('says when the participant is no longer connected', (
+      tester,
+    ) async {
+      final events = _FakeEventsApi()..failWith = 'NOT_CONNECTED';
+      await _pump(tester, location: page, events: events);
+
+      expect(find.text('Já não estás ligado a este evento'), findsOneWidget);
+    });
   });
 
   testWidgets('P8 lists the notifications, filters and opens them', (

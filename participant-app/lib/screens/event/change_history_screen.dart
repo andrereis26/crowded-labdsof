@@ -6,22 +6,33 @@ import '../../data/models.dart';
 import '../../ui/ui.dart';
 import '../../utils/pt_format.dart';
 import '../shared/shell.dart';
+import 'event_loading.dart';
 
-/// P6 · Histórico de alterações of an event.
-class ChangeHistoryScreen extends StatelessWidget {
+/// P6 · Histórico de alterações of an event: its current status and its
+/// official changes, newest first, each with its source and time.
+class ChangeHistoryScreen extends StatefulWidget {
   const ChangeHistoryScreen({super.key, required this.eventId});
 
   final String eventId;
 
   @override
+  State<ChangeHistoryScreen> createState() => _ChangeHistoryScreenState();
+}
+
+class _ChangeHistoryScreenState extends State<ChangeHistoryScreen>
+    with RefreshesEvent<ChangeHistoryScreen> {
+  @override
+  String eventIdOf(ChangeHistoryScreen widget) => widget.eventId;
+
+  @override
   Widget build(BuildContext context) {
     final store = AppStore.of(context);
-    final event = store.eventById(eventId);
+    final event = store.eventById(widget.eventId);
     final now = store.now;
     if (event == null) {
       return AppPage(
         title: 'Histórico',
-        children: [AppErrorState(message: 'Não encontrámos este evento')],
+        children: [missingEventState(context, store, widget.eventId)],
       );
     }
     final dateChange = event.status == EventStatus.postponed
@@ -102,6 +113,10 @@ class _StatusTag extends StatelessWidget {
     return switch (status) {
       EventStatus.postponed => const AppTag(
         label: 'Adiado',
+        tone: AppTagTone.warning,
+      ),
+      EventStatus.relocated => const AppTag(
+        label: 'Novo local',
         tone: AppTagTone.warning,
       ),
       EventStatus.cancelled => const AppTag(
