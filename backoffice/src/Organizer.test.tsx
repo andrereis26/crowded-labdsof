@@ -136,7 +136,7 @@ describe('O2–O4 events', () => {
     expect(screen.getByRole('button', { name: 'Remover Porta B' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('switch', { name: 'Pedir confirmação para Fila' }))
-    const radius = screen.getByLabelText('Raio do recinto (em metros)')
+    const radius = screen.getByLabelText('Raio do evento (em metros)')
     await user.clear(radius)
     await user.type(radius, '60000')
     await user.click(screen.getByRole('button', { name: 'Publicar evento' }))

@@ -83,7 +83,7 @@ export function ConfirmationRulesPanel({
   return (
     <Panel title="Regras" titleClassName="text-base" className="gap-3.5">
       <Field
-        label="Raio do recinto (em metros)"
+        label="Raio do evento (em metros)"
         error={radiusError}
         help="Só pede confirmação a quem permitiu a localização e está dentro deste raio. De 100 a 50 000 m: num evento espalhado pela cidade, usa um raio maior."
       >
