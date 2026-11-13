@@ -217,7 +217,7 @@ describe('O2–O4 events', () => {
 
   it('postpones an event to a later date', async () => {
     const user = userEvent.setup()
-    await renderAt('/organizacao/eventos/margens-inverno')
+    await renderAt('/organization/events/margens-inverno')
     await user.click(screen.getByRole('button', { name: 'Alterar ou cancelar' }))
     const dialog = screen.getByRole('dialog', { name: 'Alterar evento' })
     await user.type(within(dialog).getByLabelText(/Reembolso/), 'Reembolso até 5 DEZ.')
@@ -347,7 +347,7 @@ describe('O2–O4 with Core', () => {
   it('says when the map cannot be reached, not that the address is wrong', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/organizacao/eventos/novo']}>
+      <MemoryRouter initialEntries={['/organization/events/new']}>
         <App
           now={now}
           initialSession={member}
