@@ -71,7 +71,7 @@ describe('organizer helpers', () => {
 
 describe('O2–O4 events', () => {
   it('lists the events with indicators', () => {
-    renderAt('/organizacao/eventos')
+    renderAt('/organization/events')
     expect(screen.getByRole('heading', { name: 'Eventos', level: 2 })).toBeInTheDocument()
     // Testing Library turns the no-break space into a plain space.
     expect(screen.getByText('1 680')).toBeInTheDocument()
@@ -82,7 +82,7 @@ describe('O2–O4 events', () => {
 
   it('validates and publishes a new event', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacao/eventos/novo')
+    renderAt('/organization/events/new')
 
     await user.click(screen.getByRole('button', { name: 'Publicar evento' }))
     expect(screen.getByText('Escreve o nome do evento.')).toBeInTheDocument()
@@ -112,7 +112,7 @@ describe('O2–O4 events', () => {
 
   it('keeps field hints in tooltips that stay readable by screen readers', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacao/eventos/novo')
+    renderAt('/organization/events/new')
     const hint = 'Usada para calcular a lotação a partir do contador de entradas.'
 
     expect(screen.getByLabelText('Capacidade')).toHaveAccessibleDescription(hint)
@@ -129,7 +129,7 @@ describe('O2–O4 events', () => {
 
   it('generates the access code and QR code of a public event', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacao/eventos/novo')
+    renderAt('/organization/events/new')
     await user.type(screen.getByLabelText('Nome do evento'), 'São João no Parque')
     fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-06-23' } })
     await user.click(screen.getByRole('radio', { name: /Público/ }))
@@ -142,7 +142,7 @@ describe('O2–O4 events', () => {
 
   it('postpones an event only after confirming the change is official', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacao/eventos/margens-inverno')
+    renderAt('/organization/events/margens-inverno')
 
     await user.click(screen.getByRole('button', { name: 'Alterar ou cancelar' }))
     const dialog = screen.getByRole('dialog', { name: 'Alterar evento' })
@@ -166,7 +166,7 @@ describe('O2–O4 events', () => {
 
   it('changes the time of a public event and cancels it', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacao/eventos/jazz-no-parque')
+    renderAt('/organization/events/jazz-no-parque')
     expect(screen.getByText('JAZZPARQUE26')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Alterar ou cancelar' }))
@@ -199,7 +199,7 @@ describe('O2–O4 events', () => {
 describe('O5–O7 live operations', () => {
   it('publishes the crowd level and manual queue times', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacao/ao-vivo/lotacao')
+    renderAt('/organization/live/crowd')
 
     await user.click(screen.getByRole('radio', { name: /Elevada/ }))
     await user.click(screen.getByRole('button', { name: 'Publicar lotação' }))
@@ -215,7 +215,7 @@ describe('O5–O7 live operations', () => {
 
   it('drafts an alert with AI and sends it', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacao/alertas')
+    renderAt('/organization/alerts')
 
     await user.click(screen.getByRole('button', { name: 'Gerar rascunho com IA' }))
     expect(screen.getByText('Descreve o que aconteceu para gerar o rascunho.')).toBeInTheDocument()
@@ -236,7 +236,7 @@ describe('O5–O7 live operations', () => {
   })
 
   it('shows the live dashboard from the shared state', () => {
-    renderAt('/organizacao/ao-vivo')
+    renderAt('/organization/live')
     expect(screen.getByText('Porta C · 25 min')).toBeInTheDocument()
     expect(screen.getByText('1 urgente')).toBeInTheDocument()
   })
@@ -245,7 +245,7 @@ describe('O5–O7 live operations', () => {
 describe('O8–O10 incidents and confirmations', () => {
   it('resolves an incident and updates the open count', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacao/incidentes/fila-porta-c')
+    renderAt('/organization/incidents/fila-porta-c')
     const nav = screen.getByRole('navigation', { name: 'Organização' })
     expect(within(nav).getByLabelText('4 pendentes')).toBeInTheDocument()
 
@@ -259,7 +259,7 @@ describe('O8–O10 incidents and confirmations', () => {
 
   it('filters incident groups and previews the selected one', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacao/incidentes')
+    renderAt('/organization/incidents')
 
     await user.click(screen.getByRole('button', { name: /Rampa da entrada Norte bloqueada/ }))
     expect(
@@ -283,7 +283,7 @@ describe('O8–O10 incidents and confirmations', () => {
   })
 
   it('never asks confirmation for personal categories', () => {
-    renderAt('/organizacao/definicoes')
+    renderAt('/organization/settings')
     expect(
       screen.getByRole('switch', { name: 'Pedir confirmação para Perdidos e achados' }),
     ).toBeDisabled()
@@ -294,7 +294,7 @@ describe('O8–O10 incidents and confirmations', () => {
 describe('O12 requests', () => {
   it('previews and publishes an urgent request', async () => {
     const user = userEvent.setup()
-    renderAt('/organizacao/pedidos')
+    renderAt('/organization/requests')
 
     await user.click(screen.getByRole('radio', { name: /Escolha múltipla/ }))
     expect(screen.getByRole('option', { name: 'Várias respostas' })).toBeInTheDocument()

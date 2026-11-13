@@ -33,28 +33,28 @@ import 'ui/ui.dart';
 /// Routes of the participant app. Screen codes (P1…) refer to the mockups.
 GoRouter buildRouter({
   required AppStore store,
-  String initialLocation = '/eventos',
+  String initialLocation = '/events',
 }) => GoRouter(
   initialLocation: initialLocation,
   refreshListenable: store,
   redirect: (context, state) {
     // Signed-out users only see C1; signed-in users skip it.
-    final atSignIn = state.matchedLocation == '/entrar';
-    if (!store.signedIn) return atSignIn ? null : '/entrar';
-    if (atSignIn) return '/eventos';
+    final atSignIn = state.matchedLocation == '/sign-in';
+    if (!store.signedIn) return atSignIn ? null : '/sign-in';
+    if (atSignIn) return '/events';
     // Event pages are only shown to connected participants.
     final eventId = state.pathParameters['id'];
-    if (state.matchedLocation.startsWith('/evento/') &&
+    if (state.matchedLocation.startsWith('/event/') &&
         eventId != null &&
         store.eventById(eventId) != null &&
         !store.isConnected(eventId)) {
-      return '/sem-ligacao/$eventId';
+      return '/disconnected/$eventId';
     }
     return null;
   },
   routes: [
     GoRoute(
-      path: '/entrar',
+      path: '/sign-in',
       builder: (context, state) => const SignInScreen(), // C1
     ),
     StatefulShellRoute.indexedStack(
@@ -63,7 +63,7 @@ GoRouter buildRouter({
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/eventos',
+              path: '/events',
               builder: (context, state) => const WalletScreen(), // P1
             ),
           ],
@@ -71,11 +71,11 @@ GoRouter buildRouter({
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/conta',
+              path: '/account',
               builder: (context, state) => const AccountScreen(), // C0
               routes: [
                 GoRoute(
-                  path: 'contribuicoes',
+                  path: 'contributions',
                   builder: (context, state) =>
                       const ContributionsScreen(), // P20
                 ),
@@ -86,106 +86,106 @@ GoRouter buildRouter({
       ],
     ),
     GoRoute(
-      path: '/conta/notificacoes',
+      path: '/account/notifications',
       builder: (context, state) => const NotificationPreferencesScreen(), // C2
     ),
     GoRoute(
-      path: '/conta/apagar',
+      path: '/account/delete',
       builder: (context, state) => const DeleteAccountScreen(), // C3
     ),
     GoRoute(
-      path: '/notificacoes',
+      path: '/notifications',
       builder: (context, state) => const NotificationsScreen(), // P8
     ),
     GoRoute(
-      path: '/importar',
+      path: '/import',
       builder: (context, state) => const ImportScreen(), // P2
       routes: [
         GoRoute(
-          path: 'adicionado',
+          path: 'added',
           builder: (context, state) => const TicketAddedScreen(), // P2a
         ),
         GoRoute(
-          path: 'codigo',
+          path: 'code',
           builder: (context, state) => const EventCodeScreen(), // P2b
         ),
         GoRoute(
-          path: 'erro/:motivo',
+          path: 'error/:reason',
           builder: (context, state) => ImportErrorScreen(
             outcome: ImportErrorScreen.outcomeFor(
-              state.pathParameters['motivo']!,
+              state.pathParameters['reason']!,
             ),
           ), // P2b
         ),
       ],
     ),
     GoRoute(
-      path: '/codigo-de-acesso',
+      path: '/access-code',
       builder: (context, state) => const AccessCodeScreen(), // P21
     ),
     GoRoute(
-      path: '/sem-ligacao/:id',
+      path: '/disconnected/:id',
       builder: (context, state) =>
           LeftEventScreen(eventId: state.pathParameters['id']!), // P8
     ),
     // "Reportar" in the tab bar, the header or the floating button: the
     // report form of the event in progress, or of the next one today.
     GoRoute(
-      path: '/reportar',
+      path: '/report',
       redirect: (context, state) {
         final event = store.eventsToday.firstOrNull;
-        return event == null ? '/eventos' : '/evento/${event.id}/reportar';
+        return event == null ? '/events' : '/event/${event.id}/report';
       },
     ),
     GoRoute(
-      path: '/evento/:id',
+      path: '/event/:id',
       builder: (context, state) => EventScreen(
         eventId: state.pathParameters['id']!,
-        confirmationId: state.uri.queryParameters['confirmar'],
+        confirmationId: state.uri.queryParameters['confirm'],
       ), // P5, P10, P13
       routes: [
         GoRoute(
-          path: 'reportar',
+          path: 'report',
           builder: (context, state) => ReportScreen(
             eventId: state.pathParameters['id']!,
             category: ReportCategory.values
-                .asNameMap()[state.uri.queryParameters['categoria']],
+                .asNameMap()[state.uri.queryParameters['category']],
           ), // P11
         ),
         GoRoute(
-          path: 'reporte',
+          path: 'report-result',
           builder: (context, state) => ReportResultScreen(
             eventId: state.pathParameters['id']!,
-            away: state.uri.queryParameters['estado'] == 'longe',
+            away: state.uri.queryParameters['status'] == 'away',
           ), // P12
         ),
         GoRoute(
-          path: 'estimativas',
+          path: 'estimates',
           builder: (context, state) =>
               EstimatesScreen(eventId: state.pathParameters['id']!), // P14
         ),
         GoRoute(
-          path: 'pedidos',
+          path: 'requests',
           builder: (context, state) =>
               RequestsScreen(eventId: state.pathParameters['id']!), // P17
         ),
         GoRoute(
-          path: 'como-chegar',
+          path: 'directions',
           builder: (context, state) =>
               DirectionsScreen(eventId: state.pathParameters['id']!), // P18
         ),
         GoRoute(
-          path: 'codigo',
+          path: 'code',
           builder: (context, state) =>
               EntryCodeScreen(eventId: state.pathParameters['id']!), // P19
         ),
         GoRoute(
-          path: 'historico',
+          path: 'history',
           builder: (context, state) =>
               ChangeHistoryScreen(eventId: state.pathParameters['id']!), // P6
         ),
         GoRoute(
-          path: 'alteracao/:changeId',
+          path: 'change/:changeId',
           builder: (context, state) => ChangeDetailScreen(
             eventId: state.pathParameters['id']!,
             changeId: state.pathParameters['changeId']!,
@@ -194,19 +194,19 @@ GoRouter buildRouter({
       ],
     ),
     GoRoute(
-      path: '/reconhecimento/:id',
+      path: '/recognition/:id',
       builder: (context, state) =>
           RecognitionScreen(recognitionId: state.pathParameters['id']!), // P15
     ),
     GoRoute(
-      path: '/dev/componentes',
+      path: '/dev/components',
       builder: (context, state) => const ComponentGallery(),
     ),
   ],
 );
 
 class CrowdedApp extends StatefulWidget {
-  const CrowdedApp({super.key, this.store, this.initialLocation = '/eventos'});
+  const CrowdedApp({super.key, this.store, this.initialLocation = '/events'});
 
   final AppStore? store;
   final String initialLocation;

@@ -57,7 +57,7 @@ export function EventFormPage({
     return (
       <p className="text-sm text-ink-secondary">
         Não encontrámos este evento.{' '}
-        <Link to="/organizacao/eventos" className="font-semibold text-primary">
+        <Link to="/organization/events" className="font-semibold text-primary">
           Voltar aos eventos
         </Link>
       </p>
@@ -95,7 +95,7 @@ export function EventFormPage({
       : publish
         ? `${event.name.trim()} publicado.`
         : 'Rascunho guardado.'
-    navigate(`/organizacao/eventos/${newId}`, { state: { message } })
+    navigate(`/organization/events/${newId}`, { state: { message } })
   }
 
   const onSubmit = (e: FormEvent) => {
@@ -117,7 +117,7 @@ export function EventFormPage({
   const codeError = errors.code ?? (owner ? duplicateCodeError(owner) : undefined)
   const isPublic = event.kind === 'public'
 
-  const cancelTo = editing ? `/organizacao/eventos/${event.id}` : '/organizacao/eventos'
+  const cancelTo = editing ? `/organization/events/${event.id}` : '/organization/events'
   const tag = statusTag[event.status]
   const title = editing ? 'Editar evento' : 'Criar evento'
 
@@ -140,7 +140,7 @@ export function EventFormPage({
       <div className="flex flex-col gap-5 max-lg:hidden">
         <Breadcrumb
           items={[
-            { label: 'Eventos', to: '/organizacao/eventos' },
+            { label: 'Eventos', to: '/organization/events' },
             { label: editing ? event.name : 'Novo evento' },
           ]}
         />
@@ -321,7 +321,7 @@ export function EventFormPage({
               hint="Outros participantes confirmam com Sim ou Não."
               checked={event.askConfirmation}
               onChange={(v) => set('askConfirmation', v)}
-              action={<TextLink to="/organizacao/definicoes">Escolher categorias</TextLink>}
+              action={<TextLink to="/organization/settings">Escolher categorias</TextLink>}
             />
             <ToggleRow
               title="Mostrar estimativas de participantes"

@@ -119,10 +119,10 @@ export function SignInPage({
     setBusy(false)
     if (result.kind === 'signed-in') {
       onSignedIn(result.session)
-      navigate(result.session.role === 'ADMINISTRATOR' ? '/organizacoes' : '/organizacao/eventos')
+      navigate(result.session.role === 'ADMINISTRATOR' ? '/organizations' : '/organization/events')
     } else if (result.kind === 'new-password') {
       onTemporaryPassword(email.trim(), password)
-      navigate('/definir-palavra-passe')
+      navigate('/new-password')
     } else setError({ title: result.title, text: result.message })
   }
 
@@ -290,7 +290,7 @@ export function NewPasswordPage({
   const [saved, setSaved] = useState(false)
 
   // Once saved, App forgets the temporary password while this page leaves.
-  if (!pending) return saved ? null : <Navigate to="/entrar" replace />
+  if (!pending) return saved ? null : <Navigate to="/sign-in" replace />
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -305,7 +305,7 @@ export function NewPasswordPage({
     if (result.kind === 'signed-in') {
       setSaved(true)
       onSignedIn(result.session)
-      navigate(result.session.role === 'ADMINISTRATOR' ? '/organizacoes' : '/organizacao/eventos')
+      navigate(result.session.role === 'ADMINISTRATOR' ? '/organizations' : '/organization/events')
     } else if (result.kind === 'error') setRefusal({ title: result.title, text: result.message })
   }
 

@@ -27,13 +27,13 @@ import { RequestPage } from './pages/organizer/RequestPage'
 import { Panel } from './ui/components'
 
 const titles: [string, string][] = [
-  ['/organizacao/ao-vivo/lotacao', 'Lotação e filas'],
-  ['/organizacao/ao-vivo', 'Ao vivo'],
-  ['/organizacao/incidentes', 'Incidentes'],
-  ['/organizacao/alertas', 'Alertas'],
-  ['/organizacao/pedidos', 'Pedidos'],
-  ['/organizacao/definicoes', 'Definições'],
-  ['/organizacao/mais', 'Mais'],
+  ['/organization/live/crowd', 'Lotação e filas'],
+  ['/organization/live', 'Ao vivo'],
+  ['/organization/incidents', 'Incidentes'],
+  ['/organization/alerts', 'Alertas'],
+  ['/organization/requests', 'Pedidos'],
+  ['/organization/settings', 'Definições'],
+  ['/organization/more', 'Mais'],
 ]
 
 /** Organizer area: owns the demo state shared by O2–O12. */
@@ -48,7 +48,7 @@ export function OrganizerApp({ now }: { now: Date }) {
 
   // Opening an event page makes it the current event of the top bar, and it
   // stays current on the other pages (adjusting state while rendering).
-  const eventMatch = useMatch('/organizacao/eventos/:id/*')
+  const eventMatch = useMatch('/organization/events/:id/*')
   const routeEventId = eventMatch?.params.id
   const isEvent = (id?: string): id is string => !!id && events.some((e) => e.id === id)
   const [currentId, setCurrentId] = useState(
@@ -67,7 +67,7 @@ export function OrganizerApp({ now }: { now: Date }) {
   const path = location.pathname
   const onEventPage = isEvent(routeEventId)
   const scope: OrganizerScope =
-    path.startsWith('/organizacao/eventos') && !onEventPage
+    path.startsWith('/organization/events') && !onEventPage
       ? { kind: 'organization', title: 'Eventos' }
       : {
           kind: 'event',
@@ -76,13 +76,13 @@ export function OrganizerApp({ now }: { now: Date }) {
             : (titles.find(([p]) => path.startsWith(p))?.[1] ?? 'Crowded'),
         }
   const focused =
-    path === '/organizacao/eventos/novo' ||
-    path.endsWith('/editar') ||
-    path === '/organizacao/pedidos'
+    path === '/organization/events/new' ||
+    path.endsWith('/edit') ||
+    path === '/organization/requests'
 
   const selectEvent = (id: string) => {
     setCurrentId(id)
-    if (onEventPage) navigate(path.replace(`/eventos/${routeEventId}`, `/eventos/${id}`))
+    if (onEventPage) navigate(path.replace(`/events/${routeEventId}`, `/events/${id}`))
   }
 
   const saveEvent = (event: OrgEvent) =>
@@ -106,19 +106,19 @@ export function OrganizerApp({ now }: { now: Date }) {
       onSelectEvent={selectEvent}
     >
       <Routes>
-        <Route index element={<Navigate to="eventos" replace />} />
-        <Route path="eventos" element={<EventsPage events={events} alerts={alerts} now={now} />} />
-        <Route path="eventos/novo" element={<EventFormPage events={events} onSave={saveEvent} />} />
+        <Route index element={<Navigate to="events" replace />} />
+        <Route path="events" element={<EventsPage events={events} alerts={alerts} now={now} />} />
+        <Route path="events/new" element={<EventFormPage events={events} onSave={saveEvent} />} />
         <Route
-          path="eventos/:id"
+          path="events/:id"
           element={<EventDetailPage events={events} now={now} onSave={saveEvent} />}
         />
         <Route
-          path="eventos/:id/editar"
+          path="events/:id/edit"
           element={<EventFormPage events={events} onSave={saveEvent} />}
         />
         <Route
-          path="ao-vivo"
+          path="live"
           element={
             <LivePage
               event={current}
@@ -129,7 +129,7 @@ export function OrganizerApp({ now }: { now: Date }) {
           }
         />
         <Route
-          path="ao-vivo/lotacao"
+          path="live/crowd"
           element={
             <CrowdPage
               event={current}
@@ -139,13 +139,13 @@ export function OrganizerApp({ now }: { now: Date }) {
             />
           }
         />
-        <Route path="incidentes" element={<IncidentsPage incidents={eventIncidents} now={now} />} />
+        <Route path="incidents" element={<IncidentsPage incidents={eventIncidents} now={now} />} />
         <Route
-          path="incidentes/:id"
+          path="incidents/:id"
           element={<IncidentDetailPage incidents={incidents} now={now} onChange={updateIncident} />}
         />
         <Route
-          path="alertas"
+          path="alerts"
           element={
             <AlertPage
               event={current}
@@ -155,12 +155,12 @@ export function OrganizerApp({ now }: { now: Date }) {
             />
           }
         />
-        <Route path="pedidos" element={<RequestPage event={current} />} />
+        <Route path="requests" element={<RequestPage event={current} />} />
         <Route
-          path="definicoes"
+          path="settings"
           element={<ConfirmationsPage event={current} settings={settings} onSave={setSettings} />}
         />
-        <Route path="mais" element={<MorePage />} />
+        <Route path="more" element={<MorePage />} />
         <Route
           path="*"
           element={

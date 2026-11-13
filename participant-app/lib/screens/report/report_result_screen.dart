@@ -25,14 +25,14 @@ class ReportResultScreen extends StatelessWidget {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go('/evento/$eventId');
+      context.go('/event/$eventId');
     }
   }
 
   void _retry(BuildContext context, Event event) {
     final store = AppStore.read(context);
     if (store.isNearVenue(event)) {
-      context.pushReplacement('/evento/$eventId/reportar');
+      context.pushReplacement('/event/$eventId/report');
     } else {
       showMessage(context, 'Continuas longe do recinto.');
     }
@@ -55,7 +55,7 @@ class ReportResultScreen extends StatelessWidget {
           AppErrorState(
             message: 'Não encontrámos este evento',
             retryLabel: 'Voltar aos meus eventos',
-            onRetry: () => context.go('/eventos'),
+            onRetry: () => context.go('/events'),
           )
         else if (away)
           ReportAwayView(
@@ -63,7 +63,7 @@ class ReportResultScreen extends StatelessWidget {
             onBack: () => _backToEvent(context),
             onRetry: () => _retry(context, event),
             onLostAndFound: () => context.pushReplacement(
-              '/evento/$eventId/reportar?categoria='
+              '/event/$eventId/report?category='
               '${ReportCategory.lostAndFound.name}',
             ),
           )

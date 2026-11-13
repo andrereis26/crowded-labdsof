@@ -19,7 +19,7 @@ class AccountScreen extends StatelessWidget {
 
     void signOut() {
       store.signOut();
-      context.go('/entrar');
+      context.go('/sign-in');
     }
 
     final profile = AppPanel(
@@ -80,7 +80,7 @@ class AccountScreen extends StatelessWidget {
           AppListTile(
             icon: Icons.widgets_outlined,
             title: 'Componentes',
-            onTap: () => context.push('/dev/componentes'),
+            onTap: () => context.push('/dev/components'),
           ),
         ],
       ),

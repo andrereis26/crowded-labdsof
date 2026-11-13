@@ -9,26 +9,26 @@ enum AccountSection {
   profile(
     'Perfil',
     Icons.person_outline,
-    '/conta',
+    '/account',
     'Nome, email e palavra-passe',
   ),
   notifications(
     'Notificações',
     Icons.notifications_none,
-    '/conta/notificacoes',
+    '/account/notifications',
     'Alterações, alertas e avisos',
   ),
   location('Localização', Icons.my_location, null, 'Permissão de localização'),
   contributions(
     'Contribuições',
     Icons.flag_outlined,
-    '/conta/contribuicoes',
+    '/account/contributions',
     'Os teus reportes e confirmações',
   ),
   privacy(
     'Privacidade e dados',
     Icons.shield_outlined,
-    '/conta/apagar',
+    '/account/delete',
     'Descarregar ou apagar os teus dados',
   );
 

@@ -67,7 +67,7 @@ class _EntryCodeScreenState extends State<EntryCodeScreen> {
           AppErrorState(
             message: 'Não tens bilhete para este evento',
             retryLabel: 'Voltar aos meus eventos',
-            onRetry: () => context.go('/eventos'),
+            onRetry: () => context.go('/events'),
           ),
         ],
       );

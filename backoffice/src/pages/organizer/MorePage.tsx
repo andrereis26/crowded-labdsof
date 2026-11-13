@@ -3,8 +3,8 @@ import { Link } from 'react-router'
 import { PageHeader, type Icon } from '../../ui/components'
 
 const items: { label: string; to: string; icon: Icon }[] = [
-  { label: 'Pedidos', to: '/organizacao/pedidos', icon: MessageSquare },
-  { label: 'Definições', to: '/organizacao/definicoes', icon: Settings },
+  { label: 'Pedidos', to: '/organization/requests', icon: MessageSquare },
+  { label: 'Definições', to: '/organization/settings', icon: Settings },
 ]
 
 /** "Mais" tab on phones: the sections that do not fit in the tab bar. */

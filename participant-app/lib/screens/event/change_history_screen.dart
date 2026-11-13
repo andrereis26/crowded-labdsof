@@ -81,7 +81,7 @@ class ChangeHistoryScreen extends StatelessWidget {
                   last: index == event.changes.length - 1,
                   onTap: change.kind != ChangeKind.published
                       ? () => context.push(
-                          '/evento/${event.id}/alteracao/${change.id}',
+                          '/event/${event.id}/change/${change.id}',
                         )
                       : null,
                 ),

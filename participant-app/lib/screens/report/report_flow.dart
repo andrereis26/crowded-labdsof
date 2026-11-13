@@ -32,10 +32,10 @@ Future<void> startReport(
 
   if (!isDesktopLayout(context)) {
     if (blocked) {
-      context.push('/evento/${event.id}/reporte?estado=longe');
+      context.push('/event/${event.id}/report-result?status=away');
     } else {
-      final query = category == null ? '' : '?categoria=${category.name}';
-      context.push('/evento/${event.id}/reportar$query');
+      final query = category == null ? '' : '?category=${category.name}';
+      context.push('/event/${event.id}/report$query');
     }
     return;
   }

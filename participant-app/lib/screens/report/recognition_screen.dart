@@ -26,13 +26,13 @@ class RecognitionScreen extends StatelessWidget {
           AppErrorState(
             message: 'Não encontrámos este reconhecimento',
             retryLabel: 'Voltar aos meus eventos',
-            onRetry: () => context.go('/eventos'),
+            onRetry: () => context.go('/events'),
           ),
         ],
       );
     }
     final eventName = store.eventById(recognition.eventId)?.name ?? 'evento';
-    void openEvent() => context.go('/evento/${recognition.eventId}');
+    void openEvent() => context.go('/event/${recognition.eventId}');
     final header = AppResultHeader(
       icon: Icons.workspace_premium_outlined,
       title: 'O teu reporte ajudou!',

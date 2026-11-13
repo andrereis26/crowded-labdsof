@@ -8,9 +8,9 @@ import '../../utils/pt_format.dart';
 import '../shared/shell.dart';
 import 'import_screen.dart';
 
-void _toMyEvents(BuildContext context) => context.go('/eventos');
+void _toMyEvents(BuildContext context) => context.go('/events');
 
-void _uploadAnother(BuildContext context) => context.go('/importar');
+void _uploadAnother(BuildContext context) => context.go('/import');
 
 /// P2a · Bilhete adicionado: the event code matched a registered event, so
 /// the ticket was added without a review step. Shows the event
@@ -86,7 +86,7 @@ class TicketAddedScreen extends StatelessWidget {
         ),
         AppButton(
           label: 'Ver evento',
-          onPressed: () => context.go('/evento/${event.id}'),
+          onPressed: () => context.go('/event/${event.id}'),
         ),
         AppButton.secondary(
           label: 'Não é o teu evento? Remover',
@@ -256,8 +256,8 @@ class ImportErrorScreen extends StatelessWidget {
   final ImportOutcome outcome;
 
   static ImportOutcome outcomeFor(String slug) => switch (slug) {
-    'sem-qr' => ImportOutcome.noQrCode,
-    'outra-conta' => ImportOutcome.linkedToAnotherAccount,
+    'no-qr' => ImportOutcome.noQrCode,
+    'other-account' => ImportOutcome.linkedToAnotherAccount,
     _ => ImportOutcome.eventNotOnCrowded,
   };
 

@@ -53,7 +53,7 @@ class _SignInScreenState extends State<SignInScreen> {
       _busy = false;
       _error = error;
     });
-    if (error == null) context.go('/eventos');
+    if (error == null) context.go('/events');
   }
 
   @override

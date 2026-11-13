@@ -54,11 +54,11 @@ export function LivePage({
 }) {
   const actions = (
     <>
-      <ButtonLink to="/organizacao/ao-vivo/lotacao" variant="secondary" icon={Pencil}>
+      <ButtonLink to="/organization/live/crowd" variant="secondary" icon={Pencil}>
         <span className="max-sm:hidden">Atualizar lotação e filas</span>
         <span className="sm:hidden">Lotação e filas</span>
       </ButtonLink>
-      <ButtonLink to="/organizacao/alertas" icon={Megaphone}>
+      <ButtonLink to="/organization/alerts" icon={Megaphone}>
         Enviar alerta
       </ButtonLink>
     </>
@@ -145,7 +145,7 @@ export function LivePage({
           title="Filas por ponto"
           titleClassName="text-base"
           className="gap-3.5 max-lg:hidden lg:w-[400px] lg:shrink-0"
-          action={<TextLink to="/organizacao/ao-vivo/lotacao">Editar</TextLink>}
+          action={<TextLink to="/organization/live/crowd">Editar</TextLink>}
         >
           {live.queues
             .filter((q) => q.open)
@@ -160,7 +160,7 @@ export function LivePage({
           title="Incidentes recentes"
           titleClassName="text-base"
           className="min-w-0 flex-1 gap-0.5"
-          action={<TextLink to="/organizacao/incidentes">Ver todos ({open.length})</TextLink>}
+          action={<TextLink to="/organization/incidents">Ver todos ({open.length})</TextLink>}
         >
           <ul>
             {recent.slice(0, 3).map((i) => (
@@ -254,7 +254,7 @@ export function IncidentRow({
   return (
     <li className="border-b border-border last:border-b-0">
       <Link
-        to={`/organizacao/incidentes/${i.id}`}
+        to={`/organization/incidents/${i.id}`}
         className="flex items-center gap-3 py-3 hover:opacity-80"
       >
         <IconTile icon={incidentIcon(i)} className={categoryTile[i.category]} />

@@ -54,7 +54,7 @@ export function EventDetailPage({
     return (
       <p className="text-sm text-ink-secondary">
         Não encontrámos este evento.{' '}
-        <Link to="/organizacao/eventos" className="font-semibold text-primary">
+        <Link to="/organization/events" className="font-semibold text-primary">
           Voltar aos eventos
         </Link>
       </p>
@@ -93,7 +93,7 @@ export function EventDetailPage({
               >
                 Alterar ou cancelar
               </Button>
-              <ButtonLink to={`/organizacao/eventos/${event.id}/editar`} size="lg" icon={Pencil}>
+              <ButtonLink to={`/organization/events/${event.id}/edit`} size="lg" icon={Pencil}>
                 Editar
               </ButtonLink>
             </>
@@ -148,7 +148,7 @@ export function EventDetailPage({
         <div className="flex flex-wrap gap-2.5 pt-1">
           {event.status === 'live' && (
             <ButtonLink
-              to="/organizacao/ao-vivo"
+              to="/organization/live"
               variant="secondary"
               size="sm"
               icon={ChartNoAxesColumn}

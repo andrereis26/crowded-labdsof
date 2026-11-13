@@ -48,7 +48,7 @@ class _AccessCodeScreenState extends State<AccessCodeScreen> {
       );
       return;
     }
-    context.go('/evento/${event.id}');
+    context.go('/event/${event.id}');
   }
 
   @override

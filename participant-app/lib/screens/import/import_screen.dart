@@ -15,11 +15,11 @@ class ImportScreen extends StatelessWidget {
   /// Screen that shows [outcome]: P2a when the ticket was added, P2b
   /// otherwise.
   static String pathFor(ImportOutcome outcome) => switch (outcome) {
-    ImportOutcome.added => '/importar/adicionado',
-    ImportOutcome.needsEventCode => '/importar/codigo',
-    ImportOutcome.noQrCode => '/importar/erro/sem-qr',
-    ImportOutcome.eventNotOnCrowded => '/importar/erro/sem-crowded',
-    ImportOutcome.linkedToAnotherAccount => '/importar/erro/outra-conta',
+    ImportOutcome.added => '/import/added',
+    ImportOutcome.needsEventCode => '/import/code',
+    ImportOutcome.noQrCode => '/import/error/no-qr',
+    ImportOutcome.eventNotOnCrowded => '/import/error/not-on-crowded',
+    ImportOutcome.linkedToAnotherAccount => '/import/error/other-account',
   };
 
   void _import(BuildContext context, TicketOrigin origin) {
@@ -58,7 +58,7 @@ class ImportScreen extends StatelessWidget {
           child: AppInlineLink(
             label: 'Evento sem bilhete? Inserir código de acesso',
             icon: Icons.qr_code_scanner,
-            onPressed: () => context.push('/codigo-de-acesso'),
+            onPressed: () => context.push('/access-code'),
           ),
         ),
       ],

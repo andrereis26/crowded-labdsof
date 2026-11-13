@@ -36,7 +36,7 @@ class ReportScreen extends StatelessWidget {
           AppErrorState(
             message: 'Não encontrámos este evento',
             retryLabel: 'Voltar aos meus eventos',
-            onRetry: () => context.go('/eventos'),
+            onRetry: () => context.go('/events'),
           ),
         ],
       );
@@ -51,7 +51,7 @@ class ReportScreen extends StatelessWidget {
           nearVenue: store.isNearVenue(event),
           initialCategory: category,
           onSent: (report) => context.pushReplacement(
-            '/evento/${report.eventId}/reporte?estado=enviado',
+            '/event/${report.eventId}/report-result?status=sent',
           ),
           onCancel: () => AppPage.goBack(context),
         ),

@@ -69,7 +69,7 @@ export function RequestPage({ event }: { event: OrgEvent }) {
   return (
     <form onSubmit={publish} noValidate className="flex flex-col gap-4 lg:gap-5">
       <div className="-mx-4 -mt-4 grid grid-cols-[1fr_auto_1fr] items-center border-b border-border bg-surface px-4 py-3 lg:hidden">
-        <Link to="/organizacao/mais" className="justify-self-start text-[17px] text-primary">
+        <Link to="/organization/more" className="justify-self-start text-[17px] text-primary">
           Cancelar
         </Link>
         <p className="text-[17px] font-semibold">Novo pedido</p>

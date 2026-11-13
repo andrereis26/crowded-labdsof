@@ -138,9 +138,9 @@ export default function App({
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/entrar" replace />} />
+      <Route path="/" element={<Navigate to="/sign-in" replace />} />
       <Route
-        path="/entrar"
+        path="/sign-in"
         element={
           <SignInPage
             signIn={signIn}
@@ -152,7 +152,7 @@ export default function App({
         }
       />
       <Route
-        path="/definir-palavra-passe"
+        path="/new-password"
         element={
           <NewPasswordPage
             pending={pending}
@@ -164,7 +164,7 @@ export default function App({
           />
         }
       />
-      <Route path="/organizacao/*" element={<OrganizerApp now={now} />} />
+      <Route path="/organization/*" element={<OrganizerApp now={now} />} />
       <Route
         path="*"
         element={
@@ -172,7 +172,7 @@ export default function App({
             <AdminLayout>
               <Routes>
                 <Route
-                  path="/organizacoes"
+                  path="/organizations"
                   element={
                     <>
                       {loadError && (
@@ -202,7 +202,7 @@ export default function App({
               </Routes>
             </AdminLayout>
           ) : (
-            <Navigate to="/entrar" replace />
+            <Navigate to="/sign-in" replace />
           )
         }
       />

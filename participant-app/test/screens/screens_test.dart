@@ -204,7 +204,7 @@ const _desktop = Size(1440, 1000);
 
 Future<AppStore> _pump(
   WidgetTester tester, {
-  String location = '/eventos',
+  String location = '/events',
   Size size = _mobile,
   bool signedIn = true,
   AuthApi? auth,
@@ -298,7 +298,7 @@ void main() {
     testWidgets('adds a PDF ticket whose event code matches (P2a)', (
       tester,
     ) async {
-      final store = await _pump(tester, location: '/importar');
+      final store = await _pump(tester, location: '/import');
 
       await tester.tap(find.text('PDF do bilhete'));
       await tester.pumpAndSettle();
@@ -317,7 +317,7 @@ void main() {
     testWidgets('asks for the event code, pre-filled, for an image (P2b)', (
       tester,
     ) async {
-      final store = await _pump(tester, location: '/importar');
+      final store = await _pump(tester, location: '/import');
 
       await tester.tap(find.text('Captura de ecrã ou foto'));
       await tester.pumpAndSettle();
@@ -337,7 +337,7 @@ void main() {
     testWidgets('does not store a ticket for an event not on Crowded', (
       tester,
     ) async {
-      final store = await _pump(tester, location: '/importar');
+      final store = await _pump(tester, location: '/import');
 
       await tester.tap(find.text('Captura de ecrã ou foto'));
       await tester.pumpAndSettle();
@@ -349,7 +349,7 @@ void main() {
     });
 
     testWidgets('explains a ticket without a QR code', (tester) async {
-      await _pump(tester, location: '/importar/erro/sem-qr');
+      await _pump(tester, location: '/import/error/no-qr');
       expect(
         find.text('Não encontrámos o código QR do bilhete'),
         findsOneWidget,
@@ -357,7 +357,7 @@ void main() {
     });
 
     testWidgets('explains a ticket linked to another account', (tester) async {
-      await _pump(tester, location: '/importar/erro/outra-conta');
+      await _pump(tester, location: '/import/error/other-account');
       expect(
         find.text('Este bilhete já está ligado a outra conta'),
         findsOneWidget,
@@ -369,7 +369,7 @@ void main() {
     testWidgets('joins the event from the QR code on the poster', (
       tester,
     ) async {
-      final store = await _pump(tester, location: '/codigo-de-acesso');
+      final store = await _pump(tester, location: '/access-code');
 
       await tester.tap(find.text('Ler código QR'));
       await tester.pumpAndSettle();
@@ -378,7 +378,7 @@ void main() {
     });
 
     testWidgets('says when the code is not found', (tester) async {
-      await _pump(tester, location: '/codigo-de-acesso');
+      await _pump(tester, location: '/access-code');
 
       await tester.enterText(find.byType(TextField), 'SAOJOA024');
       await tester.tap(find.text('Abrir evento'));
@@ -387,7 +387,7 @@ void main() {
     });
 
     testWidgets('joins the public event and opens its page', (tester) async {
-      final store = await _pump(tester, location: '/codigo-de-acesso');
+      final store = await _pump(tester, location: '/access-code');
 
       await tester.enterText(find.byType(TextField), 'saojoao24');
       await tester.tap(find.text('Abrir evento'));
@@ -398,7 +398,7 @@ void main() {
   });
 
   testWidgets('P8 shows a left event instead of its page', (tester) async {
-    await _pump(tester, location: '/evento/mercado-outono');
+    await _pump(tester, location: '/event/mercado-outono');
 
     expect(find.text('Já não estás ligado a este evento'), findsOneWidget);
     expect(find.textContaining('Mercado de Outono · saíste'), findsOneWidget);
@@ -407,7 +407,7 @@ void main() {
 
   group('P5 event page', () {
     testWidgets('shows live information on the event day', (tester) async {
-      await _pump(tester, location: '/evento/festival-margens');
+      await _pump(tester, location: '/event/festival-margens');
 
       expect(find.text('Agora no recinto'), findsOneWidget);
       expect(find.text('AVISO AMARELO · IPMA'), findsOneWidget);
@@ -421,7 +421,7 @@ void main() {
     });
 
     testWidgets('shows a countdown on other days', (tester) async {
-      await _pump(tester, location: '/evento/orquestra-sinfonica');
+      await _pump(tester, location: '/event/orquestra-sinfonica');
 
       expect(find.text('Faltam 28 dias'), findsOneWidget);
       expect(find.text('Agora no recinto'), findsNothing);
@@ -430,7 +430,7 @@ void main() {
     testWidgets('shows saved data and disables reports offline', (
       tester,
     ) async {
-      final store = await _pump(tester, location: '/evento/festival-margens');
+      final store = await _pump(tester, location: '/event/festival-margens');
       store.setOffline(true);
       await tester.pumpAndSettle();
 
@@ -440,7 +440,7 @@ void main() {
     });
 
     testWidgets('links to the participant estimates', (tester) async {
-      await _pump(tester, location: '/evento/festival-margens');
+      await _pump(tester, location: '/event/festival-margens');
 
       await tester.ensureVisible(find.text('Estimativas de participantes · 2'));
 
@@ -451,7 +451,7 @@ void main() {
     });
 
     testWidgets('removes the ticket from the event page', (tester) async {
-      final store = await _pump(tester, location: '/evento/a-tempestade');
+      final store = await _pump(tester, location: '/event/a-tempestade');
 
       await tester.tap(find.bySemanticsLabel('Mais opções'));
       await tester.pumpAndSettle();
@@ -462,7 +462,7 @@ void main() {
     });
 
     testWidgets('P10 asks for location before reporting', (tester) async {
-      await _pump(tester, location: '/evento/festival-margens');
+      await _pump(tester, location: '/event/festival-margens');
 
       await tester.tap(find.byType(AppReportButton));
       await tester.pumpAndSettle();
@@ -475,7 +475,7 @@ void main() {
   });
 
   testWidgets('P6 → P7 shows the official change', (tester) async {
-    await _pump(tester, location: '/evento/a-tempestade/historico');
+    await _pump(tester, location: '/event/a-tempestade/history');
 
     expect(find.text('ESTADO ATUAL'), findsOneWidget);
     expect(find.text('Data alterada'), findsOneWidget);
@@ -495,7 +495,7 @@ void main() {
     final api = _FakeNotificationsApi();
     final store = await _pump(
       tester,
-      location: '/notificacoes',
+      location: '/notifications',
       notifications: api,
     );
     expect(store.unreadCount, 2);
@@ -551,7 +551,7 @@ void main() {
     final api = _FakeNotificationsApi()..failListWith = 'NETWORK';
     final store = await _pump(
       tester,
-      location: '/notificacoes',
+      location: '/notifications',
       notifications: api,
     );
     expect(
@@ -713,14 +713,14 @@ void main() {
 
   group('C1 sign in', () {
     testWidgets('signed-out users are sent to C1', (tester) async {
-      await _pump(tester, location: '/eventos', signedIn: false);
+      await _pump(tester, location: '/events', signedIn: false);
 
       expect(find.text('Sabe o que se passa nos teus eventos'), findsOneWidget);
       expect(find.text('Esqueci-me da palavra-passe'), findsOneWidget);
     });
 
     testWidgets('validates and signs in', (tester) async {
-      final store = await _pump(tester, location: '/entrar', signedIn: false);
+      final store = await _pump(tester, location: '/sign-in', signedIn: false);
 
       await tester.enterText(find.byType(TextField).at(0), 'ines@email');
       await tester.enterText(find.byType(TextField).at(1), 'curta');
@@ -749,7 +749,7 @@ void main() {
     testWidgets('sends an organization member to the backoffice', (
       tester,
     ) async {
-      final store = await _pump(tester, location: '/entrar', signedIn: false);
+      final store = await _pump(tester, location: '/sign-in', signedIn: false);
 
       await tester.enterText(
         find.byType(TextField).at(0),
@@ -770,7 +770,7 @@ void main() {
       tester,
     ) async {
       final auth = _FakeAuthApi()..failWith = 'NETWORK';
-      await _pump(tester, location: '/entrar', signedIn: false, auth: auth);
+      await _pump(tester, location: '/sign-in', signedIn: false, auth: auth);
 
       await tester.enterText(find.byType(TextField).at(0), _email);
       await tester.enterText(find.byType(TextField).at(1), 'palavra-secreta');
@@ -797,7 +797,7 @@ void main() {
     testWidgets('creates an account without a name and signs in', (
       tester,
     ) async {
-      final store = await _pump(tester, location: '/entrar', signedIn: false);
+      final store = await _pump(tester, location: '/sign-in', signedIn: false);
 
       await tester.tap(find.text('Criar conta').first);
       await tester.pumpAndSettle();
@@ -863,7 +863,7 @@ void main() {
     });
 
     testWidgets('refuses an email that already has an account', (tester) async {
-      await _pump(tester, location: '/entrar', signedIn: false);
+      await _pump(tester, location: '/sign-in', signedIn: false);
 
       await tester.tap(find.text('Criar conta').first);
       await tester.pumpAndSettle();
@@ -882,7 +882,7 @@ void main() {
   });
 
   testWidgets('C0 lists the account menu and signs out to C1', (tester) async {
-    final store = await _pump(tester, location: '/conta');
+    final store = await _pump(tester, location: '/account');
 
     expect(find.text(_email), findsOneWidget);
     expect(find.text('Contribuições'), findsOneWidget);
@@ -896,7 +896,7 @@ void main() {
   });
 
   testWidgets('C2 updates notification preferences', (tester) async {
-    final store = await _pump(tester, location: '/conta/notificacoes');
+    final store = await _pump(tester, location: '/account/notifications');
 
     expect(find.text('Só alterações oficiais'), findsOneWidget);
     await tester.tap(find.text('Avisos meteorológicos'));
@@ -917,7 +917,7 @@ void main() {
   });
 
   testWidgets('C3 deletes the account only after confirmation', (tester) async {
-    final store = await _pump(tester, location: '/conta/apagar');
+    final store = await _pump(tester, location: '/account/delete');
 
     expect(
       find.text('4 bilhetes e os respetivos códigos de entrada'),
@@ -959,7 +959,7 @@ void main() {
     testWidgets('sends a queue report and shows what happens next', (
       tester,
     ) async {
-      final store = await _pump(tester, location: '/evento/festival-margens');
+      final store = await _pump(tester, location: '/event/festival-margens');
       final before = store.contributions.length;
       await openReport(tester);
 
@@ -1000,7 +1000,7 @@ void main() {
     });
 
     testWidgets('away from the venue only allows lost items', (tester) async {
-      final store = await _pump(tester, location: '/evento/festival-margens');
+      final store = await _pump(tester, location: '/event/festival-margens');
       store.setAwayFromVenue(true);
       await openReport(tester);
 
@@ -1014,7 +1014,7 @@ void main() {
     });
 
     testWidgets('opens the form in a dialog on desktop', (tester) async {
-      await _pump(tester, location: '/evento/festival-margens', size: _desktop);
+      await _pump(tester, location: '/event/festival-margens', size: _desktop);
       await openReport(tester);
 
       expect(find.byType(Dialog), findsOneWidget);
@@ -1030,7 +1030,7 @@ void main() {
   ) async {
     final store = await _pump(
       tester,
-      location: '/evento/festival-margens?confirmar=c-porta-c',
+      location: '/event/festival-margens?confirm=c-porta-c',
     );
     await tester.tap(find.text('Permitir localização'));
     await tester.pumpAndSettle();
@@ -1049,7 +1049,7 @@ void main() {
   });
 
   testWidgets('P14 lists confirmed estimates', (tester) async {
-    await _pump(tester, location: '/evento/festival-margens/estimativas');
+    await _pump(tester, location: '/event/festival-margens/estimates');
 
     expect(find.text('Fila nos WC junto ao palco · 15–20 min'), findsOneWidget);
     expect(find.text('Rampa da entrada Norte bloqueada'), findsOneWidget);
@@ -1057,7 +1057,7 @@ void main() {
   });
 
   testWidgets('P15 shows the impact of a helpful report', (tester) async {
-    await _pump(tester, location: '/reconhecimento/r-agua');
+    await _pump(tester, location: '/recognition/r-agua');
 
     expect(find.text('O teu reporte ajudou!'), findsOneWidget);
     expect(find.text('Problema resolvido em 18 min'), findsOneWidget);
@@ -1067,7 +1067,7 @@ void main() {
   testWidgets('P17 answers a request and shares an idea', (tester) async {
     final store = await _pump(
       tester,
-      location: '/evento/festival-margens/pedidos',
+      location: '/event/festival-margens/requests',
     );
     expect(find.text('2 pedidos da organização · 1 urgente'), findsOneWidget);
 
@@ -1086,7 +1086,7 @@ void main() {
   });
 
   testWidgets('P18 shows transport options with disruptions', (tester) async {
-    await _pump(tester, location: '/evento/festival-margens/como-chegar');
+    await _pump(tester, location: '/event/festival-margens/directions');
 
     expect(find.text('Parque da Cidade · Porta A'), findsOneWidget);
     expect(find.text('Autocarro 502'), findsOneWidget);
@@ -1096,7 +1096,7 @@ void main() {
 
   group('P19 entry code', () {
     testWidgets('shows the code in the app', (tester) async {
-      await _pump(tester, location: '/evento/festival-margens/codigo');
+      await _pump(tester, location: '/event/festival-margens/code');
 
       expect(find.byType(EntryCodeImage), findsOneWidget);
       expect(find.text('Ref. •••• 4821'), findsOneWidget);
@@ -1108,7 +1108,7 @@ void main() {
     ) async {
       await _pump(
         tester,
-        location: '/evento/festival-margens/codigo',
+        location: '/event/festival-margens/code',
         size: _desktop,
       );
       expect(find.byType(EntryCodeImage), findsNothing);
@@ -1132,7 +1132,7 @@ void main() {
   });
 
   testWidgets('P20 filters contributions', (tester) async {
-    await _pump(tester, location: '/conta/contribuicoes');
+    await _pump(tester, location: '/account/contributions');
 
     expect(find.text('FESTIVAL MARGENS · HOJE'), findsOneWidget);
     expect(find.text('Fila longa na Porta C'), findsOneWidget);
@@ -1147,38 +1147,38 @@ void main() {
   for (final (name, size) in [('mobile', _mobile), ('desktop', _desktop)]) {
     testWidgets('every screen renders on $name', (tester) async {
       for (final location in [
-        '/eventos',
-        '/conta',
-        '/notificacoes',
-        '/importar',
-        '/importar/codigo',
-        '/importar/adicionado',
-        '/importar/erro/sem-qr',
-        '/importar/erro/sem-crowded',
-        '/importar/erro/outra-conta',
-        '/codigo-de-acesso',
-        '/sem-ligacao/mercado-outono',
-        '/reportar',
-        '/evento/festival-margens',
-        '/evento/jazz-no-parque',
-        '/evento/a-tempestade',
-        '/evento/a-tempestade/historico',
-        '/evento/a-tempestade/alteracao/tempestade-date',
-        '/evento/feira-medieval',
-        '/evento/nao-existe',
-        '/conta/notificacoes',
-        '/conta/apagar',
-        '/evento/festival-margens/reportar',
-        '/evento/festival-margens/reporte?estado=enviado',
-        '/evento/festival-margens/reporte?estado=longe',
-        '/evento/festival-margens/estimativas',
-        '/reconhecimento/r-agua',
-        '/evento/festival-margens/pedidos',
-        '/evento/festival-margens/como-chegar',
-        '/evento/feira-medieval/como-chegar',
-        '/evento/festival-margens/codigo',
-        '/evento/jazz-no-parque/codigo',
-        '/conta/contribuicoes',
+        '/events',
+        '/account',
+        '/notifications',
+        '/import',
+        '/import/code',
+        '/import/added',
+        '/import/error/no-qr',
+        '/import/error/not-on-crowded',
+        '/import/error/other-account',
+        '/access-code',
+        '/disconnected/mercado-outono',
+        '/report',
+        '/event/festival-margens',
+        '/event/jazz-no-parque',
+        '/event/a-tempestade',
+        '/event/a-tempestade/history',
+        '/event/a-tempestade/change/tempestade-date',
+        '/event/feira-medieval',
+        '/event/nao-existe',
+        '/account/notifications',
+        '/account/delete',
+        '/event/festival-margens/report',
+        '/event/festival-margens/report-result?status=sent',
+        '/event/festival-margens/report-result?status=away',
+        '/event/festival-margens/estimates',
+        '/recognition/r-agua',
+        '/event/festival-margens/requests',
+        '/event/festival-margens/directions',
+        '/event/feira-medieval/directions',
+        '/event/festival-margens/code',
+        '/event/jazz-no-parque/code',
+        '/account/contributions',
       ]) {
         await _pump(tester, location: location, size: size);
         expect(tester.takeException(), isNull, reason: location);
