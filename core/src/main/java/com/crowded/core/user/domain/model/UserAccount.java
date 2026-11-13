@@ -147,17 +147,59 @@ public final class UserAccount {
    *
    * @param passwordMatches whether the password given matched this account's hash
    * @throws NotAuthenticatedException when the password is wrong or the account is deactivated
-   * @throws NotAllowedException when the account still has its temporary password
+   * @throws NotAllowedException when the account still has its temporary password, or it expired
    */
   public void signIn(boolean passwordMatches, Instant now) {
     if (!passwordMatches || !active) {
       throw invalidCredentials();
     }
     if (mustChangePassword) {
+      checkTemporaryPasswordWorks(now);
       throw new NotAllowedException(
           "PASSWORD_CHANGE_REQUIRED", "Set a new password before signing in.");
     }
     lastSignedInAt = now;
+  }
+
+  /**
+   * Replaces the temporary password with one the member chose, and records the sign-in it allows.
+   * The temporary password stops working.
+   *
+   * @param temporaryMatches whether the temporary password given matched this account's hash
+   * @param reusesTemporary whether the new password is the temporary one
+   * @param newPasswordHash the new password's hash; the password meets the rule ({@link Password})
+   * @throws NotAuthenticatedException when the temporary password is wrong or the account is
+   *     deactivated
+   * @throws NotAllowedException when the account has no temporary password, or it expired
+   * @throws RuleViolationException when the new password is the temporary one
+   */
+  public void replaceTemporaryPassword(
+      boolean temporaryMatches, boolean reusesTemporary, String newPasswordHash, Instant now) {
+    if (!temporaryMatches || !active) {
+      throw invalidCredentials();
+    }
+    if (!mustChangePassword) {
+      throw new NotAllowedException(
+          "NO_TEMPORARY_PASSWORD", "This account has no temporary password to replace.");
+    }
+    checkTemporaryPasswordWorks(now);
+    if (reusesTemporary) {
+      throw new RuleViolationException(
+          "PASSWORD_UNCHANGED", "Choose a password other than the temporary one.");
+    }
+    passwordHash = Objects.requireNonNull(newPasswordHash, "newPasswordHash");
+    mustChangePassword = false;
+    temporaryPasswordExpiresAt = null;
+    lastSignedInAt = now;
+  }
+
+  /** A temporary password works for 7 days; then only the administrator can issue a new one. */
+  private void checkTemporaryPasswordWorks(Instant now) {
+    if (!now.isBefore(temporaryPasswordExpiresAt)) {
+      throw new NotAllowedException(
+          "TEMPORARY_PASSWORD_EXPIRED",
+          "The temporary password expired. Ask the administrator for a new one.");
+    }
   }
 
   /**

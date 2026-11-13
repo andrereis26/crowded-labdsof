@@ -1,15 +1,15 @@
-/** Platform administration (A2) and sign-in (C1, C4), backed by demo data
- * until the Core API exists. Administrators create the organizations and their
- * members; a member gets a temporary password, valid for 7 days, and chooses a
- * new one at the first sign-in. */
+/** Platform administration (A2) and the new password of C4. Administrators
+ * create the organizations and their members; a member gets a temporary
+ * password, valid for 7 days, and chooses a new one at the first sign-in. The
+ * demo data here serves the tests and the screens Core does not feed yet. */
 
 import festivalImage from '../assets/festival-margens-2026.jpg'
+import { meetsPasswordRule } from './passwordStrength'
 
 const DAY = 24 * 3600000
 
 /** How long a temporary password works. */
 export const TEMPORARY_PASSWORD_DAYS = 7
-export const MIN_PASSWORD_LENGTH = 12
 
 export const admin = {
   name: 'Ana Lopes',
@@ -263,8 +263,8 @@ export function validateNewPassword(
   confirmation: string,
   temporary?: string,
 ): { password?: string; confirmation?: string } {
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return { password: `Usa pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` }
+  if (!meetsPasswordRule(password)) {
+    return { password: 'A palavra-passe não cumpre os requisitos de segurança indicados.' }
   }
   if (password === temporary) {
     return { password: 'Escolhe uma palavra-passe diferente da temporária.' }

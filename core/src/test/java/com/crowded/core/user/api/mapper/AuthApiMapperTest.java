@@ -2,11 +2,13 @@ package com.crowded.core.user.api.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.crowded.core.user.api.dto.ChoosePasswordRequest;
 import com.crowded.core.user.api.dto.RegisterRequest;
 import com.crowded.core.user.api.dto.RegisteredResponse;
 import com.crowded.core.user.api.dto.SignInRequest;
 import com.crowded.core.user.api.dto.SignInResponse;
 import com.crowded.core.user.api.dto.SignedInUserResponse;
+import com.crowded.core.user.application.dto.ChoosePasswordCommand;
 import com.crowded.core.user.application.dto.RegisterCommand;
 import com.crowded.core.user.application.dto.SignInCommand;
 import com.crowded.core.user.application.dto.SignedIn;
@@ -27,6 +29,13 @@ class AuthApiMapperTest {
         .isEqualTo(new RegisterCommand("a@b.pt", "segredo-123", "203.0.113.7"));
     assertThat(mapper.toCommand(new SignInRequest("a@b.pt", "segredo-123"), "203.0.113.7"))
         .isEqualTo(new SignInCommand("a@b.pt", "segredo-123", "203.0.113.7"));
+    assertThat(
+            mapper.toCommand(
+                new ChoosePasswordRequest("a@b.pt", "abc-def-ghij", "Nova-pr0pria"), // ggignore
+                "203.0.113.7"))
+        .isEqualTo(
+            new ChoosePasswordCommand(
+                "a@b.pt", "abc-def-ghij", "Nova-pr0pria", "203.0.113.7")); // ggignore
   }
 
   @Test

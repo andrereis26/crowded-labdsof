@@ -15,6 +15,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.crowded.core.audit.application.service.AuditLog;
 import com.crowded.core.shared.domain.exception.ConflictException;
 import com.crowded.core.shared.domain.exception.DomainException;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
@@ -22,6 +23,7 @@ import com.crowded.core.shared.domain.exception.NotAuthenticatedException;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
 import com.crowded.core.shared.domain.exception.TooManyRequestsException;
 import com.crowded.core.shared.domain.repository.RateLimiter;
+import com.crowded.core.user.application.dto.ChoosePasswordCommand;
 import com.crowded.core.user.application.dto.RegisterCommand;
 import com.crowded.core.user.application.dto.SignInCommand;
 import com.crowded.core.user.application.dto.SignedIn;
@@ -38,6 +40,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
@@ -50,12 +53,15 @@ class AuthServiceTest {
   private static final Instant NOW = Instant.parse("2026-11-11T10:00:00Z");
   private static final String ADDRESS = "203.0.113.7";
   private static final String PASSWORD = "Uma-frase-l0nga"; // ggignore
+  private static final String CHOSEN = "Outra-frase-l0nga"; // ggignore
+  private static final String MEMBER_EMAIL = "novo@ribeira-live.test";
 
   private final UserRepository users = mock(UserRepository.class);
   private final PasswordHasher passwords = mock(PasswordHasher.class);
   private final TokenIssuer tokens = mock(TokenIssuer.class);
   private final RateLimiter limiter = mock(RateLimiter.class);
   private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
+  private final AuditLog audit = mock(AuditLog.class);
   private AuthService service;
 
   @BeforeEach
@@ -66,7 +72,16 @@ class AuthServiceTest {
     when(limiter.tryAcquire(anyString(), anyInt(), any())).thenReturn(true);
     service =
         new AuthService(
-            users, passwords, tokens, limiter, Clock.fixed(NOW, ZoneOffset.UTC), meters, 10, 30, 5);
+            users,
+            passwords,
+            tokens,
+            limiter,
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            meters,
+            audit,
+            10,
+            30,
+            5);
   }
 
   @Test
@@ -218,6 +233,97 @@ class AuthServiceTest {
   }
 
   @Test
+  void refusesAnExpiredTemporaryPasswordAndSaysWhy() {
+    UserAccount member = expiredMember();
+    when(users.findAccountByEmail(new Email(MEMBER_EMAIL))).thenReturn(Optional.of(member));
+
+    assertRefused(
+        () -> service.signIn(new SignInCommand(MEMBER_EMAIL, PASSWORD, ADDRESS)),
+        NotAllowedException.class,
+        "TEMPORARY_PASSWORD_EXPIRED");
+    assertThat(
+            meters
+                .counter("crowded.auth.sign-ins", "outcome", "temporary-password-expired")
+                .count())
+        .isOne();
+  }
+
+  @Test
+  void replacesTheTemporaryPasswordAndSignsTheMemberIn() {
+    UserAccount member = account(Role.ORGANIZATION_MEMBER, UUID.randomUUID(), true, true);
+    when(users.findAccountByEmail(new Email(MEMBER_EMAIL))).thenReturn(Optional.of(member));
+    IssuedToken token = new IssuedToken("jwt", NOW.plus(Duration.ofHours(1)));
+    when(tokens.issue(member.getId())).thenReturn(token);
+
+    SignedIn signedIn = service.replaceTemporaryPassword(choose(PASSWORD, CHOSEN));
+
+    assertThat(signedIn.token()).isEqualTo(token);
+    assertThat(signedIn.user()).isEqualTo(member.user());
+    assertThat(signedIn.mustChangePassword()).isFalse();
+    assertThat(member.getPasswordHash()).isEqualTo("hash:" + CHOSEN);
+    assertThat(member.hasTemporaryPassword()).isFalse();
+    assertThat(member.getLastSignedInAt()).isEqualTo(NOW);
+    verify(users).savePasswordChange(member);
+    verify(audit)
+        .record(member.getId(), null, "MEMBER_PASSWORD_CHOSEN", "User", member.getId(), Map.of());
+    verify(limiter).tryAcquire("sign-in:address:" + ADDRESS, 30, Duration.ofMinutes(15));
+    assertThat(meters.counter("crowded.auth.sign-ins", "outcome", "password-chosen").count())
+        .isOne();
+  }
+
+  @Test
+  void refusesToReplaceATemporaryPasswordWithAWeakOrTheSameOne() {
+    UserAccount member = account(Role.ORGANIZATION_MEMBER, UUID.randomUUID(), true, true);
+    when(users.findAccountByEmail(new Email(MEMBER_EMAIL))).thenReturn(Optional.of(member));
+
+    assertRefused(
+        () -> service.replaceTemporaryPassword(choose(PASSWORD, "sem-maiusculas1")), // ggignore
+        RuleViolationException.class,
+        "PASSWORD_TOO_WEAK");
+    assertRefused(
+        () -> service.replaceTemporaryPassword(choose(PASSWORD, PASSWORD)),
+        RuleViolationException.class,
+        "PASSWORD_UNCHANGED");
+    verify(users, never()).savePasswordChange(any());
+    verify(tokens, never()).issue(any());
+  }
+
+  @Test
+  void refusesToReplaceAWrongExpiredOrMissingTemporaryPassword() {
+    UserAccount member = account(Role.ORGANIZATION_MEMBER, UUID.randomUUID(), true, true);
+    UserAccount participant = account(Role.PARTICIPANT, null, true, false);
+    when(users.findAccountByEmail(new Email(MEMBER_EMAIL))).thenReturn(Optional.of(member));
+    when(users.findAccountByEmail(new Email("expirado@ribeira-live.test")))
+        .thenReturn(Optional.of(expiredMember()));
+    when(users.findAccountByEmail(new Email("ana@crowded.test")))
+        .thenReturn(Optional.of(participant));
+
+    assertThat(refusal(() -> service.replaceTemporaryPassword(choose("errada", CHOSEN))))
+        .isEqualTo(
+            refusal(
+                () ->
+                    service.replaceTemporaryPassword(
+                        new ChoosePasswordCommand(
+                            "ninguem@crowded.test", PASSWORD, CHOSEN, ADDRESS))));
+    assertRefused(
+        () ->
+            service.replaceTemporaryPassword(
+                new ChoosePasswordCommand(
+                    "expirado@ribeira-live.test", PASSWORD, CHOSEN, ADDRESS)), // ggignore
+        NotAllowedException.class,
+        "TEMPORARY_PASSWORD_EXPIRED");
+    assertRefused(
+        () ->
+            service.replaceTemporaryPassword(
+                new ChoosePasswordCommand("ana@crowded.test", PASSWORD, CHOSEN, ADDRESS)),
+        NotAllowedException.class,
+        "NO_TEMPORARY_PASSWORD");
+    verify(users, never()).savePasswordChange(any());
+    verify(tokens, never()).issue(any());
+    assertThat(meters.counter("crowded.auth.sign-ins", "outcome", "refused").count()).isEqualTo(2);
+  }
+
+  @Test
   void limitsSignInsPerAddressAndPerEmailWithoutStoringTheEmail() {
     when(limiter.tryAcquire(startsWith("sign-in:email:"), anyInt(), any())).thenReturn(false);
 
@@ -247,6 +353,26 @@ class AuthServiceTest {
         mustChangePassword ? NOW.plus(UserAccount.TEMPORARY_PASSWORD_LIFETIME) : null,
         null,
         NOW);
+  }
+
+  /** A member whose temporary password expired a second ago. */
+  private UserAccount expiredMember() {
+    return UserAccount.restore(
+        UUID.randomUUID(),
+        UUID.randomUUID(),
+        Role.ORGANIZATION_MEMBER,
+        "Rita",
+        new Email("x@crowded.test"),
+        "hash:" + PASSWORD,
+        true,
+        true,
+        NOW.minusSeconds(1),
+        null,
+        NOW.minus(UserAccount.TEMPORARY_PASSWORD_LIFETIME));
+  }
+
+  private static ChoosePasswordCommand choose(String temporary, String chosen) {
+    return new ChoosePasswordCommand(MEMBER_EMAIL, temporary, chosen, ADDRESS);
   }
 
   /** The refusal's code and message, to compare refusals. */

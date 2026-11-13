@@ -4,7 +4,7 @@ import axe from 'axe-core'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import App from '../App'
-import type { SignIn } from '../data/auth'
+import type { ChoosePassword, SignIn } from '../data/auth'
 
 /** WCAG 2.1 A and AA rules of axe. Colour contrast needs a real layout, which jsdom has not:
  * it is checked in the browser instead. */
@@ -59,5 +59,38 @@ describe('C1 sign-in accessibility', () => {
     await user.keyboard('errada{Enter}')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível entrar')
+  })
+})
+
+const temporary: SignIn = () => Promise.resolve({ kind: 'new-password' })
+const choosePassword: ChoosePassword = () =>
+  Promise.resolve({
+    kind: 'error',
+    title: 'Não foi possível guardar',
+    message: 'Demasiadas tentativas. Tenta novamente daqui a alguns minutos.',
+  })
+
+describe('C4 new password accessibility', () => {
+  it('has no WCAG 2.1 AA violations, with the strength meter and a refusal', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <MemoryRouter initialEntries={['/entrar']}>
+        <App now={new Date(2026, 10, 12)} signIn={temporary} choosePassword={choosePassword} />
+      </MemoryRouter>,
+    )
+    await user.type(screen.getByLabelText('Email'), 'novo@ribeira-live.test')
+    await user.type(screen.getByLabelText('Palavra-passe'), 'T7q-mK4-v9Px') // ggignore
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    await screen.findByRole('heading', { name: 'Define a tua nova palavra-passe' })
+    expect(await violations(container)).toEqual([])
+
+    await user.type(screen.getByLabelText('Nova palavra-passe'), 'Margens-1nverno') // ggignore
+    expect(screen.getByLabelText('Nova palavra-passe')).toHaveAccessibleDescription(
+      /A palavra-passe deve conter/,
+    )
+    await user.type(screen.getByLabelText('Confirmar palavra-passe'), 'Margens-1nverno') // ggignore
+    await user.keyboard('{Enter}')
+    await screen.findByRole('alert')
+    expect(await violations(container)).toEqual([])
   })
 })
