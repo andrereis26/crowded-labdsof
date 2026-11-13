@@ -19,6 +19,7 @@ import com.crowded.core.event.domain.model.EventProfile;
 import com.crowded.core.event.domain.model.QueuePoints;
 import com.crowded.core.event.domain.model.Schedule;
 import com.crowded.core.event.domain.model.Venue;
+import com.crowded.core.event.domain.repository.EventImageRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.event.domain.repository.ReportCategoryRepository;
 import com.crowded.core.event.domain.service.EventCodes;
@@ -55,6 +56,7 @@ public class EventManagementService {
   private final ReportCategoryRepository categories;
   private final UserRepository users;
   private final ConnectionRepository connections;
+  private final EventImageRepository images;
   private final EventAccess access;
   private final EventCodes codes;
   private final AuditLog audit;
@@ -66,6 +68,7 @@ public class EventManagementService {
       ReportCategoryRepository categories,
       UserRepository users,
       ConnectionRepository connections,
+      EventImageRepository images,
       EventAccess access,
       AuditLog audit,
       Clock clock,
@@ -74,6 +77,7 @@ public class EventManagementService {
     this.categories = categories;
     this.users = users;
     this.connections = connections;
+    this.images = images;
     this.access = access;
     this.codes = new EventCodes(events);
     this.audit = audit;
@@ -132,7 +136,7 @@ public class EventManagementService {
         event.getId(),
         organization,
         command.userId());
-    return new ManagedEvent(event, 0);
+    return new ManagedEvent(event, 0, null);
   }
 
   /**
@@ -189,7 +193,9 @@ public class EventManagementService {
         Map.of("fields", String.join(",", corrected)));
     log.info("Corrected {} of event {} by user {}", corrected, event.getId(), command.userId());
     return new ManagedEvent(
-        event, connections.countByEvent(List.of(event.getId())).getOrDefault(event.getId(), 0L));
+        event,
+        connections.countByEvent(List.of(event.getId())).getOrDefault(event.getId(), 0L),
+        images.findUpdatedAt(List.of(event.getId())).get(event.getId()));
   }
 
   /**
@@ -200,9 +206,11 @@ public class EventManagementService {
   @Transactional(readOnly = true)
   public List<ManagedEvent> listForMember(UUID userId) {
     List<Event> found = events.findByOrganization(member(userId).organizationManaged());
-    Map<UUID, Long> connected = connections.countByEvent(found.stream().map(Event::getId).toList());
+    List<UUID> ids = found.stream().map(Event::getId).toList();
+    Map<UUID, Long> connected = connections.countByEvent(ids);
+    Map<UUID, Instant> imaged = images.findUpdatedAt(ids);
     return found.stream()
-        .map(e -> new ManagedEvent(e, connected.getOrDefault(e.getId(), 0L)))
+        .map(e -> new ManagedEvent(e, connected.getOrDefault(e.getId(), 0L), imaged.get(e.getId())))
         .toList();
   }
 

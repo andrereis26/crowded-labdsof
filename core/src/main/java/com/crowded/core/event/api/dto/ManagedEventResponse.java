@@ -14,6 +14,8 @@ import java.util.UUID;
  * @param accessCode a public event's access code; null for a ticketed one
  * @param capacity null when it was never set
  * @param connectedUsers how many participants are connected to it now
+ * @param imageUpdatedAt when its image was uploaded, to fetch it again when it changes; null when
+ *     it has none
  */
 public record ManagedEventResponse(
     UUID id,
@@ -30,7 +32,8 @@ public record ManagedEventResponse(
     Integer capacity,
     long connectedUsers,
     List<String> queuePoints,
-    ConfirmationsResponse confirmations) {
+    ConfirmationsResponse confirmations,
+    Instant imageUpdatedAt) {
 
   public ManagedEventResponse {
     queuePoints = List.copyOf(queuePoints);

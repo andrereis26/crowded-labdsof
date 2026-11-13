@@ -27,6 +27,7 @@ import com.crowded.core.event.domain.model.ReportCategory;
 import com.crowded.core.event.domain.model.Schedule;
 import com.crowded.core.event.domain.model.StoredEvents;
 import com.crowded.core.event.domain.model.Venue;
+import com.crowded.core.event.domain.repository.EventImageRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.event.domain.repository.ReportCategoryRepository;
 import com.crowded.core.shared.domain.exception.ConflictException;
@@ -64,6 +65,7 @@ class EventManagementServiceTest {
   private final ReportCategoryRepository categories = mock(ReportCategoryRepository.class);
   private final UserRepository users = mock(UserRepository.class);
   private final ConnectionRepository connections = mock(ConnectionRepository.class);
+  private final EventImageRepository images = mock(EventImageRepository.class);
   private final AuditLog audit = mock(AuditLog.class);
   private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private final EventManagementService service =
@@ -72,6 +74,7 @@ class EventManagementServiceTest {
           categories,
           users,
           connections,
+          images,
           new EventAccess(events, users, connections, meters),
           audit,
           Clock.fixed(NOW, ZoneOffset.UTC),
@@ -92,7 +95,7 @@ class EventManagementServiceTest {
     ArgumentCaptor<Event> added = ArgumentCaptor.forClass(Event.class);
     verify(events).add(added.capture());
     Event event = added.getValue();
-    assertThat(registered).isEqualTo(new ManagedEvent(event, 0));
+    assertThat(registered).isEqualTo(new ManagedEvent(event, 0, null));
     assertThat(event.getOrganizationId()).isEqualTo(ORGANIZATION);
     assertThat(event.getState().status()).isEqualTo(EventStatus.SCHEDULED);
     assertThat(event.getAdmission().accessCode()).isEqualTo("SAOJOAO26");
@@ -244,9 +247,10 @@ class EventManagementServiceTest {
     Event second = StoredEvents.restore(UUID.randomUUID(), ORGANIZATION, scheduled());
     when(events.findByOrganization(ORGANIZATION)).thenReturn(List.of(first, second));
     when(connections.countByEvent(anyCollection())).thenReturn(Map.of(first.getId(), 7L));
+    when(images.findUpdatedAt(anyCollection())).thenReturn(Map.of(second.getId(), NOW));
 
     assertThat(service.listForMember(MEMBER))
-        .containsExactly(new ManagedEvent(first, 7), new ManagedEvent(second, 0));
+        .containsExactly(new ManagedEvent(first, 7, null), new ManagedEvent(second, 0, NOW));
     verify(connections).countByEvent(eq(List.of(first.getId(), second.getId())));
   }
 

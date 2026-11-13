@@ -38,6 +38,9 @@ const titles: [string, string][] = [
  * event until those pages read Core. */
 const DEMO_EVENT = 'festival-margens-2026'
 
+/** Which upload of the event's image to show; none for a demo asset. */
+const imageKey = (e: OrgEvent) => (e.imageUpdatedAt ? `${e.id}@${e.imageUpdatedAt}` : undefined)
+
 /** Organizer area: the member's events come from Core; the live operations,
  * incidents and alerts of O5–O12 are still demo state. */
 export function OrganizerApp({
@@ -49,17 +52,19 @@ export function OrganizerApp({
   api: EventsApi
   geocode: Geocoder
 }) {
-  const [events, setEvents] = useState<OrgEvent[]>()
+  const [loaded, setLoaded] = useState<OrgEvent[]>()
   const [loadError, setLoadError] = useState(false)
   const [live, setLive] = useState<Record<string, LiveState>>(() => demoLive(now))
   const [incidents, setIncidents] = useState<Incident[]>(() => demoIncidents(now))
   const [alerts, setAlerts] = useState<SentAlert[]>(() => demoAlerts(now))
+  // Images fetched from Core, by event and upload time, as object URLs.
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({})
   const location = useLocation()
   const navigate = useNavigate()
 
   const load = useCallback(async () => {
     try {
-      setEvents(await api.list())
+      setLoaded(await api.list())
       setLoadError(false)
     } catch {
       setLoadError(true)
@@ -71,7 +76,7 @@ export function OrganizerApp({
     api.list().then(
       (found) => {
         if (!current) return
-        setEvents(found)
+        setLoaded(found)
         setLoadError(false)
       },
       () => current && setLoadError(true),
@@ -81,19 +86,35 @@ export function OrganizerApp({
     }
   }, [api])
 
+  // Fetches each event's image once per upload; a failure leaves its gradient.
+  useEffect(() => {
+    let current = true
+    for (const e of loaded ?? []) {
+      const key = imageKey(e)
+      if (!key || imageUrls[key]) continue
+      api.image(e.id).then(
+        (blob) => current && setImageUrls((all) => ({ ...all, [key]: URL.createObjectURL(blob) })),
+        () => undefined,
+      )
+    }
+    return () => {
+      current = false
+    }
+  }, [api, loaded, imageUrls])
+
   // Opening an event page makes it the current event of the top bar, and it
   // stays current on the other pages (adjusting state while rendering).
   const eventMatch = useMatch('/organization/events/:id/*')
   const routeEventId = eventMatch?.params.id
-  const isEvent = (id?: string): id is string => !!id && !!events?.some((e) => e.id === id)
+  const isEvent = (id?: string): id is string => !!id && !!loaded?.some((e) => e.id === id)
   const [currentId, setCurrentId] = useState<string>()
   const [seenRouteId, setSeenRouteId] = useState<string>()
-  if (routeEventId !== seenRouteId && events) {
+  if (routeEventId !== seenRouteId && loaded) {
     setSeenRouteId(routeEventId)
     if (isEvent(routeEventId)) setCurrentId(routeEventId)
   }
 
-  if (!events) {
+  if (!loaded) {
     return (
       <main className="mx-auto max-w-md p-6">
         {loadError ? (
@@ -114,6 +135,10 @@ export function OrganizerApp({
     )
   }
 
+  const events = loaded.map((e) => {
+    const key = imageKey(e)
+    return key ? { ...e, image: imageUrls[key] } : e
+  })
   const current = events.find((e) => e.id === currentId) ?? events[0]
   const eventIncidents = current ? incidents.filter((i) => i.eventId === current.id) : []
   const openIncidents = eventIncidents.filter((i) => i.status !== 'resolved').length
@@ -142,7 +167,7 @@ export function OrganizerApp({
   }
 
   const keep = (saved: OrgEvent) => {
-    setEvents((all = []) =>
+    setLoaded((all = []) =>
       all.some((e) => e.id === saved.id)
         ? all.map((e) => (e.id === saved.id ? saved : e))
         : [saved, ...all],
@@ -154,6 +179,27 @@ export function OrganizerApp({
   const create = async (event: OrgEvent) => keep(await api.create(event))
   const correct = async (before: OrgEvent, after: OrgEvent) =>
     keep(await api.correct(before, after))
+  /** Uploads or removes the event's image, after the event is saved. */
+  const changeImage = async (eventId: string, file: File | null) => {
+    if (file) {
+      await api.uploadImage(eventId, file)
+      const updatedAt = new Date().toISOString()
+      setImageUrls((all) => ({
+        ...all,
+        [`${eventId}@${updatedAt}`]: URL.createObjectURL(file),
+      }))
+      setLoaded((all = []) =>
+        all.map((e) => (e.id === eventId ? { ...e, imageUpdatedAt: updatedAt } : e)),
+      )
+    } else {
+      await api.removeImage(eventId)
+      setLoaded((all = []) =>
+        all.map((e) =>
+          e.id === eventId ? { ...e, imageUpdatedAt: undefined, image: undefined } : e,
+        ),
+      )
+    }
+  }
   /** After an official change, the event as Core has it now. */
   const publishChange = async (event: OrgEvent, change: EventChange) => {
     await api.publishChange(event, change)
@@ -189,6 +235,7 @@ export function OrganizerApp({
               geocode={geocode}
               onCreate={create}
               onCorrect={correct}
+              onImage={changeImage}
             />
           }
         />
@@ -211,6 +258,7 @@ export function OrganizerApp({
               geocode={geocode}
               onCreate={create}
               onCorrect={correct}
+              onImage={changeImage}
             />
           }
         />

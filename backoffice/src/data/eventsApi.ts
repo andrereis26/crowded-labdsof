@@ -19,6 +19,12 @@ export interface EventsApi {
   correct(before: OrgEvent, after: OrgEvent): Promise<OrgEvent>
   /** Publishes an official change, which Core notifies to the participants. */
   publishChange(event: OrgEvent, change: EventChange): Promise<void>
+  /** The event's image, fetched with the token, which an image tag cannot send. */
+  image(eventId: string): Promise<Blob>
+  /** Uploads or replaces the event's image; Core removes its metadata. */
+  uploadImage(eventId: string, file: Blob): Promise<void>
+  /** Removes the event's image. */
+  removeImage(eventId: string): Promise<void>
 }
 
 /** A refusal from Core, with its error code (API Outline). */
@@ -58,6 +64,7 @@ interface EventJson {
     highConfidenceAnswers: number
     maxPromptsPerHour: number
   }
+  imageUpdatedAt?: string | null
 }
 
 /** A postponed or relocated event is still published, with its new values. */
@@ -179,6 +186,7 @@ export function fromJson(json: EventJson): OrgEvent {
     kind: json.type === 'TICKETED' ? 'ticketed' : 'public',
     code: json.ticketEventCode ?? json.accessCode ?? '',
     confirmations: confirmationsOf(json.confirmations),
+    imageUpdatedAt: json.imageUpdatedAt ?? undefined,
     gradient: gradientFor(json.id),
   }
 }
@@ -301,29 +309,38 @@ export function httpEventsApi(
 ): EventsApi {
   const base = baseUrl.replace(/\/$/, '')
 
-  async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+  /** Sends the request and refuses with Core's error code. */
+  async function send(method: string, path: string, init: RequestInit = {}): Promise<Response> {
     let response: Response
     try {
       response = await fetchImpl(`${base}${path}`, {
+        ...init,
         method,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        headers: { Authorization: `Bearer ${accessToken}`, ...init.headers },
       })
     } catch {
       throw new EventsApiError('NETWORK')
     }
-    const json: unknown = await response.json().catch(() => undefined)
     if (!response.ok) {
+      const json: unknown = await response.json().catch(() => undefined)
       const code =
         typeof json === 'object' && json !== null && 'code' in json
           ? String((json as { code: unknown }).code)
           : `HTTP_${response.status}`
       throw new EventsApiError(code)
     }
-    return json as T
+    return response
+  }
+
+  async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const response = await send(
+      method,
+      path,
+      body === undefined
+        ? {}
+        : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+    )
+    return (await response.json().catch(() => undefined)) as T
   }
 
   return {
@@ -340,6 +357,18 @@ export function httpEventsApi(
     },
     async publishChange(event, change) {
       await call('POST', `/events/${event.id}/changes`, toChangeBody(event, change))
+    },
+    async image(eventId) {
+      return (await send('GET', `/events/${eventId}/image`)).blob()
+    },
+    async uploadImage(eventId, file) {
+      await send('PUT', `/events/${eventId}/image`, {
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      })
+    },
+    async removeImage(eventId) {
+      await send('DELETE', `/events/${eventId}/image`)
     },
   }
 }
@@ -392,6 +421,12 @@ export function eventErrorMessage(code: string): string {
     case 'NOT_ORGANIZATION_MEMBER':
     case 'NOT_EVENT_ORGANIZATION':
       return 'Só os membros ativos da organização podem gerir os seus eventos.'
+    case 'IMAGE_TOO_LARGE':
+      return 'A imagem tem mais de 5 MB. Escolhe uma mais pequena.'
+    case 'IMAGE_TYPE_NOT_ACCEPTED':
+      return 'Escolhe uma imagem JPEG, PNG ou WebP.'
+    case 'IMAGE_INVALID':
+      return 'Não foi possível ler esta imagem. Escolhe outra.'
     case 'NETWORK':
       return 'Não foi possível ligar ao Crowded. Verifica a ligação e tenta novamente.'
     default:

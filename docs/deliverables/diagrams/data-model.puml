@@ -170,6 +170,20 @@ note right of TicketExtraction
   entry codes are excluded (SR-004, SR-018).
 end note
 
+entity "EventImage" as EventImage {
+  * eventId : UUID <<PK, FK>>
+  --
+  mediaType : TEXT
+  content : BYTEA
+  updatedAt : TIMESTAMPTZ
+}
+
+note right of EventImage
+  At most one image per event (FR-089), up to 5 MB,
+  without its metadata (SR-025). Stored in PostgreSQL
+  and served by Core (ADR 0019).
+end note
+
 ' On-site information
 entity "QueuePoint" as QueuePoint {
   * id : UUID <<PK>>
@@ -590,6 +604,7 @@ EventConnection ||--o| AccessCodeConnection : subtype
 Ticket ||--o| TicketExtraction : extraction
 
 ' On-site information relationships
+Event ||--o| EventImage : image
 Event ||--o{ QueuePoint : queue points
 QueuePoint ||--o| QueueTime : current wait
 Event ||--o{ QueueTime : queues

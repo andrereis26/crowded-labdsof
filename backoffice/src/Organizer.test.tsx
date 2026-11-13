@@ -13,6 +13,7 @@ import {
   suggestedLevel,
   validateEvent,
 } from './data/organizer'
+import { EventsApiError } from './data/eventsApi'
 import { fakeEventsApi, fakeGeocoder } from './test/fakeEventsApi'
 
 const now = new Date(2026, 9, 17, 22, 47)
@@ -290,6 +291,60 @@ describe('O2–O4 with Core', () => {
       capacity: 5000,
       entrances: ['Porta A', 'Bar principal'],
     })
+  })
+
+  it('adds, replaces and removes the image of an event', async () => {
+    // The browser's picker hides other types; a file dropped or pasted may still be one.
+    const user = userEvent.setup({ applyAccept: false })
+    const { events } = await renderAt('/organization/events/margens-inverno/edit')
+    const panel = () => screen.getByText('Imagem do evento').closest('section') as HTMLElement
+
+    await user.click(within(panel()).getByRole('button', { name: 'Adicionar imagem' }))
+    await user.upload(
+      screen.getByLabelText('Escolher a imagem do evento'),
+      new File(['gif'], 'cartaz.gif', { type: 'image/gif' }),
+    )
+    expect(within(panel()).getByRole('alert')).toHaveTextContent(
+      'Escolhe uma imagem JPEG, PNG ou WebP.',
+    )
+    const poster = new File(['png'], 'cartaz.png', { type: 'image/png' })
+    await user.upload(screen.getByLabelText('Escolher a imagem do evento'), poster)
+    expect(within(panel()).getByText('cartaz.png')).toBeInTheDocument()
+    expect(within(panel()).queryByRole('alert')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Guardar alterações' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Alterações guardadas.')
+    expect(events.images.get('margens-inverno')).toBe(poster)
+    expect(events.calls).toContain('uploadImage')
+
+    await user.click(screen.getAllByRole('link', { name: 'Editar' })[0])
+    expect(within(panel()).getByText('Imagem atual')).toBeInTheDocument()
+    await user.click(within(panel()).getByRole('button', { name: 'Remover' }))
+    expect(within(panel()).getByRole('button', { name: 'Adicionar imagem' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Guardar alterações' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Alterações guardadas.')
+    expect(events.images.has('margens-inverno')).toBe(false)
+    expect(events.calls).toContain('removeImage')
+  })
+
+  it('keeps the new event when Core refuses its image', async () => {
+    const user = userEvent.setup()
+    const events = fakeEventsApi()
+    await renderAt('/organization/events/margens-inverno/edit', events)
+    await user.upload(
+      screen.getByLabelText('Escolher a imagem do evento'),
+      new File(['png'], 'cartaz.png', { type: 'image/png' }),
+    )
+    const save = screen.getByRole('button', { name: 'Guardar alterações' })
+    events.api.uploadImage = async () => {
+      throw new EventsApiError('IMAGE_INVALID')
+    }
+    await user.click(save)
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Alterações guardadas. A imagem não foi guardada: Não foi possível ler esta imagem. Escolhe outra.',
+    )
   })
 
   it('shows Core refusals on their field or above the form', async () => {
