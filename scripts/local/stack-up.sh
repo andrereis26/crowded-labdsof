@@ -108,6 +108,7 @@ for key in POSTGRES_PASSWORD CORE_DB_PASSWORD JOBS_DB_PASSWORD NOTIFICATIONS_DB_
 done
 create_secret JWT_PRIVATE_KEY "$(printf '%s' "${JWT_PRIVATE_KEY_BASE64}" | openssl base64 -d -A)"
 create_secret JWT_PUBLIC_KEY "$(printf '%s' "${JWT_PUBLIC_KEY_BASE64}" | openssl base64 -d -A)"
+create_secret TICKET_ENTRY_CODE_KEY "${TICKET_ENTRY_CODE_KEY}"
 # RabbitMQ reads its default user from a config file, not from a secret file.
 create_secret RABBITMQ_CONF "$(printf 'default_user = %s\ndefault_pass = %s' "${RABBITMQ_USERNAME}" "${RABBITMQ_PASSWORD}")"
 

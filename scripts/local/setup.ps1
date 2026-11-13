@@ -97,6 +97,11 @@ function ConvertTo-Base64Text([string]$Text) {
     return [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($Text))
 }
 
+# A new key for the entry codes of imported tickets: Base64 of 256 random bits.
+function Get-RandomTicketEntryCodeKey {
+    return [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+}
+
 # Writes .env: .env.example with every empty value filled with a new secret.
 function Initialize-DotEnv {
     $rsa = [System.Security.Cryptography.RSA]::Create(2048)
@@ -112,6 +117,7 @@ function Initialize-DotEnv {
             $value = switch ($key) {
                 'JWT_PRIVATE_KEY_BASE64' { $private }
                 'JWT_PUBLIC_KEY_BASE64' { $public }
+                'TICKET_ENTRY_CODE_KEY' { Get-RandomTicketEntryCodeKey }
                 # Hex: letters and digits only, as the database users and RabbitMQ need.
                 default { [Convert]::ToHexString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(24)).ToLowerInvariant() }
             }
@@ -130,6 +136,11 @@ Test-Tool
 
 if (Test-Path -LiteralPath $EnvFile) {
     Write-Step 'Keeping the existing .env.'
+    # A .env from before ticket import gets its key here, so it needs no edit by hand.
+    if (-not (Select-String -LiteralPath $EnvFile -Pattern '^TICKET_ENTRY_CODE_KEY=' -Quiet)) {
+        [IO.File]::AppendAllText($EnvFile, "TICKET_ENTRY_CODE_KEY=$(Get-RandomTicketEntryCodeKey)`n", [System.Text.UTF8Encoding]::new($false))
+        Write-Step 'Added TICKET_ENTRY_CODE_KEY to .env.'
+    }
     $present = @(Get-Content -LiteralPath $EnvFile | ForEach-Object { if ($_ -match '^([A-Za-z_][A-Za-z0-9_]*)=') { $Matches[1] } })
     $absent = @(Get-EnvKey | Where-Object { $present -notcontains $_ })
     if ($absent) { Write-Warning ".env lacks $($absent -join ' '): copy them from .env.example." }

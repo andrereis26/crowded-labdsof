@@ -59,6 +59,8 @@ case "${app}" in
     )
     # Only Core signs tokens.
     [[ "${app}" == core ]] && env_vars+=("JWT_PRIVATE_KEY_LOCATION=file:${STATE_DIR}/jwt/private.pem")
+    # Only Core imports tickets.
+    [[ "${app}" == core ]] && env_vars+=("CROWDED_TICKETS_ENTRYCODEKEY=${TICKET_ENTRY_CODE_KEY}")
     command=(./mvnw -B -ntp spring-boot:run)
     ;;
   backoffice)

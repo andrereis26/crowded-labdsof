@@ -110,6 +110,8 @@ services:
       - { source: redis_password, target: REDIS_PASSWORD }
       - jwt_public_key
       - jwt_private_key
+      # Read as the property of the same name by the config tree import.
+      - { source: ticket_entry_code_key, target: crowded.tickets.entry-code-key }
     networks: [edge, backend]
     deploy:
       <<: *app-deploy
@@ -280,6 +282,9 @@ secrets:
   jwt_private_key:
     external: true
     name: ${JWT_PRIVATE_KEY_SECRET:?JWT_PRIVATE_KEY_SECRET is required}
+  ticket_entry_code_key:
+    external: true
+    name: ${TICKET_ENTRY_CODE_KEY_SECRET:?TICKET_ENTRY_CODE_KEY_SECRET is required}
 
 configs:
   router_conf:
