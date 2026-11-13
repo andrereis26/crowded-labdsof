@@ -15,6 +15,7 @@ import com.crowded.core.event.infrastructure.persistence.mapper.EventChangePersi
 import com.crowded.core.shared.infrastructure.persistence.JsonColumnConverter;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -68,5 +69,36 @@ class EventChangeRepositoryAdapterTest {
         .get()
         .usingRecursiveComparison()
         .isEqualTo(change);
+  }
+
+  @Test
+  void readsTheLatestChangeAndTheHistoryInTheOrderOfTheRows() {
+    UUID event = UUID.randomUUID();
+    EventChange older = cancellation(event, Instant.parse("2026-11-09T10:00:00Z"));
+    EventChange newer = cancellation(event, Instant.parse("2026-11-10T10:00:00Z"));
+    EventChangePersistenceMapperImpl mapper = new EventChangePersistenceMapperImpl(json);
+    when(rows.findFirstByEventIdOrderByProvenanceLastUpdatedAtDescIdDesc(event))
+        .thenReturn(Optional.of(mapper.toEntity(newer)));
+    when(rows.findByEventIdOrderByProvenanceLastUpdatedAtDescIdDesc(event))
+        .thenReturn(List.of(mapper.toEntity(newer), mapper.toEntity(older)));
+
+    assertThat(changes.findLatest(event)).get().isEqualTo(newer);
+    assertThat(changes.findByEvent(event)).containsExactly(newer, older);
+    assertThat(changes.findLatest(UUID.randomUUID())).isEmpty();
+    assertThat(changes.findByEvent(UUID.randomUUID())).isEmpty();
+  }
+
+  private static EventChange cancellation(UUID event, Instant at) {
+    return EventChange.restore(
+        UUID.randomUUID(),
+        event,
+        ChangeType.CANCELLATION,
+        Severity.CRITICAL,
+        Map.of("status", "SCHEDULED"),
+        Map.of("status", "CANCELLED"),
+        false,
+        null,
+        null,
+        new Provenance(SourceType.ORGANIZATION, "Ribeira Live", at, true));
   }
 }

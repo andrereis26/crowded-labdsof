@@ -151,8 +151,8 @@ class DemoData {
         previousStart: _day(8, 21, 30),
         newStart: _day(22, 21, 30),
         refund: Refund(
-          until: _day(14, 23, 59),
           where: 'teatromunicipal.pt/reembolsos',
+          until: _day(14, 23, 59),
         ),
       ),
       EventChange(

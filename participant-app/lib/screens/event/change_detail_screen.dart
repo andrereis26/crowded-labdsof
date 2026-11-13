@@ -5,10 +5,11 @@ import '../../data/app_store.dart';
 import '../../ui/ui.dart';
 import '../../utils/pt_format.dart';
 import '../shared/shell.dart';
+import 'event_loading.dart';
 
 /// P7 · Detalhe da alteração oficial: what changed, what stayed the same and
 /// whether the ticket is still valid.
-class ChangeDetailScreen extends StatelessWidget {
+class ChangeDetailScreen extends StatefulWidget {
   const ChangeDetailScreen({
     super.key,
     required this.eventId,
@@ -19,15 +20,31 @@ class ChangeDetailScreen extends StatelessWidget {
   final String changeId;
 
   @override
+  State<ChangeDetailScreen> createState() => _ChangeDetailScreenState();
+}
+
+class _ChangeDetailScreenState extends State<ChangeDetailScreen>
+    with RefreshesEvent<ChangeDetailScreen> {
+  @override
+  String eventIdOf(ChangeDetailScreen widget) => widget.eventId;
+
+  @override
   Widget build(BuildContext context) {
     final store = AppStore.of(context);
-    final event = store.eventById(eventId);
-    final change = event?.changes.where((c) => c.id == changeId).firstOrNull;
+    final event = store.eventById(widget.eventId);
+    final change = event?.changes
+        .where((c) => c.id == widget.changeId)
+        .firstOrNull;
     if (event == null || change == null) {
       return AppPage(
         leadingLabel: 'Fechar',
         showBackChevron: false,
-        children: [AppErrorState(message: 'Não encontrámos esta alteração')],
+        children: [
+          if (event == null)
+            missingEventState(context, store, widget.eventId)
+          else
+            const AppErrorState(message: 'Não encontrámos esta alteração'),
+        ],
       );
     }
     final now = store.now;
@@ -117,9 +134,12 @@ class ChangeDetailScreen extends StatelessWidget {
               AppListTile(
                 icon: Icons.payments_outlined,
                 title: 'Reembolso, se não puderes ir',
-                subtitle:
-                    'Até ${formatDayMonth(refund.until)} em ${refund.where} · '
-                    'informação da organização',
+                subtitle: switch (refund.until) {
+                  final until? =>
+                    'Até ${formatDayMonth(until)} em ${refund.where} · '
+                        'informação da organização',
+                  null => '${refund.where} · informação da organização',
+                },
                 showChevron: false,
               ),
             ],
@@ -204,7 +224,10 @@ class ChangeDetailScreen extends StatelessWidget {
         ),
         if (change.refund case final refund?)
           AppButton.secondary(
-            label: 'Pedir reembolso até ${formatDayMonth(refund.until)}',
+            label: switch (refund.until) {
+              final until? => 'Pedir reembolso até ${formatDayMonth(until)}',
+              null => 'Pedir reembolso',
+            },
             icon: Icons.open_in_new,
             onPressed: () => showMessage(context, refund.where),
           ),

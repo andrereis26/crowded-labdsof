@@ -4,6 +4,35 @@ import '../../data/models.dart';
 import '../../ui/ui.dart';
 import '../../utils/pt_format.dart';
 
+/// The date line, status pill and its tone of an event's card ("HOJE",
+/// "ADIADO · 8 NOV"); [scheduledLabel] names an event that has not changed.
+(String, String, WalletCardStatusTone) eventCardStatus(
+  Event event,
+  DateTime now, {
+  required String scheduledLabel,
+}) => switch (event.status) {
+  EventStatus.postponed => (
+    'ADIADO · ${formatDayMonth(event.start)}',
+    'Adiado',
+    WalletCardStatusTone.changed,
+  ),
+  EventStatus.relocated => (
+    'NOVO LOCAL · ${formatDayMonth(event.start)}',
+    'Novo local',
+    WalletCardStatusTone.changed,
+  ),
+  EventStatus.cancelled => (
+    'CANCELADO',
+    'Cancelado',
+    WalletCardStatusTone.cancelled,
+  ),
+  EventStatus.scheduled => (
+    formatRelativeDay(event.start, now),
+    scheduledLabel,
+    WalletCardStatusTone.confirmed,
+  ),
+};
+
 /// Wallet card for a ticket, with the date and status wording of the
 /// mockups ("HOJE", "ADIADO · 8 NOV", "Adiado · era 25 OUT").
 ///
@@ -29,23 +58,11 @@ class TicketCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final event = ticket.event;
-    final (dateLabel, statusLabel, tone) = switch (event.status) {
-      EventStatus.postponed => (
-        'ADIADO · ${formatDayMonth(event.start)}',
-        'Adiado',
-        WalletCardStatusTone.changed,
-      ),
-      EventStatus.cancelled => (
-        'CANCELADO',
-        'Cancelado',
-        WalletCardStatusTone.cancelled,
-      ),
-      EventStatus.scheduled => (
-        formatRelativeDay(event.start, now),
-        'Bilhete',
-        WalletCardStatusTone.confirmed,
-      ),
-    };
+    final (dateLabel, statusLabel, tone) = eventCardStatus(
+      event,
+      now,
+      scheduledLabel: 'Bilhete',
+    );
 
     final updatedAt = event.updatedAt;
     final source = updatedAt == null

@@ -17,7 +17,8 @@ class EventArt {
   );
 }
 
-enum EventStatus { scheduled, postponed, cancelled }
+/// A relocated event takes place at a new venue on its date.
+enum EventStatus { scheduled, postponed, relocated, cancelled }
 
 /// Queue at a gate or service on the event day.
 class QueueTime {
@@ -138,11 +139,12 @@ class EventChange {
 
 /// Refund information that the organization adds to a change (O4, P7).
 class Refund {
-  const Refund({required this.until, required this.where});
+  const Refund({required this.where, this.until});
 
-  final DateTime until;
+  /// The last day to ask, when the organization gave one.
+  final DateTime? until;
 
-  /// "teatromunicipal.pt/reembolsos".
+  /// "teatromunicipal.pt/reembolsos", or the organization's own words.
   final String where;
 }
 
@@ -209,6 +211,7 @@ class Event {
     this.warnings = const [],
     this.eventCode,
     this.accessCode,
+    this.joinedWithAccessCode = false,
   });
 
   final String id;
@@ -248,13 +251,37 @@ class Event {
   /// Code of a public event, shown on its posters ("SAOJOAO24").
   final String? accessCode;
 
-  bool get isPublic => accessCode != null;
+  /// A public event whose code the app does not hold, as Core sends it.
+  final bool joinedWithAccessCode;
+
+  bool get isPublic => joinedWithAccessCode || accessCode != null;
 
   String get place => '$venue, $city';
 
   /// The change that set the current date, if the event was postponed.
   EventChange? get latestDateChange =>
       changes.where((c) => c.kind == ChangeKind.dateChanged).firstOrNull;
+}
+
+/// How the last load of an event from Core went.
+class EventSync {
+  const EventSync({this.syncedAt, this.loading = false, this.failure});
+
+  /// When it last loaded; null until a load works.
+  final DateTime? syncedAt;
+  final bool loading;
+
+  /// The last load's error code (`NETWORK`, `NOT_CONNECTED`, ...); null when
+  /// it worked or is still on its way.
+  final String? failure;
+
+  bool get failed => failure != null;
+
+  /// Core could not be reached, as opposed to an answer it gave.
+  bool get unreachable => failure == 'NETWORK';
+
+  /// The last load failed, and an earlier one left data to show.
+  bool get showsSavedData => failed && syncedAt != null;
 }
 
 enum TicketOrigin {

@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.crowded.core.audit.application.service.AuditLog;
@@ -29,6 +30,7 @@ import com.crowded.core.event.domain.model.StoredEvents;
 import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.domain.repository.EventImageRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
+import com.crowded.core.event.domain.repository.EventUpdates;
 import com.crowded.core.event.domain.repository.ReportCategoryRepository;
 import com.crowded.core.shared.domain.exception.ConflictException;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
@@ -66,6 +68,7 @@ class EventManagementServiceTest {
   private final UserRepository users = mock(UserRepository.class);
   private final ConnectionRepository connections = mock(ConnectionRepository.class);
   private final EventImageRepository images = mock(EventImageRepository.class);
+  private final EventUpdates updates = mock(EventUpdates.class);
   private final AuditLog audit = mock(AuditLog.class);
   private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private final EventManagementService service =
@@ -76,6 +79,7 @@ class EventManagementServiceTest {
           connections,
           images,
           new EventAccess(events, users, connections, meters),
+          updates,
           audit,
           Clock.fixed(NOW, ZoneOffset.UTC),
           meters);
@@ -183,6 +187,7 @@ class EventManagementServiceTest {
     verify(events)
         .isCodeUsedByAnotherUpcomingEvent(new EventCode("INVERNO-26"), event.getId(), NOW);
     verify(events).save(event);
+    verify(updates).announce(event.getId());
     verify(audit)
         .record(
             MEMBER,
@@ -239,6 +244,7 @@ class EventManagementServiceTest {
                         MEMBER, UUID.randomUUID(), "Meu", null, null, null, null, null, null)))
         .isInstanceOf(NotFoundException.class);
     verify(events, never()).save(any());
+    verifyNoInteractions(updates);
   }
 
   @Test

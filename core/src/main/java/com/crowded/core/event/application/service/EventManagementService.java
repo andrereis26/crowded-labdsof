@@ -21,6 +21,7 @@ import com.crowded.core.event.domain.model.Schedule;
 import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.domain.repository.EventImageRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
+import com.crowded.core.event.domain.repository.EventUpdates;
 import com.crowded.core.event.domain.repository.ReportCategoryRepository;
 import com.crowded.core.event.domain.service.EventCodes;
 import com.crowded.core.shared.domain.exception.ConflictException;
@@ -59,6 +60,7 @@ public class EventManagementService {
   private final EventImageRepository images;
   private final EventAccess access;
   private final EventCodes codes;
+  private final EventUpdates updates;
   private final AuditLog audit;
   private final Clock clock;
   private final MeterRegistry meters;
@@ -70,6 +72,7 @@ public class EventManagementService {
       ConnectionRepository connections,
       EventImageRepository images,
       EventAccess access,
+      EventUpdates updates,
       AuditLog audit,
       Clock clock,
       MeterRegistry meters) {
@@ -80,6 +83,7 @@ public class EventManagementService {
     this.images = images;
     this.access = access;
     this.codes = new EventCodes(events);
+    this.updates = updates;
     this.audit = audit;
     this.clock = clock;
     this.meters = meters;
@@ -183,6 +187,7 @@ public class EventManagementService {
       corrected.add("confirmations");
     }
     events.save(event);
+    updates.announce(event.getId());
 
     audit.record(
         command.userId(),

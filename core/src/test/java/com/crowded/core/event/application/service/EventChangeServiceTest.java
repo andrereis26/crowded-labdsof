@@ -28,6 +28,7 @@ import com.crowded.core.event.domain.model.StoredEvents;
 import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
+import com.crowded.core.event.domain.repository.EventUpdates;
 import com.crowded.core.organization.domain.model.Organization;
 import com.crowded.core.organization.domain.repository.OrganizationRepository;
 import com.crowded.core.outbox.application.service.NotificationRequester;
@@ -67,6 +68,7 @@ class EventChangeServiceTest {
   private final UserRepository users = mock(UserRepository.class);
   private final OrganizationRepository organizations = mock(OrganizationRepository.class);
   private final NotificationRequester notifications = mock(NotificationRequester.class);
+  private final EventUpdates updates = mock(EventUpdates.class);
   private final AuditLog audit = mock(AuditLog.class);
   private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private final EventChangeService service =
@@ -76,6 +78,7 @@ class EventChangeServiceTest {
           new EventAccess(events, users, mock(ConnectionRepository.class), meters),
           organizations,
           notifications,
+          updates,
           audit,
           Clock.fixed(NOW, ZoneOffset.UTC),
           meters);
@@ -100,6 +103,7 @@ class EventChangeServiceTest {
     assertThat(event.getState().status()).isEqualTo(EventStatus.CANCELLED);
     verify(events).save(event);
     verify(notifications).request("OFFICIAL_CHANGE", event.getId(), change.getId());
+    verify(updates).announce(event.getId());
     verify(audit)
         .record(
             MEMBER,
@@ -132,7 +136,7 @@ class EventChangeServiceTest {
     assertThat(published).isEqualTo(new PublishedChange(first.getId(), Severity.CRITICAL, false));
     verify(changes, never()).save(any());
     verify(events, never()).save(any());
-    verifyNoInteractions(notifications, audit);
+    verifyNoInteractions(notifications, updates, audit);
   }
 
   @Test

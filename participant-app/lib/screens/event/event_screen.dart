@@ -10,13 +10,14 @@ import '../report/report_flow.dart';
 import '../shared/shell.dart';
 import '../shared/shell.dart' as shell show reportAction;
 import '../shared/ticket_card.dart';
+import 'event_loading.dart';
 import 'event_widgets.dart';
 
 /// P5 · Página do evento: the "opened ticket". On the event day it shows the
 /// entry code, organizer alerts, IPMA warnings, crowd level, queues and
-/// weather; on other days the schedule and forecast. Offline, it shows what
-/// was saved. Every piece of information comes from the organization or
-/// IPMA (ADR 0015).
+/// weather; on other days the schedule and forecast. Offline, or when Core
+/// cannot be reached, it shows what was saved and when. Every piece of
+/// information comes from the organization or IPMA (ADR 0015).
 class EventScreen extends StatefulWidget {
   const EventScreen({super.key, required this.eventId, this.confirmationId});
 
@@ -30,7 +31,11 @@ class EventScreen extends StatefulWidget {
   State<EventScreen> createState() => _EventScreenState();
 }
 
-class _EventScreenState extends State<EventScreen> {
+class _EventScreenState extends State<EventScreen>
+    with RefreshesEvent<EventScreen> {
+  @override
+  String eventIdOf(EventScreen widget) => widget.eventId;
+
   @override
   void initState() {
     super.initState();
@@ -62,13 +67,7 @@ class _EventScreenState extends State<EventScreen> {
       return AppPage(
         leadingLabel: 'Fechar',
         showBackChevron: false,
-        children: [
-          AppErrorState(
-            message: 'Não encontrámos este evento',
-            retryLabel: 'Voltar aos meus eventos',
-            onRetry: () => context.go('/events'),
-          ),
-        ],
+        children: [missingEventState(context, store, widget.eventId)],
       );
     }
     final page = _EventPageData(store: store, event: event);
@@ -89,7 +88,11 @@ class _EventPageData {
   final Ticket? ticket;
   final DateTime now;
 
-  bool get offline => store.offline;
+  /// Offline, or the last load from Core failed: the page shows saved data.
+  bool get offline => store.showsSavedData(event.id);
+
+  /// When the data shown was saved, while [offline].
+  DateTime get savedAt => store.savedAtFor(event.id)!;
   bool get isEventDay => isSameDay(event.start, now);
   int get daysToGo => daysBetween(now, event.start);
   bool get hasEntryCode => ticket?.hasEntryCode ?? false;
@@ -157,7 +160,7 @@ class _EventPageData {
   /// "Fonte: IPMA · atualizado há 30 min", or "guardado às 22:14" offline.
   String source(String name, DateTime? updatedAt) {
     if (offline) {
-      return 'Fonte: $name · guardado às ${formatTime(store.savedAt!)}';
+      return 'Fonte: $name · guardado às ${formatTime(savedAt)}';
     }
     if (updatedAt == null) return 'Fonte: $name';
     return 'Fonte: $name · atualizado ${formatTimeAgo(updatedAt, now: now)}';
@@ -173,16 +176,24 @@ class _EventPageData {
       return TicketCard(
         ticket: ticket!,
         now: now,
-        savedAt: offline ? store.savedAt : null,
+        savedAt: offline ? savedAt : null,
       );
     }
+    final (dateLabel, statusLabel, tone) = eventCardStatus(
+      event,
+      now,
+      scheduledLabel: event.isPublic ? 'Público' : 'Bilhete',
+    );
     return WalletCard(
       eventName: event.name,
-      dateLabel: formatRelativeDay(event.start, now),
+      dateLabel: dateLabel,
       venue: event.place,
       time: formatTime(event.start),
-      statusLabel: 'Público',
-      source: event.updatedAt == null
+      statusLabel: statusLabel,
+      statusTone: tone,
+      source: offline
+          ? 'Fonte: organização · guardado às ${formatTime(savedAt)}'
+          : event.updatedAt == null
           ? 'Fonte: organização'
           : formatSource('organização', event.updatedAt!, now: now),
       gradient: event.art.gradient,
@@ -195,10 +206,12 @@ class _EventPageData {
         icon: Icons.wifi_off,
         iconColor: AppColors.warning,
         background: AppColors.segmentTrack,
-        title: 'Sem rede',
+        title: store.offline || (store.syncOf(event.id)?.unreachable ?? false)
+            ? 'Sem rede'
+            : 'Sem ligação ao Crowded',
         message:
-            'A mostrar o que guardámos às ${formatTime(store.savedAt!)}. '
-            'O bilhete e o código de entrada funcionam na mesma.',
+            'A mostrar o que guardámos às ${formatTime(savedAt)}.'
+            '${ticket == null ? '' : ' O bilhete e o código de entrada funcionam na mesma.'}',
       ),
     if (event.latestDateChange case final change?
         when event.status == EventStatus.postponed)

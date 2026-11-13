@@ -189,7 +189,8 @@
     database's demo accounts (`database/README.md`); the screens after sign-in
     still use demo data (`backoffice/src/data/`, `participant-app/lib/data/`)
     until #148, except the participant app's notification center, which reads
-    Notifications.
+    Notifications, and its event page, history and change pages (P5–P7) for an
+    event Core knows (`/event/<uuid>`, e.g. a seeded one), which read Core.
 - Graph: auto
 - Hooks: `lefthook.yml` (pre-commit formats staged files and runs gitleaks; pre-push
   lints changed projects and runs gitleaks). `lefthook install` writes to the

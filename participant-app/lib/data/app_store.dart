@@ -8,23 +8,27 @@ import '../ui/ui.dart';
 import '../utils/pt_format.dart';
 import 'auth_api.dart';
 import 'demo_data.dart';
+import 'events_api.dart';
 import 'password_strength.dart';
 import 'models.dart';
 import 'notifications_api.dart';
 
-/// App state for the participant screens. Registration and sign-in go to
-/// Core and the notifications to Notifications; the events are [DemoData]
-/// until their APIs are wired in. Screens read it with `AppStore.of(context)`
-/// and rebuild when it changes.
+/// App state for the participant screens. Registration, sign-in and the
+/// pages of events Core knows go to Core, and the notifications to
+/// Notifications; the wallet and the rest are [DemoData] until their APIs
+/// are wired in. Screens read it with `AppStore.of(context)` and rebuild
+/// when it changes.
 class AppStore extends ChangeNotifier {
   AppStore({
     DateTime Function()? clock,
     AuthApi? auth,
     NotificationsApi? notifications,
+    EventsApi? events,
     this._session,
   }) : _clock = clock ?? DateTime.now,
        _auth = auth ?? HttpAuthApi(),
-       _notificationsApi = notifications ?? HttpNotificationsApi() {
+       _notificationsApi = notifications ?? HttpNotificationsApi(),
+       _eventsApi = events ?? HttpEventsApi() {
     final demo = DemoData(now);
     _registered = {for (final e in demo.registered) e.id: e};
     _tickets = demo.tickets;
@@ -143,6 +147,7 @@ class AppStore extends ChangeNotifier {
 
   void signOut() {
     _stopNotifications();
+    _forgetCoreEvents();
     _session = null;
     notifyListeners();
   }
@@ -154,6 +159,7 @@ class AppStore extends ChangeNotifier {
     _public = {};
     _left = {};
     _stopNotifications();
+    _forgetCoreEvents();
     _requests = [];
     _confirmations = [];
     _recognitions = [];
@@ -184,8 +190,11 @@ class AppStore extends ChangeNotifier {
       [for (final t in _tickets) t.event, ...publicEvents]
         ..sort((a, b) => a.start.compareTo(b.start));
 
+  /// Core answers an event's page only to a connected participant.
   bool isConnected(String eventId) =>
-      ticketFor(eventId) != null || _public.contains(eventId);
+      ticketFor(eventId) != null ||
+      _public.contains(eventId) ||
+      _fromCore.containsKey(eventId);
 
   /// Connected events taking place today, the one in progress (or starting
   /// next) first: the events a participant can report about (P11).
@@ -240,9 +249,75 @@ class AppStore extends ChangeNotifier {
 
   // Events and tickets.
 
-  /// A registered event. Pages of events the participant is not connected
-  /// to are not shown: use [isConnected].
-  Event? eventById(String id) => _registered[id];
+  /// A registered event, as Core last sent it when it knows it. Pages of
+  /// events the participant is not connected to are not shown: use
+  /// [isConnected].
+  Event? eventById(String id) => _fromCore[id] ?? _registered[id];
+
+  // Events from Core (P5, P6, P7): each page loads the event and its history
+  // when it opens. What loaded last stays on screen when a later load fails,
+  // with the time it was loaded. Demo events, which Core does not know, are
+  // not asked for.
+
+  final EventsApi _eventsApi;
+  final Map<String, Event> _fromCore = {};
+  final Map<String, EventSync> _syncs = {};
+
+  static final _coreId = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false,
+  );
+
+  /// How the last load of [eventId] from Core went: loading until its first
+  /// answer, and null for a demo event.
+  EventSync? syncOf(String eventId) =>
+      _syncs[eventId] ??
+      (signedIn && _coreId.hasMatch(eventId)
+          ? const EventSync(loading: true)
+          : null);
+
+  /// Whether [eventId]'s page shows saved data: the device is offline, or
+  /// its last load from Core failed after an earlier one worked.
+  bool showsSavedData(String eventId) =>
+      offline || (_syncs[eventId]?.showsSavedData ?? false);
+
+  /// When the data shown for [eventId] was saved, while [showsSavedData].
+  DateTime? savedAtFor(String eventId) =>
+      offline ? savedAt : _syncs[eventId]?.syncedAt;
+
+  /// Loads [eventId]'s page and history from Core, unless it is a demo
+  /// event or a load is already on its way.
+  Future<void> refreshEvent(String eventId) async {
+    final token = _session?.accessToken;
+    final previous = _syncs[eventId];
+    if (token == null ||
+        !_coreId.hasMatch(eventId) ||
+        (previous?.loading ?? false)) {
+      return;
+    }
+    _syncs[eventId] = EventSync(syncedAt: previous?.syncedAt, loading: true);
+    notifyListeners();
+    try {
+      final page = await _eventsApi.page(token, eventId);
+      final history = await _eventsApi.changes(token, eventId);
+      if (_session?.accessToken != token) return;
+      _fromCore[eventId] = eventFromCore(page, history);
+      _syncs[eventId] = EventSync(syncedAt: now);
+    } on EventsException catch (e) {
+      if (_session?.accessToken != token) return;
+      if (e.noLongerVisible) _fromCore.remove(eventId);
+      _syncs[eventId] = EventSync(
+        syncedAt: e.noLongerVisible ? null : previous?.syncedAt,
+        failure: e.code,
+      );
+    }
+    notifyListeners();
+  }
+
+  void _forgetCoreEvents() {
+    _fromCore.clear();
+    _syncs.clear();
+  }
 
   /// Wallet order: soonest first.
   List<Ticket> get tickets =>
