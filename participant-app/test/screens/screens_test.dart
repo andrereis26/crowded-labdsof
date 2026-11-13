@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:crowded/app.dart';
 import 'package:crowded/data/app_store.dart';
 import 'package:crowded/data/auth_api.dart';
@@ -9,6 +11,7 @@ import 'package:crowded/data/models.dart';
 import 'package:crowded/data/notifications_api.dart';
 import 'package:crowded/screens/event/entry_code_screen.dart';
 import 'package:crowded/screens/import/access_code_screen.dart';
+import 'package:crowded/screens/import/import_screen.dart';
 import 'package:crowded/ui/ui.dart';
 import 'package:crowded/utils/pt_format.dart';
 import 'package:flutter/material.dart';
@@ -334,6 +337,8 @@ Future<AppStore> _pump(
 void main() {
   // No camera in widget tests: a button stands in for a scanned QR code.
   setUpAll(() {
+    // No file picker either: choosing the PDF returns an empty file.
+    ticketPdfPicker = () async => (bytes: Uint8List(0), name: 'bilhete.pdf');
     qrScannerBuilder = (context, onCode) => Center(
       child: TextButton(
         onPressed: () => onCode('SAOJOAO24'),

@@ -441,6 +441,7 @@ class TicketImport {
     required this.fileName,
     required this.origin,
     this.readCode,
+    this.importId,
   });
 
   final String fileName;
@@ -448,6 +449,9 @@ class TicketImport {
 
   /// Event code read from the ticket, when there was one ("MARG-2O26").
   final String? readCode;
+
+  /// The pending import in Core, completed with the typed code.
+  final String? importId;
 }
 
 /// What a participant receives for one event (C2, "Por evento").
