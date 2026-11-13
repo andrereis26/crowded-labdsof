@@ -157,7 +157,8 @@ class EventControllerTest {
     verify(service).correct(command.capture());
     assertThat(command.getValue())
         .isEqualTo(
-            new CorrectEventCommand(USER, event.getId(), "Novo", null, 100, "SJ-2026", null, null));
+            new CorrectEventCommand(
+                USER, event.getId(), "Novo", null, 100, null, "SJ-2026", null, null));
   }
 
   @Test

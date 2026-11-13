@@ -6,6 +6,7 @@ import {
   fromJson,
   httpEventsApi,
   instantOf,
+  nearestDate,
   scheduleOf,
   toChangeBody,
   toCorrectionBody,
@@ -220,6 +221,25 @@ describe('events in Core', () => {
       type: 'CANCELLATION',
       ticketStillValid: false,
       refundInfo: 'No site',
+      message: undefined,
+    })
+  })
+
+  it('puts a new start time on the day nearest to the current start', () => {
+    const late = { date: '2026-12-12', start: '23:00' }
+    expect(nearestDate(late, '23:30')).toBe('2026-12-12')
+    expect(nearestDate(late, '00:30')).toBe('2026-12-13')
+    expect(nearestDate({ date: '2026-12-13', start: '01:00' }, '22:00')).toBe('2026-12-12')
+    expect(nearestDate({ date: '2026-12-12', start: '21:00' }, '18:00')).toBe('2026-12-12')
+
+    const body = toChangeBody(
+      { ...margens(), start: '23:00', doors: '22:00', end: '02:00' },
+      { kind: 'time', start: '00:30', doors: '22:00', message: '' },
+    )
+    // Later the same night, not 22 h earlier.
+    expect(body).toEqual({
+      type: 'TIME_CHANGE',
+      newValue: { startDateTime: iso('2026-12-13', '00:30'), doorsOpenAt: undefined },
       message: undefined,
     })
   })

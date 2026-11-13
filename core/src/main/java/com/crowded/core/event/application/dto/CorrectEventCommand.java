@@ -7,7 +7,8 @@ import java.util.UUID;
  * A member corrects details of an event that are not an official change. A null field stays as it
  * is.
  *
- * @param code the event's new code, of the same type as before
+ * @param ticketEventCode a ticketed event's new code
+ * @param accessCode a public event's new access code
  */
 public record CorrectEventCommand(
     UUID userId,
@@ -15,7 +16,8 @@ public record CorrectEventCommand(
     String name,
     String description,
     Integer capacity,
-    String code,
+    String ticketEventCode,
+    String accessCode,
     List<String> queuePoints,
     ConfirmationsInput confirmations) {
 

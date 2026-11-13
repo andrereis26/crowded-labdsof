@@ -165,10 +165,9 @@ public class EventManagementService {
       event.changeCapacity(new Capacity(command.capacity()));
       corrected.add("capacity");
     }
-    if (command.code() != null) {
-      EventCode code = new EventCode(command.code());
-      codes.checkFree(code, event.getId(), now);
-      event.replaceCode(code);
+    if (command.ticketEventCode() != null || command.accessCode() != null) {
+      event.replaceCode(command.ticketEventCode(), command.accessCode());
+      codes.checkFree(event.getAdmission().code(), event.getId(), now);
       corrected.add("code");
     }
     if (command.queuePoints() != null) {

@@ -118,12 +118,14 @@ const boxClass = (invalid?: boolean) =>
     invalid ? 'border-danger' : 'border-border'
   }`
 
-/** Text box with an optional leading icon. */
+/** Text box with an optional leading icon and a unit after the value, such
+ * as "m"; the label names the unit for screen readers. */
 export function TextInput({
   icon: Icon,
+  unit,
   className = '',
   ...props
-}: ComponentProps<'input'> & { icon?: Icon }) {
+}: ComponentProps<'input'> & { icon?: Icon; unit?: string }) {
   return (
     <div className={`${boxClass(!!props['aria-invalid'])} ${className}`}>
       {Icon && <Icon size={18} className="shrink-0 text-ink" aria-hidden />}
@@ -131,6 +133,11 @@ export function TextInput({
         className="min-w-0 flex-1 bg-transparent py-3 text-[15px] outline-none placeholder:text-ink-secondary"
         {...props}
       />
+      {unit && (
+        <span className="shrink-0 text-[15px] text-ink-secondary" aria-hidden>
+          {unit}
+        </span>
+      )}
     </div>
   )
 }

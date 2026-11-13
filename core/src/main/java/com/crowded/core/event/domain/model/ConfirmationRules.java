@@ -5,12 +5,18 @@ import com.crowded.core.shared.domain.exception.RuleViolationException;
 /**
  * How an event asks participants to confirm reports.
  *
- * @param venueRadiusMeters how far from the venue a participant may report or confirm
+ * @param venueRadiusMeters how far from the venue, in meters, a participant may report or confirm
  * @param highConfidenceAnswers how many answers make a report's confidence high
  * @param maxPromptsPerHour how many confirmations one participant is asked for at most, per hour
  */
 public record ConfirmationRules(
     int venueRadiusMeters, int highConfidenceAnswers, int maxPromptsPerHour) {
+
+  /** The smallest radius, about what a phone's location is accurate to. */
+  static final int MIN_RADIUS = 100;
+
+  /** The largest radius, enough for a public event spread over a whole city. */
+  static final int MAX_RADIUS = 50_000;
 
   /** The rules of an event whose organization has not chosen others. */
   public static final ConfirmationRules DEFAULT = new ConfirmationRules(500, 8, 3);
@@ -19,7 +25,13 @@ public record ConfirmationRules(
    * @throws RuleViolationException when a value is outside its range
    */
   public ConfirmationRules {
-    check(venueRadiusMeters, 100, 5000, "VENUE_RADIUS_OUT_OF_RANGE", "The venue radius", "m");
+    check(
+        venueRadiusMeters,
+        MIN_RADIUS,
+        MAX_RADIUS,
+        "VENUE_RADIUS_OUT_OF_RANGE",
+        "The venue radius",
+        " m");
     check(
         highConfidenceAnswers,
         2,

@@ -708,7 +708,8 @@ export function demoIncidents(now: Date): Incident[] {
  * event, and the rules of those prompts. */
 export interface ConfirmationSettings {
   categories: Record<IncidentCategory, boolean>
-  /** How far from the venue a participant may report or confirm. */
+  /** How far from the venue, in meters, a participant may report or
+   * confirm: from 100 m to 50 km, for a public event spread over a city. */
   radiusMeters: number
   /** How many answers make a report's confidence high. */
   highConfidenceAnswers: number
@@ -725,6 +726,14 @@ export function defaultConfirmations(): ConfirmationSettings {
     highConfidenceAnswers: 8,
     maxPromptsPerHour: 3,
   }
+}
+
+/** The venue radius in meters, or the error to show. */
+export function parseRadius(radius: string): number | string {
+  const n = Number(radius)
+  return Number.isInteger(n) && n >= 100 && n <= 50000
+    ? n
+    : 'Indica um raio entre 100 e 50 000 metros.'
 }
 
 /** The answers for high confidence, or the error to show. */

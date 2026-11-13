@@ -136,7 +136,14 @@ describe('O2–O4 events', () => {
     expect(screen.getByRole('button', { name: 'Remover Porta B' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('switch', { name: 'Pedir confirmação para Fila' }))
-    await user.selectOptions(screen.getByLabelText('Raio do recinto'), '1 km')
+    const radius = screen.getByLabelText('Raio do recinto (em metros)')
+    await user.clear(radius)
+    await user.type(radius, '60000')
+    await user.click(screen.getByRole('button', { name: 'Publicar evento' }))
+    expect(screen.getByText('Indica um raio entre 100 e 50 000 metros.')).toBeInTheDocument()
+    await user.clear(radius)
+    // A public event spread over a city needs a larger radius than a venue.
+    await user.type(radius, '20000')
 
     await user.click(screen.getByRole('button', { name: 'Publicar evento' }))
 
@@ -150,7 +157,7 @@ describe('O2–O4 events', () => {
       latitude: 41.1496,
       entrances: ['Porta A', 'Porta B'],
     })
-    expect(created.confirmations).toMatchObject({ radiusMeters: 1000 })
+    expect(created.confirmations).toMatchObject({ radiusMeters: 20000 })
     expect(created.confirmations.categories.queue).toBe(false)
     expect(screen.getByRole('status')).toHaveTextContent('Noite Margens publicado.')
     expect(screen.getAllByText('SÁB 21 NOV · 22:00 · Coliseu, Porto').length).toBeGreaterThan(0)
@@ -335,6 +342,29 @@ describe('O2–O4 with Core', () => {
       address: 'Rua de Passos Manuel',
       latitude: 41.1496,
     })
+  })
+
+  it('says when the map cannot be reached, not that the address is wrong', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/organizacao/eventos/novo']}>
+        <App
+          now={now}
+          initialSession={member}
+          eventsApiFor={() => fakeEventsApi().api}
+          geocoder={() => Promise.reject(new Error('down'))}
+        />
+      </MemoryRouter>,
+    )
+    await user.type(await screen.findByLabelText('Morada'), 'Rua de Passos Manuel 137')
+    await user.tab()
+    expect(
+      await screen.findByText(/Não foi possível consultar o mapa para confirmar a morada/),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Publicar evento' }))
+    expect(screen.queryByText(/Não encontrámos esta morada/)).not.toBeInTheDocument()
+    expect(screen.getAllByText(/Não foi possível consultar o mapa/)).toHaveLength(1)
   })
 
   it('offers to try again when the events cannot be loaded', async () => {

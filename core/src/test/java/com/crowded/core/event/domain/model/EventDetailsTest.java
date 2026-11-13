@@ -93,7 +93,9 @@ class EventDetailsTest {
   @Test
   void confirmationRulesStayWithinTheirRanges() {
     assertThatNoException().isThrownBy(() -> new ConfirmationRules(100, 2, 1));
-    assertThatNoException().isThrownBy(() -> new ConfirmationRules(5000, 50, 10));
+    assertThatNoException().isThrownBy(() -> new ConfirmationRules(50_000, 50, 10));
+    assertThatThrownBy(() -> new ConfirmationRules(50_001, 8, 3))
+        .hasFieldOrPropertyWithValue("code", "VENUE_RADIUS_OUT_OF_RANGE");
     assertThatThrownBy(() -> new ConfirmationRules(99, 8, 3))
         .hasFieldOrPropertyWithValue("code", "VENUE_RADIUS_OUT_OF_RANGE");
     assertThatThrownBy(() -> new ConfirmationRules(500, 51, 3))

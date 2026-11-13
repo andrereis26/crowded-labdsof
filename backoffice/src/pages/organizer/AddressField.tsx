@@ -1,6 +1,12 @@
 import { ExternalLink, Map as MapIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { osmEmbedUrl, osmLink, type Geocoder, type Place } from '../../data/geocoding'
+import {
+  MAP_UNAVAILABLE,
+  osmEmbedUrl,
+  osmLink,
+  type Geocoder,
+  type Place,
+} from '../../data/geocoding'
 import { Field, TextInput } from '../../ui/forms'
 
 type Lookup = 'idle' | 'searching' | 'found' | 'not-found' | 'failed'
@@ -21,7 +27,8 @@ export function AddressField({
   address: string
   place?: Place
   geocode: Geocoder
-  onChange: (address: string, place?: Place) => void
+  /** `unavailable` is true when the map service could not be reached. */
+  onChange: (address: string, place?: Place, unavailable?: boolean) => void
   error?: string
   disabled?: boolean
   label?: string
@@ -46,6 +53,7 @@ export function AddressField({
       if (request !== latest.current) return
       looked.current = ''
       setLookup('failed')
+      onChange(address, undefined, true)
     }
   }
 
@@ -56,7 +64,7 @@ export function AddressField({
     'not-found': error
       ? undefined
       : 'Não encontrámos esta morada no mapa. Confirma a rua, o número e a localidade.',
-    failed: 'Não foi possível abrir o mapa. Tenta novamente daqui a pouco.',
+    failed: error ? undefined : MAP_UNAVAILABLE,
   }[lookup]
 
   return (

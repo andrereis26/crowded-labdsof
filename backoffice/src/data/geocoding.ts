@@ -4,6 +4,10 @@ export interface Place {
   longitude: number
 }
 
+/** Shown when the map service is down, so the member does not doubt the address. */
+export const MAP_UNAVAILABLE =
+  'Não foi possível consultar o mapa para confirmar a morada. Tenta novamente daqui a pouco.'
+
 /** Looks an address up on the map; undefined when nothing matches. Throws
  * when the map service cannot be reached. */
 export type Geocoder = (address: string) => Promise<Place | undefined>

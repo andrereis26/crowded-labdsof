@@ -133,12 +133,29 @@ public final class Event {
   }
 
   /**
-   * Replaces the code of the tickets or the access code. Participants already connected keep their
-   * connection; the new code is for those who connect from now on. Whether another event uses it is
-   * checked by {@code EventCodes}.
+   * Replaces the code of the tickets or the access code, sent in the field of the event's type.
+   * Participants already connected keep their connection; the new code is for those who connect
+   * from now on. Whether another event uses it is checked by {@code EventCodes}.
+   *
+   * @param ticketEventCode the new code of a ticketed event, or null
+   * @param accessCode the new code of a public event, or null
+   * @throws RuleViolationException when both are sent, or the code is in the other type's field
    */
-  public void replaceCode(EventCode code) {
-    admission = admission.withCode(code);
+  public void replaceCode(String ticketEventCode, String accessCode) {
+    if (ticketEventCode != null && accessCode != null) {
+      throw new RuleViolationException(
+          "ONE_CODE_ONLY", "Send the new code of the tickets or the new access code, not both.");
+    }
+    boolean ticketed = admission.type() == EventType.TICKETED;
+    String code = ticketed ? ticketEventCode : accessCode;
+    if (code == null) {
+      throw new RuleViolationException(
+          "CODE_TYPE_MISMATCH",
+          ticketed
+              ? "This event is ticketed: send its new code as ticketEventCode."
+              : "This event is public: send its new code as accessCode.");
+    }
+    admission = admission.withCode(new EventCode(code));
   }
 
   /** Sets the entrances and queue points, in the order the organization lists them. */
