@@ -1,5 +1,4 @@
 {
   "apiBaseUrl": "/api",
-  "participantUrl": "http://localhost:8765",
   "geocoderUrl": "https://photon.komoot.io/api"
 }

@@ -2,7 +2,6 @@ import {
   Calendar,
   ChartNoAxesColumn,
   ChevronDown,
-  ExternalLink,
   Megaphone,
   Menu,
   MessageSquare,
@@ -10,14 +9,9 @@ import {
 } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router'
-import { config } from '../config'
 import { eventSubtitle, organization, statusTag, type OrgEvent } from '../data/organizer'
 import { Avatar, EventThumb, Tag } from '../ui/components'
-import { buttonClass } from '../ui/styles'
 import { Sidebar, TopBar, type NavItem } from './Shell'
-
-/** Base address of the participant web app, for "Ver página pública". */
-const participantUrl = config.participantUrl
 
 export type OrganizerScope =
   /** Pages about the whole organization ("Eventos"). */
@@ -82,19 +76,7 @@ export function OrganizerLayout({
           <h1 className="text-base font-semibold">{scope.title}</h1>
         </TopBar>
       ) : (
-        <TopBar
-          actions={
-            <a
-              href={`${participantUrl}/events`}
-              target="_blank"
-              rel="noreferrer"
-              className={buttonClass('secondary', 'sm')}
-            >
-              <ExternalLink size={16} aria-hidden />
-              Ver página pública
-            </a>
-          }
-        >
+        <TopBar>
           <h1 className="sr-only">{scope.title}</h1>
           <EventSelector
             events={events}
