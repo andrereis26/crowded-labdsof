@@ -1,6 +1,8 @@
+import { config } from '../config'
+
 /** Base address of the Crowded API: the router serves it next to the
  * backoffice; the dev server proxies it to a local Core (vite.config.ts). */
-export const apiBaseUrl: string = import.meta.env.VITE_API_BASE_URL ?? '/api'
+export const apiBaseUrl: string = config.apiBaseUrl
 
 /** A signed-in session: Core's short-lived token and who it is for. The
  * token stays in memory, so reloading the page signs the user out. */
