@@ -65,6 +65,8 @@ crowded:
     # The AI gives up after 25 seconds, without retries, so an import ends within
     # 30 seconds; the participant then types the event code.
     ticket-extraction-timeout: 25s
+    # crowded.ai.nuextract.url is the llama.cpp server that runs NuExtract. Without
+    # it, every extraction fails and the participant types the event code.
   # crowded.tickets.entry-code-key, a Base64 256-bit key, encrypts the entry
   # codes of imported tickets. It has no default: without it, Core refuses ticket
   # imports. See README.md.

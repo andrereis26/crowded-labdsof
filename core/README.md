@@ -86,5 +86,6 @@ The domain is a rich model ([ADR 0017](../docs/deliverables/adr/0017-rich-domain
 | `JWT_PUBLIC_KEY_LOCATION` | Public key that checks token signatures, e.g. `file:/run/secrets/jwt-public.pem` | – |
 | `JWT_PRIVATE_KEY_LOCATION` | Private key Core signs tokens with (`crowded.jwt.private-key-location`). Only Core gets it. | – |
 | `CROWDED_TICKETS_ENTRYCODEKEY` | Base64 256-bit key that encrypts the entry codes of imported tickets with AES-GCM (`crowded.tickets.entry-code-key`). Without it, Core starts but refuses ticket imports (503 `TICKET_IMPORT_UNAVAILABLE`). Locally it is `TICKET_ENTRY_CODE_KEY` of `.env`, which `setup` creates; deployments read the Doppler secret of the same name. | – |
+| `CROWDED_AI_NUEXTRACT_URL` | llama.cpp server that runs NuExtract, the model that reads imported tickets (`crowded.ai.nuextract.url`, [ADR 0020](../docs/deliverables/adr/0020-local-nuextract-for-ticket-extraction.md)). Without it, every extraction fails and the participant types the event code. The Swarm stack sets `http://nuextract:8080` | – |
 
 Tokens are signed with an RSA key pair: Core holds the private key, and every service validates with the public key ([ADR 0005](../docs/deliverables/adr/0005-authentication-in-core-with-jwt.md)).
