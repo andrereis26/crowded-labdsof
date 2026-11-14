@@ -1,0 +1,547 @@
+{
+ "method": "rules",
+ "warmup_seconds": 0.0,
+ "peak_rss_mb": 20,
+ "rows": [
+  {
+   "id": "p01-ticketline-concerto",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "TL-48213",
+    "gate": "3",
+    "sector": "B",
+    "seat": "Fila 12 Lugar 7"
+   },
+   "got": {
+    "eventCode": "TL-48213",
+    "gate": "3",
+    "sector": "B",
+    "seat": "7"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p02-bol-teatro",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "22517",
+    "gate": "Entrada Principal",
+    "sector": "Plateia",
+    "seat": "Fila F Cadeira 14"
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "Entrada Principal",
+    "sector": "Plateia",
+    "seat": "14"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p03-blueticket-festival",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "BT7741-25",
+    "gate": "Portão Norte",
+    "sector": "Geral",
+    "seat": null
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "pelo Portão Norte",
+    "sector": "Geral",
+    "seat": null
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p04-seetickets-uk-gig",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "0912-4471",
+    "gate": "B",
+    "sector": "Standing Floor",
+    "seat": null
+   },
+   "got": {
+    "eventCode": null,
+    "gate": null,
+    "sector": null,
+    "seat": null
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p05-fnac-bilheteira",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "FN2025-0388",
+    "gate": "Porta Lateral Sul",
+    "sector": "Balcão 1",
+    "seat": "Fila C Lugar 21"
+   },
+   "got": {
+    "eventCode": "FN2025-0388",
+    "gate": "Lateral Sul",
+    "sector": null,
+    "seat": "21"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p06-eventbrite-workshop",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "846201337495",
+    "gate": null,
+    "sector": null,
+    "seat": null
+   },
+   "got": {
+    "eventCode": null,
+    "gate": null,
+    "sector": null,
+    "seat": null
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p07-ticketmaster-arena",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "1E006A3F9C21B04D",
+    "gate": "4",
+    "sector": "112",
+    "seat": "Row K, Seat 9"
+   },
+   "got": {
+    "eventCode": "1E006A3F9C21B04D",
+    "gate": "4",
+    "sector": "112",
+    "seat": "9"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p08-futebol-clube",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "J07-LIG2526",
+    "gate": "14",
+    "sector": "Nascente Inferior",
+    "seat": "Fila 8 Lugar 112"
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "14",
+    "sector": "Nascente Inferior",
+    "seat": "112"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p09-teatro-municipal",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "2025/117",
+    "gate": null,
+    "sector": "1.º Balcão",
+    "seat": "Fila H, Lugar 3"
+   },
+   "got": {
+    "eventCode": null,
+    "gate": null,
+    "sector": null,
+    "seat": "3"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p10-worten-concerto",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "WTN-55120",
+    "gate": "A",
+    "sector": "Pista",
+    "seat": null
+   },
+   "got": {
+    "eventCode": "WTN-55120",
+    "gate": "A",
+    "sector": null,
+    "seat": "não marcado"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p11-ticketline-standup",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "tl-sc-0412",
+    "gate": null,
+    "sector": "Plateia",
+    "seat": "Fila 3 Lugar 10"
+   },
+   "got": {
+    "eventCode": "tl-sc-0412",
+    "gate": ".",
+    "sector": null,
+    "seat": "10"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p12-museu-sem-codigo",
+   "kind": "representative",
+   "expected": {
+    "eventCode": null,
+    "gate": "Entrada Norte",
+    "sector": null,
+    "seat": null
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "— Adulto",
+    "sector": null,
+    "seat": null
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p13-blueticket-congresso",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "30418",
+    "gate": "B",
+    "sector": null,
+    "seat": null
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "B",
+    "sector": null,
+    "seat": null
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p14-seetickets-fr",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "SEE-PAR-7731",
+    "gate": "2",
+    "sector": "Fosse",
+    "seat": null
+   },
+   "got": {
+    "eventCode": null,
+    "gate": null,
+    "sector": null,
+    "seat": null
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p15-entradas-es",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "ES-4471-MAD",
+    "gate": "5",
+    "sector": "Grada Alta",
+    "seat": "Fila 9 Asiento 22"
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "/ TICKET",
+    "sector": "Grada Alta",
+    "seat": "22"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p16-registo-gratuito-municipal",
+   "kind": "representative",
+   "expected": {
+    "eventCode": null,
+    "gate": "Porta do Jardim",
+    "sector": null,
+    "seat": null
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "Porta do Jardim",
+    "sector": null,
+    "seat": null
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p17-ticketline-opera",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "51-0093",
+    "gate": "Porta Nobre",
+    "sector": "Camarote 4",
+    "seat": "Lugar 2"
+   },
+   "got": {
+    "eventCode": "51-0093",
+    "gate": "Nobre",
+    "sector": null,
+    "seat": "2"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p18-festival-pulseira",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "SOLAR26",
+    "gate": "Portão 1",
+    "sector": null,
+    "seat": null
+   },
+   "got": {
+    "eventCode": null,
+    "gate": null,
+    "sector": null,
+    "seat": null
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p19-pavilhao-andebol",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "0231",
+    "gate": "P2",
+    "sector": "Bancada Topo Sul",
+    "seat": "Fila 4 Lugar 18"
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "P2",
+    "sector": "Topo Sul",
+    "seat": "18"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p20-cinema-sessao",
+   "kind": "representative",
+   "expected": {
+    "eventCode": "SES-778201",
+    "gate": null,
+    "sector": "Sala 5",
+    "seat": "Fila G Lugar 11"
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "após 15 minutos do início da sessão.",
+    "sector": null,
+    "seat": "11"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p21-duas-colunas-intercaladas",
+   "kind": "difficult",
+   "expected": {
+    "eventCode": "BL-60022",
+    "gate": "Porta Lateral",
+    "sector": "Nave Central",
+    "seat": "Fila 2 Lugar 5"
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "Preço",
+    "sector": "Lugar",
+    "seat": "Nave Central            Fila 2 Lugar 5"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p22-tabela-achatada-hifenizacao",
+   "kind": "difficult",
+   "expected": {
+    "eventCode": "TL-90 517",
+    "gate": "P7",
+    "sector": "C",
+    "seat": "15/22"
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "Setor",
+    "sector": "Fila/Lugar",
+    "seat": "Preço"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p23-codigo-sem-rotulo",
+   "kind": "difficult",
+   "expected": {
+    "eventCode": "ABT26-LX2",
+    "gate": "6",
+    "sector": "Plateia em pé",
+    "seat": null
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "pela Porta 6",
+    "sector": null,
+    "seat": null
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p24-muitos-numeros",
+   "kind": "difficult",
+   "expected": {
+    "eventCode": "7720",
+    "gate": "Portão do Cais",
+    "sector": null,
+    "seat": null
+   },
+   "got": {
+    "eventCode": "7720",
+    "gate": "Portão do Cais",
+    "sector": null,
+    "seat": "sentado, plateia livre"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p25-sem-codigo-muitos-codigos",
+   "kind": "difficult",
+   "expected": {
+    "eventCode": null,
+    "gate": null,
+    "sector": null,
+    "seat": null
+   },
+   "got": {
+    "eventCode": null,
+    "gate": null,
+    "sector": null,
+    "seat": null
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p26-multipagina-cabecalhos",
+   "kind": "difficult",
+   "expected": {
+    "eventCode": "PRF-3390-B",
+    "gate": "Gate C",
+    "sector": "Balcony 2",
+    "seat": "Row D Seat 31"
+   },
+   "got": {
+    "eventCode": "changes",
+    "gate": "C      Balcony 2  —      —",
+    "sector": "ROW    SEAT",
+    "seat": "Gate C      Balcony 2  —      —"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p27-misto-sem-lugar",
+   "kind": "difficult",
+   "expected": {
+    "eventCode": "evt_44b7q",
+    "gate": "Torniquete 3",
+    "sector": "Relvado Frontal",
+    "seat": null
+   },
+   "got": {
+    "eventCode": null,
+    "gate": "",
+    "sector": "Relvado Frontal",
+    "seat": "--"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p28-injecao-instrucoes",
+   "kind": "adverse",
+   "expected": {
+    "eventCode": "TL-31877",
+    "gate": "1",
+    "sector": "Plateia Central",
+    "seat": "Fila 6 Lugar 15"
+   },
+   "got": {
+    "eventCode": "TL-31877",
+    "gate": "1",
+    "sector": "Plateia Central",
+    "seat": "15"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p29-json-falso",
+   "kind": "adverse",
+   "expected": {
+    "eventCode": "BOL-20431",
+    "gate": "2",
+    "sector": "Bancada Poente",
+    "seat": null
+   },
+   "got": {
+    "eventCode": "BOL-20431",
+    "gate": "2",
+    "sector": "Poente",
+    "seat": "livre"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  },
+  {
+   "id": "p30-codigo-de-outro-evento",
+   "kind": "adverse",
+   "expected": {
+    "eventCode": "BT-55810",
+    "gate": "A",
+    "sector": "Plateia",
+    "seat": "Fila 1 Lugar 4"
+   },
+   "got": {
+    "eventCode": "FD-1209",
+    "gate": "A",
+    "sector": "Balcão, Fila 9 Lugar 9) tem 20% de desconto apresentando",
+    "seat": "4"
+   },
+   "invalid": null,
+   "seconds": 0.0
+  }
+ ]
+}
