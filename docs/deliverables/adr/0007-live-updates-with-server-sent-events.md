@@ -23,9 +23,17 @@ SSE, from two sources that each stream the data they own:
 
 SSE is chosen over WebSocket because updates only flow from server to client.
 
+A stream stays on the instance that accepted it, but the change it reports may happen on another instance of the same service. The instances therefore tell each other through Redis publish/subscribe, on the Redis of [ADR 0004](0004-redis-for-revocation-rate-limiting-and-cache.md):
+
+- After its transaction commits, the instance that made the change publishes only the id on a channel: `core:events:changed` with the event's id (Core first drops that event's cached page), and `notifications:created` with the id of each new notification.
+- Every instance subscribes to its service's channel, reads the current data from the database and sends it to the streams it holds for that event or recipient.
+
+Pub/sub keeps nothing: an instance that is not subscribed when a message is published misses it. That is acceptable because every stream can be rebuilt: the client reconnects and fetches the event page or the notification center again.
+
 ## Consequences
 
 - Updates appear within seconds instead of after the next poll, so notifications can be tested end to end in the browser before mobile push exists.
 - A client keeps up to two open connections (event page and notifications).
 - NGINX must keep long-lived connections open (no response buffering, longer timeouts).
 - Clients must reconnect after network drops and fetch what they missed (the notification center lists everything sent while offline, FR-067).
+- Core and Notifications can run several instances, because the live updates reach every instance through Redis. If Redis is down, changes are still saved but nothing is sent live, and the event page cache expires on its own.
