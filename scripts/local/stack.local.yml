@@ -10,6 +10,11 @@ services:
   router:
     deploy:
       replicas: 0
+  # The model file is not on development machines, so Core finds no model and
+  # participants type the event code (ADR 0020).
+  nuextract:
+    deploy:
+      replicas: 0
 
 networks:
   edge:
