@@ -4,7 +4,7 @@ Everything needed to run Crowded on the Docker Swarm host ([ADR 0013](../docs/de
 
 | Path | What it is |
 |---|---|
-| `docker-compose.swarm.yml` | The Swarm stack: router, the `database` migration job, `core`, `jobs`, `notifications`, `backoffice`, `participant-app`, PostgreSQL, RabbitMQ and Redis |
+| `docker-compose.swarm.yml` | The Swarm stack: router, the `database` migration job, `core`, `jobs`, `notifications`, `backoffice`, `participant-app`, the `nuextract` model, PostgreSQL, RabbitMQ and Redis |
 | `remote-deploy.sh` | Prepares the host, deploys a release, checks it and rolls back if it fails |
 | `remote-rollback.sh` | Deploys an earlier release again |
 | `lib/common.sh` | Functions both scripts share |
@@ -18,7 +18,7 @@ Everything needed to run Crowded on the Docker Swarm host ([ADR 0013](../docs/de
 3. On the host, the script:
    1. installs Docker Engine and the Doppler CLI if they are missing, checks that Docker is rootful and `live-restore` is off, and initialises a single-node Swarm;
    2. pulls each image and pins it by digest;
-   3. reads the secrets from Doppler and stores each one as a Swarm secret named after a hash of its value: a changed secret becomes a new secret, an unchanged one is reused;
+   3. reads the secrets from Doppler and stores each one as a Swarm secret named after a hash of its value: a changed secret becomes a new secret, an unchanged one is reused; then downloads the ticket extraction model if the host does not have it ([Ticket Extraction Model](#ticket-extraction-model));
    4. writes a **release** to `/opt/crowded/releases/<time>-<sha>/`: a copy of the stack file and router config, and `release.env` with every image digest, secret name and configuration value;
    5. migrates the database ([ADR 0012](../docs/deliverables/adr/0012-database-migrations-with-flyway.md)): deploys the release with `core`, `jobs` and `notifications` still on the images they run now (with no replicas on the very first deployment), and waits until the `database` job, a one-shot `replicated-job` running the release's `crowded-database` image, has completed. A failed migration fails the deployment here, before any service gets a new image;
    6. runs `docker stack deploy` with the whole release and waits until every service runs all its replicas with the release's image and every update it started has `completed`, which Swarm reports once the new task has stayed healthy for the monitor period (30 seconds). Then it requests `/` through the router.
@@ -121,6 +121,20 @@ openssl rand -base64 32
 ```
 
 Secrets reach the containers as files in `/run/secrets`, never as environment variables, so `docker inspect` does not show them. The backend services read them through Spring Boot's config tree import; PostgreSQL through `POSTGRES_PASSWORD_FILE`; Redis and RabbitMQ through a config file. Rotating a secret is changing it in Doppler and deploying: the new value becomes a new Swarm secret, and the services restart with it.
+
+## Ticket Extraction Model
+
+Core reads imported tickets with NuExtract 2.0 2B, a local model served by llama.cpp's server in the `nuextract` service ([ADR 0020](../docs/deliverables/adr/0020-local-nuextract-for-ticket-extraction.md)). It is on the internal `backend` network only, and Core reaches it at `CROWDED_AI_NUEXTRACT_URL` (`http://nuextract:8080`).
+
+| Setting | Value |
+|---|---|
+| Image | `ghcr.io/ggml-org/llama.cpp:server`, pinned by the digest of the build that was evaluated |
+| Model file | `NuExtract-2.0-2B-Q4_K_M.gguf` (986 MB, MIT, from [numind/NuExtract-2.0-2B-GGUF](https://huggingface.co/numind/NuExtract-2.0-2B-GGUF)), read-only from `/opt/crowded/models` on the host |
+| Server options | `-c 2048 -t 2`: a 2,048-token context and both CPUs |
+| Memory | Limit 1,280 MB, reservation 768 MB. About 0.73 GB idle and 1.01 GB after extractions in the evaluation |
+| Updates | Stop first, because two copies do not fit in memory. Meanwhile participants type the event code |
+
+`remote-deploy.sh` downloads the model file from the Hugging Face commit that was evaluated, checks its SHA-256 and only then moves it into `/opt/crowded/models`. A file that is already there with the right checksum is kept, so only the first deployment on a host downloads it, and a new VM gets it on its first deployment. A download that fails or does not match the checksum stops the deployment before any service changes. While the model is down or slow, Core gives up after 25 seconds and the participant types the event code. The local stack (`scripts/local/stack.local.yml`) runs no replica of it, so imports there always ask for the code.
 
 ## Routes
 
