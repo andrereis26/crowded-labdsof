@@ -17,6 +17,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.amqp.core.AmqpAdmin;
 import org.springframework.amqp.core.Binding;
@@ -26,6 +27,8 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import tools.jackson.databind.JsonNode;
@@ -36,11 +39,15 @@ import tools.jackson.databind.json.JsonMapper;
  * and publishes {@code NotificationRequested} through the outbox to RabbitMQ.
  */
 @ResourceLock(IntegrationTest.SHARED_STATE)
+@ExtendWith(OutputCaptureExtension.class)
 class EventChangeIT extends IntegrationTest {
 
   private static final HttpClient HTTP = HttpClient.newHttpClient();
   private static final Instant START =
       Instant.now().plus(10, ChronoUnit.DAYS).truncatedTo(ChronoUnit.HOURS);
+
+  // The trace a client or the router started, which the request continues.
+  private static final String TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736";
 
   // Same shape as the demo hashes (DatabaseIT checks every user's); no one signs in with it.
   private static final String PASSWORD_HASH = "{bcrypt}$2a$10$" + "a".repeat(53);
@@ -110,7 +117,7 @@ class EventChangeIT extends IntegrationTest {
   }
 
   @Test
-  void recordsTheCancellationOnceAndAsksForNotifications() throws Exception {
+  void recordsTheCancellationOnceAndAsksForNotifications(CapturedOutput output) throws Exception {
     String body =
         """
         {"type": "CANCELLATION", "ticketStillValid": false,
@@ -159,6 +166,18 @@ class EventChangeIT extends IntegrationTest {
     assertThat(notification.get("eventId").asString()).isEqualTo(event.toString());
     assertThat(notification.get("causeId").asString()).isEqualTo(change.toString());
     assertThat(notification.get("userIds").isEmpty()).isTrue();
+    // In the request's trace, so Notifications logs it under the same trace id.
+    assertThat(message.getMessageProperties().<String>getHeader("traceparent"))
+        .startsWith("00-" + TRACE_ID + "-");
+    assertThat(Instant.parse(message.getMessageProperties().<String>getHeader("created-at")))
+        .isBefore(Instant.now());
+    assertThat(output.getOut().lines())
+        .filteredOn(
+            line ->
+                line.contains(
+                    "Published outbox message " + notification.get("messageId").asString()))
+        .singleElement()
+        .satisfies(line -> assertThat(json.readTree(line).toString()).contains(TRACE_ID));
     // The relay deletes the row when it commits, just after the broker confirmed it.
     assertThat(waitForOutboxWithout(change)).isTrue();
 
@@ -300,6 +319,7 @@ class EventChangeIT extends IntegrationTest {
                 URI.create("http://localhost:" + port + "/events/" + event + "/changes"))
             .header("Authorization", "Bearer " + token(user))
             .header("Content-Type", "application/json")
+            .header("traceparent", "00-" + TRACE_ID + "-00f067aa0ba902b7-01")
             .POST(HttpRequest.BodyPublishers.ofString(body))
             .build(),
         HttpResponse.BodyHandlers.ofString());

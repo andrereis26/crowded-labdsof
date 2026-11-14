@@ -5,11 +5,11 @@ Everything needed to run Crowded on the Docker Swarm host ([ADR 0013](../docs/de
 | Path | What it is |
 |---|---|
 | `docker-compose.swarm.yml` | The Swarm stack: router, the `database` migration job, `core`, `jobs`, `notifications`, `backoffice`, `participant-app`, the `nuextract` model, PostgreSQL, RabbitMQ and Redis |
+| `observability/` | Prometheus, Loki, Alloy and Grafana ([ADR 0009](../docs/deliverables/adr/0009-observability-stack.md)): `docker-compose.observability.yml`, deployed with the stack file, and their configuration ([README](observability/README.md)) |
 | `remote-deploy.sh` | Prepares the host, deploys a release, checks it and rolls back if it fails |
 | `remote-rollback.sh` | Deploys an earlier release again |
 | `lib/common.sh` | Functions both scripts share |
 | `router/nginx.conf` | The router's routes, rate limit and SSE settings |
-| `observability/` | Prometheus, Loki, Alloy and Grafana configuration, added by #70 |
 
 ## How a Deployment Works
 
@@ -19,7 +19,7 @@ Everything needed to run Crowded on the Docker Swarm host ([ADR 0013](../docs/de
    1. installs Docker Engine and the Doppler CLI if they are missing, checks that Docker is rootful and `live-restore` is off, and initialises a single-node Swarm;
    2. pulls each image and pins it by digest;
    3. reads the secrets from Doppler and stores each one as a Swarm secret named after a hash of its value: a changed secret becomes a new secret, an unchanged one is reused; then downloads the ticket extraction model if the host does not have it ([Ticket Extraction Model](#ticket-extraction-model));
-   4. writes a **release** to `/opt/crowded/releases/<time>-<sha>/`: a copy of the stack file and router config, and `release.env` with every image digest, secret name and configuration value;
+   4. writes a **release** to `/opt/crowded/releases/<time>-<sha>/`: a copy of the stack file, the router config and `observability/`, and `release.env` with every image digest, secret name and configuration value;
    5. migrates the database ([ADR 0012](../docs/deliverables/adr/0012-database-migrations-with-flyway.md)): deploys the release with `core`, `jobs` and `notifications` still on the images they run now (with no replicas on the very first deployment), and waits until the `database` job, a one-shot `replicated-job` running the release's `crowded-database` image, has completed. A failed migration fails the deployment here, before any service gets a new image;
    6. runs `docker stack deploy` with the whole release and waits until every service runs all its replicas with the release's image and every update it started has `completed`, which Swarm reports once the new task has stayed healthy for the monitor period (30 seconds). Then it requests `/` through the router.
 4. If any of this fails, the release is renamed to `<release>.failed` and the previous release is deployed again. The script still exits with an error, so the pipeline run fails.
@@ -106,6 +106,7 @@ Project `crowded`, config `prd`, the only environment deployed for now (the desi
 | `JWT_PRIVATE_KEY` | Yes | PEM private key Core signs tokens with ([ADR 0005](../docs/deliverables/adr/0005-authentication-in-core-with-jwt.md)). Only Core gets it |
 | `JWT_PUBLIC_KEY` | Yes | PEM public key every service checks tokens with |
 | `TICKET_ENTRY_CODE_KEY` | Yes | Base64 256-bit key that encrypts the entry codes of imported tickets. Only Core gets it. Changing it makes the codes already stored unreadable, so it is not rotated like the passwords |
+| `GRAFANA_ADMIN_PASSWORD` | Yes | Password of Grafana's `admin` at `/grafana/`. Grafana takes it on its first start only; to change it later, change it in Grafana too |
 
 Generate the key pair once, store both keys in Doppler, and delete the local files:
 
@@ -143,9 +144,10 @@ Core reads imported tickets with NuExtract 2.0 2B, a local model served by llama
 | `/api/notifications/…` | `notifications` (without `/api`) |
 | `/api/…` | `core` (without `/api`) |
 | `/backoffice/…` | `backoffice` (without `/backoffice`) |
+| `/grafana/…` | `grafana`, with its own sign-in |
 | `/…` | `participant-app` |
 | `/healthz` | the router itself |
 
 The backoffice is built with Vite's `base: '/backoffice/'`, so its asset URLs keep the prefix the router removes.
 
-`/api/actuator` and `/api/notifications/actuator` answer 404: health and metrics stay inside the Swarm. The router is the only service with a published port (80); the data stores are on an internal network that the router cannot reach.
+`/api/actuator` and `/api/notifications/actuator` answer 404: health and metrics stay inside the Swarm, where Prometheus scrapes them. The router is the only service with a published port (80); the data stores are on an internal network that the router cannot reach.

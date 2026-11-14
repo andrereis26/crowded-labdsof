@@ -37,7 +37,8 @@ source "${SCRIPT_DIR}/lib/common.sh"
 # Doppler key -> Swarm secret. The stack file reads the secret's versioned name
 # from <KEY>_SECRET.
 SECRET_KEYS=(POSTGRES_PASSWORD CORE_DB_PASSWORD JOBS_DB_PASSWORD NOTIFICATIONS_DB_PASSWORD
-  RABBITMQ_PASSWORD REDIS_PASSWORD JWT_PRIVATE_KEY JWT_PUBLIC_KEY TICKET_ENTRY_CODE_KEY)
+  RABBITMQ_PASSWORD REDIS_PASSWORD JWT_PRIVATE_KEY JWT_PUBLIC_KEY TICKET_ENTRY_CODE_KEY
+  GRAFANA_ADMIN_PASSWORD)
 # Doppler keys that are configuration, not secrets: written to the release as is.
 CONFIG_KEYS=(POSTGRES_DB POSTGRES_USER RABBITMQ_USERNAME)
 # Configuration that may be missing from Doppler, and its default then.
@@ -218,7 +219,7 @@ write_release() {
   local release_dir="$1" key var service
   mkdir -p "${release_dir}"
   cp "${SCRIPT_DIR}/${STACK_FILE_NAME}" "${release_dir}/"
-  cp -r "${SCRIPT_DIR}/router" "${release_dir}/"
+  cp -r "${SCRIPT_DIR}/router" "${SCRIPT_DIR}/observability" "${release_dir}/"
 
   {
     printf '# Release %s, deployed %s\n' "${RELEASE_ID}" "$(date -u +%FT%TZ)"
@@ -236,6 +237,7 @@ write_release() {
     done
     # Swarm configs cannot change either, so the router's is versioned the same way.
     printf '%s=%q\n' ROUTER_CONF_VERSION "$(sha256sum "${release_dir}/router/nginx.conf" | cut -c1-12)"
+    printf '%s=%q\n' OBSERVABILITY_CONF_VERSION "$(observability_version "${release_dir}/observability")"
   } >"${release_dir}/release.env"
   chmod 600 "${release_dir}/release.env"
 }
@@ -270,7 +272,8 @@ clean_up() {
     grep -q "=${secret}\$" <<<"${in_use}" || docker secret rm "${secret}" >/dev/null 2>&1 || true
   done < <(docker secret ls --filter "label=crowded.stack=${STACK_NAME}" --format '{{.Name}}')
 
-  # Router configs are named crowded_router_<ROUTER_CONF_VERSION>.
+  # Configs are named crowded_<name>_<version>, the version being
+  # ROUTER_CONF_VERSION or OBSERVABILITY_CONF_VERSION.
   local config
   while read -r config; do
     grep -q "=${config##*_}\$" <<<"${in_use}" || docker config rm "${config}" >/dev/null 2>&1 || true

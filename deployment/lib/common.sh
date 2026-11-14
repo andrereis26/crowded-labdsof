@@ -6,6 +6,8 @@ DEPLOY_ROOT="${DEPLOY_ROOT:-/opt/crowded}"
 RELEASES_DIR="${DEPLOY_ROOT}/releases"
 CURRENT_LINK="${DEPLOY_ROOT}/current"
 STACK_FILE_NAME="docker-compose.swarm.yml"
+# Deployed with it (ADR 0009). A release from before it has none.
+OBSERVABILITY_FILE_NAME="observability/docker-compose.observability.yml"
 # Releases (and the secrets they reference) kept for rollback.
 KEEP_RELEASES="${KEEP_RELEASES:-5}"
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}"
@@ -116,12 +118,21 @@ stack_deploy() {
       done
     fi
 
+    local files=(--compose-file "${STACK_FILE_NAME}")
+    [[ -f "${release_dir}/${OBSERVABILITY_FILE_NAME}" ]] && files+=(--compose-file "${OBSERVABILITY_FILE_NAME}")
+
     # Detached: the callers wait, with a timeout. `--detach=false` can keep
     # waiting after every service has converged (seen on Docker 29).
     cd "${release_dir}" \
-      && docker stack config --compose-file "${STACK_FILE_NAME}" >/dev/null \
-      && docker stack deploy --compose-file "${STACK_FILE_NAME}" "${prune[@]}" "${STACK_NAME}"
+      && docker stack config "${files[@]}" >/dev/null \
+      && docker stack deploy "${files[@]}" "${prune[@]}" "${STACK_NAME}"
   )
+}
+
+# First 12 hex digits of the SHA-256 of every file in a folder, in name order:
+# the version of the observability configs, which Swarm cannot change in place.
+observability_version() {
+  find "$1" -type f -print0 | LC_ALL=C sort -z | xargs -0 cat | sha256sum | cut -c1-12
 }
 
 # The state (complete, failed, running...) of the newest migration task that

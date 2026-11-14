@@ -31,7 +31,7 @@ Same for `core/`, `jobs/` and `notifications/` ([ADR 0006](../docs/deliverables/
 | Stop it | `scripts/local/stop.sh core` | `scripts\local\stop.ps1 core` |
 | Remove the infrastructure | `scripts/local/infra-down.sh` | `scripts\local\infra-down.ps1` |
 
-`start` also works against the data stores of `scripts/local/stack-up.sh`, next to the stack's own Core. To run it from an IDE instead, give it the same variables; `/actuator/health` answers `UP` once it reaches PostgreSQL, RabbitMQ and Redis.
+`start` also works against the data stores of `scripts/local/stack-up.sh`, next to the stack's own Core. To run it from an IDE instead, give it the same variables; `/actuator/health` answers `UP` once it reaches PostgreSQL, RabbitMQ and Redis, and shows each one's status.
 
 **Tests:** `./mvnw verify` from this folder (`mvnw.cmd verify` on Windows) runs everything CI checks; the integration tests need Docker running, and `./mvnw verify -DskipITs` skips them. See [Commands](#commands).
 
@@ -50,7 +50,7 @@ Same for `core/`, `jobs/` and `notifications/` ([ADR 0006](../docs/deliverables/
 
 Unit tests are `*Test` classes; integration tests are `*IT` classes that extend `IntegrationTest`, which starts PostgreSQL, RabbitMQ and Redis with Testcontainers (Docker must be running). Read the rules in `IntegrationTest` before adding one: all of them share one Spring context, and a test that changes the database, broker or cache takes the `SHARED_STATE` lock ([ADR 0011](../docs/deliverables/adr/0011-ci-pipeline-and-vulnerability-policy.md#integration-tests)).
 
-The `Dockerfile` builds the service and runs it on a JRE as a non-root user; its health check calls `/actuator/health/readiness`, the only endpoint that needs no token. The application does not start without PostgreSQL, RabbitMQ and Redis; [`deployment/`](../deployment/README.md) runs it with them.
+The `Dockerfile` builds the service and runs it on a JRE as a non-root user; its health check calls `/actuator/health/readiness`. Health and `/actuator/prometheus` are the only endpoints that need no token; the router keeps them inside the Swarm. Logs are JSON lines with the trace id of the request or message, and the metrics include request latency and errors ([Observability](../deployment/observability/README.md#what-the-services-give)). The application does not start without PostgreSQL, RabbitMQ and Redis; [`deployment/`](../deployment/README.md) runs it with them.
 
 ## Code Layout
 

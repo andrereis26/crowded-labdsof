@@ -25,6 +25,9 @@ public class OutboxMessageEntity {
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
+  @Column(name = "trace_parent")
+  private String traceParent;
+
   public UUID getId() {
     return id;
   }
@@ -55,5 +58,13 @@ public class OutboxMessageEntity {
 
   public void setCreatedAt(Instant createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public String getTraceParent() {
+    return traceParent;
+  }
+
+  public void setTraceParent(String traceParent) {
+    this.traceParent = traceParent;
   }
 }
