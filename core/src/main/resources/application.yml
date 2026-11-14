@@ -76,16 +76,40 @@ server:
   # limits use. Tomcat trusts it only from private addresses, such as the Swarm.
   forward-headers-strategy: native
 
+logging:
+  structured:
+    format:
+      # One JSON object per line (Elastic Common Schema) with the traceId of the
+      # request or message, which Alloy ships to Loki (ADR 0009).
+      console: ecs
+  level:
+    # The image has none of the PDF base fonts, so PDFBox warns on every ticket that
+    # it uses a substitute; that changes nothing for reading the QR code and text.
+    org.apache.pdfbox.pdmodel.font: ERROR
+
 management:
+  endpoints:
+    web:
+      exposure:
+        # Prometheus scrapes /actuator/prometheus inside the Swarm; the router
+        # answers 404 to /actuator from outside.
+        include: health, prometheus
   endpoint:
     health:
       # /actuator/health/liveness and /readiness: the container health check
       # calls readiness (ADR 0011).
       probes:
         enabled: true
-
-logging:
-  level:
-    # The image has none of the PDF base fonts, so PDFBox warns on every ticket that
-    # it uses a substitute; that changes nothing for reading the QR code and text.
-    org.apache.pdfbox.pdmodel.font: ERROR
+      # The status of each dependency (database, RabbitMQ, Redis), without
+      # details such as host names.
+      show-components: always
+  tracing:
+    sampling:
+      # Every request and message gets a trace id. Nothing is exported, so
+      # sampling everything costs little.
+      probability: 1.0
+  metrics:
+    distribution:
+      # Latency histograms, so Prometheus can compute percentiles.
+      percentiles-histogram:
+        http.server.requests: true

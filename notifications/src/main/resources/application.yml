@@ -20,6 +20,9 @@ spring:
     password: ${RABBITMQ_PASSWORD}
     listener:
       simple:
+        # Continues the trace of the message (its traceparent header), so these
+        # log lines carry the same traceId as Core's.
+        observation-enabled: true
         # A failed message is retried after 5 s, 15 s and 30 s, all within
         # 1 minute, then dead-lettered (Asynchronous Flows). The
         # retries hold a consumer, so a few run side by side.
@@ -45,10 +48,36 @@ spring:
           # Public key of the RSA key pair Core signs tokens with (ADR 0005).
           public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
 
+logging:
+  structured:
+    format:
+      # One JSON object per line (Elastic Common Schema) with the traceId of the
+      # request or message, which Alloy ships to Loki (ADR 0009).
+      console: ecs
+
 management:
+  endpoints:
+    web:
+      exposure:
+        # Prometheus scrapes /actuator/prometheus inside the Swarm; the router
+        # answers 404 to /actuator from outside.
+        include: health, prometheus
   endpoint:
     health:
       # /actuator/health/liveness and /readiness: the container health check
       # calls readiness (ADR 0011).
       probes:
         enabled: true
+      # The status of each dependency (database, RabbitMQ, Redis), without
+      # details such as host names.
+      show-components: always
+  tracing:
+    sampling:
+      # Every request and message gets a trace id. Nothing is exported, so
+      # sampling everything costs little.
+      probability: 1.0
+  metrics:
+    distribution:
+      # Latency histograms, so Prometheus can compute percentiles.
+      percentiles-histogram:
+        http.server.requests: true

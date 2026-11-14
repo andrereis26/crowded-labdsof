@@ -1,8 +1,11 @@
 package com.crowded.notifications.notification.infrastructure.messaging;
 
 import com.crowded.notifications.notification.domain.exception.UnsupportedNotificationTypeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
@@ -23,6 +26,8 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration(proxyBeanMethods = false)
 class MessagingConfiguration {
+
+  private static final Logger log = LoggerFactory.getLogger(MessagingConfiguration.class);
 
   /** The topic exchange every message goes through; Core declares it too. */
   static final String EXCHANGE = "crowded.events";
@@ -66,10 +71,22 @@ class MessagingConfiguration {
     return new JacksonJsonMessageConverter();
   }
 
-  /** After the last retry, the message is rejected without requeueing, so it is dead-lettered. */
+  /**
+   * After the last retry, the failure is logged as an error, with the message's trace id, and the
+   * message is rejected without requeueing, so it is dead-lettered.
+   */
   @Bean
   MessageRecoverer rejectToDeadLetterQueue() {
-    return new RejectAndDontRequeueRecoverer();
+    return new RejectAndDontRequeueRecoverer() {
+      @Override
+      public void recover(Message message, Throwable cause) {
+        log.error(
+            "Message {} moved to the dead-letter queue",
+            message.getMessageProperties().getMessageId(),
+            cause);
+        super.recover(message, cause);
+      }
+    };
   }
 
   @Bean

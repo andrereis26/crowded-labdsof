@@ -23,7 +23,8 @@ Bash twin (Debian, macOS): scripts/local/stack-up.sh
 Use the images tagged main instead of building them.
 
 .PARAMETER WithObservability
-Add Prometheus, Loki, Alloy and Grafana.
+Add Prometheus, Loki, Alloy and Grafana. Grafana's admin password is
+GRAFANA_ADMIN_PASSWORD from .env, or admin.
 #>
 [CmdletBinding()]
 param(
@@ -111,10 +112,19 @@ Add-StackSecret 'JWT_PUBLIC_KEY' (ConvertFrom-Base64Text $config.JWT_PUBLIC_KEY_
 Add-StackSecret 'TICKET_ENTRY_CODE_KEY' $config.TICKET_ENTRY_CODE_KEY
 # RabbitMQ reads its default user from a config file, not from a secret file.
 Add-StackSecret 'RABBITMQ_CONF' "default_user = $($config.RABBITMQ_USERNAME)`ndefault_pass = $($config.RABBITMQ_PASSWORD)"
+if ($WithObservability) {
+    # Only on 127.0.0.1, so a default is fine here; Doppler has the real one.
+    $grafanaPassword = if ($config.GRAFANA_ADMIN_PASSWORD) { $config.GRAFANA_ADMIN_PASSWORD } else { 'admin' }
+    Add-StackSecret 'GRAFANA_ADMIN_PASSWORD' $grafanaPassword
+}
 
 # --- 4. Deployment --------------------------------------------------------------
-# Swarm configs cannot change, so the router's is named after its hash.
+# Swarm configs cannot change, so the router's is named after its hash, and
+# the observability configs after their folder's.
 $stackEnvironment.ROUTER_CONF_VERSION = Get-ShortHash -Path ([IO.Path]::Combine($Root, 'deployment', 'router', 'nginx.conf'))
+$observabilityFiles = Get-ChildItem -LiteralPath ([IO.Path]::Combine($Root, 'deployment', 'observability')) -Recurse -File |
+    Sort-Object -Property FullName
+$stackEnvironment.OBSERVABILITY_CONF_VERSION = Get-ShortHash -Text (($observabilityFiles | ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join '')
 # The migration job runs again whenever the database image changes.
 $stackEnvironment.CROWDED_RELEASE = "local-$(Get-ShortHash -Text (Get-NativeOutput docker @('image', 'inspect', '--format', '{{.Id}}', $stackEnvironment.DATABASE_IMAGE)))"
 
@@ -207,5 +217,8 @@ Crowded is running, on 127.0.0.1 only:
   PostgreSQL       127.0.0.1:$($config.DB_PORT), database $($config.POSTGRES_DB) (users and passwords in .env)
   RabbitMQ         127.0.0.1:$($config.RABBITMQ_PORT)
   Redis            127.0.0.1:$($config.REDIS_PORT)
-See scripts/local/status.ps1 and logs.ps1 <service>; remove it all with stack-down.ps1.
 "@
+if ($WithObservability) {
+    Write-Output "  Grafana          http://localhost:$($config.HTTP_PORT)/grafana/ (admin, GRAFANA_ADMIN_PASSWORD or admin)"
+}
+Write-Output 'See scripts/local/status.ps1 and logs.ps1 <service>; remove it all with stack-down.ps1.'

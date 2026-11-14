@@ -1,0 +1,144 @@
+# Observability (ADR 0009), deployed together with docker-compose.swarm.yml:
+# by remote-deploy.sh on every release, and locally by
+# scripts/local/stack-up.sh --with-observability. Prometheus scrapes the
+# services and RabbitMQ, Alloy ships every container's log to Loki, and
+# Grafana shows both behind the router at /grafana/.
+#
+# Relative paths start from deployment/, the folder of the first stack file.
+# OBSERVABILITY_CONF_VERSION is a hash of this folder: Swarm configs cannot
+# change, so changed files get new names.
+
+# Stateful, like the data stores: one task at a time on its volume.
+x-observability-deploy: &observability-deploy
+  update_config:
+    order: stop-first
+    failure_action: rollback
+    monitor: 30s
+  rollback_config:
+    order: stop-first
+  restart_policy:
+    condition: any
+    delay: 5s
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Two weeks, and never more than a slice of the data disk.
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=4GB
+    configs:
+      - source: prometheus_conf
+        target: /etc/prometheus/prometheus.yml
+    volumes:
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks: [backend]
+    deploy:
+      <<: *observability-deploy
+      resources:
+        limits: { cpus: "0.5", memory: 256M }
+
+  loki:
+    image: grafana/loki:3.7.9
+    command: [-config.file=/etc/loki/loki.yml]
+    configs:
+      - source: loki_conf
+        target: /etc/loki/loki.yml
+    volumes:
+      - loki-data:/loki
+    networks: [backend]
+    deploy:
+      <<: *observability-deploy
+      resources:
+        limits: { cpus: "0.5", memory: 256M }
+
+  alloy:
+    image: grafana/alloy:v1.21.3
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      # Where Alloy remembers how far it read each log, across restarts.
+      - --storage.path=/var/lib/alloy/data
+      - --disable-reporting
+    configs:
+      - source: alloy_conf
+        target: /etc/alloy/config.alloy
+    volumes:
+      # Finds the containers and reads their logs. The socket gives control of
+      # Docker, so Alloy is only on the internal network and publishes nothing.
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      - alloy-data:/var/lib/alloy/data
+    networks: [backend]
+    deploy:
+      <<: *observability-deploy
+      resources:
+        limits: { cpus: "0.25", memory: 192M }
+
+  grafana:
+    image: grafana/grafana:13.2.5
+    environment:
+      # Served by the router at /grafana/.
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      # The admin's password when Grafana first starts; later changes go
+      # through Grafana itself (deployment/README.md).
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    secrets: [grafana_admin_password]
+    configs:
+      - source: grafana_datasources
+        target: /etc/grafana/provisioning/datasources/datasources.yml
+    volumes:
+      - grafana-data:/var/lib/grafana
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # edge for the router, backend for Prometheus and Loki.
+    networks: [edge, backend]
+    deploy:
+      <<: *observability-deploy
+      resources:
+        limits: { cpus: "0.5", memory: 192M }
+
+volumes:
+  prometheus-data:
+  loki-data:
+  alloy-data:
+  grafana-data:
+
+secrets:
+  grafana_admin_password:
+    external: true
+    name: ${GRAFANA_ADMIN_PASSWORD_SECRET:?GRAFANA_ADMIN_PASSWORD_SECRET is required}
+
+configs:
+  prometheus_conf:
+    file: ./observability/prometheus/prometheus.yml
+    name: crowded_prometheus_${OBSERVABILITY_CONF_VERSION:?OBSERVABILITY_CONF_VERSION is required}
+  loki_conf:
+    file: ./observability/loki/loki.yml
+    name: crowded_loki_${OBSERVABILITY_CONF_VERSION:?OBSERVABILITY_CONF_VERSION is required}
+  alloy_conf:
+    file: ./observability/alloy/config.alloy
+    name: crowded_alloy_${OBSERVABILITY_CONF_VERSION:?OBSERVABILITY_CONF_VERSION is required}
+  grafana_datasources:
+    file: ./observability/grafana/datasources.yml
+    name: crowded_grafana_datasources_${OBSERVABILITY_CONF_VERSION:?OBSERVABILITY_CONF_VERSION is required}

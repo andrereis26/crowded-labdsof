@@ -18,9 +18,9 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Every request needs a valid, unrevoked JWT (ADR 0004, ADR 0005), except the health endpoints,
- * which the container health check and Docker Swarm call without one. Only health is exposed over
- * HTTP.
+ * Every request needs a valid, unrevoked JWT (ADR 0004, ADR 0005), except the health and metrics
+ * endpoints, which the container health check, Docker Swarm and Prometheus call without one; the
+ * router keeps them inside the Swarm.
  */
 @Configuration(proxyBeanMethods = false)
 class SecurityConfiguration {
@@ -30,7 +30,8 @@ class SecurityConfiguration {
     http.authorizeHttpRequests(
             requests ->
                 requests
-                    .requestMatchers("/actuator/health", "/actuator/health/**")
+                    .requestMatchers(
+                        "/actuator/health", "/actuator/health/**", "/actuator/prometheus")
                     .permitAll()
                     .anyRequest()
                     .authenticated())

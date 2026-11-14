@@ -1,0 +1,26 @@
+# Grafana's data sources. A traceId in a log line links to every log line of
+# that trace, across the services.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+    jsonData:
+      derivedFields:
+        - name: traceId
+          matcherRegex: '"traceId":"(\w+)"'
+          datasourceUid: loki
+          # $$ is a literal $ in provisioning files.
+          url: '{service=~".+"} |= "$${__value.raw}"'

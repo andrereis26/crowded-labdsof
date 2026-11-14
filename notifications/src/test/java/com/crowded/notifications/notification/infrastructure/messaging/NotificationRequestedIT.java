@@ -7,6 +7,7 @@ import com.crowded.notifications.notification.application.dto.NotifyParticipants
 import com.crowded.notifications.notification.application.service.ParticipantNotifier;
 import com.crowded.notifications.notification.domain.model.Notification;
 import com.crowded.notifications.notification.domain.model.NotificationType;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -17,20 +18,26 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageBuilderSupport;
 import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Core's {@code NotificationRequested}, published to RabbitMQ as Core's outbox relay does, becomes
  * one notification per connected participant, once, and a message that keeps failing ends in the
- * dead-letter queue. Uses the demo data (database/seed/R__demo_data.sql).
+ * dead-letter queue. Each one is logged under the trace of Core's request. Uses the demo data
+ * (database/seed/R__demo_data.sql).
  */
+@ExtendWith(OutputCaptureExtension.class)
 class NotificationRequestedIT extends IntegrationTest {
 
   // Rock no Parque, cancelled; Bruno has a ticket.
@@ -57,6 +64,7 @@ class NotificationRequestedIT extends IntegrationTest {
   @Autowired private RabbitTemplate rabbit;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private ParticipantNotifier notifier;
+  @Autowired private MeterRegistry meters;
 
   private final Set<String> deadLettered = new HashSet<>();
 
@@ -84,6 +92,23 @@ class NotificationRequestedIT extends IntegrationTest {
     assertThat((String) row.get("body"))
         .startsWith("A organização cancelou o evento. O teu bilhete deixa de ser válido.")
         .contains("Reembolso: Reembolso pedido até 5 DEZ em ribeira-live.test/reembolsos");
+  }
+
+  @Test
+  @ResourceLock(SHARED_STATE)
+  void aMessageIsLoggedInTheTraceOfCoresRequestAndItsLatencyMeasured(CapturedOutput output) {
+    UUID messageId = UUID.randomUUID();
+    String traceId = traceId();
+    long measured = latencies();
+
+    publish(messageId, json(messageId, "OFFICIAL_CHANGE", ROCK, ROCK_CANCELLED), traceId);
+
+    await(() -> count(Notification.deduplicationKey(BRUNO, messageId)) == 1);
+    await(() -> latencies() > measured);
+    assertThat(output.getOut().lines())
+        .filteredOn(line -> line.contains("Message " + messageId + ":"))
+        .singleElement()
+        .satisfies(line -> assertThat(line).startsWith("{").contains(traceId));
   }
 
   @Test
@@ -152,25 +177,42 @@ class NotificationRequestedIT extends IntegrationTest {
 
   @Test
   @ResourceLock(SHARED_STATE)
-  void aTypeWithoutTextAndInvalidJsonGoToTheDeadLetterQueue() {
+  void aTypeWithoutTextAndInvalidJsonGoToTheDeadLetterQueue(CapturedOutput output) {
     UUID weather = UUID.randomUUID();
     UUID invalid = UUID.randomUUID();
+    String traceId = traceId();
 
-    publish(weather, json(weather, "WEATHER_WARNING", ROCK, UUID.randomUUID()));
+    publish(weather, json(weather, "WEATHER_WARNING", ROCK, UUID.randomUUID()), traceId);
     publish(invalid, "{\"messageId\": ");
 
     assertThat(deadLettered(weather)).isTrue();
     assertThat(deadLettered(invalid)).isTrue();
+    // Reported as an error, under the trace of the request behind it.
+    assertThat(output.getOut().lines())
+        .filteredOn(line -> line.contains("Message " + weather + " moved to the dead-letter queue"))
+        .singleElement()
+        .satisfies(line -> assertThat(line).contains("ERROR").contains(traceId));
   }
 
-  /** Publishes {@code body} as Core's outbox relay does. */
   private void publish(UUID messageId, String body) {
-    Message message =
+    publish(messageId, body, null);
+  }
+
+  /**
+   * Publishes {@code body} as Core's outbox relay does: in the trace {@code traceId}, when given,
+   * and with the commit time of the change.
+   */
+  private void publish(UUID messageId, String body, String traceId) {
+    MessageBuilderSupport<Message> builder =
         MessageBuilder.withBody(body.getBytes(StandardCharsets.UTF_8))
             .setContentType(MessageProperties.CONTENT_TYPE_JSON)
             .setMessageId(messageId.toString())
             .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
-            .build();
+            .setHeader(NotificationRequestedListener.CREATED_AT, Instant.now().toString());
+    if (traceId != null) {
+      builder.setHeader("traceparent", "00-" + traceId + "-00f067aa0ba902b7-01");
+    }
+    Message message = builder.build();
     rabbit.send(
         MessagingConfiguration.EXCHANGE, MessagingConfiguration.NOTIFICATION_REQUESTED, message);
   }
@@ -179,6 +221,14 @@ class NotificationRequestedIT extends IntegrationTest {
     return """
         {"messageId": "%s", "type": "%s", "eventId": "%s", "causeId": "%s", "userIds": []}"""
         .formatted(messageId, type, eventId, causeId);
+  }
+
+  private static String traceId() {
+    return UUID.randomUUID().toString().replace("-", "");
+  }
+
+  private long latencies() {
+    return meters.get("crowded.notification.latency").timer().count();
   }
 
   private int count(String deduplicationKey) {

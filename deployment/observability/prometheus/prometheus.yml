@@ -1,0 +1,31 @@
+# What Prometheus scrapes (ADR 0009). tasks.<service> resolves to every
+# replica, so each one is scraped on its own, under the label service.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Request latency and errors, notification latency, outbox lag, JVM.
+  - job_name: services
+    metrics_path: /actuator/prometheus
+    dns_sd_configs:
+      - names: [tasks.core, tasks.jobs, tasks.notifications]
+        type: A
+        port: 8080
+    relabel_configs:
+      - source_labels: [__meta_dns_name]
+        regex: tasks\.(.+)
+        target_label: service
+
+  # Messages per queue, the dead-letter queues' included.
+  - job_name: rabbitmq
+    metrics_path: /metrics/detailed
+    params:
+      family: [queue_coarse_metrics]
+    dns_sd_configs:
+      - names: [tasks.rabbitmq]
+        type: A
+        port: 15692
+    relabel_configs:
+      - target_label: service
+        replacement: rabbitmq

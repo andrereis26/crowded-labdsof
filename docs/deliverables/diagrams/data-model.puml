@@ -413,12 +413,14 @@ entity "Outbox" as Outbox {
   routingKey : TEXT
   payload : JSONB
   createdAt : TIMESTAMPTZ
+  traceParent : TEXT
 }
 
 note right of Outbox
   Messages Core committed with a change and RabbitMQ has
   not confirmed yet (Asynchronous Flows). The relay publishes
   each with id as its message id, then deletes it.
+  traceParent continues the trace of the request.
 end note
 
 }

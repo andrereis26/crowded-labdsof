@@ -15,7 +15,9 @@
 # Running it again updates what changed. stack-down.sh removes it all.
 # Usage: scripts/local/stack-up.sh [--pull] [--with-observability]
 #   --pull                 use the images tagged main instead of building them
-#   --with-observability   add Prometheus, Loki, Alloy and Grafana
+#   --with-observability   add Prometheus, Loki, Alloy and Grafana; Grafana's
+#                          admin password is GRAFANA_ADMIN_PASSWORD from .env,
+#                          or admin
 # Windows twin: scripts/local/stack-up.ps1
 
 set -euo pipefail
@@ -111,13 +113,19 @@ create_secret JWT_PUBLIC_KEY "$(printf '%s' "${JWT_PUBLIC_KEY_BASE64}" | openssl
 create_secret TICKET_ENTRY_CODE_KEY "${TICKET_ENTRY_CODE_KEY}"
 # RabbitMQ reads its default user from a config file, not from a secret file.
 create_secret RABBITMQ_CONF "$(printf 'default_user = %s\ndefault_pass = %s' "${RABBITMQ_USERNAME}" "${RABBITMQ_PASSWORD}")"
+if [[ "${observability}" == true ]]; then
+  # Only on 127.0.0.1, so a default is fine here; Doppler has the real one.
+  create_secret GRAFANA_ADMIN_PASSWORD "${GRAFANA_ADMIN_PASSWORD:-admin}"
+fi
 
 # --- 4. Deployment --------------------------------------------------------------
-# Swarm configs cannot change, so the router's is named after its hash.
+# Swarm configs cannot change, so the router's is named after its hash, and
+# the observability configs after their folder's.
 ROUTER_CONF_VERSION="$(sha256_12 <"${ROOT}/deployment/router/nginx.conf")"
+OBSERVABILITY_CONF_VERSION="$(cd "${ROOT}/deployment/observability" && find . -type f | LC_ALL=C sort | xargs cat | sha256_12)"
 # The migration job runs again whenever the database image changes.
 CROWDED_RELEASE="local-$(docker image inspect --format '{{.Id}}' "${DATABASE_IMAGE}" | sha256_12)"
-export ROUTER_CONF_VERSION CROWDED_RELEASE
+export ROUTER_CONF_VERSION OBSERVABILITY_CONF_VERSION CROWDED_RELEASE
 
 deploy() {
   docker stack deploy --prune --resolve-image never "${stack_files[@]}" "${STACK_NAME}" >/dev/null
@@ -208,5 +216,8 @@ Crowded is running, on 127.0.0.1 only:
   PostgreSQL       127.0.0.1:${DB_PORT}, database ${POSTGRES_DB} (users and passwords in .env)
   RabbitMQ         127.0.0.1:${RABBITMQ_PORT}
   Redis            127.0.0.1:${REDIS_PORT}
-See scripts/local/status.sh and logs.sh <service>; remove it all with stack-down.sh.
 EOF
+if [[ "${observability}" == true ]]; then
+  echo "  Grafana          http://localhost:${HTTP_PORT}/grafana/ (admin, GRAFANA_ADMIN_PASSWORD or admin)"
+fi
+echo "See scripts/local/status.sh and logs.sh <service>; remove it all with stack-down.sh."

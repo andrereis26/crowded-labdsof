@@ -1,0 +1,55 @@
+// Ships the log of every container of the stack to Loki (ADR 0009), labelled
+// with its service (core, notifications...) and, for the services' JSON lines,
+// their level. The traceId stays in the line: search it with |= "<traceId>".
+
+discovery.docker "stack" {
+  host = "unix:///var/run/docker.sock"
+
+  // Only the stack's containers, not the local gateway or other projects.
+  filter {
+    name   = "label"
+    values = ["com.docker.stack.namespace"]
+  }
+}
+
+discovery.relabel "stack" {
+  targets = []
+
+  // crowded_core -> core
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_swarm_service_name"]
+    regex         = "[^_]+_(.+)"
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+}
+
+loki.source.docker "stack" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.stack.targets
+  relabel_rules = discovery.relabel.stack.rules
+  forward_to    = [loki.process.levels.receiver]
+}
+
+loki.process "levels" {
+  // Lines that are not JSON (the router, the data stores) keep no level.
+  stage.json {
+    expressions = { level = "log.level" }
+  }
+
+  stage.labels {
+    values = { level = "" }
+  }
+
+  forward_to = [loki.write.loki.receiver]
+}
+
+loki.write "loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
