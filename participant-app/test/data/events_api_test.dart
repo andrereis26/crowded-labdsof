@@ -149,6 +149,72 @@ void main() {
     });
   });
 
+  group('HttpEventsApi.live', () {
+    HttpEventsApi streaming(
+      http.StreamedResponse Function(http.BaseRequest request) answer,
+    ) => HttpEventsApi(
+      baseUrl: 'https://crowded.test/api',
+      client: () => MockClient.streaming((request, _) async => answer(request)),
+    );
+
+    test('sends each page of the stream', () async {
+      late http.BaseRequest sent;
+      final scheduled = jsonEncode(_page(status: 'SCHEDULED'));
+      final cancelled = jsonEncode(_page(status: 'CANCELLED'));
+      final pages = await streaming((request) {
+        sent = request;
+        return http.StreamedResponse(
+          Stream.fromIterable([
+            utf8.encode(':open\n\nevent: event\ndata: $scheduled\n\n'),
+            utf8.encode(':\n\nevent: event\ndata: {\n\n'),
+            utf8.encode('event: event\ndata: $cancelled\n\n'),
+          ]),
+          200,
+          headers: {'content-type': 'text/event-stream'},
+        );
+      }).live('jwt', _event).toList();
+
+      expect(sent.url.path, '/api/events/$_event/live');
+      expect(sent.headers['Accept'], 'text/event-stream');
+      expect(sent.headers['Authorization'], 'Bearer jwt');
+      expect(pages.map((p) => p.status), [
+        EventStatus.scheduled,
+        EventStatus.cancelled,
+      ], reason: 'a malformed event is skipped');
+    });
+
+    test('says why the stream could not be opened or dropped', () async {
+      Future<String> codeOf(
+        http.StreamedResponse Function(http.BaseRequest) answer,
+      ) =>
+          streaming(answer)
+              .live('jwt', _event)
+              .drain<void>()
+              .then<String>((_) => 'none')
+              .catchError((Object e) => (e as EventsException).code);
+
+      http.StreamedResponse answer(int status, String body) =>
+          http.StreamedResponse(Stream.value(utf8.encode(body)), status);
+
+      expect(
+        await codeOf((_) => answer(403, '{"code":"NOT_CONNECTED"}')),
+        'NOT_CONNECTED',
+      );
+      expect(await codeOf((_) => answer(401, '')), 'UNAUTHORIZED');
+      expect(await codeOf((_) => throw http.ClientException('x')), 'NETWORK');
+      expect(
+        await codeOf(
+          (_) => http.StreamedResponse(
+            Stream.error(http.ClientException('reset')),
+            200,
+          ),
+        ),
+        'NETWORK',
+      );
+      expect(await codeOf((_) => answer(200, ':open\n\n')), 'none');
+    });
+  });
+
   group('eventFromCore', () {
     test('builds the event with its changes, newest first', () {
       final history = [

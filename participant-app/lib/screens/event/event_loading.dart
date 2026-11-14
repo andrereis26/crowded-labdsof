@@ -5,10 +5,13 @@ import '../../data/app_store.dart';
 import '../../ui/ui.dart';
 
 /// Loads the page's event from Core when it opens, and again when it shows
-/// another event.
+/// another event, then follows its live stream until the page closes.
 mixin RefreshesEvent<T extends StatefulWidget> on State<T> {
   /// The event [widget] shows.
   String eventIdOf(T widget);
+
+  AppStore? _store;
+  String? _followed;
 
   @override
   void initState() {
@@ -22,10 +25,30 @@ mixin RefreshesEvent<T extends StatefulWidget> on State<T> {
     if (eventIdOf(oldWidget) != eventIdOf(widget)) _refresh();
   }
 
+  @override
+  void dispose() {
+    _unfollow();
+    super.dispose();
+  }
+
   // After the frame: the load tells the store's listeners at once.
   void _refresh() => WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (mounted) AppStore.read(context).refreshEvent(eventIdOf(widget));
+    if (!mounted) return;
+    final store = AppStore.read(context);
+    final eventId = eventIdOf(widget);
+    store.refreshEvent(eventId);
+    if (_followed == eventId && _store == store) return;
+    _unfollow();
+    store.followEvent(eventId);
+    _store = store;
+    _followed = eventId;
   });
+
+  void _unfollow() {
+    final eventId = _followed;
+    if (eventId != null) _store?.unfollowEvent(eventId);
+    _followed = null;
+  }
 }
 
 /// What a page shows while its event is not there: loading, or why it could

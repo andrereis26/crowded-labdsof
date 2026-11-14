@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/painting.dart';
@@ -6,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'auth_api.dart';
 import '../utils/pt_format.dart';
 import 'models.dart';
+import 'notifications_api.dart' show ServerSentEvents;
 
 /// A refusal from Core, with its error code (`NOT_CONNECTED`,
 /// `EVENT_NOT_FOUND`, `UNAUTHORIZED`), `NETWORK` when Core could not be
@@ -31,6 +33,12 @@ abstract interface class EventsApi {
 
   /// `GET /events/{eventId}/changes`, newest first.
   Future<List<CoreChange>> changes(String token, String eventId);
+
+  /// `GET /events/{eventId}/live`: the page now, then again after each
+  /// change, until the server closes the stream or the subscription is
+  /// cancelled. Fails with an [EventsException] when it cannot be opened
+  /// or drops.
+  Stream<EventPage> live(String token, String eventId);
 }
 
 /// What `GET /events/{eventId}` says about an event.
@@ -123,40 +131,117 @@ class HttpEventsApi implements EventsApi {
     ];
   }
 
+  @override
+  Stream<EventPage> live(String token, String eventId) {
+    final client = _client();
+    late final StreamController<EventPage> controller;
+    StreamSubscription<String>? lines;
+    controller = StreamController<EventPage>(
+      onListen: () async {
+        try {
+          final request = http.Request(
+            'GET',
+            _base.resolve('events/${Uri.encodeComponent(eventId)}/live'),
+          )..headers['Accept'] = 'text/event-stream';
+          final response = await _send(client, request, token);
+          if (controller.isClosed) return;
+          final parser = ServerSentEvents();
+          lines = response.stream
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .listen(
+                (line) {
+                  final event = parser.add(line);
+                  if (event == null || event.name != 'event') return;
+                  final page = _pageFrom(event.data);
+                  if (page != null) controller.add(page);
+                },
+                onError: (Object error) {
+                  controller.addError(const EventsException('NETWORK'));
+                  controller.close();
+                },
+                onDone: controller.close,
+                cancelOnError: true,
+              );
+        } on EventsException catch (e) {
+          controller.addError(e);
+          await controller.close();
+        }
+      },
+      onCancel: () async {
+        await lines?.cancel();
+        client.close();
+      },
+    );
+    return controller.stream;
+  }
+
+  /// A page sent on the stream; a malformed one is skipped, as the next
+  /// change sends the page again.
+  static EventPage? _pageFrom(String data) {
+    try {
+      final json = jsonDecode(data);
+      return json is Map<String, dynamic> ? eventPageFromJson(json) : null;
+    } on FormatException {
+      return null;
+    }
+  }
+
   Future<Object?> _get(String token, String path) async {
     final client = _client();
     try {
-      final http.Response response;
+      final response = await _send(
+        client,
+        http.Request('GET', _base.resolve(path)),
+        token,
+      );
+      final String text;
       try {
-        response = await client.get(
-          _base.resolve(path),
-          headers: {'Authorization': 'Bearer $token'},
-        );
+        text = await response.stream.bytesToString();
       } on Exception {
         throw const EventsException('NETWORK');
       }
-      final Object? body;
       try {
-        body = response.body.isEmpty
-            ? null
-            : jsonDecode(utf8.decode(response.bodyBytes));
+        return text.isEmpty ? null : jsonDecode(text);
       } on FormatException {
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          throw const EventsException('INVALID_RESPONSE');
-        }
-        throw EventsException('HTTP_${response.statusCode}');
+        throw const EventsException('INVALID_RESPONSE');
       }
-      if (response.statusCode >= 200 && response.statusCode < 300) return body;
-      if (response.statusCode == 401) {
-        throw const EventsException('UNAUTHORIZED');
-      }
-      final code = body is Map<String, dynamic> ? body['code'] : null;
-      throw EventsException(
-        code is String ? code : 'HTTP_${response.statusCode}',
-      );
     } finally {
       client.close();
     }
+  }
+
+  /// Sends [request] with the token; an answer other than 2xx becomes an
+  /// [EventsException] with Core's error code.
+  Future<http.StreamedResponse> _send(
+    http.Client client,
+    http.Request request,
+    String token,
+  ) async {
+    request.headers['Authorization'] = 'Bearer $token';
+    final http.StreamedResponse response;
+    try {
+      response = await client.send(request);
+    } on Exception {
+      throw const EventsException('NETWORK');
+    }
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return response;
+    }
+    if (response.statusCode == 401) {
+      await response.stream.drain<void>().catchError((Object _) {});
+      throw const EventsException('UNAUTHORIZED');
+    }
+    String? code;
+    try {
+      final body = jsonDecode(await response.stream.bytesToString());
+      if (body is Map<String, dynamic> && body['code'] is String) {
+        code = body['code'] as String;
+      }
+    } on Exception {
+      // No problem details: the status says enough.
+    }
+    throw EventsException(code ?? 'HTTP_${response.statusCode}');
   }
 }
 
