@@ -223,20 +223,56 @@ class _FakeEventsApi implements EventsApi {
   /// While set, [page] answers only once it completes.
   Completer<void>? gate;
 
+  /// The stream [live] opened last, which a test drives with [publish] and
+  /// [drop].
+  StreamController<EventPage>? _live;
+  int connections = 0;
+
+  /// Whether the page's stream is open and listened to.
+  bool get streaming => _live?.hasListener ?? false;
+
+  EventPage _current() => eventPageFromJson({
+    'id': id,
+    'name': 'Festival Margens do Douro',
+    'status': status,
+    'startDateTime': '2026-11-07T21:30:00Z',
+    'venue': {'name': 'Cais da Ribeira', 'district': 'Porto'},
+    'organization': {'id': 'o-1', 'name': 'Ribeira Live'},
+    'latestChange': history.firstOrNull,
+  })!;
+
   @override
   Future<EventPage> page(String token, String eventId) async {
     pages++;
     await gate?.future;
     if (failWith != null) throw EventsException(failWith!);
-    return eventPageFromJson({
-      'id': id,
-      'name': 'Festival Margens do Douro',
-      'status': status,
-      'startDateTime': '2026-11-07T21:30:00Z',
-      'venue': {'name': 'Cais da Ribeira', 'district': 'Porto'},
-      'organization': {'id': 'o-1', 'name': 'Ribeira Live'},
-      'latestChange': history.firstOrNull,
-    })!;
+    return _current();
+  }
+
+  /// Like Core, sends the page as soon as the stream opens.
+  @override
+  Stream<EventPage> live(String token, String eventId) {
+    connections++;
+    final live = StreamController<EventPage>();
+    live.onListen = () {
+      if (failWith == null) {
+        live.add(_current());
+      } else {
+        live
+          ..addError(EventsException(failWith!))
+          ..close();
+      }
+    };
+    return (_live = live).stream;
+  }
+
+  /// Sends the page as it is now, as Core does after a change.
+  void publish() => _live!.add(_current());
+
+  void drop() {
+    _live!
+      ..addError(const EventsException('NETWORK'))
+      ..close();
   }
 
   @override
@@ -652,6 +688,75 @@ void main() {
       await retry;
       expect(store.showsSavedData(id), isFalse);
       store.signOut();
+    });
+
+    testWidgets('follows what is published while the page is open', (
+      tester,
+    ) async {
+      final events = _FakeEventsApi();
+      await _pump(tester, location: '$page/history', events: events);
+      expect(find.text('Evento cancelado'), findsNothing);
+
+      events
+        ..status = 'CANCELLED'
+        ..history = [
+          _coreChange('c-cancel', 'CANCELLATION', {
+            'status': 'CANCELLED',
+          }, at: _now.toUtc().toIso8601String()),
+          ...events.history,
+        ]
+        ..publish();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Evento cancelado'), findsOneWidget);
+      expect(find.text('Cancelado'), findsWidgets);
+      expect(events.pages, 1, reason: 'no reload: the stream sent it');
+    });
+
+    testWidgets('shows saved data while the stream is down, then recovers', (
+      tester,
+    ) async {
+      final events = _FakeEventsApi();
+      await _pump(tester, location: page, events: events);
+      expect(events.connections, 1);
+
+      events.drop();
+      await tester.pumpAndSettle();
+      expect(find.text('Sem rede'), findsOneWidget);
+      expect(
+        find.text('A mostrar o que guardámos às ${formatTime(_now)}.'),
+        findsOneWidget,
+      );
+
+      await tester.pump(AppStore.reconnectDelay(1));
+      await tester.pumpAndSettle();
+      expect(events.connections, 2);
+      expect(find.text('Sem rede'), findsNothing);
+    });
+
+    testWidgets('closes the stream when the participant signs out', (
+      tester,
+    ) async {
+      final events = _FakeEventsApi();
+      final store = await _pump(tester, location: page, events: events);
+      expect(events.streaming, isTrue);
+
+      store.signOut();
+      await tester.pumpAndSettle();
+      expect(events.streaming, isFalse);
+    });
+
+    testWidgets('keeps one stream for the pages of an event', (tester) async {
+      final events = _FakeEventsApi();
+      await _pump(tester, location: page, events: events);
+      await tester.ensureVisible(find.text('Histórico de alterações'));
+      await tester.tap(find.text('Histórico de alterações'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Evento').first);
+      await tester.pumpAndSettle();
+
+      expect(events.connections, 1);
+      expect(events.streaming, isTrue, reason: 'P5 is still open');
     });
 
     testWidgets('loads again after a first load fails', (tester) async {

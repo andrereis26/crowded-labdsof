@@ -255,13 +255,16 @@ class AppStore extends ChangeNotifier {
   Event? eventById(String id) => _fromCore[id] ?? _registered[id];
 
   // Events from Core (P5, P6, P7): each page loads the event and its history
-  // when it opens. What loaded last stays on screen when a later load fails,
-  // with the time it was loaded. Demo events, which Core does not know, are
-  // not asked for.
+  // when it opens, and follows its live stream while it is open (ADR 0007).
+  // What loaded last stays on screen when a later load fails or the stream
+  // drops, with the time it was loaded. Demo events, which Core does not
+  // know, are not asked for.
 
   final EventsApi _eventsApi;
   final Map<String, Event> _fromCore = {};
   final Map<String, EventSync> _syncs = {};
+  final Map<String, List<CoreChange>> _histories = {};
+  final Map<String, _EventFollow> _follows = {};
 
   static final _coreId = RegExp(
     r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
@@ -306,22 +309,136 @@ class AppStore extends ChangeNotifier {
       final page = await _eventsApi.page(token, eventId);
       final history = await _eventsApi.changes(token, eventId);
       if (_session?.accessToken != token) return;
-      _fromCore[eventId] = eventFromCore(page, history);
-      _syncs[eventId] = EventSync(syncedAt: now);
+      _keep(eventId, page, history);
     } on EventsException catch (e) {
       if (_session?.accessToken != token) return;
-      if (e.noLongerVisible) _fromCore.remove(eventId);
-      _syncs[eventId] = EventSync(
-        syncedAt: e.noLongerVisible ? null : previous?.syncedAt,
-        failure: e.code,
-      );
+      _failed(eventId, e.code, noLongerVisible: e.noLongerVisible);
     }
     notifyListeners();
   }
 
+  void _keep(String eventId, EventPage page, List<CoreChange> history) {
+    _fromCore[eventId] = eventFromCore(page, history);
+    _histories[eventId] = history;
+    _syncs[eventId] = EventSync(syncedAt: now);
+  }
+
+  /// Records a failed load or a dropped stream; [loading] keeps a load on
+  /// its way.
+  void _failed(
+    String eventId,
+    String code, {
+    required bool noLongerVisible,
+    bool loading = false,
+  }) {
+    final previous = _syncs[eventId];
+    if (noLongerVisible) {
+      _fromCore.remove(eventId);
+      _histories.remove(eventId);
+    }
+    _syncs[eventId] = EventSync(
+      syncedAt: noLongerVisible ? null : previous?.syncedAt,
+      loading: loading,
+      failure: code,
+    );
+  }
+
+  /// Follows [eventId]'s live stream while a page shows it; each call needs
+  /// an [unfollowEvent] when that page closes.
+  void followEvent(String eventId) {
+    final follow = _follows[eventId];
+    if (follow != null) {
+      follow.pages++;
+      return;
+    }
+    if (!signedIn || !_coreId.hasMatch(eventId)) return;
+    _follows[eventId] = _EventFollow();
+    _connectEvent(eventId);
+  }
+
+  /// Stops following [eventId] once no page shows it.
+  void unfollowEvent(String eventId) {
+    final follow = _follows[eventId];
+    if (follow == null || --follow.pages > 0) return;
+    follow.close();
+    _follows.remove(eventId);
+  }
+
+  void _connectEvent(String eventId) {
+    final follow = _follows[eventId];
+    final token = _session?.accessToken;
+    if (follow == null || token == null) return;
+    follow.retry = null;
+    follow.stream = _eventsApi
+        .live(token, eventId)
+        .listen(
+          (page) => _onEventPage(eventId, token, page),
+          onError: (Object error) => _onEventStreamEnded(eventId, error),
+          onDone: () => _onEventStreamEnded(eventId, null),
+          cancelOnError: true,
+        );
+  }
+
+  /// A page from the stream. It names only the latest change, so the
+  /// history is loaded again when that is a new one.
+  Future<void> _onEventPage(
+    String eventId,
+    String token,
+    EventPage page,
+  ) async {
+    final follow = _follows[eventId];
+    if (follow == null) return;
+    follow.failures = 0;
+    follow.latest = page;
+    var history = _histories[eventId];
+    if (history == null || history.firstOrNull?.id != page.latestChange?.id) {
+      try {
+        history = await _eventsApi.changes(token, eventId);
+      } on EventsException catch (e) {
+        if (_session?.accessToken != token) return;
+        _failed(eventId, e.code, noLongerVisible: e.noLongerVisible);
+        notifyListeners();
+        return;
+      }
+      if (_session?.accessToken != token) return;
+    }
+    // A later page may have come while the history was loading.
+    _keep(eventId, _follows[eventId]?.latest ?? page, history);
+    notifyListeners();
+  }
+
+  void _onEventStreamEnded(String eventId, Object? error) {
+    final follow = _follows[eventId];
+    if (follow == null) return;
+    follow.stream = null;
+    if (!signedIn) return;
+    final code = error is EventsException ? error.code : 'STREAM_ENDED';
+    // A refused token ends the stream: signing in again opens the page anew.
+    if (code == 'UNAUTHORIZED') return;
+    final gone = error is EventsException && error.noLongerVisible;
+    _failed(
+      eventId,
+      code,
+      noLongerVisible: gone,
+      loading: _syncs[eventId]?.loading ?? false,
+    );
+    notifyListeners();
+    if (gone) return;
+    follow.failures++;
+    follow.retry = Timer(
+      reconnectDelay(follow.failures),
+      () => _connectEvent(eventId),
+    );
+  }
+
   void _forgetCoreEvents() {
+    for (final follow in _follows.values) {
+      follow.close();
+    }
+    _follows.clear();
     _fromCore.clear();
     _syncs.clear();
+    _histories.clear();
   }
 
   /// Wallet order: soonest first.
@@ -528,6 +645,9 @@ class AppStore extends ChangeNotifier {
   void dispose() {
     _reconnect?.cancel();
     _live?.cancel();
+    for (final follow in _follows.values) {
+      follow.close();
+    }
     super.dispose();
   }
 
@@ -704,4 +824,22 @@ class AppStoreScope extends InheritedNotifier<AppStore> {
     required AppStore store,
     required super.child,
   }) : super(notifier: store);
+}
+
+/// An event's live stream, shared by the pages that show it.
+class _EventFollow {
+  int pages = 1;
+  StreamSubscription<EventPage>? stream;
+  Timer? retry;
+  int failures = 0;
+
+  /// The newest page the stream sent.
+  EventPage? latest;
+
+  void close() {
+    retry?.cancel();
+    retry = null;
+    stream?.cancel();
+    stream = null;
+  }
 }
