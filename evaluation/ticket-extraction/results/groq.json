@@ -1,6 +1,6 @@
 {
  "method": "groq",
- "warmup_seconds": 0.55,
+ "warmup_seconds": 0.32,
  "peak_rss_mb": 27,
  "rows": [
   {
@@ -19,7 +19,7 @@
     "seat": "Fila 12 Lugar 7"
    },
    "invalid": null,
-   "seconds": 0.3,
+   "seconds": 0.679,
    "busy": 0
   },
   {
@@ -38,7 +38,7 @@
     "seat": "Fila F Cadeira 14"
    },
    "invalid": null,
-   "seconds": 0.366,
+   "seconds": 0.308,
    "busy": 0
   },
   {
@@ -57,7 +57,7 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 0.291,
+   "seconds": 0.261,
    "busy": 0
   },
   {
@@ -76,7 +76,7 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 0.22,
+   "seconds": 0.299,
    "busy": 0
   },
   {
@@ -95,7 +95,7 @@
     "seat": "Fila C Lugar 21"
    },
    "invalid": null,
-   "seconds": 0.658,
+   "seconds": 0.344,
    "busy": 0
   },
   {
@@ -114,7 +114,7 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 0.448,
+   "seconds": 0.288,
    "busy": 0
   },
   {
@@ -133,7 +133,7 @@
     "seat": "K, 9"
    },
    "invalid": null,
-   "seconds": 0.394,
+   "seconds": 0.361,
    "busy": 0
   },
   {
@@ -152,7 +152,7 @@
     "seat": "Fila 8 Lugar 112"
    },
    "invalid": null,
-   "seconds": 0.342,
+   "seconds": 0.669,
    "busy": 0
   },
   {
@@ -171,7 +171,7 @@
     "seat": "Fila H, Lugar 3"
    },
    "invalid": null,
-   "seconds": 0.268,
+   "seconds": 0.32,
    "busy": 0
   },
   {
@@ -190,7 +190,7 @@
     "seat": "Lugar não marcado"
    },
    "invalid": null,
-   "seconds": 0.436,
+   "seconds": 0.369,
    "busy": 0
   },
   {
@@ -209,7 +209,7 @@
     "seat": "Fila 3 Lugar 10"
    },
    "invalid": null,
-   "seconds": 0.286,
+   "seconds": 0.703,
    "busy": 0
   },
   {
@@ -228,7 +228,7 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 0.215,
+   "seconds": 0.252,
    "busy": 0
   },
   {
@@ -247,7 +247,7 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 0.234,
+   "seconds": 0.23,
    "busy": 0
   },
   {
@@ -266,7 +266,7 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 0.646,
+   "seconds": 0.367,
    "busy": 0
   },
   {
@@ -285,7 +285,7 @@
     "seat": "Fila 9 Asiento 22"
    },
    "invalid": null,
-   "seconds": 0.317,
+   "seconds": 0.373,
    "busy": 0
   },
   {
@@ -304,7 +304,7 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 0.328,
+   "seconds": 0.221,
    "busy": 0
   },
   {
@@ -323,7 +323,7 @@
     "seat": "Lugar 2"
    },
    "invalid": null,
-   "seconds": 0.317,
+   "seconds": 0.257,
    "busy": 0
   },
   {
@@ -342,7 +342,7 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 0.22,
+   "seconds": 0.721,
    "busy": 0
   },
   {
@@ -361,7 +361,7 @@
     "seat": "Fila 4 Lugar 18"
    },
    "invalid": null,
-   "seconds": 0.405,
+   "seconds": 0.336,
    "busy": 0
   },
   {
@@ -380,7 +380,7 @@
     "seat": "Lugar 11"
    },
    "invalid": null,
-   "seconds": 0.366,
+   "seconds": 0.278,
    "busy": 0
   },
   {
@@ -399,7 +399,7 @@
     "seat": "Fila 2 Lugar 5"
    },
    "invalid": null,
-   "seconds": 0.272,
+   "seconds": 0.45,
    "busy": 0
   },
   {
@@ -418,7 +418,7 @@
     "seat": "15/22"
    },
    "invalid": null,
-   "seconds": 0.596,
+   "seconds": 0.393,
    "busy": 0
   },
   {
@@ -437,7 +437,7 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 0.299,
+   "seconds": 0.404,
    "busy": 0
   },
   {
@@ -456,7 +456,7 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 1.443,
+   "seconds": 0.373,
    "busy": 0
   },
   {
@@ -475,7 +475,7 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 0.283,
+   "seconds": 0.208,
    "busy": 0
   },
   {
@@ -494,7 +494,7 @@
     "seat": "Row D Seat 31"
    },
    "invalid": null,
-   "seconds": 0.374,
+   "seconds": 0.262,
    "busy": 0
   },
   {
@@ -513,7 +513,7 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 0.469,
+   "seconds": 0.749,
    "busy": 0
   },
   {
@@ -532,7 +532,7 @@
     "seat": "Fila 6 Lugar 15"
    },
    "invalid": null,
-   "seconds": 1.09,
+   "seconds": 0.254,
    "busy": 0
   },
   {
@@ -551,7 +551,7 @@
     "seat": "Lugar livre"
    },
    "invalid": null,
-   "seconds": 0.311,
+   "seconds": 0.286,
    "busy": 0
   },
   {
@@ -570,7 +570,7 @@
     "seat": "Fila 1 Lugar 4"
    },
    "invalid": null,
-   "seconds": 0.36,
+   "seconds": 0.235,
    "busy": 0
   }
  ]

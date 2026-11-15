@@ -40,6 +40,8 @@ bash /opt/crowded/deployment/remote-rollback.sh 20261027T181500Z-2617d73e  # a s
 
 A rollback deploys the whole recorded release again: the stack file, every image by digest and the secrets as they were. It needs no Doppler token. Database migrations are not undone: the older `crowded-database` image ignores the newer migrations, and the older services run against the newer schema. So every migration stays compatible with the previous release's code, adding first and removing in a later release ([ADR 0012](../docs/deliverables/adr/0012-database-migrations-with-flyway.md#compatible-with-the-previous-release)).
 
+Releases from before ticket extraction moved to Groq ran a local model from `/opt/crowded/models` (about 1 GB). Keep that folder while a rollback to one of them may be needed: their stack mounts it.
+
 ### Running a Deployment by Hand
 
 ```bash

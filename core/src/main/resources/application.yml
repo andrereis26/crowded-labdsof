@@ -67,6 +67,8 @@ crowded:
     ticket-extraction-timeout: 25s
     # Groq reads the tickets (ADR 0020). crowded.ai.groq.api-key has no default:
     # without it, every extraction fails and the participant types the event code.
+    # A blank key counts as none: the local stack sets one when .env has no key,
+    # because Swarm refuses an empty secret.
     groq:
       url: https://api.groq.com/openai/v1
       model: qwen/qwen3.8-27b
