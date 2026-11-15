@@ -14,19 +14,22 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-class NuExtractTicketExtractorTest {
+class GroqTicketExtractorTest {
 
   private static final Duration TIMEOUT = Duration.ofSeconds(5);
+  private static final String MODEL = "qwen/qwen3.8-27b";
 
   private final AtomicReference<String> request = new AtomicReference<>();
+  private final AtomicReference<String> authorization = new AtomicReference<>();
   private HttpServer server;
 
-  /** A llama.cpp server stand-in that records the request and gives a fixed answer. */
+  /** A Groq stand-in that records the request and gives a fixed answer. */
   private String serve(int status, String body) throws IOException {
     server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
     server.createContext(
-        "/completion",
+        "/chat/completions",
         exchange -> {
+          authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
           request.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
           byte[] answer = body.getBytes(StandardCharsets.UTF_8);
           exchange.getResponseHeaders().add("Content-Type", "application/json");
@@ -46,42 +49,46 @@ class NuExtractTicketExtractorTest {
   }
 
   @Test
-  void sendsTheTicketTextWithTheTemplateAndReturnsTheModelsAnswer() throws IOException {
-    String url = serve(200, "{\"content\":\"{\\\"eventCode\\\": \\\"MARG-2026\\\"}\"}");
+  void sendsTheTicketTextAndReturnsTheModelsAnswer() throws IOException {
+    String url =
+        serve(
+            200,
+            "{\"choices\":[{\"message\":{\"content\":\"{\\\"eventCode\\\":\\\"MARG-2026\\\"}\"}}]}");
 
-    String answer = new NuExtractTicketExtractor(url, TIMEOUT).extract("Porta: A");
+    String answer = new GroqTicketExtractor(url, "key", MODEL, TIMEOUT).extract("Porta: A");
 
-    assertThat(answer).isEqualTo("{\"eventCode\": \"MARG-2026\"}");
+    assertThat(answer).isEqualTo("{\"eventCode\":\"MARG-2026\"}");
+    assertThat(authorization.get()).isEqualTo("Bearer key");
     assertThat(request.get())
-        .contains("# Template:", "verbatim-string", "Porta: A", "\"temperature\":0");
+        .contains(MODEL, "Porta: A", "json_object", "\"temperature\":0", "eventCode");
   }
 
   @Test
-  void failsWhenTheServerAnswersWithoutContent() throws IOException {
-    String url = serve(200, "{}");
+  void failsWhenTheProviderAnswersWithoutContent() throws IOException {
+    String url = serve(200, "{\"choices\":[]}");
 
-    TicketExtractor extractor = new NuExtractTicketExtractor(url, TIMEOUT);
+    TicketExtractor extractor = new GroqTicketExtractor(url, "key", MODEL, TIMEOUT);
 
     assertThatThrownBy(() -> extractor.extract("Porta: A"))
         .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
-  void failsWhenTheServerFails() throws IOException {
-    String url = serve(503, "{}");
+  void failsWhenTheProviderRefusesTheRequest() throws IOException {
+    String url = serve(401, "{}");
 
-    TicketExtractor extractor = new NuExtractTicketExtractor(url, TIMEOUT);
+    TicketExtractor extractor = new GroqTicketExtractor(url, "wrong", MODEL, TIMEOUT);
 
     assertThatThrownBy(() -> extractor.extract("Porta: A")).isInstanceOf(RuntimeException.class);
   }
 
   @Test
-  void usesNuExtractOnlyWhenItsUrlIsConfigured() {
+  void usesGroqOnlyWhenItsKeyIsConfigured() {
     TicketExtractorConfiguration configuration = new TicketExtractorConfiguration();
 
-    assertThat(configuration.ticketExtractor("http://localhost:1", TIMEOUT))
-        .isInstanceOf(NuExtractTicketExtractor.class);
-    TicketExtractor none = configuration.ticketExtractor("", TIMEOUT);
+    assertThat(configuration.ticketExtractor("http://localhost:1", "key", MODEL, TIMEOUT))
+        .isInstanceOf(GroqTicketExtractor.class);
+    TicketExtractor none = configuration.ticketExtractor("http://localhost:1", " ", MODEL, TIMEOUT);
     assertThatThrownBy(() -> none.extract("Porta: A")).isInstanceOf(IllegalStateException.class);
   }
 }
