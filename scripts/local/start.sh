@@ -61,6 +61,7 @@ case "${app}" in
     [[ "${app}" == core ]] && env_vars+=("JWT_PRIVATE_KEY_LOCATION=file:${STATE_DIR}/jwt/private.pem")
     # Only Core imports tickets.
     [[ "${app}" == core ]] && env_vars+=("CROWDED_TICKETS_ENTRYCODEKEY=${TICKET_ENTRY_CODE_KEY}")
+    [[ "${app}" == core && -n "${GROQ_API_KEY:-}" ]] && env_vars+=("CROWDED_AI_GROQ_APIKEY=${GROQ_API_KEY}")
     command=(./mvnw -B -ntp spring-boot:run)
     ;;
   backoffice)

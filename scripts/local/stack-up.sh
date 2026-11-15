@@ -111,6 +111,8 @@ done
 create_secret JWT_PRIVATE_KEY "$(printf '%s' "${JWT_PRIVATE_KEY_BASE64}" | openssl base64 -d -A)"
 create_secret JWT_PUBLIC_KEY "$(printf '%s' "${JWT_PUBLIC_KEY_BASE64}" | openssl base64 -d -A)"
 create_secret TICKET_ENTRY_CODE_KEY "${TICKET_ENTRY_CODE_KEY}"
+# Swarm refuses an empty secret; Core reads a blank key as none.
+create_secret GROQ_API_KEY "${GROQ_API_KEY:- }"
 # RabbitMQ reads its default user from a config file, not from a secret file.
 create_secret RABBITMQ_CONF "$(printf 'default_user = %s\ndefault_pass = %s' "${RABBITMQ_USERNAME}" "${RABBITMQ_PASSWORD}")"
 if [[ "${observability}" == true ]]; then

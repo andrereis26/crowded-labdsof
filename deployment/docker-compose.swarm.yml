@@ -105,8 +105,6 @@ services:
       <<: *backend-environment
       DB_USERNAME: crowded_core
       JWT_PRIVATE_KEY_LOCATION: file:/run/secrets/jwt_private_key
-      # The local model that reads imported tickets (ADR 0020).
-      CROWDED_AI_NUEXTRACT_URL: http://nuextract:8080
     secrets:
       - { source: core_db_password, target: DB_PASSWORD }
       - { source: rabbitmq_password, target: RABBITMQ_PASSWORD }
@@ -115,6 +113,7 @@ services:
       - jwt_private_key
       # Read as the property of the same name by the config tree import.
       - { source: ticket_entry_code_key, target: crowded.tickets.entry-code-key }
+      - { source: groq_api_key, target: crowded.ai.groq.api-key }
     networks: [edge, backend]
     deploy:
       <<: *app-deploy
@@ -176,43 +175,6 @@ services:
       <<: *app-deploy
       resources:
         limits: { cpus: "0.25", memory: 32M }
-
-  # NuExtract, the model that reads imported tickets, on llama.cpp's server
-  # (ADR 0020). Only Core calls it, on the internal network, so the ticket's
-  # text never leaves the host. The image is pinned to the build that was
-  # evaluated; remote-deploy.sh downloads the model file to the host, and the
-  # service reads it read-only.
-  nuextract:
-    image: ghcr.io/ggml-org/llama.cpp:server@sha256:e3032ea0712da96dec820c770626385de4322dd06619fb5829256a504bbc9375
-    command:
-      [
-        "-m", "/models/NuExtract-2.0-2B-Q4_K_M.gguf",
-        "-c", "2048",
-        "-t", "2",
-        "--host", "0.0.0.0",
-        "--port", "8080",
-      ]
-    volumes:
-      - type: bind
-        source: /opt/crowded/models
-        target: /models
-        read_only: true
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8080/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
-    networks: [backend]
-    deploy:
-      # Stop first: two copies of the model do not fit in memory. Meanwhile,
-      # participants type the event code.
-      <<: *data-deploy
-      resources:
-        # About 0.73 GB idle and 1.01 GB after extractions in the evaluation;
-        # watched in production (ADR 0020).
-        limits: { cpus: "2", memory: 1280M }
-        reservations: { memory: 768M }
 
   postgres:
     image: postgres:18-alpine
@@ -325,6 +287,9 @@ secrets:
   ticket_entry_code_key:
     external: true
     name: ${TICKET_ENTRY_CODE_KEY_SECRET:?TICKET_ENTRY_CODE_KEY_SECRET is required}
+  groq_api_key:
+    external: true
+    name: ${GROQ_API_KEY_SECRET:?GROQ_API_KEY_SECRET is required}
 
 configs:
   router_conf:
