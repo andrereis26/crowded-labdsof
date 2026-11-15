@@ -47,11 +47,11 @@ Based on the [Domain Model](../../README.md#domain-model), the diagram specifies
 
 ## External Integrations
 
-Crowded reaches every external system through an adapter ([ADR 0010](adr/0010-external-integrations.md)). Each adapter has a fake implementation for tests, so no test depends on a real provider (TR-008). Weather comes from IPMA ([ADR 0015](adr/0015-organization-as-the-only-event-source.md)), and ticket extraction from NuExtract, a model that runs inside the stack ([ADR 0020](adr/0020-local-nuextract-for-ticket-extraction.md)). The vendors for the other AI tasks, maps and the transport feed are still open, so their sections state what Crowded sends, what it expects back and the limits it applies, independently of the vendor. There is no ticketing integration: the organization is the only source of event information.
+Crowded reaches every external system through an adapter ([ADR 0010](adr/0010-external-integrations.md)). Each adapter has a fake implementation for tests, so no test depends on a real provider (TR-008). Weather comes from IPMA ([ADR 0015](adr/0015-organization-as-the-only-event-source.md)), and ticket extraction from a model on Groq ([ADR 0020](adr/0020-groq-for-ticket-extraction.md)). The vendors for the other AI tasks, maps and the transport feed are still open, so their sections state what Crowded sends, what it expects back and the limits it applies, independently of the vendor. There is no ticketing integration: the organization is the only source of event information.
 
 | Integration | Used by | Direction and protocol | In the MVP | When it fails |
 |---|---|---|---|---|
-| Ticket extraction model (NuExtract, local) | Core | Core calls the nuextract service on the internal network, HTTP and JSON | Yes | Typed event code |
+| Ticket extraction (Groq) | Core | Core calls Groq's OpenAI-compatible API, HTTPS and JSON | Yes | Typed event code |
 | AI provider (alert drafts, report grouping) | Core, Jobs | Crowded calls the provider, HTTPS and JSON | Yes | Manual alerts, rule-based grouping of reports |
 | IPMA (weather) | Jobs | Crowded polls IPMA's open data, HTTPS and JSON | Yes | Last known forecast and warnings with their time, no notification from invalid data |
 | Maps provider | Participant App | The app calls the provider, HTTPS | Yes (FR-056) | Venue address and a message that live data is unavailable |
@@ -71,14 +71,14 @@ Intervals, timeouts and rate limits below are initial values. They are checked w
 ### AI Provider
 
 - **Purpose.** Three assisted tasks: extracting the event code and ticket details from an imported ticket and drafting alerts for organizers (Core), and grouping similar incident reports (Jobs). The [Responsible AI Opportunity Assessment](responsible-ai-opportunity-assessment.md) describes them and how they are evaluated.
-- **Model.** Ticket extraction uses NuExtract 2.0 2B (MIT), run by llama.cpp's server as the nuextract service on the stack's internal network, so the ticket's text never leaves the VM ([ADR 0020](adr/0020-local-nuextract-for-ticket-extraction.md)). Core calls it over HTTP at the URL in `CROWDED_AI_NUEXTRACT_URL`. The vendor for alert drafts and report grouping is still open (ADR 0010); they will be called over HTTPS.
+- **Model.** Ticket extraction uses `qwen/qwen3.8-27b` on Groq's free plan, over HTTPS with the key in `GROQ_API_KEY` ([ADR 0020](adr/0020-groq-for-ticket-extraction.md)). The vendor for alert drafts and report grouping is still open (ADR 0010).
 - **Protocol.** JSON and structured output: the response must match a fixed schema for each task.
 - **Data sent.**
-  - *Ticket extraction:* text extracted locally from the ticket PDF, or read locally by OCR from the screenshot, with personal data (name, email, tax number) and entry codes removed (SR-004, SR-018), sent to the local model only. Entry codes are decoded locally, without AI (FR-070).
+  - *Ticket extraction:* text extracted locally from the ticket PDF, or read locally by OCR from the screenshot, with personal data (name, email, tax number) and entry codes removed (SR-004, SR-018). Entry codes are decoded locally, without AI (FR-070).
   - *Alert drafts:* the event's current state (crowd level, queues, open incidents) and the organizer's short input.
   - *Report grouping:* category, time and description of each report, without the reporter's identity (SR-007).
 - **Data received.** Only the fields of the schema: the event code and the gate, sector and seat for a ticket, a draft text for an alert, and groups of report ids with a short summary for incidents.
-- **Limits.** Ticket extraction has a 25 second timeout, so it completes within 30 seconds (NFR-009); the model takes about 8 seconds per ticket on the VM's 2 CPUs. Alert drafts have a 10 second timeout. AI requests are rate limited per user and per organization to control cost and, for the local model, CPU. The model's service is limited to 1,280 MB of memory, and its memory is watched in production (ADR 0020).
+- **Limits.** Ticket extraction has a 25 second timeout, so it completes within 30 seconds (NFR-009); Groq answered in under a second in the evaluation. Alert drafts have a 10 second timeout. AI requests are rate limited per user and per organization to control cost and stay within the provider's free plan.
 - **Safety.** Ticket files and organization input are treated as untrusted. Output that does not match the schema is discarded, and the AI never performs actions (SR-005). The extracted event code only links a ticket on an exact match with a registered event, and the participant then sees the registered event's data, not the extraction. Gate, sector and seat are shown as read from the ticket, with a way to correct them, because injected text in the ticket can change them. Drafts and summaries are labelled as AI-generated until approved (NFR-007).
 - **Failures.** If the model or the provider is unavailable, too slow or returns invalid output, the participant is asked for the event code, or the organizer gets the manual alert editor, at once, and reports are grouped by category and time window (NFR-006, FR-053). Grouping jobs are retried later through the broker.
 
