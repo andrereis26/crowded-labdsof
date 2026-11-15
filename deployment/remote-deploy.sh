@@ -8,7 +8,7 @@
 #      without a new image keeps the one it runs now.
 #   3. Copies the secrets from Doppler into Swarm secrets, named after a hash of
 #      their value, so a changed secret is a new secret and an unchanged one is
-#      reused. Downloads the ticket extraction model if the host does not have it.
+#      reused.
 #   4. Records all of it as a release under $DEPLOY_ROOT/releases/<id>/ and
 #      deploys that release with `docker stack deploy`: first the database
 #      migration job, then, once it completed, the new images of the services.
@@ -37,7 +37,7 @@ source "${SCRIPT_DIR}/lib/common.sh"
 # Doppler key -> Swarm secret. The stack file reads the secret's versioned name
 # from <KEY>_SECRET.
 SECRET_KEYS=(POSTGRES_PASSWORD CORE_DB_PASSWORD JOBS_DB_PASSWORD NOTIFICATIONS_DB_PASSWORD
-  RABBITMQ_PASSWORD REDIS_PASSWORD JWT_PRIVATE_KEY JWT_PUBLIC_KEY TICKET_ENTRY_CODE_KEY
+  RABBITMQ_PASSWORD REDIS_PASSWORD JWT_PRIVATE_KEY JWT_PUBLIC_KEY TICKET_ENTRY_CODE_KEY GROQ_API_KEY
   GRAFANA_ADMIN_PASSWORD)
 # Doppler keys that are configuration, not secrets: written to the release as is.
 CONFIG_KEYS=(POSTGRES_DB POSTGRES_USER RABBITMQ_USERNAME)
@@ -184,35 +184,6 @@ create_secrets() {
     "${RABBITMQ_USERNAME}" "${rabbitmq_password}" | create_secret RABBITMQ_CONF)"
 }
 
-# --- The ticket extraction model (ADR 0020) ------------------------------------
-
-# The stack file mounts this folder into the nuextract service.
-MODEL_DIR=/opt/crowded/models
-MODEL_FILE=NuExtract-2.0-2B-Q4_K_M.gguf
-# Pinned to the commit and file that were evaluated.
-MODEL_URL="https://huggingface.co/numind/NuExtract-2.0-2B-GGUF/resolve/d038fea37fabeac3b790964dd3d2a5061dcbb110/${MODEL_FILE}"
-MODEL_SHA256=4725ac4d8437b8657005de6c5fb2de8dea186e654e9331a092f1c1146bc9582e
-
-# Downloads the model once, and again only if the file on the host changed.
-# A file that does not match the checksum never replaces the current one.
-ensure_model() {
-  local target="${MODEL_DIR}/${MODEL_FILE}" partial
-  if [[ -f "${target}" ]] && sha256sum "${target}" | grep -q "^${MODEL_SHA256} "; then
-    return 0
-  fi
-  log "Downloading ${MODEL_FILE}"
-  as_root mkdir -p "${MODEL_DIR}"
-  partial="${target}.partial"
-  as_root curl -fsSL --retry 3 --proto "=https" -o "${partial}" "${MODEL_URL}" \
-    || die "cannot download ${MODEL_URL}"
-  if ! sha256sum "${partial}" | grep -q "^${MODEL_SHA256} "; then
-    as_root rm -f "${partial}"
-    die "${MODEL_FILE} does not match its checksum"
-  fi
-  as_root chmod 644 "${partial}"
-  as_root mv -f "${partial}" "${target}"
-}
-
 # --- 4. Release ------------------------------------------------------------------
 
 write_release() {
@@ -315,7 +286,6 @@ main() {
 
   resolve_images
   create_secrets
-  ensure_model
   write_release "${release_dir}"
   log "Deploying release ${release}"
 
