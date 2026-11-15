@@ -25,6 +25,8 @@ COPY --from=build /src/target/extracted/application/ ./
 USER crowded
 EXPOSE 8080
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0"
-HEALTHCHECK --interval=15s --timeout=3s --start-period=60s --retries=3 \
+# On the VM's two shared CPUs, with the whole stack starting, the service needs
+# more than a minute to be ready; a shorter grace period kills it first.
+HEALTHCHECK --interval=15s --timeout=3s --start-period=180s --retries=3 \
   CMD wget -q -O /dev/null http://127.0.0.1:8080/actuator/health/readiness || exit 1
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
