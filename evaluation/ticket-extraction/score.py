@@ -54,6 +54,9 @@ for path in sys.argv[2:]:
           f'   weighted score (right - 2 x wrong) / n: {weighted:.2f}')
     print('  details correct: ' + ', '.join(f'{f} {v}/{n}' for f, v in details.items()))
     print(f'  latency per ticket: median {statistics.median(secs):.2f} s, max {max(secs):.2f} s')
+    busy = [row["id"] for row in rows if row.get("busy")]
+    if busy:
+        print(f'  answered after the provider was busy (retried, not timed): {busy}')
     invalid = [row["id"] for row in rows if row.get("invalid")]
     if invalid:
         print(f'  invalid JSON: {invalid}')

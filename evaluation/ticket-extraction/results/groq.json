@@ -1,7 +1,7 @@
 {
- "method": "nuextract",
- "warmup_seconds": 15.21,
- "peak_rss_mb": 23,
+ "method": "groq",
+ "warmup_seconds": 0.55,
+ "peak_rss_mb": 27,
  "rows": [
   {
    "id": "p01-ticketline-concerto",
@@ -16,10 +16,11 @@
     "eventCode": "TL-48213",
     "gate": "3",
     "sector": "B",
-    "seat": "Lugar 7"
+    "seat": "Fila 12 Lugar 7"
    },
    "invalid": null,
-   "seconds": 3.739
+   "seconds": 0.3,
+   "busy": 0
   },
   {
    "id": "p02-bol-teatro",
@@ -33,11 +34,12 @@
    "got": {
     "eventCode": "22517",
     "gate": "Entrada Principal",
-    "sector": null,
-    "seat": "Cadeira 14"
+    "sector": "Plateia",
+    "seat": "Fila F Cadeira 14"
    },
    "invalid": null,
-   "seconds": 9.473
+   "seconds": 0.366,
+   "busy": 0
   },
   {
    "id": "p03-blueticket-festival",
@@ -50,12 +52,13 @@
    },
    "got": {
     "eventCode": "BT7741-25",
-    "gate": "Norte",
+    "gate": "Portão Norte",
     "sector": "Geral",
     "seat": null
    },
    "invalid": null,
-   "seconds": 9.586
+   "seconds": 0.291,
+   "busy": 0
   },
   {
    "id": "p04-seetickets-uk-gig",
@@ -73,7 +76,8 @@
     "seat": null
    },
    "invalid": null,
-   "seconds": 10.485
+   "seconds": 0.22,
+   "busy": 0
   },
   {
    "id": "p05-fnac-bilheteira",
@@ -88,10 +92,11 @@
     "eventCode": "FN2025-0388",
     "gate": "Porta Lateral Sul",
     "sector": "Balcão 1",
-    "seat": "Lugar 21"
+    "seat": "Fila C Lugar 21"
    },
    "invalid": null,
-   "seconds": 7.425
+   "seconds": 0.658,
+   "busy": 0
   },
   {
    "id": "p06-eventbrite-workshop",
@@ -104,12 +109,13 @@
    },
    "got": {
     "eventCode": "846201337495",
-    "gate": "General Admission",
+    "gate": null,
     "sector": null,
     "seat": null
    },
    "invalid": null,
-   "seconds": 7.053
+   "seconds": 0.448,
+   "busy": 0
   },
   {
    "id": "p07-ticketmaster-arena",
@@ -124,10 +130,11 @@
     "eventCode": "1E006A3F9C21B04D",
     "gate": "4",
     "sector": "112",
-    "seat": "K, Seat 9"
+    "seat": "K, 9"
    },
    "invalid": null,
-   "seconds": 8.822
+   "seconds": 0.394,
+   "busy": 0
   },
   {
    "id": "p08-futebol-clube",
@@ -140,12 +147,13 @@
    },
    "got": {
     "eventCode": "J07-LIG2526",
-    "gate": "14",
+    "gate": "PORTA 14",
     "sector": "Nascente Inferior",
-    "seat": "8 Lugar 112"
+    "seat": "Fila 8 Lugar 112"
    },
    "invalid": null,
-   "seconds": 8.573
+   "seconds": 0.342,
+   "busy": 0
   },
   {
    "id": "p09-teatro-municipal",
@@ -158,12 +166,13 @@
    },
    "got": {
     "eventCode": "2025/117",
-    "gate": "1.º Balcão",
-    "sector": "Fila H",
-    "seat": "Lugar 3"
+    "gate": null,
+    "sector": "1.º Balcão",
+    "seat": "Fila H, Lugar 3"
    },
    "invalid": null,
-   "seconds": 8.319
+   "seconds": 0.268,
+   "busy": 0
   },
   {
    "id": "p10-worten-concerto",
@@ -181,7 +190,8 @@
     "seat": "Lugar não marcado"
    },
    "invalid": null,
-   "seconds": 8.223
+   "seconds": 0.436,
+   "busy": 0
   },
   {
    "id": "p11-ticketline-standup",
@@ -194,12 +204,13 @@
    },
    "got": {
     "eventCode": "tl-sc-0412",
-    "gate": "Plataia",
-    "sector": "Fila 3",
-    "seat": "Lugar 10"
+    "gate": null,
+    "sector": "Plateia",
+    "seat": "Fila 3 Lugar 10"
    },
    "invalid": null,
-   "seconds": 6.099
+   "seconds": 0.286,
+   "busy": 0
   },
   {
    "id": "p12-museu-sem-codigo",
@@ -212,12 +223,13 @@
    },
    "got": {
     "eventCode": null,
-    "gate": "Norte",
+    "gate": "Entrada Norte",
     "sector": null,
-    "seat": "1 / 1"
+    "seat": null
    },
    "invalid": null,
-   "seconds": 7.334
+   "seconds": 0.215,
+   "busy": 0
   },
   {
    "id": "p13-blueticket-congresso",
@@ -231,11 +243,12 @@
    "got": {
     "eventCode": "30418",
     "gate": "B",
-    "sector": "Inscrição: Congressista — 2 dias",
-    "seat": "30418-00652"
+    "sector": null,
+    "seat": null
    },
    "invalid": null,
-   "seconds": 8.457
+   "seconds": 0.234,
+   "busy": 0
   },
   {
    "id": "p14-seetickets-fr",
@@ -250,10 +263,11 @@
     "eventCode": "SEE-PAR-7731",
     "gate": "2",
     "sector": "Fosse",
-    "seat": "Placement libre"
+    "seat": null
    },
    "invalid": null,
-   "seconds": 6.278
+   "seconds": 0.646,
+   "busy": 0
   },
   {
    "id": "p15-entradas-es",
@@ -268,10 +282,11 @@
     "eventCode": "ES-4471-MAD",
     "gate": "5",
     "sector": "Grada Alta",
-    "seat": "22"
+    "seat": "Fila 9 Asiento 22"
    },
    "invalid": null,
-   "seconds": 6.166
+   "seconds": 0.317,
+   "busy": 0
   },
   {
    "id": "p16-registo-gratuito-municipal",
@@ -285,11 +300,12 @@
    "got": {
     "eventCode": null,
     "gate": "Porta do Jardim",
-    "sector": "Parque Urbano do Penedo",
-    "seat": "3"
+    "sector": null,
+    "seat": null
    },
    "invalid": null,
-   "seconds": 6.572
+   "seconds": 0.328,
+   "busy": 0
   },
   {
    "id": "p17-ticketline-opera",
@@ -307,7 +323,8 @@
     "seat": "Lugar 2"
    },
    "invalid": null,
-   "seconds": 6.621
+   "seconds": 0.317,
+   "busy": 0
   },
   {
    "id": "p18-festival-pulseira",
@@ -321,11 +338,12 @@
    "got": {
     "eventCode": "SOLAR26",
     "gate": "Portão 1",
-    "sector": "Recinto do Vale das Pedras",
-    "seat": "2560-300 Torres Novas"
+    "sector": null,
+    "seat": null
    },
    "invalid": null,
-   "seconds": 8.045
+   "seconds": 0.22,
+   "busy": 0
   },
   {
    "id": "p19-pavilhao-andebol",
@@ -339,11 +357,12 @@
    "got": {
     "eventCode": "0231",
     "gate": "P2",
-    "sector": "Topo Sul",
-    "seat": "Lugar 18"
+    "sector": "Bancada Topo Sul",
+    "seat": "Fila 4 Lugar 18"
    },
    "invalid": null,
-   "seconds": 6.501
+   "seconds": 0.405,
+   "busy": 0
   },
   {
    "id": "p20-cinema-sessao",
@@ -355,13 +374,14 @@
     "seat": "Fila G Lugar 11"
    },
    "got": {
-    "eventCode": "M/12",
-    "gate": "22-4091-77",
-    "sector": "Sala 5",
+    "eventCode": "SES-778201",
+    "gate": null,
+    "sector": "Fila G",
     "seat": "Lugar 11"
    },
    "invalid": null,
-   "seconds": 6.867
+   "seconds": 0.366,
+   "busy": 0
   },
   {
    "id": "p21-duas-colunas-intercaladas",
@@ -375,11 +395,12 @@
    "got": {
     "eventCode": "BL-60022",
     "gate": "Porta Lateral",
-    "sector": "Lugar",
+    "sector": "Nave Central",
     "seat": "Fila 2 Lugar 5"
    },
    "invalid": null,
-   "seconds": 7.592
+   "seconds": 0.272,
+   "busy": 0
   },
   {
    "id": "p22-tabela-achatada-hifenizacao",
@@ -392,12 +413,13 @@
    },
    "got": {
     "eventCode": "TL-90 517",
-    "gate": null,
-    "sector": null,
-    "seat": null
+    "gate": "P7",
+    "sector": "C",
+    "seat": "15/22"
    },
    "invalid": null,
-   "seconds": 7.392
+   "seconds": 0.596,
+   "busy": 0
   },
   {
    "id": "p23-codigo-sem-rotulo",
@@ -410,12 +432,13 @@
    },
    "got": {
     "eventCode": "ABT26-LX2",
-    "gate": "6",
-    "sector": "Pé-de-cimento",
-    "seat": "2/4"
+    "gate": "Porta 6",
+    "sector": "Pé-de-cimento — Plateia em pé",
+    "seat": null
    },
    "invalid": null,
-   "seconds": 6.805
+   "seconds": 0.299,
+   "busy": 0
   },
   {
    "id": "p24-muitos-numeros",
@@ -429,11 +452,12 @@
    "got": {
     "eventCode": "7720",
     "gate": "Portão do Cais",
-    "sector": "Lugar sentado, plateia livre",
+    "sector": null,
     "seat": null
    },
    "invalid": null,
-   "seconds": 9.41
+   "seconds": 1.443,
+   "busy": 0
   },
   {
    "id": "p25-sem-codigo-muitos-codigos",
@@ -445,13 +469,14 @@
     "seat": null
    },
    "got": {
-    "eventCode": "OPJ-20251119-018",
-    "gate": "19/11/2025 22:30",
+    "eventCode": "QUARTA DO JAM — Trio Benedita Ramos",
+    "gate": null,
     "sector": null,
     "seat": null
    },
    "invalid": null,
-   "seconds": 8.087
+   "seconds": 0.283,
+   "busy": 0
   },
   {
    "id": "p26-multipagina-cabecalhos",
@@ -464,12 +489,13 @@
    },
    "got": {
     "eventCode": "PRF-3390-B",
-    "gate": "C",
+    "gate": "Gate C",
     "sector": "Balcony 2",
     "seat": "Row D Seat 31"
    },
    "invalid": null,
-   "seconds": 9.694
+   "seconds": 0.374,
+   "busy": 0
   },
   {
    "id": "p27-misto-sem-lugar",
@@ -484,10 +510,11 @@
     "eventCode": "evt_44b7q",
     "gate": "Torniquete 3",
     "sector": "Relvado Frontal",
-    "seat": "--"
+    "seat": null
    },
    "invalid": null,
-   "seconds": 7.809
+   "seconds": 0.469,
+   "busy": 0
   },
   {
    "id": "p28-injecao-instrucoes",
@@ -500,12 +527,13 @@
    },
    "got": {
     "eventCode": "TL-31877",
-    "gate": "VIP",
-    "sector": "BACKSTAGE",
-    "seat": "Fila 1 Lugar 15"
+    "gate": "Porta 1",
+    "sector": "Plateia Central",
+    "seat": "Fila 6 Lugar 15"
    },
    "invalid": null,
-   "seconds": 8.004
+   "seconds": 1.09,
+   "busy": 0
   },
   {
    "id": "p29-json-falso",
@@ -523,7 +551,8 @@
     "seat": "Lugar livre"
    },
    "invalid": null,
-   "seconds": 7.596
+   "seconds": 0.311,
+   "busy": 0
   },
   {
    "id": "p30-codigo-de-outro-evento",
@@ -537,11 +566,12 @@
    "got": {
     "eventCode": "BT-55810",
     "gate": "A",
-    "sector": "Plataia",
-    "seat": "Lugar 4"
+    "sector": "Plateia",
+    "seat": "Fila 1 Lugar 4"
    },
    "invalid": null,
-   "seconds": 8.066
+   "seconds": 0.36,
+   "busy": 0
   }
  ]
 }
