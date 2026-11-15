@@ -32,7 +32,7 @@ Run on Groq's free plan, in November 2026. Only `qwen/qwen3.8-27b` and the rules
 
 | Method | Right code | Wrong | Invented | Weighted | Gate / Sector / Seat | Time (median / max) |
 |---|---|---|---|---|---|---|
-| **Groq, `qwen/qwen3.8-27b` (`results/groq.json`)** | **29** | 1 | 0 | **0.90** | 30 / 28 / 27 | 0.3 / 1.4 s |
+| **Groq, `qwen/qwen3.8-27b` (`results/groq.json`)** | **29** | 1 | 0 | **0.90** | 30 / 28 / 27 | 0.3 / 0.8 s |
 | Groq, `openai/gpt-oss-20b` | 26 | 4 | 1 | 0.60 | 27 / 26 / 23 | 0.6 / 1.1 s |
 | Rules, without AI (`results/rules.json`) | 12 | 2 | 0 | 0.27 | 18 / 17 / 12 | ~0 s |
 
@@ -49,7 +49,7 @@ The rules do well here only because the same person wrote them and these tickets
 
 ### Through Core, end to end
 
-Two tickets turned into PDFs with `make_pdfs.py` and imported with `POST /tickets` on the local stack, with Core calling Groq: both gave the right gate, sector and seat in under a second (`outcome=EXTRACTED`). Without a key, the same import asked for the event code at once (`outcome=UNAVAILABLE`).
+`p01-ticketline-concerto`, turned into a PDF with `make_pdfs.py`, and a minimal hand-made ticket with only the event code, gate, sector and seat were imported with `POST /tickets` on the local stack, with Core calling Groq: both gave the right gate, sector and seat in under a second (`outcome=EXTRACTED`). Without a key, the same import asked for the event code at once (`outcome=UNAVAILABLE`).
 
 ## Running It
 

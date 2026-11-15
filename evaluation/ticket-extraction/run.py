@@ -48,7 +48,7 @@ GROQ_INSTRUCTIONS = (
 
 
 def groq(text):
-    body = json.dumps({"model": GROQ_MODEL, "temperature": 0,
+    body = json.dumps({"model": GROQ_MODEL, "temperature": 0, "max_completion_tokens": 200,
                        "response_format": {"type": "json_object"},
                        "messages": [{"role": "system", "content": GROQ_INSTRUCTIONS},
                                     {"role": "user", "content": text}]}).encode()
@@ -66,11 +66,11 @@ def groq(text):
             if e.code not in (429, 503) or attempt == 4:
                 raise
             time.sleep(15)
-    got = fields(raw["choices"][0]["message"]["content"] or "", {f: f for f in FIELDS})
+    got = fields(raw["choices"][0]["message"]["content"] or "")
     return got | {"_seconds": time.perf_counter() - start, "_busy": attempt}
 
 
-def fields(raw, keys):
+def fields(raw):
     """The schema's fields in a model's answer, or none of them when it is not a JSON object."""
     cleaned = re.sub(r"^\s*```(?:json)?|```\s*$", "", raw.strip())
     try:
@@ -79,8 +79,8 @@ def fields(raw, keys):
         data = None
     if not isinstance(data, dict):
         return {f: None for f in FIELDS} | {"_invalid": raw[:200]}
-    return {keys[k]: (v if isinstance(v, str) and v.strip() else None)
-            for k, v in data.items() if k in keys}
+    return {k: (v if isinstance(v, str) and v.strip() else None)
+            for k, v in data.items() if k in FIELDS}
 
 
 def main():

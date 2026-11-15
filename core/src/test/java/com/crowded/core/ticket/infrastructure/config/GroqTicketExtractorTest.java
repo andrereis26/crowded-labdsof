@@ -60,7 +60,13 @@ class GroqTicketExtractorTest {
     assertThat(answer).isEqualTo("{\"eventCode\":\"MARG-2026\"}");
     assertThat(authorization.get()).isEqualTo("Bearer key");
     assertThat(request.get())
-        .contains(MODEL, "Porta: A", "json_object", "\"temperature\":0", "eventCode");
+        .contains(
+            MODEL,
+            "Porta: A",
+            "json_object",
+            "\"temperature\":0",
+            "max_completion_tokens",
+            "eventCode");
   }
 
   @Test

@@ -22,7 +22,7 @@ Groq was evaluated on synthetic tickets, all text without personal data, with th
 
 | Method | Right code | Wrong code | Weighted | Gate / Sector / Seat | Time per ticket (median / max) |
 |---|---|---|---|---|---|
-| Groq, `qwen/qwen3.8-27b` | 29/30 | 1 | 0.90 | 30 / 28 / 27 | 0.3 / 1.4 s |
+| Groq, `qwen/qwen3.8-27b` | 29/30 | 1 | 0.90 | 30 / 28 / 27 | 0.3 / 0.8 s |
 | Groq, `openai/gpt-oss-20b` | 26/30 | 4 | 0.60 | 27 / 26 / 23 | 0.6 / 1.1 s |
 | Rules, without AI | 12/30 | 2 | 0.27 | 18 / 17 / 12 | ~0 s |
 
