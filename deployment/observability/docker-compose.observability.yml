@@ -116,7 +116,9 @@ services:
     deploy:
       <<: *observability-deploy
       resources:
-        limits: { cpus: "0.5", memory: 192M }
+        # Grafana settles near 300 MB once started; under that it is killed
+        # while starting, on a host without swap.
+        limits: { cpus: "0.5", memory: 384M }
 
 volumes:
   prometheus-data:
