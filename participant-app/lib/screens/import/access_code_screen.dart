@@ -55,8 +55,10 @@ class _AccessCodeScreenState extends State<AccessCodeScreen> {
             'Código não encontrado. Confirma o código no cartaz ou junto da '
             'organização.';
       }
-    } on ConnectionsApiException {
-      error = 'Não foi possível abrir o evento. Tenta outra vez.';
+    } on ConnectionsApiException catch (e) {
+      error = e.sessionEnded
+          ? 'A tua sessão terminou. Entra outra vez.'
+          : 'Não foi possível abrir o evento. Tenta outra vez.';
     }
     if (!mounted) return;
     setState(() {

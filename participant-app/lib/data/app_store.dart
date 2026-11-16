@@ -453,6 +453,9 @@ class AppStore extends ChangeNotifier {
     _fromCore.clear();
     _syncs.clear();
     _histories.clear();
+    // Public events joined through Core belong to this account, not to the
+    // next one signed in on the device.
+    _public.removeWhere(_coreId.hasMatch);
   }
 
   /// Wallet order: soonest first.

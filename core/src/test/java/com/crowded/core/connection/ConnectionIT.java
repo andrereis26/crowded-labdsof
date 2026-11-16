@@ -159,13 +159,16 @@ class ConnectionIT extends IntegrationTest {
   }
 
   @Test
-  void connectsOnlyParticipants() throws Exception {
+  void connectsOnlyParticipantsAndTellsAnyoneElseNothingAboutTheCode() throws Exception {
     insertEvent("PUBLIC", "STAFF-" + suffix, "SCHEDULED");
 
-    HttpResponse<String> response = join(member, "STAFF-" + suffix);
+    for (String code : new String[] {"STAFF-" + suffix, "NONE-" + suffix}) {
+      HttpResponse<String> response = join(member, code);
 
-    assertThat(response.statusCode()).isEqualTo(403);
-    assertThat(json.readTree(response.body()).get("code").asString()).isEqualTo("PARTICIPANT_ONLY");
+      assertThat(response.statusCode()).isEqualTo(403);
+      assertThat(json.readTree(response.body()).get("code").asString())
+          .isEqualTo("PARTICIPANT_ONLY");
+    }
   }
 
   @Test

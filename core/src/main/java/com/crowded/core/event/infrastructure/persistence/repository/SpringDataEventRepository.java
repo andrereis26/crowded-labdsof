@@ -33,11 +33,12 @@ interface SpringDataEventRepository extends JpaRepository<EventEntity, UUID> {
 
   /**
    * The public event, not in one of the {@code closed} statuses, that ends after {@code now} and
-   * has {@code code} as its access code. A ticketed event has none.
+   * has {@code code} as its access code. A ticketed event has none. Codes are stored in upper case,
+   * so the index on the access code serves the lookup.
    */
   @Query(
       "select e from EventEntity e"
-          + " where upper(e.accessCode) = :code and e.endDateTime > :now and e.status not in :closed")
+          + " where e.accessCode = :code and e.endDateTime > :now and e.status not in :closed")
   Optional<EventEntity> findUpcomingByAccessCode(
       String code, Instant now, Collection<EventStatus> closed);
 

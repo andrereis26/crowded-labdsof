@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:crowded/data/connections_api.dart';
@@ -74,6 +75,37 @@ void main() {
     await expectLater(
       api((_) async => http.Response('[]', 201)).joinWithAccessCode('X'),
       refusedWith('HTTP_201'),
+    );
+  });
+
+  test('reports an ended session', () async {
+    final call = api((_) async => http.Response('', 401))
+        .joinWithAccessCode('SAOJOAO26');
+
+    await expectLater(call, refusedWith('UNAUTHORIZED'));
+    await expectLater(
+      call,
+      throwsA(
+        isA<ConnectionsApiException>().having(
+          (e) => e.sessionEnded,
+          'sessionEnded',
+          true,
+        ),
+      ),
+    );
+  });
+
+  test('stops waiting for a Core that does not answer', () async {
+    final silent = HttpConnectionsApi(
+      token: () => 'token-123',
+      client: MockClient((_) => Completer<http.Response>().future),
+      baseUrl: 'https://crowded.test/api',
+      timeout: const Duration(milliseconds: 10),
+    );
+
+    await expectLater(
+      silent.joinWithAccessCode('SAOJOAO26'),
+      refusedWith('NETWORK'),
     );
   });
 

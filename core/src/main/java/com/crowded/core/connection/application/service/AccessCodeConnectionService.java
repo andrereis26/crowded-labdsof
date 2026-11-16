@@ -2,39 +2,34 @@ package com.crowded.core.connection.application.service;
 
 import com.crowded.core.connection.application.dto.JoinWithAccessCodeCommand;
 import com.crowded.core.connection.application.dto.JoinedEvent;
-import com.crowded.core.connection.domain.model.EventConnection;
+import com.crowded.core.connection.domain.model.JoinedConnection;
 import com.crowded.core.connection.domain.repository.ConnectionRepository;
+import com.crowded.core.connection.domain.service.AccessCodeConnections;
 import com.crowded.core.event.domain.model.Event;
-import com.crowded.core.event.domain.model.EventCode;
 import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.domain.exception.NotFoundException;
-import com.crowded.core.shared.domain.exception.RuleViolationException;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.repository.UserRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
-import java.time.Instant;
-import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Connects a participant to a public event with its access code. The event is the one Core finds
- * for the code, never one the client names, and a code that leads to no event gets the same answer
- * whatever the reason, so it reveals no event. The code is never logged.
+ * Connects a participant to a public event with its access code ({@link AccessCodeConnections}),
+ * and logs and counts the outcome. The code is never logged.
  */
 @Service
 public class AccessCodeConnectionService {
 
   private static final Logger log = LoggerFactory.getLogger(AccessCodeConnectionService.class);
 
-  private final EventRepository events;
+  private final AccessCodeConnections joining;
   private final UserRepository users;
-  private final ConnectionRepository connections;
   private final Clock clock;
   private final MeterRegistry meters;
 
@@ -44,9 +39,8 @@ public class AccessCodeConnectionService {
       ConnectionRepository connections,
       Clock clock,
       MeterRegistry meters) {
-    this.events = events;
+    this.joining = new AccessCodeConnections(events, connections);
     this.users = users;
-    this.connections = connections;
     this.clock = clock;
     this.meters = meters;
   }
@@ -61,7 +55,6 @@ public class AccessCodeConnectionService {
    */
   @Transactional
   public JoinedEvent joinWithAccessCode(JoinWithAccessCodeCommand command) {
-    Instant now = clock.instant();
     User user =
         users
             .findById(command.userId())
@@ -69,26 +62,16 @@ public class AccessCodeConnectionService {
                 () ->
                     new NotAllowedException(
                         "PARTICIPANT_ONLY", "Only a participant can connect to an event."));
-    Event event =
-        accessCode(command.accessCode())
-            .flatMap(code -> events.findUpcomingPublicByAccessCode(code, now))
-            .orElseThrow(
-                () -> {
-                  log.info("Access code of user {} matched no public event", user.getId());
-                  count("NOT_FOUND");
-                  return new NotFoundException(
-                      "ACCESS_CODE_NOT_FOUND", "No event was found with this code.");
-                });
-
-    connections.lockConnectionsOf(user.getId());
-    Optional<EventConnection> existing =
-        connections.findByUserAndEvent(user.getId(), event.getId());
-    EventConnection connection =
-        existing.orElseGet(() -> EventConnection.joinWithAccessCode(user, event.getId(), now));
-    String outcome = existing.isPresent() ? "ALREADY_CONNECTED" : "CONNECTED";
-    if (existing.isEmpty()) {
-      connections.add(connection);
+    JoinedConnection joined;
+    try {
+      joined = joining.join(user, command.accessCode(), clock.instant());
+    } catch (NotFoundException e) {
+      log.info("Access code of user {} matched no public event", user.getId());
+      count("NOT_FOUND");
+      throw e;
     }
+    String outcome = joined.created() ? "CONNECTED" : "ALREADY_CONNECTED";
+    Event event = joined.event();
     log.info(
         "User {} joined event {} with its access code: outcome={}",
         user.getId(),
@@ -96,22 +79,13 @@ public class AccessCodeConnectionService {
         outcome);
     count(outcome);
     return new JoinedEvent(
-        connection.getId(),
-        existing.isEmpty(),
+        joined.connection().getId(),
+        joined.created(),
         event.getId(),
         event.getProfile().name(),
         event.getState().schedule().start(),
         event.getState().schedule().doorsOpenAt(),
         event.getState().venue().name());
-  }
-
-  /** The code as events keep it; empty when no event could have it, such as one with spaces. */
-  private static Optional<EventCode> accessCode(String typed) {
-    try {
-      return Optional.of(new EventCode(typed));
-    } catch (RuleViolationException e) {
-      return Optional.empty();
-    }
   }
 
   private void count(String outcome) {
