@@ -137,6 +137,38 @@ void main() {
     expect(find.byType(AccessCodeScreen), findsOneWidget);
   });
 
+  testWidgets('says when the session ended', (tester) async {
+    await pump(tester, (_) async => http.Response('', 401));
+
+    await tester.enterText(find.byType(TextField), 'SAOJOAO26');
+    await tester.tap(find.text('Abrir evento'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('A tua sessão terminou. Entra outra vez.'),
+      findsOneWidget,
+    );
+    expect(find.byType(AccessCodeScreen), findsOneWidget);
+  });
+
+  testWidgets('forgets the events joined through Core on sign-out', (
+    tester,
+  ) async {
+    final (store, _) = await pump(
+      tester,
+      (_) async => http.Response(_joined, 201),
+    );
+    await tester.enterText(find.byType(TextField), 'SAOJOAO26');
+    await tester.tap(find.text('Abrir evento'));
+    await tester.pumpAndSettle();
+    expect(store.isConnected(_event), isTrue);
+
+    store.signOut();
+    await tester.pumpAndSettle();
+
+    expect(store.isConnected(_event), isFalse);
+  });
+
   testWidgets('sends one request while Core answers', (tester) async {
     final answer = Completer<http.Response>();
     final (_, sent) = await pump(tester, (_) => answer.future);

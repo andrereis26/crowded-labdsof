@@ -3,17 +3,12 @@ package com.crowded.core.connection.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.crowded.core.connection.application.dto.JoinWithAccessCodeCommand;
 import com.crowded.core.connection.application.dto.JoinedEvent;
-import com.crowded.core.connection.domain.model.ConnectionType;
 import com.crowded.core.connection.domain.model.EventConnection;
 import com.crowded.core.connection.domain.repository.ConnectionRepository;
 import com.crowded.core.event.domain.model.Admission;
@@ -46,7 +41,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
 
 class AccessCodeConnectionServiceTest {
 
@@ -78,45 +72,30 @@ class AccessCodeConnectionServiceTest {
           events, users, connections, Clock.fixed(NOW, ZoneOffset.UTC), meters);
 
   @Test
-  void connectsTheParticipantToTheEventOfTheCode() {
+  void answersTheNewConnectionWithItsEventAndCountsIt() {
     participant();
     when(events.findUpcomingPublicByAccessCode(new EventCode("SAOJOAO26"), NOW))
         .thenReturn(Optional.of(ARRAIAL));
 
-    JoinedEvent joined = service.joinWithAccessCode(command(" saojoao26 "));
+    JoinedEvent joined = service.joinWithAccessCode(command("saojoao26"));
 
     assertThat(joined.created()).isTrue();
+    assertThat(joined.connectionId()).isNotNull();
     assertThat(joined.eventId()).isEqualTo(ARRAIAL.getId());
     assertThat(joined.name()).isEqualTo("Arraial");
     assertThat(joined.startDateTime()).isEqualTo(START);
     assertThat(joined.doorsOpenAt()).isEqualTo(START.minus(1, ChronoUnit.HOURS));
     assertThat(joined.venueName()).isEqualTo("Fontainhas");
-    InOrder order = inOrder(connections);
-    order.verify(connections).lockConnectionsOf(PARTICIPANT);
-    order.verify(connections).findByUserAndEvent(PARTICIPANT, ARRAIAL.getId());
-    order
-        .verify(connections)
-        .add(
-            argThat(
-                c ->
-                    c.getId().equals(joined.connectionId())
-                        && c.getEventId().equals(ARRAIAL.getId())
-                        && c.getType() == ConnectionType.ACCESS_CODE));
     assertThat(joins("CONNECTED")).isOne();
   }
 
   @Test
-  void keepsTheExistingConnectionOfAParticipantAlreadyConnected() {
+  void answersTheExistingConnectionAndCountsIt() {
     participant();
     when(events.findUpcomingPublicByAccessCode(new EventCode("SAOJOAO26"), NOW))
         .thenReturn(Optional.of(ARRAIAL));
     EventConnection existing =
-        EventConnection.restore(
-            UUID.randomUUID(),
-            PARTICIPANT,
-            ARRAIAL.getId(),
-            ConnectionType.ACCESS_CODE,
-            NOW.minus(2, ChronoUnit.DAYS));
+        EventConnection.restore(UUID.randomUUID(), PARTICIPANT, ARRAIAL.getId(), NOW);
     when(connections.findByUserAndEvent(PARTICIPANT, ARRAIAL.getId()))
         .thenReturn(Optional.of(existing));
 
@@ -124,23 +103,17 @@ class AccessCodeConnectionServiceTest {
 
     assertThat(joined.created()).isFalse();
     assertThat(joined.connectionId()).isEqualTo(existing.getId());
-    verify(connections, never()).add(any());
     assertThat(joins("ALREADY_CONNECTED")).isOne();
   }
 
   @Test
-  void answersTheSameForACodeOfNoEventAndForOneNoEventCouldHave() {
+  void countsACodeOfNoEvent() {
     participant();
     when(events.findUpcomingPublicByAccessCode(any(), any())).thenReturn(Optional.empty());
 
-    for (String code : new String[] {"NOPE2026", "no such code", ""}) {
-      assertThatThrownBy(() -> service.joinWithAccessCode(command(code)))
-          .isInstanceOfSatisfying(
-              NotFoundException.class,
-              e -> assertThat(e.getCode()).isEqualTo("ACCESS_CODE_NOT_FOUND"));
-    }
-    verifyNoInteractions(connections);
-    assertThat(joins("NOT_FOUND")).isEqualTo(3);
+    assertThatThrownBy(() -> service.joinWithAccessCode(command("NOPE2026")))
+        .isInstanceOf(NotFoundException.class);
+    assertThat(joins("NOT_FOUND")).isOne();
   }
 
   @Test

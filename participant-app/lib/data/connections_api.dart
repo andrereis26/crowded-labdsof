@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -14,14 +15,16 @@ class JoinedEvent {
 }
 
 /// A refusal from Core, with its error code: `ACCESS_CODE_NOT_FOUND` when
-/// the code leads to no public event, or `NETWORK` when Core could not be
-/// reached.
+/// the code leads to no public event, `UNAUTHORIZED` when the session ended,
+/// or `NETWORK` when Core could not be reached or did not answer in time.
 class ConnectionsApiException implements Exception {
   const ConnectionsApiException(this.code);
 
   final String code;
 
   bool get notFound => code == 'ACCESS_CODE_NOT_FOUND';
+
+  bool get sessionEnded => code == 'UNAUTHORIZED';
 
   @override
   String toString() => 'ConnectionsApiException($code)';
@@ -41,6 +44,7 @@ class HttpConnectionsApi implements ConnectionsApi {
     required this._token,
     http.Client? client,
     String baseUrl = apiBaseUrl,
+    this._timeout = const Duration(seconds: 15),
   }) : _client = client ?? http.Client(),
        _base = Uri.base.resolve(baseUrl.endsWith('/') ? baseUrl : '$baseUrl/');
 
@@ -48,20 +52,29 @@ class HttpConnectionsApi implements ConnectionsApi {
   final http.Client _client;
   final Uri _base;
 
+  /// How long to wait for Core, so a request that never answers does not
+  /// leave the screen waiting for good.
+  final Duration _timeout;
+
   @override
   Future<JoinedEvent> joinWithAccessCode(String accessCode) async {
     final http.Response response;
     try {
-      response = await _client.post(
-        _base.resolve('connections'),
-        headers: {
-          'Authorization': 'Bearer ${_token()}',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'accessCode': accessCode}),
-      );
+      response = await _client
+          .post(
+            _base.resolve('connections'),
+            headers: {
+              'Authorization': 'Bearer ${_token()}',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({'accessCode': accessCode}),
+          )
+          .timeout(_timeout);
     } on Exception {
       throw const ConnectionsApiException('NETWORK');
+    }
+    if (response.statusCode == 401) {
+      throw const ConnectionsApiException('UNAUTHORIZED');
     }
     final body = _json(response);
     final event = body['event'];

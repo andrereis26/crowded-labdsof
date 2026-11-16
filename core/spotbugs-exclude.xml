@@ -17,6 +17,18 @@
     <Class name="com.crowded.core.event.domain.service.EventCodes"/>
     <Bug pattern="EI_EXPOSE_REP2"/>
   </Match>
+  <!-- AccessCodeConnections keeps the event and connection ports it connects participants
+       with; the ports are shared adapters, not state of its own. -->
+  <Match>
+    <Class name="com.crowded.core.connection.domain.service.AccessCodeConnections"/>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
+  <!-- JoinedConnection hands the event a participant just connected to back to the use case
+       in the same request; it is read there and never changed. -->
+  <Match>
+    <Class name="com.crowded.core.connection.domain.model.JoinedConnection"/>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
   <!-- ManagedEvent hands the aggregate the use case just saved to the API mapper in the
        same request; it is read there and never changed. -->
   <Match>

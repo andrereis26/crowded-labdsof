@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.crowded.core.connection.domain.model.ConnectionType;
 import com.crowded.core.connection.domain.model.EventConnection;
 import com.crowded.core.connection.infrastructure.persistence.entity.AccessCodeConnectionEntity;
 import com.crowded.core.connection.infrastructure.persistence.entity.EventConnectionEntity;
@@ -68,12 +67,7 @@ class ConnectionRepositoryAdapterTest {
   @Test
   void storesAnAccessCodeConnectionInItsOwnTable() {
     EventConnection connection =
-        EventConnection.restore(
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            ConnectionType.ACCESS_CODE,
-            NOW);
+        EventConnection.restore(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), NOW);
     ArgumentCaptor<EventConnectionEntity> saved =
         ArgumentCaptor.forClass(EventConnectionEntity.class);
 
@@ -81,6 +75,8 @@ class ConnectionRepositoryAdapterTest {
 
     verify(rows).save(saved.capture());
     assertThat(saved.getValue()).isInstanceOf(AccessCodeConnectionEntity.class);
+    // Inserted as new, so Spring Data persists it without reading it first.
+    assertThat(saved.getValue().isNew()).isTrue();
     assertThat(saved.getValue().getId()).isEqualTo(connection.getId());
     assertThat(saved.getValue().getUserId()).isEqualTo(connection.getUserId());
     assertThat(saved.getValue().getEventId()).isEqualTo(connection.getEventId());
@@ -88,19 +84,26 @@ class ConnectionRepositoryAdapterTest {
   }
 
   @Test
-  void readsTheKindOfConnectionFromItsRow() {
+  void readsAStoredConnectionOfEitherKind() {
     UUID user = UUID.randomUUID();
     UUID publicEvent = UUID.randomUUID();
     UUID ticketedEvent = UUID.randomUUID();
+    EventConnectionEntity accessCodeRow = row(new AccessCodeConnectionEntity(), user, publicEvent);
     when(rows.findFirstByUserIdAndEventIdOrderByConnectedAt(user, publicEvent))
-        .thenReturn(Optional.of(row(new AccessCodeConnectionEntity(), user, publicEvent)));
+        .thenReturn(Optional.of(accessCodeRow));
     when(rows.findFirstByUserIdAndEventIdOrderByConnectedAt(user, ticketedEvent))
         .thenReturn(Optional.of(row(new EventConnectionEntity(), user, ticketedEvent)));
 
     assertThat(adapter.findByUserAndEvent(user, publicEvent))
-        .hasValueSatisfying(c -> assertThat(c.getType()).isEqualTo(ConnectionType.ACCESS_CODE));
+        .hasValueSatisfying(
+            c -> {
+              assertThat(c.getId()).isEqualTo(accessCodeRow.getId());
+              assertThat(c.getUserId()).isEqualTo(user);
+              assertThat(c.getEventId()).isEqualTo(publicEvent);
+              assertThat(c.getConnectedAt()).isEqualTo(NOW);
+            });
     assertThat(adapter.findByUserAndEvent(user, ticketedEvent))
-        .hasValueSatisfying(c -> assertThat(c.getType()).isEqualTo(ConnectionType.TICKET));
+        .hasValueSatisfying(c -> assertThat(c.getEventId()).isEqualTo(ticketedEvent));
     assertThat(adapter.findByUserAndEvent(user, UUID.randomUUID())).isEmpty();
     verify(rows, never()).save(any());
   }
