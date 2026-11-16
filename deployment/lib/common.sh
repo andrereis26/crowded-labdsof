@@ -91,22 +91,22 @@ deploy_release() {
     && stack_deploy "${release_dir}" all
 }
 
-# Waits until no service of the stack is still updating or rolling back.
-# `docker stack deploy` reads every service's version first and updates them
-# one by one; an update that finishes in between changes that version, and
-# Swarm refuses the stale one ("update out of sequence"). Step 1 of
-# deploy_release restarts the Java services, which take minutes to start, and a
-# failed release leaves Swarm's own rollback running.
+# Waits until no service of the stack is updating or rolling back, so
+# `docker stack deploy` never runs over them ("update out of sequence", README).
 wait_for_settled_updates() {
-  local deadline busy service state
+  local deadline busy ids logged=false
   deadline=$(( $(date +%s) + WAIT_TIMEOUT_SECONDS ))
   while true; do
-    busy=()
-    while read -r service; do
-      state="$(docker service inspect "${service}" --format '{{if .UpdateStatus}}{{.UpdateStatus.State}}{{end}}')"
-      [[ "${state}" == updating || "${state}" == rollback_started ]] && busy+=("${service} ${state}")
-    done < <(docker service ls --filter "label=com.docker.stack.namespace=${STACK_NAME}" --format '{{.Name}}')
+    mapfile -t ids < <(docker service ls -q --filter "label=com.docker.stack.namespace=${STACK_NAME}")
+    (( ${#ids[@]} == 0 )) && return 0
+    mapfile -t busy < <(docker service inspect "${ids[@]}" \
+      --format '{{.Spec.Name}} {{if .UpdateStatus}}{{.UpdateStatus.State}}{{end}}' \
+      | grep -E ' (updating|rollback_started)$' || true)
     (( ${#busy[@]} == 0 )) && return 0
+    if [[ "${logged}" == false ]]; then
+      log "Waiting for updates to finish: ${busy[*]}"
+      logged=true
+    fi
     if (( $(date +%s) >= deadline )); then
       log "Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for updates to finish: ${busy[*]}"
       return 1
