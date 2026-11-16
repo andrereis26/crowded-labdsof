@@ -115,6 +115,13 @@ class EventRepositoryAdapter implements EventRepository {
         code.value(), eventId == null ? NO_EVENT : eventId, now, CLOSED);
   }
 
+  @Override
+  public Optional<Event> findUpcomingPublicByAccessCode(EventCode code, Instant now) {
+    return events
+        .findUpcomingByAccessCode(code.value(), now, CLOSED)
+        .map(entity -> toDomain(List.of(entity)).getFirst());
+  }
+
   private List<Event> toDomain(List<EventEntity> rows) {
     if (rows.isEmpty()) {
       return List.of();

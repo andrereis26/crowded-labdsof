@@ -8,6 +8,7 @@ import '../ui/ui.dart';
 
 import '../utils/pt_format.dart';
 import 'auth_api.dart';
+import 'connections_api.dart';
 import 'demo_data.dart';
 import 'events_api.dart';
 import 'password_strength.dart';
@@ -28,6 +29,7 @@ class AppStore extends ChangeNotifier {
     EventsApi? events,
     this._session,
     this.ticketsApi,
+    this.connectionsApi,
   }) : _clock = clock ?? DateTime.now,
        _auth = auth ?? HttpAuthApi(),
        _notificationsApi = notifications ?? HttpNotificationsApi(),
@@ -53,6 +55,10 @@ class AppStore extends ChangeNotifier {
   /// Core's ticket import. Without it, ticket import uses demo data; it is
   /// set once the screens use the real sign-in.
   final TicketsApi? ticketsApi;
+
+  /// Core's connections. Without it, access codes use demo data; it is set
+  /// once the screens use the real sign-in.
+  final ConnectionsApi? connectionsApi;
 
   late final Map<String, Event> _registered;
   late List<Ticket> _tickets;
@@ -468,18 +474,35 @@ class AppStore extends ChangeNotifier {
   /// When the participant left [eventId], if they did (P8).
   DateTime? leftAt(String eventId) => _left[eventId];
 
-  /// Connects to a public event with its access code (P21).
-  /// Returns the event, or null when no public event has that code.
-  Event? joinWithAccessCode(String code) {
-    final normalized = code.trim().toUpperCase();
-    final event = _registered.values
-        .where((e) => e.accessCode == normalized)
-        .firstOrNull;
-    if (event == null) return null;
-    _public.add(event.id);
-    _left.remove(event.id);
+  /// Connects to a public event with its access code, typed or read from
+  /// its QR code (P21). With [connectionsApi], Core decides the event from
+  /// the code. Returns the event's id, or null when no public event has that
+  /// code.
+  ///
+  /// Throws [ConnectionsApiException] when Core refuses it for another
+  /// reason or cannot be reached.
+  Future<String?> joinWithAccessCode(String code) async {
+    final String eventId;
+    final api = connectionsApi;
+    if (api == null) {
+      final normalized = code.trim().toUpperCase();
+      final event = _registered.values
+          .where((e) => e.accessCode == normalized)
+          .firstOrNull;
+      if (event == null) return null;
+      eventId = event.id;
+    } else {
+      try {
+        eventId = (await api.joinWithAccessCode(code.trim())).eventId;
+      } on ConnectionsApiException catch (e) {
+        if (e.notFound) return null;
+        rethrow;
+      }
+    }
+    _public.add(eventId);
+    _left.remove(eventId);
     notifyListeners();
-    return event;
+    return eventId;
   }
 
   /// Removes a ticket or leaves a public event: its page is no

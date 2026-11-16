@@ -45,4 +45,10 @@ public interface EventRepository {
    * @param eventId the event the code is for; null for a new one
    */
   boolean isCodeUsedByAnotherUpcomingEvent(EventCode code, UUID eventId, Instant now);
+
+  /**
+   * The public event that has not ended or been cancelled by {@code now} and gives out {@code code}
+   * as its access code; empty when there is none. Codes are unique among such events.
+   */
+  Optional<Event> findUpcomingPublicByAccessCode(EventCode code, Instant now);
 }

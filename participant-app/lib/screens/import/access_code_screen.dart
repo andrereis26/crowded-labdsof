@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../data/app_store.dart';
+import '../../data/connections_api.dart';
 import '../../ui/ui.dart';
 import '../shared/shell.dart';
 
@@ -19,6 +20,7 @@ class AccessCodeScreen extends StatefulWidget {
 class _AccessCodeScreenState extends State<AccessCodeScreen> {
   final _code = TextEditingController();
   String? _error;
+  bool _busy = false;
 
   @override
   void dispose() {
@@ -29,26 +31,39 @@ class _AccessCodeScreenState extends State<AccessCodeScreen> {
   /// A QR code read by the camera: the poster's QR code holds the access
   /// code.
   void _onScanned(String value) {
-    if (!mounted || _code.text == value) return;
+    if (!mounted || _busy || _code.text == value) return;
     _code.text = value;
     _submit();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_busy) return;
     if (_code.text.trim().isEmpty) {
       setState(() => _error = 'Escreve o código de acesso.');
       return;
     }
-    final event = AppStore.read(context).joinWithAccessCode(_code.text);
-    if (event == null) {
-      setState(
-        () => _error =
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    String? error;
+    String? eventId;
+    try {
+      eventId = await AppStore.read(context).joinWithAccessCode(_code.text);
+      if (eventId == null) {
+        error =
             'Código não encontrado. Confirma o código no cartaz ou junto da '
-            'organização.',
-      );
-      return;
+            'organização.';
+      }
+    } on ConnectionsApiException {
+      error = 'Não foi possível abrir o evento. Tenta outra vez.';
     }
-    context.go('/event/${event.id}');
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _error = error;
+    });
+    if (eventId != null) context.go('/event/$eventId');
   }
 
   @override
@@ -87,7 +102,12 @@ class _AccessCodeScreenState extends State<AccessCodeScreen> {
           },
           onSubmitted: (_) => _submit(),
         ),
-        AppButton(label: 'Abrir evento', onPressed: _submit),
+        AppButton(
+          label: _busy ? 'A abrir o evento' : 'Abrir evento',
+          // Disabled while Core answers, so a double tap or a QR code read
+          // twice sends one request.
+          onPressed: _busy ? null : _submit,
+        ),
       ],
     );
   }

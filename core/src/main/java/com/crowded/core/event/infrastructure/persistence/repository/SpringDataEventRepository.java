@@ -31,6 +31,16 @@ interface SpringDataEventRepository extends JpaRepository<EventEntity, UUID> {
   boolean existsUpcomingWithCode(
       String code, UUID eventId, Instant now, Collection<EventStatus> closed);
 
+  /**
+   * The public event, not in one of the {@code closed} statuses, that ends after {@code now} and
+   * has {@code code} as its access code. A ticketed event has none.
+   */
+  @Query(
+      "select e from EventEntity e"
+          + " where upper(e.accessCode) = :code and e.endDateTime > :now and e.status not in :closed")
+  Optional<EventEntity> findUpcomingByAccessCode(
+      String code, Instant now, Collection<EventStatus> closed);
+
   /** Takes the transaction-scoped advisory lock {@code key}; returns 1. */
   @Query(
       value = "SELECT count(*) FROM (SELECT pg_advisory_xact_lock(:key)) AS locked",

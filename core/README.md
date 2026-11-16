@@ -1,6 +1,19 @@
 # Crowded Core
 
-Core service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). So far it registers participants and signs users in (`POST /auth/register`, `POST /auth/login`, #59), lets the platform administrator manage organizations and members (`/admin/...`, #140), publishes an organization's official event changes (`POST /events/{eventId}/changes`, #37), imports ticket PDFs (`POST /tickets`, #20) and relays its outbox to RabbitMQ; the other endpoints follow the [API Outline](../docs/deliverables/api-outline.md).
+Core service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). It sends its messages to the other services through RabbitMQ and serves the endpoints below. The [API Outline](../docs/deliverables/api-outline.md) describes each of them in detail.
+
+| Endpoint | What it does | Story |
+|---|---|---|
+| `POST /auth/register`, `POST /auth/login` | Registers participants and signs users in | #59 |
+| `POST /auth/password` | A member replaces their temporary password at the first sign-in | #141 |
+| `GET /admin/organizations`, `POST /admin/organizations` | The platform administrator lists and creates organizations | #140 |
+| `POST /admin/organizations/{organizationId}/members`, `PATCH /admin/members/{userId}` | The platform administrator creates, deactivates and reactivates members, and issues new temporary passwords | #140 |
+| `POST /events`, `PATCH /events/{eventId}`, `GET /organizations/me/events` | An organization creates, corrects and lists its events | #36 |
+| `POST /events/{eventId}/changes` | An organization publishes an official change to its event | #37 |
+| `GET /events/{eventId}`, `GET /events/{eventId}/changes`, `GET /events/{eventId}/live` | A connected participant or the organization reads the event page and its change history, and follows the page live | #34 |
+| `PUT`, `DELETE` and `GET /events/{eventId}/image` | Adds, removes and reads an event's image | #172 |
+| `POST /tickets` | Imports a ticket from its PDF | #20 |
+| `POST /connections` | Connects a participant to a public event with its access code | #139 |
 
 - **Responsibility:** domain rules, authentication (issues JWTs), REST API, Organization API, live event-page updates (SSE), AI ticket extraction and alert drafts. Applies the changes detected by Jobs.
 - **Owns (writes):** users, organizations, events, connections, on-site information, weather, alerts, surveys, reports, incidents.
