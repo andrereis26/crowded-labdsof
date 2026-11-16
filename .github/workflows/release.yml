@@ -97,9 +97,10 @@ jobs:
     name: Deploy
     needs: infrastructure
     runs-on: ubuntu-latest
-    # remote-deploy.sh waits up to 10 minutes for the migration and again for
-    # the services.
-    timeout-minutes: 40
+    # remote-deploy.sh waits up to 10 minutes at each of four points of a
+    # deployment (running updates twice, the migration, the services), and
+    # again for a rollback: the job must not end in the middle of one.
+    timeout-minutes: 90
     environment:
       name: production
       url: http://${{ needs.infrastructure.outputs.host }}/
