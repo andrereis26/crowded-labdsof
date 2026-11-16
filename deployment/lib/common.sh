@@ -195,9 +195,8 @@ expected_digest() {
 
 # Waits until every service runs all its replicas, every application service
 # runs the image of the release, and every update this deployment started has
-# completed. Updates start the new task first (start-first), so the new image
-# and a full replica count show before the new task is healthy; only the
-# update state says it was. When an update fails, Swarm rolls the service back
+# completed. The new image and a full replica count can show before the new
+# task is healthy; only the update state says it was. When an update fails, Swarm rolls the service back
 # by itself (update_config.failure_action): the service leaves the release's
 # image, and the wait fails at once. A Swarm rollback that lands on the
 # release's image (while rolling back to an earlier release) is fine.

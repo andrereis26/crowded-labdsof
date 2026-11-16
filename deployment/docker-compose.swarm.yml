@@ -23,17 +23,19 @@ x-backend-environment: &backend-environment
   SPRING_CONFIG_IMPORT: optional:configtree:/run/secrets/
   JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75.0
 
-# Stateless services: start the new task before stopping the old one, and go
-# back to the previous image by themselves if the new one does not get healthy.
+# Stateless services: stop the old task before starting the new one, so the
+# VM never holds two copies in memory; the service is down while it starts.
+# They go back to the previous image by themselves if the new one does not get
+# healthy.
 x-app-deploy: &app-deploy
   update_config:
     parallelism: 1
-    order: start-first
+    order: stop-first
     failure_action: rollback
     monitor: 30s
   rollback_config:
     parallelism: 1
-    order: start-first
+    order: stop-first
   restart_policy:
     condition: any
     delay: 5s
