@@ -27,6 +27,9 @@ public interface ConnectionRepository {
   /** {@code userId}'s earliest connection to {@code eventId}; empty when there is none. */
   Optional<EventConnection> findByUserAndEvent(UUID userId, UUID eventId);
 
+  /** The connection with {@code id}; empty when there is none. */
+  Optional<EventConnection> findById(UUID id);
+
   /** Stores a new connection to a public event, made with its access code. */
   void add(EventConnection connection);
 

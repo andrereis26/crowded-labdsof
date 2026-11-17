@@ -78,8 +78,7 @@ class TicketImportIT extends IntegrationTest {
   @Test
   void keepsTheImportPendingAndAsksForTheEventCode() {
     Response response =
-        upload(
-            TicketPdfs.ticketOfEvent("SEM-EVENTO-" + ENTRY_CODE, ENTRY_CODE), token(PARTICIPANT));
+        upload(TicketPdfs.ticketOfEvent("SEM-EVENTO-2026", ENTRY_CODE), token(PARTICIPANT));
 
     assertThat(response.status().value()).isEqualTo(200);
     assertThat(response.body().get("status").asString()).isEqualTo("NEEDS_EVENT_CODE");

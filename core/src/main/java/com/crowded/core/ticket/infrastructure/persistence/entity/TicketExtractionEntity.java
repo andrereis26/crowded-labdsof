@@ -3,17 +3,26 @@ package com.crowded.core.ticket.infrastructure.persistence.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.util.UUID;
 import org.hibernate.annotations.ColumnTransformer;
+import org.springframework.data.domain.Persistable;
 
-/** Row of {@code ticket_extraction}: what the AI read from a stored ticket. */
+/**
+ * Row of {@code ticket_extraction}: what the AI read from a stored ticket. It is only ever added,
+ * so a new one is inserted without reading it first.
+ */
 @Entity
 @Table(name = "ticket_extraction")
-public class TicketExtractionEntity {
+public class TicketExtractionEntity implements Persistable<UUID> {
 
   @Id private UUID id;
+
+  @Transient private boolean stored;
 
   @Column(name = "ticket_id", nullable = false)
   private UUID ticketId;
@@ -31,8 +40,20 @@ public class TicketExtractionEntity {
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
+  @Override
   public UUID getId() {
     return id;
+  }
+
+  @Override
+  public boolean isNew() {
+    return !stored;
+  }
+
+  @PostLoad
+  @PostPersist
+  void markStored() {
+    stored = true;
   }
 
   public void setId(UUID id) {

@@ -46,6 +46,11 @@ class ConnectionRepositoryAdapter implements ConnectionRepository {
   }
 
   @Override
+  public Optional<EventConnection> findById(UUID id) {
+    return connections.findById(id).map(mapper::toDomain);
+  }
+
+  @Override
   public Optional<EventConnection> findByUserAndEvent(UUID userId, UUID eventId) {
     return connections
         .findFirstByUserIdAndEventIdOrderByConnectedAt(userId, eventId)

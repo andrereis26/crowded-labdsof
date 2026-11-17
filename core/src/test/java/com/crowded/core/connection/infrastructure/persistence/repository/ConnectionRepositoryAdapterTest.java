@@ -108,6 +108,17 @@ class ConnectionRepositoryAdapterTest {
     verify(rows, never()).save(any());
   }
 
+  @Test
+  void readsAConnectionById() {
+    EventConnectionEntity ticketRow =
+        row(new EventConnectionEntity(), UUID.randomUUID(), UUID.randomUUID());
+    when(rows.findById(ticketRow.getId())).thenReturn(Optional.of(ticketRow));
+
+    assertThat(adapter.findById(ticketRow.getId()))
+        .hasValueSatisfying(c -> assertThat(c.getId()).isEqualTo(ticketRow.getId()));
+    assertThat(adapter.findById(UUID.randomUUID())).isEmpty();
+  }
+
   private static EventConnectionEntity row(EventConnectionEntity row, UUID user, UUID event) {
     row.setId(UUID.randomUUID());
     row.setUserId(user);

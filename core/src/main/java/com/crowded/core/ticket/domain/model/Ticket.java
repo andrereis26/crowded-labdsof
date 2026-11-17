@@ -5,14 +5,13 @@ import java.util.UUID;
 
 /**
  * A participant's ticket to a registered event, stored once the event code matched. It shares its
- * id with the participant's connection to the event, and keeps the entry code only encrypted, with
- * a keyed hash that links the ticket to one account.
+ * id with the participant's connection to the event, which keeps the event, and keeps the entry
+ * code only encrypted, with a keyed hash that links the ticket to one account.
  */
 public final class Ticket {
 
   private final UUID id;
   private final UUID ownerId;
-  private final UUID eventId;
   private final TicketDetails details;
   private final String encryptedEntryCode;
   private final EntryCodeHash entryCodeHash;
@@ -22,7 +21,6 @@ public final class Ticket {
   private Ticket(
       UUID id,
       UUID ownerId,
-      UUID eventId,
       TicketDetails details,
       String encryptedEntryCode,
       EntryCodeHash entryCodeHash,
@@ -30,7 +28,6 @@ public final class Ticket {
       MatchMethod matchMethod) {
     this.id = Objects.requireNonNull(id, "id");
     this.ownerId = Objects.requireNonNull(ownerId, "ownerId");
-    this.eventId = Objects.requireNonNull(eventId, "eventId");
     this.details = details == null ? TicketDetails.NONE : details;
     if (encryptedEntryCode == null || encryptedEntryCode.isBlank()) {
       throw new IllegalArgumentException("A ticket keeps its encrypted entry code");
@@ -42,13 +39,12 @@ public final class Ticket {
   }
 
   /**
-   * A ticket of {@code ownerId} to {@code eventId}, connected with {@code connectionId}. Its
-   * details are what was read from the ticket, never used to decide anything.
+   * A ticket of {@code ownerId}, connected with {@code connectionId}. Its details are what was read
+   * from the ticket, never used to decide anything.
    */
   public static Ticket connect(
       UUID connectionId,
       UUID ownerId,
-      UUID eventId,
       TicketDetails details,
       String encryptedEntryCode,
       EntryCodeHash entryCodeHash,
@@ -57,7 +53,6 @@ public final class Ticket {
     return new Ticket(
         connectionId,
         ownerId,
-        eventId,
         details,
         encryptedEntryCode,
         entryCodeHash,
@@ -69,21 +64,13 @@ public final class Ticket {
   public static Ticket restore(
       UUID id,
       UUID ownerId,
-      UUID eventId,
       TicketDetails details,
       String encryptedEntryCode,
       EntryCodeHash entryCodeHash,
       ImportMethod importMethod,
       MatchMethod matchMethod) {
     return new Ticket(
-        id,
-        ownerId,
-        eventId,
-        details,
-        encryptedEntryCode,
-        entryCodeHash,
-        importMethod,
-        matchMethod);
+        id, ownerId, details, encryptedEntryCode, entryCodeHash, importMethod, matchMethod);
   }
 
   public boolean isOwnedBy(UUID userId) {
@@ -92,10 +79,6 @@ public final class Ticket {
 
   public UUID getId() {
     return id;
-  }
-
-  public UUID getEventId() {
-    return eventId;
   }
 
   public TicketDetails getDetails() {
@@ -130,6 +113,6 @@ public final class Ticket {
 
   @Override
   public String toString() {
-    return "Ticket[id=" + id + ", eventId=" + eventId + "]";
+    return "Ticket[id=" + id + "]";
   }
 }
