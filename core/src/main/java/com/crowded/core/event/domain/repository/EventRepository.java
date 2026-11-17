@@ -51,4 +51,10 @@ public interface EventRepository {
    * as its access code; empty when there is none. Codes are unique among such events.
    */
   Optional<Event> findUpcomingPublicByAccessCode(EventCode code, Instant now);
+
+  /**
+   * The ticketed event that has not ended or been cancelled by {@code now} and has {@code code}
+   * printed on its tickets; empty when there is none. Codes are unique among such events.
+   */
+  Optional<Event> findUpcomingTicketedByEventCode(EventCode code, Instant now);
 }

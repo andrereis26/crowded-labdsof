@@ -2,9 +2,16 @@ package com.crowded.core;
 
 import static org.junit.jupiter.api.parallel.ResourceAccessMode.READ;
 
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
@@ -79,6 +86,45 @@ public abstract class IntegrationTest {
     registry.add("crowded.rate-limits.sign-ins-per-address", () -> 10_000);
     registry.add("crowded.rate-limits.registrations-per-address", () -> 10_000);
     registry.add("crowded.tickets.entry-code-key", () -> ENTRY_CODE_KEY);
+    registry.add("crowded.ai.groq.url", () -> "http://localhost:" + FAKE_AI.getAddress().getPort());
+    registry.add("crowded.ai.groq.api-key", () -> "test-key");
+  }
+
+  private static final Pattern EVENT_CODE_LINE = Pattern.compile("C.digo do evento: ([A-Z0-9-]+)");
+
+  /**
+   * A stand-in for the AI provider of ticket extraction: it answers with the event code printed
+   * after "Código do evento:" in the ticket's text, and with no code when there is none, so a test
+   * chooses the event a ticket matches by the code in its PDF.
+   */
+  private static final HttpServer FAKE_AI = startFakeAi();
+
+  private static HttpServer startFakeAi() {
+    try {
+      HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+      server.createContext(
+          "/chat/completions",
+          exchange -> {
+            String request =
+                new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            Matcher code = EVENT_CODE_LINE.matcher(request);
+            String eventCode =
+                code.find() ? "\\\"eventCode\\\": \\\"" + code.group(1) + "\\\", " : "";
+            byte[] answer =
+                ("{\"choices\":[{\"message\":{\"content\":\"{"
+                        + eventCode
+                        + "\\\"gate\\\": \\\"A\\\", \\\"sector\\\": \\\"2\\\", \\\"seat\\\": \\\"14\\\"}\"}}]}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, answer.length);
+            exchange.getResponseBody().write(answer);
+            exchange.close();
+          });
+      server.start();
+      return server;
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   /** A fresh 256-bit key for the entry codes of imported tickets, so no key is committed. */

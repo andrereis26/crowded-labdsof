@@ -6,7 +6,6 @@ import com.crowded.core.shared.domain.repository.RateLimiter;
 import com.crowded.core.ticket.application.dto.ExtractionResult;
 import com.crowded.core.ticket.application.dto.ImportTicketCommand;
 import com.crowded.core.ticket.application.dto.TicketImportResult;
-import com.crowded.core.ticket.application.dto.TicketImportStatus;
 import com.crowded.core.ticket.domain.model.ReadTicket;
 import com.crowded.core.ticket.domain.model.TicketImport;
 import com.crowded.core.ticket.domain.repository.EntryCodeCipher;
@@ -15,6 +14,7 @@ import com.crowded.core.ticket.domain.repository.TicketImportRepository;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.repository.UserRepository;
 import java.time.Duration;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,8 +22,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * Imports a ticket file: reads its QR code locally, asks the AI for the event code with the
- * ticket's text without personal data, and keeps the import pending with the entry code encrypted
- * until the event code is known. Imports are rate-limited per participant (ADR 0004).
+ * ticket's text without personal data, and connects the participant when the code matches a
+ * registered event. Otherwise it keeps the import pending, with the entry code encrypted, until the
+ * event code is known. Imports are rate-limited per participant (ADR 0004).
  */
 @Service
 public class TicketImportService {
@@ -35,6 +36,7 @@ public class TicketImportService {
   private final TicketFileReader reader;
   private final TicketExtractionRunner extraction;
   private final EntryCodeCipher cipher;
+  private final TicketConnectionService connecting;
   private final TicketImportRepository imports;
   private final RateLimiter limiter;
   private final UserRepository users;
@@ -44,6 +46,7 @@ public class TicketImportService {
       TicketFileReader reader,
       TicketExtractionRunner extraction,
       EntryCodeCipher cipher,
+      TicketConnectionService connecting,
       TicketImportRepository imports,
       RateLimiter limiter,
       UserRepository users,
@@ -51,6 +54,7 @@ public class TicketImportService {
     this.reader = reader;
     this.extraction = extraction;
     this.cipher = cipher;
+    this.connecting = connecting;
     this.imports = imports;
     this.limiter = limiter;
     this.users = users;
@@ -58,10 +62,13 @@ public class TicketImportService {
   }
 
   /**
-   * Imports the command's ticket file and keeps it pending until the event code is known. Only an
-   * active participant may import; the role is read from the database, never from the token.
+   * Imports the command's ticket file: connects the participant to the registered event its
+   * extracted code names, or keeps the import pending until the event code is known. Only an active
+   * participant may import; the role is read from the database, never from the token.
    *
    * @throws NotAllowedException when the user is not an active participant
+   * @throws com.crowded.core.shared.domain.exception.ConflictException with {@code
+   *     TICKET_ALREADY_IMPORTED} when another account imported the same ticket
    * @throws TooManyRequestsException when the participant imported too many tickets this hour
    * @throws com.crowded.core.shared.domain.exception.RuleViolationException with {@code
    *     QR_CODE_NOT_FOUND} when the file is not a readable ticket with a QR code; nothing is stored
@@ -69,8 +76,8 @@ public class TicketImportService {
    *     be encrypted, because no key is configured
    */
   public TicketImportResult importTicket(ImportTicketCommand command) {
-    boolean participant = users.findById(command.ownerId()).filter(User::isParticipant).isPresent();
-    if (!participant) {
+    User user = users.findById(command.ownerId()).filter(User::isParticipant).orElse(null);
+    if (user == null) {
       log.warn("Refused a ticket import by user {}: not a participant", command.ownerId());
       throw new NotAllowedException("PARTICIPANT_ONLY", "Only a participant can import a ticket.");
     }
@@ -94,15 +101,17 @@ public class TicketImportService {
     ExtractionResult extracted = extraction.extract(ticket.textWithoutPersonalData());
     TicketImport pending =
         TicketImport.start(command.ownerId(), encryptedEntryCode, extracted.extraction());
+    Optional<TicketImportResult> connected = connecting.connectByExtractedCode(user, pending);
+    if (connected.isPresent()) {
+      return connected.get();
+    }
     imports.save(pending);
     log.info(
         "Ticket import {} by user {} waits for the event code: extraction={}",
         pending.getId(),
         command.ownerId(),
         extracted.outcome());
-    return new TicketImportResult(
-        TicketImportStatus.NEEDS_EVENT_CODE,
-        pending.getId(),
-        pending.getExtraction().extractedFields());
+    return TicketImportResult.needsEventCode(
+        pending.getId(), pending.getExtraction().extractedFields());
   }
 }

@@ -56,4 +56,9 @@ class ConnectionRepositoryAdapter implements ConnectionRepository {
   public void add(EventConnection connection) {
     connections.save(mapper.toAccessCodeEntity(connection));
   }
+
+  @Override
+  public void addTicketConnection(EventConnection connection) {
+    connections.saveAndFlush(mapper.toTicketConnectionEntity(connection));
+  }
 }

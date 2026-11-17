@@ -122,6 +122,13 @@ class EventRepositoryAdapter implements EventRepository {
         .map(entity -> toDomain(List.of(entity)).getFirst());
   }
 
+  @Override
+  public Optional<Event> findUpcomingTicketedByEventCode(EventCode code, Instant now) {
+    return events
+        .findUpcomingByTicketEventCode(code.value(), now, CLOSED)
+        .map(entity -> toDomain(List.of(entity)).getFirst());
+  }
+
   private List<Event> toDomain(List<EventEntity> rows) {
     if (rows.isEmpty()) {
       return List.of();

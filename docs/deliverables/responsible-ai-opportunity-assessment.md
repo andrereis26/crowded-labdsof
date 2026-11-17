@@ -36,7 +36,7 @@ A draft that invents or changes facts (e.g., the wrong gate) could misdirect peo
 Ticket files, screenshots and incident descriptions are untrusted inputs that may contain instructions aimed at the model.
 
 **Mitigation**
-> Treat all inputs as data, validate model outputs against a fixed schema, and give the model no ability to perform actions. The first ticket evaluation showed that the schema is not enough: on a ticket with injected instructions, the event code stayed right, but the gate and sector came from the instructions, words that are also in the ticket's text. So ticket details are shown as read from the ticket, with a way to correct them, and never decide anything.
+> Treat all inputs as data, validate model outputs against a fixed schema, and give the model no ability to perform actions. The first ticket evaluation showed that the schema is not enough: on a ticket with injected instructions, the event code stayed right, but the gate and sector came from the instructions, words that are also in the ticket's text. So ticket details never decide anything and are shown only on the participant's own ticket.
 
 ### R5 - Over-Reliance on AI Drafts
 Organizers under pressure may approve drafts without reading them carefully.

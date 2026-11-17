@@ -80,6 +80,45 @@ void main() {
     });
   }
 
+  for (final size in [const Size(390, 844), const Size(1440, 900)]) {
+    testWidgets('P2a and the refusals meet the accessibility guidelines at '
+        '$size', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(
+        tester,
+        size,
+        (_) async => http.Response(
+          '{"status":"CONNECTED","ticketId":"t-1","connectionId":"t-1",'
+          '"event":{"id":"e-1","name":"Festival Margens",'
+          '"startDateTime":"2026-11-27T22:00:00Z",'
+          '"doorsOpenAt":"2026-11-27T20:00:00Z","venueName":"Cais"},'
+          '"ticket":{"gate":"A","sector":"2","seat":"14"}}',
+          200,
+        ),
+      );
+
+      // The ticket was added.
+      await tester.tap(find.text('PDF do bilhete'));
+      await tester.pumpAndSettle();
+      expect(find.text('Adicionaste o evento Festival Margens'), findsOne);
+      await _expectAccessible(tester);
+
+      // Another account has the ticket, on a fresh app.
+      await tester.pumpWidget(const SizedBox());
+      await _pump(
+        tester,
+        size,
+        (_) async => http.Response('{"code":"TICKET_ALREADY_IMPORTED"}', 409),
+      );
+      await tester.tap(find.text('PDF do bilhete'));
+      await tester.pumpAndSettle();
+      expect(find.text('Este bilhete já está ligado a outra conta'), findsOne);
+      await _expectAccessible(tester);
+
+      semantics.dispose();
+    });
+  }
+
   testWidgets('P2 announces that the ticket is being read', (tester) async {
     final semantics = tester.ensureSemantics();
     final answer = Completer<http.Response>();
