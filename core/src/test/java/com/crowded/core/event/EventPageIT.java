@@ -176,6 +176,62 @@ class EventPageIT extends IntegrationTest {
     }
   }
 
+  @Test
+  void sendsThePublishedCrowdLevelOnTheLiveStreamAndRefusesAnotherOrganization() throws Exception {
+    HttpResponse<InputStream> stream =
+        HTTP.send(
+            request(participant, base() + "/live").build(),
+            HttpResponse.BodyHandlers.ofInputStream());
+    BlockingQueue<String> pages = new LinkedBlockingQueue<>();
+    Thread reader = Thread.ofVirtual().start(() -> readData(stream.body(), pages));
+    try {
+      String first = pages.poll(10, TimeUnit.SECONDS);
+      assertThat(json.readTree(first).get("crowd").isNull()).isTrue();
+
+      HttpResponse<String> published = putCrowd(member, "{\"level\": \"HIGH\"}");
+
+      assertThat(published.statusCode()).as(published.body()).isEqualTo(200);
+      assertThat(json.readTree(published.body()).get("level").asString()).isEqualTo("HIGH");
+      String next = pages.poll(10, TimeUnit.SECONDS);
+      assertThat(next).isNotNull();
+      JsonNode crowd = json.readTree(next).get("crowd");
+      assertThat(crowd.get("level").asString()).isEqualTo("HIGH");
+      assertThat(crowd.get("provenance").get("sourceType").asString()).isEqualTo("ORGANIZATION");
+      assertThat(crowd.get("provenance").get("sourceName").asString())
+          .isEqualTo("Ribeira Página " + organization);
+      assertThat(Instant.parse(crowd.get("provenance").get("lastUpdatedAt").asString()))
+          .isBetween(Instant.now().minusSeconds(30), Instant.now());
+    } finally {
+      stream.body().close();
+      reader.interrupt();
+    }
+
+    UUID otherOrganization = UUID.randomUUID();
+    UUID outsider = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO organization (id, name, created_at) VALUES (?, ?, now())",
+        otherOrganization,
+        "Outra " + otherOrganization);
+    jdbc.update(
+        "INSERT INTO app_user (id, organization_id, email, password_hash, role, created_at, active, name)"
+            + " VALUES (?, ?, ?, ?, 'ORGANIZATION_MEMBER', now(), true, 'Outro')",
+        outsider,
+        otherOrganization,
+        outsider + "@crowded.test",
+        PASSWORD_HASH);
+    HttpResponse<String> foreign = putCrowd(outsider, "{\"level\": \"LOW\"}");
+    assertThat(foreign.statusCode()).isEqualTo(403);
+    assertThat(json.readTree(foreign.body()).get("code").asString())
+        .isEqualTo("NOT_EVENT_ORGANIZATION");
+    assertThat(putCrowd(participant, "{\"level\": \"LOW\"}").statusCode()).isEqualTo(403);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT crowd_level::text FROM event WHERE id = ?", String.class, event))
+        .isEqualTo("HIGH");
+    assertThat(json.readTree(get(participant, "").body()).get("crowd").get("level").asString())
+        .isEqualTo("HIGH");
+  }
+
   /** Puts the data of each server-sent event on {@code pages} until the stream ends. */
   private static void readData(InputStream body, BlockingQueue<String> pages) {
     try (BufferedReader lines =
@@ -200,6 +256,16 @@ class EventPageIT extends IntegrationTest {
                 .build(),
             HttpResponse.BodyHandlers.ofString());
     assertThat(response.statusCode()).as(response.body()).isEqualTo(201);
+  }
+
+  private HttpResponse<String> putCrowd(UUID user, String body)
+      throws IOException, InterruptedException {
+    return HTTP.send(
+        request(user, base() + "/crowd")
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(body))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
   }
 
   private HttpResponse<String> get(UUID user, String path)

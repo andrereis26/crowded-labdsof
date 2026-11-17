@@ -457,13 +457,17 @@ describe('O2–O4 with Core', () => {
 })
 
 describe('O5–O7 live operations', () => {
-  it('publishes the crowd level and manual queue times', async () => {
+  it('publishes the crowd level in Core and manual queue times', async () => {
     const user = userEvent.setup()
-    await renderAt('/organization/live/crowd')
+    const { events } = await renderAt('/organization/live/crowd')
+    expect(screen.getByText('Ainda não publicaste a lotação deste evento.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('radio', { name: /Elevada/ }))
     await user.click(screen.getByRole('button', { name: 'Publicar lotação' }))
-    expect(screen.getByText('Lotação publicada: Elevada.')).toBeInTheDocument()
+    expect(await screen.findByText('Lotação publicada: Elevada.')).toBeInTheDocument()
+    expect(events.calls).toContain('publishCrowd')
+    expect(events.events[0].crowd?.level).toBe('high')
+    expect(screen.getByText(/^Publicado por Ribeira Live/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Aumentar espera em Bar principal' }))
     expect(
@@ -471,6 +475,26 @@ describe('O5–O7 live operations', () => {
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Publicar filas' }))
     expect(screen.getByText('Filas publicadas.')).toBeInTheDocument()
+  })
+
+  it('shows the level Core has and why Core refused a new one', async () => {
+    const user = userEvent.setup()
+    const events = fakeEventsApi(
+      demoEvents().map((e) => ({
+        ...e,
+        crowd: { level: 'full' as const, publishedBy: 'Ribeira Live', publishedAt: now },
+      })),
+    )
+    await renderAt('/organization/live/crowd', events)
+    expect(screen.getByRole('radio', { name: /Lotado/ })).toBeChecked()
+    expect(screen.getByText('Publicado por Ribeira Live agora')).toBeInTheDocument()
+
+    events.refuse = 'EVENT_CLOSED'
+    await user.click(screen.getByRole('button', { name: 'Publicar lotação' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Este evento já foi cancelado ou terminou.',
+    )
+    expect(screen.queryByText(/Lotação publicada/)).not.toBeInTheDocument()
   })
 
   it('drafts an alert with AI and sends it', async () => {

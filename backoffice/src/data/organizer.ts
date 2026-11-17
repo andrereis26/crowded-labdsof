@@ -51,7 +51,16 @@ export interface OrgEvent {
   image?: string
   /** When the image in Core was uploaded; absent when the event has none. */
   imageUpdatedAt?: string
+  /** The crowd level participants see now; absent until one is published. */
+  crowd?: PublishedCrowd
   gradient: [string, string]
+}
+
+/** A crowd level as Core keeps it: the organization is its source. */
+export interface PublishedCrowd {
+  level: CrowdLevel
+  publishedBy: string
+  publishedAt: Date
 }
 
 export const statusTag: Record<

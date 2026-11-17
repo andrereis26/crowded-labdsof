@@ -50,6 +50,12 @@ export function fakeEventsApi(events: OrgEvent[] = demoEvents()) {
       check('publishChange')
       stored = stored.map((e) => (e.id === event.id ? applyChange(e, change) : e))
     },
+    async publishCrowd(eventId, level) {
+      check('publishCrowd')
+      const crowd = { level, publishedBy: 'Ribeira Live', publishedAt: new Date() }
+      stored = stored.map((e) => (e.id === eventId ? { ...e, crowd } : e))
+      return crowd
+    },
     async image(eventId) {
       check('image')
       const image = images.get(eventId)

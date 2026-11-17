@@ -34,6 +34,7 @@ class LiveEventPagesTest {
           null,
           UUID.randomUUID(),
           "Ribeira Live",
+          null,
           null);
 
   private final EventPages pages = mock(EventPages.class);

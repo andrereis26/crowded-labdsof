@@ -62,7 +62,8 @@ class AccessCodeConnectionsTest {
           new District("Porto"),
           new Capacity(5000),
           QueuePoints.NONE,
-          new ConfirmationSettings(Set.of(), ConfirmationRules.DEFAULT));
+          new ConfirmationSettings(Set.of(), ConfirmationRules.DEFAULT),
+          null);
 
   private final EventRepository events = mock(EventRepository.class);
   private final ConnectionRepository connections = mock(ConnectionRepository.class);

@@ -19,6 +19,7 @@ public final class StoredEvents {
         new District("Porto"),
         new Capacity(3000),
         QueuePoints.NONE,
-        new ConfirmationSettings(Set.of("CROWD_LEVEL"), ConfirmationRules.DEFAULT));
+        new ConfirmationSettings(Set.of("CROWD_LEVEL"), ConfirmationRules.DEFAULT),
+        null);
   }
 }

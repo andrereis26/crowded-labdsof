@@ -90,6 +90,7 @@ class EventViewServiceTest {
             null,
             ORGANIZATION,
             "Ribeira Live",
+            null,
             null);
     when(pages.current(event.getId())).thenReturn(page);
 

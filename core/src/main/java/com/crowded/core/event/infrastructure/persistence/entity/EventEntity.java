@@ -1,7 +1,9 @@
 package com.crowded.core.event.infrastructure.persistence.entity;
 
+import com.crowded.core.event.domain.model.CrowdLevel;
 import com.crowded.core.event.domain.model.EventStatus;
 import com.crowded.core.event.domain.model.EventType;
+import com.crowded.core.event.domain.model.SourceType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -73,6 +75,25 @@ public class EventEntity {
   private Double latitude;
 
   private Double longitude;
+
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(name = "crowd_level", columnDefinition = "crowd_level")
+  private CrowdLevel crowdLevel;
+
+  @Enumerated(EnumType.STRING)
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+  @Column(name = "crowd_provenance_source_type", columnDefinition = "source_type")
+  private SourceType crowdSourceType;
+
+  @Column(name = "crowd_provenance_source_name")
+  private String crowdSourceName;
+
+  @Column(name = "crowd_provenance_last_updated_at")
+  private Instant crowdLastUpdatedAt;
+
+  @Column(name = "crowd_provenance_confirmed")
+  private Boolean crowdConfirmed;
 
   public UUID getId() {
     return id;
@@ -232,5 +253,45 @@ public class EventEntity {
 
   public void setMaxPromptsPerHour(int maxPromptsPerHour) {
     this.maxPromptsPerHour = maxPromptsPerHour;
+  }
+
+  public CrowdLevel getCrowdLevel() {
+    return crowdLevel;
+  }
+
+  public void setCrowdLevel(CrowdLevel crowdLevel) {
+    this.crowdLevel = crowdLevel;
+  }
+
+  public SourceType getCrowdSourceType() {
+    return crowdSourceType;
+  }
+
+  public void setCrowdSourceType(SourceType crowdSourceType) {
+    this.crowdSourceType = crowdSourceType;
+  }
+
+  public String getCrowdSourceName() {
+    return crowdSourceName;
+  }
+
+  public void setCrowdSourceName(String crowdSourceName) {
+    this.crowdSourceName = crowdSourceName;
+  }
+
+  public Instant getCrowdLastUpdatedAt() {
+    return crowdLastUpdatedAt;
+  }
+
+  public void setCrowdLastUpdatedAt(Instant crowdLastUpdatedAt) {
+    this.crowdLastUpdatedAt = crowdLastUpdatedAt;
+  }
+
+  public Boolean getCrowdConfirmed() {
+    return crowdConfirmed;
+  }
+
+  public void setCrowdConfirmed(Boolean crowdConfirmed) {
+    this.crowdConfirmed = crowdConfirmed;
   }
 }

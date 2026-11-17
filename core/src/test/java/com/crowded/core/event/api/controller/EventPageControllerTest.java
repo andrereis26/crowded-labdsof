@@ -17,6 +17,8 @@ import com.crowded.core.event.application.dto.EventPage;
 import com.crowded.core.event.application.service.EventViewService;
 import com.crowded.core.event.application.service.LiveEventPages;
 import com.crowded.core.event.domain.model.ChangeType;
+import com.crowded.core.event.domain.model.CrowdLevel;
+import com.crowded.core.event.domain.model.CrowdStatus;
 import com.crowded.core.event.domain.model.EventStatus;
 import com.crowded.core.event.domain.model.EventType;
 import com.crowded.core.event.domain.model.Provenance;
@@ -83,7 +85,8 @@ class EventPageControllerTest {
           -8.68,
           ORGANIZATION,
           "Ribeira Live",
-          POSTPONEMENT);
+          POSTPONEMENT,
+          new CrowdStatus(CrowdLevel.HIGH, Provenance.organization("Ribeira Live", NOW)));
 
   @Autowired private MockMvc mockMvc;
 
@@ -92,7 +95,7 @@ class EventPageControllerTest {
   @MockitoBean private JwtDecoder jwtDecoder;
 
   @Test
-  void answersThePageWithItsVenueOrganizationAndLatestChange() throws Exception {
+  void answersThePageWithItsVenueOrganizationLatestChangeAndCrowd() throws Exception {
     when(service.page(USER, EVENT)).thenReturn(PAGE);
 
     mockMvc
@@ -109,7 +112,10 @@ class EventPageControllerTest {
         .andExpect(jsonPath("$.latestChange.type").value("POSTPONEMENT"))
         .andExpect(jsonPath("$.latestChange.newValue.startDateTime").value("2026-11-21T20:00:00Z"))
         .andExpect(jsonPath("$.latestChange.provenance.sourceType").value("ORGANIZATION"))
-        .andExpect(jsonPath("$.latestChange.provenance.lastUpdatedAt").value(NOW.toString()));
+        .andExpect(jsonPath("$.latestChange.provenance.lastUpdatedAt").value(NOW.toString()))
+        .andExpect(jsonPath("$.crowd.level").value("HIGH"))
+        .andExpect(jsonPath("$.crowd.provenance.sourceName").value("Ribeira Live"))
+        .andExpect(jsonPath("$.crowd.provenance.lastUpdatedAt").value(NOW.toString()));
   }
 
   @Test

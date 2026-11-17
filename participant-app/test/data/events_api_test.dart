@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:crowded/data/events_api.dart';
 import 'package:crowded/data/models.dart';
+import 'package:crowded/ui/ui.dart' show CrowdLevel;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -216,6 +217,35 @@ void main() {
   });
 
   group('eventFromCore', () {
+    test('carries the crowd level the organization published', () {
+      Map<String, Object?> crowd(String level) => {
+        'level': level,
+        'provenance': {
+          'sourceType': 'ORGANIZATION',
+          'sourceName': 'Ribeira Live',
+          'lastUpdatedAt': '2026-11-27T21:05:00Z',
+          'confirmed': true,
+        },
+      };
+      final page = eventPageFromJson({..._page(), 'crowd': crowd('HIGH')})!;
+
+      final status = eventFromCore(page, const []).venueStatus!;
+
+      expect(status.crowdLevel, CrowdLevel.high);
+      expect(
+        status.crowdUpdatedAt,
+        DateTime.utc(2026, 11, 27, 21, 5).toLocal(),
+      );
+      expect(status.updatedAt, status.crowdUpdatedAt);
+      expect(status.queues, isEmpty);
+      expect(eventPageFromJson(_page())!.venueStatus, isNull);
+      expect(
+        eventPageFromJson({..._page(), 'crowd': crowd('PACKED')})!.venueStatus,
+        isNull,
+        reason: 'a level this version does not know',
+      );
+    });
+
     test('builds the event with its changes, newest first', () {
       final history = [
         coreChangeFromJson(

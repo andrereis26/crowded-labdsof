@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation, useMatch, useNavigate } from 'react-router'
 import type { EventsApi } from './data/eventsApi'
+import type { CrowdLevel } from './ui/styles'
 import type { Geocoder } from './data/geocoding'
 import {
   demoAlerts,
@@ -206,6 +207,12 @@ export function OrganizerApp({
     await load()
   }
 
+  /** Publishes the level in Core and keeps it on the event. */
+  const publishCrowd = async (event: OrgEvent, level: CrowdLevel) => {
+    const crowd = await api.publishCrowd(event.id, level)
+    setLoaded((all = []) => all.map((e) => (e.id === event.id ? { ...e, crowd } : e)))
+  }
+
   const updateIncident = (updated: Incident) =>
     setIncidents((all) => all.map((i) => (i.id === updated.id ? updated : i)))
 
@@ -272,9 +279,11 @@ export function OrganizerApp({
           path="live/crowd"
           element={forEvent((event, state) => (
             <CrowdPage
+              key={event.id}
               event={event}
               live={state}
               now={now}
+              onPublishLevel={(level) => publishCrowd(event, level)}
               onChange={(next) => setLive((all) => ({ ...all, [event.id]: next }))}
             />
           ))}

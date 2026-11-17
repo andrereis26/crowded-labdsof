@@ -71,6 +71,7 @@ public class EventPages {
         coordinates == null ? null : coordinates.longitude(),
         organization.getId(),
         organization.getName(),
-        changes.findLatest(eventId).map(EventChangeView::of).orElse(null));
+        changes.findLatest(eventId).map(EventChangeView::of).orElse(null),
+        event.getCrowd());
   }
 }
