@@ -34,7 +34,7 @@ Qwen's only wrong code is the event's name on a ticket that prints no code. On t
 - The key is `GROQ_API_KEY` in Doppler, given to Core as a Swarm secret. Without a key, as on development machines, every extraction fails and the participant types the event code.
 - The answer goes through the schema check of ADR 0010: only the event code, gate, sector and seat, each text or missing.
 - **The typed event code stays the fallback.** When there is no key, or Groq is down, busy, slower than 25 seconds or answers outside the schema, the participant types the code at once. Every import ends within 30 seconds.
-- The extracted code links a ticket only on an exact match with a registered event, which refuses the wrong codes seen in the evaluation. Gate, sector and seat are shown as read from the ticket, and the participant can correct them, because injected text can change them.
+- The extracted code links a ticket only on an exact match with a registered event, which refuses the wrong codes seen in the evaluation. Gate, sector and seat never decide anything and are shown only on the participant's own ticket.
 - Alert drafts and report grouping are not covered. Their vendor stays open in ADR 0010.
 
 ## Consequences

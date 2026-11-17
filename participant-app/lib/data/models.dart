@@ -256,7 +256,7 @@ class Event {
 
   bool get isPublic => joinedWithAccessCode || accessCode != null;
 
-  String get place => '$venue, $city';
+  String get place => city.isEmpty ? venue : '$venue, $city';
 
   /// The change that set the current date, if the event was postponed.
   EventChange? get latestDateChange =>

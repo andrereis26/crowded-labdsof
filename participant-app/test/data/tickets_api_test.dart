@@ -53,6 +53,73 @@ void main() {
     expect(pending.seat, '14');
   });
 
+  test('returns the connection and the registered event', () async {
+    final result = await api(
+      (_) async => http.Response(
+        '{"status":"CONNECTED","ticketId":"t-1","connectionId":"t-1",'
+        '"event":{"id":"e-1","name":"Festival Margens",'
+        '"startDateTime":"2026-11-27T22:00:00Z",'
+        '"doorsOpenAt":"2026-11-27T20:00:00Z","venueName":"Cais da Ribeira"},'
+        '"ticket":{"gate":"A","sector":null,"seat":"14"}}',
+        200,
+      ),
+    ).uploadPdf(pdf, 'bilhete.pdf');
+
+    expect(result, isA<TicketConnected>());
+    final connected = result as TicketConnected;
+    expect(connected.connectionId, 't-1');
+    expect(connected.ticketId, 't-1');
+    expect(connected.eventId, 'e-1');
+    expect(connected.eventName, 'Festival Margens');
+    expect(connected.start.toUtc(), DateTime.utc(2026, 11, 27, 22));
+    expect(connected.doorsOpen?.toUtc(), DateTime.utc(2026, 11, 27, 20));
+    expect(connected.venueName, 'Cais da Ribeira');
+    expect(connected.gate, 'A');
+    expect(connected.sector, isNull);
+    expect(connected.seat, '14');
+  });
+
+  test('connects without a ticket when the event has none of theirs', () async {
+    final result = await api(
+      (_) async => http.Response(
+        '{"status":"CONNECTED","ticketId":null,"connectionId":"c-1",'
+        '"event":{"id":"e-1","name":"Festival","venueName":"Cais",'
+        '"startDateTime":"2026-11-27T22:00:00Z","doorsOpenAt":null},'
+        '"ticket":{}}',
+        200,
+      ),
+    ).uploadPdf(pdf, 'bilhete.pdf');
+
+    final connected = result as TicketConnected;
+    expect(connected.ticketId, isNull);
+    expect(connected.doorsOpen, isNull);
+  });
+
+  test('refuses an answer without the event as an unexpected one', () async {
+    await expectLater(
+      api(
+        (_) async => http.Response(
+          '{"status":"CONNECTED","connectionId":"c-1","ticket":{}}',
+          200,
+        ),
+      ).uploadPdf(pdf, 'bilhete.pdf'),
+      refusedWith('HTTP_200'),
+    );
+  });
+
+  test('reports a ticket that another account has', () async {
+    final upload = api(
+      (_) async => http.Response('{"code":"TICKET_ALREADY_IMPORTED"}', 409),
+    ).uploadPdf(pdf, 'bilhete.pdf');
+
+    await expectLater(upload, refusedWith('TICKET_ALREADY_IMPORTED'));
+    expect(
+      const TicketsApiException('TICKET_ALREADY_IMPORTED').alreadyImported,
+      isTrue,
+    );
+    expect(const TicketsApiException('RATE_LIMITED').alreadyImported, isFalse);
+  });
+
   test('reports a ticket without a QR code', () async {
     final result = await api(
       (_) async => http.Response('{"code":"QR_CODE_NOT_FOUND"}', 400),

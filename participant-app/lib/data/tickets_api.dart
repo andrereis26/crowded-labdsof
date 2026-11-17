@@ -10,6 +10,37 @@ sealed class TicketUploadResult {
   const TicketUploadResult();
 }
 
+/// The ticket matched a registered event and the participant is connected to
+/// it. The event's data is the organization's; gate, sector and seat are as
+/// read from the ticket.
+final class TicketConnected extends TicketUploadResult {
+  const TicketConnected({
+    required this.connectionId,
+    required this.eventId,
+    required this.eventName,
+    required this.start,
+    required this.venueName,
+    this.ticketId,
+    this.doorsOpen,
+    this.gate,
+    this.sector,
+    this.seat,
+  });
+
+  final String connectionId;
+
+  /// Null when the participant was connected to the event without a ticket.
+  final String? ticketId;
+  final String eventId;
+  final String eventName;
+  final DateTime start;
+  final DateTime? doorsOpen;
+  final String venueName;
+  final String? gate;
+  final String? sector;
+  final String? seat;
+}
+
 /// The import waits for the event code printed on the ticket.
 final class TicketNeedsEventCode extends TicketUploadResult {
   const TicketNeedsEventCode({
@@ -31,13 +62,16 @@ final class TicketWithoutQrCode extends TicketUploadResult {
 }
 
 /// A refusal from Core, with its error code: `RATE_LIMITED` after too many
-/// imports in an hour, or `NETWORK` when Core could not be reached.
+/// imports in an hour, `TICKET_ALREADY_IMPORTED` when another account has the
+/// ticket, or `NETWORK` when Core could not be reached.
 class TicketsApiException implements Exception {
   const TicketsApiException(this.code);
 
   final String code;
 
   bool get tooManyRequests => code == 'RATE_LIMITED';
+
+  bool get alreadyImported => code == 'TICKET_ALREADY_IMPORTED';
 
   @override
   String toString() => 'TicketsApiException($code)';
@@ -77,10 +111,34 @@ class HttpTicketsApi implements TicketsApi {
       throw const TicketsApiException('NETWORK');
     }
     final body = _json(response);
+    final ticket = body['ticket'] is Map<String, dynamic>
+        ? body['ticket'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final event = body['event'];
+    final start = event is Map<String, dynamic>
+        ? _instant(event['startDateTime'])
+        : null;
+    if (response.statusCode == 200 &&
+        body['status'] == 'CONNECTED' &&
+        body['connectionId'] is String &&
+        event is Map<String, dynamic> &&
+        event['id'] is String &&
+        event['name'] is String &&
+        start != null) {
+      return TicketConnected(
+        connectionId: body['connectionId'] as String,
+        ticketId: body['ticketId'] as String?,
+        eventId: event['id'] as String,
+        eventName: event['name'] as String,
+        start: start,
+        doorsOpen: _instant(event['doorsOpenAt']),
+        venueName: event['venueName'] as String? ?? '',
+        gate: ticket['gate'] as String?,
+        sector: ticket['sector'] as String?,
+        seat: ticket['seat'] as String?,
+      );
+    }
     if (response.statusCode == 200 && body['status'] == 'NEEDS_EVENT_CODE') {
-      final ticket = body['ticket'] is Map<String, dynamic>
-          ? body['ticket'] as Map<String, dynamic>
-          : const <String, dynamic>{};
       return TicketNeedsEventCode(
         importId: body['importId'] as String,
         gate: ticket['gate'] as String?,
@@ -94,6 +152,9 @@ class HttpTicketsApi implements TicketsApi {
       code is String ? code : 'HTTP_${response.statusCode}',
     );
   }
+
+  static DateTime? _instant(Object? value) =>
+      value is String ? DateTime.tryParse(value)?.toLocal() : null;
 
   static Map<String, dynamic> _json(http.Response response) {
     try {

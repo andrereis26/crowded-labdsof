@@ -790,11 +790,49 @@ class AppStore extends ChangeNotifier {
   /// Imports a ticket PDF.
   ///
   /// Throws [TicketsApiException] when Core refuses it or cannot be reached.
+  /// A ticket that another account already has ends as
+  /// [ImportOutcome.linkedToAnotherAccount].
   Future<ImportOutcome> importPdf(Uint8List bytes, String fileName) async {
     final api = ticketsApi;
     if (api == null) return _addTicket(_demoCode, TicketOrigin.pdf);
-    final result = await api.uploadPdf(bytes, fileName);
+    final TicketUploadResult result;
+    try {
+      result = await api.uploadPdf(bytes, fileName);
+    } on TicketsApiException catch (e) {
+      if (!e.alreadyImported) rethrow;
+      pendingImport = null;
+      notifyListeners();
+      return ImportOutcome.linkedToAnotherAccount;
+    }
     switch (result) {
+      case TicketConnected():
+        final event = Event(
+          id: result.eventId,
+          name: result.eventName,
+          venue: result.venueName,
+          city: '',
+          start: result.start,
+          doorsOpen: result.doorsOpen,
+          art: const EventArt(Color(0xFF3C50AA), Color(0xFF14142D)),
+        );
+        final ticket = Ticket(
+          id: result.ticketId ?? result.connectionId,
+          event: event,
+          origin: TicketOrigin.pdf,
+          importedAt: now,
+          gate: result.gate,
+          seat: result.seat,
+          // The entry code is read from Core only when its screen is wired.
+          hasEntryCode: false,
+        );
+        _tickets
+          ..removeWhere((t) => t.event.id == event.id)
+          ..add(ticket);
+        _left.remove(event.id);
+        lastImported = ticket;
+        pendingImport = null;
+        notifyListeners();
+        return ImportOutcome.added;
       case TicketWithoutQrCode():
         pendingImport = null;
         notifyListeners();

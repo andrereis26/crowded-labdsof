@@ -12,6 +12,9 @@ public interface ConnectionPersistenceMapper {
 
   AccessCodeConnectionEntity toAccessCodeEntity(EventConnection connection);
 
+  /** A connection made with a ticket is a row of {@code event_connection} alone. */
+  EventConnectionEntity toTicketConnectionEntity(EventConnection connection);
+
   /** The connection a row stores; a stored row always has its id. */
   default EventConnection toDomain(EventConnectionEntity entity) {
     return EventConnection.restore(

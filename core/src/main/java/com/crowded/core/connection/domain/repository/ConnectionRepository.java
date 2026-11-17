@@ -27,6 +27,12 @@ public interface ConnectionRepository {
   /** {@code userId}'s earliest connection to {@code eventId}; empty when there is none. */
   Optional<EventConnection> findByUserAndEvent(UUID userId, UUID eventId);
 
-  /** Stores a new connection. */
+  /** Stores a new connection to a public event, made with its access code. */
   void add(EventConnection connection);
+
+  /**
+   * Stores a new connection made with a ticket. Its row is written at once, so the ticket row that
+   * refers to it can follow in the same transaction.
+   */
+  void addTicketConnection(EventConnection connection);
 }

@@ -41,6 +41,17 @@ public final class TicketPdfs {
     return pdf(List.of(new Page(TICKET_TEXT, entryCode, PDRectangle.A4)));
   }
 
+  /** Like {@link #ticket}, with {@code eventCode} printed as the event code. */
+  public static byte[] ticketOfEvent(String eventCode, String entryCode) {
+    List<String> lines =
+        TICKET_TEXT.stream()
+            .map(
+                line ->
+                    line.startsWith("Código do evento:") ? "Código do evento: " + eventCode : line)
+            .toList();
+    return pdf(List.of(new Page(lines, entryCode, PDRectangle.A4)));
+  }
+
   /** One page of {@code size} with the text and a QR code holding {@code entryCode}. */
   public static byte[] ticketOnPageOfSize(PDRectangle size, String entryCode) {
     return pdf(List.of(new Page(TICKET_TEXT, entryCode, size)));

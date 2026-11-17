@@ -29,6 +29,18 @@ class EventConnectionTest {
   }
 
   @Test
+  void connectsAParticipantToATicketedEventWithTheirTicket() {
+    User participant = User.restore(UUID.randomUUID(), null, Role.PARTICIPANT, true);
+
+    EventConnection connection = EventConnection.connectWithTicket(participant, EVENT, NOW);
+
+    assertThat(connection.getId()).isNotNull();
+    assertThat(connection.getUserId()).isEqualTo(participant.getId());
+    assertThat(connection.getEventId()).isEqualTo(EVENT);
+    assertThat(connection.getConnectedAt()).isEqualTo(NOW);
+  }
+
+  @Test
   void letsOnlyAnActiveParticipantConnect() {
     User participant = User.restore(UUID.randomUUID(), null, Role.PARTICIPANT, true);
     User member =
@@ -42,6 +54,10 @@ class EventConnectionTest {
               NotAllowedException.class,
               e -> assertThat(e.getCode()).isEqualTo("PARTICIPANT_ONLY"));
       assertThatThrownBy(() -> EventConnection.joinWithAccessCode(user, EVENT, NOW))
+          .isInstanceOfSatisfying(
+              NotAllowedException.class,
+              e -> assertThat(e.getCode()).isEqualTo("PARTICIPANT_ONLY"));
+      assertThatThrownBy(() -> EventConnection.connectWithTicket(user, EVENT, NOW))
           .isInstanceOfSatisfying(
               NotAllowedException.class,
               e -> assertThat(e.getCode()).isEqualTo("PARTICIPANT_ONLY"));

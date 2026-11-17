@@ -2,33 +2,68 @@ package com.crowded.core.ticket.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.crowded.core.connection.domain.model.EventConnection;
+import com.crowded.core.connection.domain.repository.ConnectionRepository;
+import com.crowded.core.event.domain.model.Admission;
+import com.crowded.core.event.domain.model.Capacity;
+import com.crowded.core.event.domain.model.ConfirmationRules;
+import com.crowded.core.event.domain.model.ConfirmationSettings;
+import com.crowded.core.event.domain.model.Coordinates;
+import com.crowded.core.event.domain.model.District;
+import com.crowded.core.event.domain.model.Event;
+import com.crowded.core.event.domain.model.EventCode;
+import com.crowded.core.event.domain.model.EventProfile;
+import com.crowded.core.event.domain.model.EventState;
+import com.crowded.core.event.domain.model.EventStatus;
+import com.crowded.core.event.domain.model.EventType;
+import com.crowded.core.event.domain.model.QueuePoints;
+import com.crowded.core.event.domain.model.Schedule;
+import com.crowded.core.event.domain.model.Venue;
+import com.crowded.core.event.domain.repository.EventRepository;
+import com.crowded.core.shared.domain.exception.ConflictException;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
 import com.crowded.core.shared.domain.exception.TooManyRequestsException;
 import com.crowded.core.shared.domain.exception.UnavailableException;
 import com.crowded.core.shared.domain.repository.RateLimiter;
 import com.crowded.core.ticket.application.dto.ImportTicketCommand;
+import com.crowded.core.ticket.application.dto.ImportedEvent;
 import com.crowded.core.ticket.application.dto.TicketImportResult;
 import com.crowded.core.ticket.application.dto.TicketImportStatus;
+import com.crowded.core.ticket.domain.model.EntryCodeHash;
+import com.crowded.core.ticket.domain.model.ImportMethod;
+import com.crowded.core.ticket.domain.model.MatchMethod;
 import com.crowded.core.ticket.domain.model.ReadTicket;
+import com.crowded.core.ticket.domain.model.Ticket;
 import com.crowded.core.ticket.domain.model.TicketDetails;
 import com.crowded.core.ticket.domain.model.TicketImport;
 import com.crowded.core.ticket.domain.repository.EntryCodeCipher;
 import com.crowded.core.ticket.domain.repository.TicketExtractor;
 import com.crowded.core.ticket.domain.repository.TicketFileReader;
 import com.crowded.core.ticket.domain.repository.TicketImportRepository;
+import com.crowded.core.ticket.domain.repository.TicketRepository;
 import com.crowded.core.user.domain.model.Role;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.repository.UserRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
@@ -36,6 +71,23 @@ import org.junit.jupiter.api.Test;
 
 class TicketImportServiceTest {
 
+  private static final Instant NOW = Instant.parse("2026-11-15T10:00:00Z");
+  private static final Instant START = NOW.plus(12, ChronoUnit.DAYS);
+  private static final Event FESTIVAL =
+      Event.restore(
+          UUID.randomUUID(),
+          UUID.randomUUID(),
+          new EventProfile("Festival Margens do Douro", "Dois dias de música."),
+          new Admission(EventType.TICKETED, new EventCode("MARG-2026")),
+          new EventState(
+              EventStatus.SCHEDULED,
+              new Schedule(
+                  START, START.minus(2, ChronoUnit.HOURS), START.plus(5, ChronoUnit.HOURS)),
+              new Venue("Cais da Ribeira", "Porto", new Coordinates(41.14, -8.61))),
+          new District("Porto"),
+          new Capacity(8000),
+          QueuePoints.NONE,
+          new ConfirmationSettings(Set.of(), ConfirmationRules.DEFAULT));
   private static final UUID OWNER = UUID.fromString("10000000-0000-4000-8000-000000000011");
   private static final String ENTRY_CODE = "QR-ENTRY-0001";
   private static final String TICKET_TEXT =
@@ -113,9 +165,33 @@ class TicketImportServiceTest {
           Duration.ofSeconds(5),
           new SimpleMeterRegistry());
 
+  private final EventRepository events = mock(EventRepository.class);
+  private final ConnectionRepository connections = mock(ConnectionRepository.class);
+  private final TicketRepository tickets = mock(TicketRepository.class);
+  private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
+
   private TicketImportService service(
       TicketExtractionRunner extraction, EntryCodeCipher cipher, RateLimiter limiter) {
-    return new TicketImportService(READER, extraction, cipher, imports, limiter, users, 20);
+    TicketConnectionService connecting =
+        new TicketConnectionService(
+            events,
+            connections,
+            tickets,
+            cipher,
+            (eventId, code) -> new EntryCodeHash(eventId + "|" + code),
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            meters);
+    return new TicketImportService(
+        READER, extraction, cipher, connecting, imports, limiter, users, 20);
+  }
+
+  private void festivalIsRegistered() {
+    when(events.findUpcomingTicketedByEventCode(new EventCode("MARG-2026"), NOW))
+        .thenReturn(Optional.of(FESTIVAL));
+  }
+
+  private double connections(String outcome) {
+    return meters.get("crowded.tickets.connection").tag("outcome", outcome).counter().count();
   }
 
   private TicketImportService service() {
@@ -157,6 +233,113 @@ class TicketImportServiceTest {
 
     assertThat(result.status()).isEqualTo(TicketImportStatus.NEEDS_EVENT_CODE);
     assertThat(result.ticket()).isEqualTo(new TicketDetails("A", null, "14"));
+  }
+
+  @Test
+  void connectsAtOnceWhenTheExtractedCodeMatchesARegisteredEvent() {
+    festivalIsRegistered();
+
+    TicketImportResult result = service().importTicket(command(TICKET_FILE));
+
+    assertThat(result.status()).isEqualTo(TicketImportStatus.CONNECTED);
+    assertThat(result.importId()).isNull();
+    assertThat(result.ticketId()).isEqualTo(result.connectionId());
+    assertThat(result.ticket()).isEqualTo(new TicketDetails("A", null, "14"));
+    assertThat(imports.saved).isEmpty();
+    verify(connections).addTicketConnection(any());
+    verify(tickets).add(any(), any(), eq(NOW));
+    assertThat(connections("CONNECTED")).isEqualTo(1);
+  }
+
+  @Test
+  void showsTheRegisteredEventNotTheExtraction() {
+    festivalIsRegistered();
+
+    ImportedEvent event = service().importTicket(command(TICKET_FILE)).event();
+
+    assertThat(event)
+        .isEqualTo(
+            new ImportedEvent(
+                FESTIVAL.getId(),
+                "Festival Margens do Douro",
+                START,
+                START.minus(2, ChronoUnit.HOURS),
+                "Cais da Ribeira"));
+  }
+
+  @Test
+  void keepsTheTicketPendingWhenNoRegisteredEventHasTheCode() {
+    TicketImportResult result = service().importTicket(command(TICKET_FILE));
+
+    assertThat(result.status()).isEqualTo(TicketImportStatus.NEEDS_EVENT_CODE);
+    assertThat(result.event()).isNull();
+    assertThat(result.ticketId()).isNull();
+    verifyNoInteractions(tickets);
+    verify(connections, never()).addTicketConnection(any());
+    assertThat(connections("NOT_MATCHED")).isEqualTo(1);
+  }
+
+  @Test
+  void refusesATicketThatAnotherAccountImportedAndKeepsNothing() {
+    festivalIsRegistered();
+    Ticket theirs =
+        Ticket.restore(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            FESTIVAL.getId(),
+            TicketDetails.NONE,
+            CIPHER.encrypt(ENTRY_CODE),
+            new EntryCodeHash(FESTIVAL.getId() + "|" + ENTRY_CODE),
+            ImportMethod.PDF_UPLOAD,
+            MatchMethod.EXTRACTED_CODE);
+    when(tickets.findByEntryCodeHash(theirs.getEntryCodeHash())).thenReturn(Optional.of(theirs));
+
+    assertThatExceptionOfType(ConflictException.class)
+        .isThrownBy(() -> service().importTicket(command(TICKET_FILE)))
+        .satisfies(e -> assertThat(e.getCode()).isEqualTo("TICKET_ALREADY_IMPORTED"));
+
+    assertThat(imports.saved).isEmpty();
+    assertThat(connections("ALREADY_IMPORTED")).isEqualTo(1);
+  }
+
+  @Test
+  void answersConnectedAgainWhenTheOwnerImportsTheSameTicket() {
+    festivalIsRegistered();
+    Ticket own =
+        Ticket.restore(
+            UUID.randomUUID(),
+            OWNER,
+            FESTIVAL.getId(),
+            new TicketDetails("A", null, "14"),
+            CIPHER.encrypt(ENTRY_CODE),
+            new EntryCodeHash(FESTIVAL.getId() + "|" + ENTRY_CODE),
+            ImportMethod.PDF_UPLOAD,
+            MatchMethod.EXTRACTED_CODE);
+    when(tickets.findByEntryCodeHash(own.getEntryCodeHash())).thenReturn(Optional.of(own));
+    when(connections.findByUserAndEvent(OWNER, FESTIVAL.getId()))
+        .thenReturn(
+            Optional.of(EventConnection.restore(own.getId(), OWNER, FESTIVAL.getId(), NOW)));
+
+    TicketImportResult result = service().importTicket(command(TICKET_FILE));
+
+    assertThat(result.status()).isEqualTo(TicketImportStatus.CONNECTED);
+    assertThat(result.ticketId()).isEqualTo(own.getId());
+    verify(connections, never()).addTicketConnection(any());
+    assertThat(connections("ALREADY_CONNECTED")).isEqualTo(1);
+  }
+
+  @Test
+  void showsNoTicketWhenTheParticipantWasConnectedToTheEventWithoutOne() {
+    festivalIsRegistered();
+    when(connections.findByUserAndEvent(OWNER, FESTIVAL.getId()))
+        .thenReturn(
+            Optional.of(EventConnection.restore(UUID.randomUUID(), OWNER, FESTIVAL.getId(), NOW)));
+
+    TicketImportResult result = service().importTicket(command(TICKET_FILE));
+
+    assertThat(result.status()).isEqualTo(TicketImportStatus.CONNECTED);
+    assertThat(result.ticketId()).isNull();
+    assertThat(result.ticket()).isEqualTo(TicketDetails.NONE);
   }
 
   @Test

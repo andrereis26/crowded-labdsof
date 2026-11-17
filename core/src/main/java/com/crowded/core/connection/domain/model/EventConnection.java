@@ -47,6 +47,17 @@ public final class EventConnection {
     return new EventConnection(UUID.randomUUID(), user.getId(), eventId, now);
   }
 
+  /**
+   * Connects {@code user} to the ticketed event {@code eventId}, which their imported ticket
+   * matched.
+   *
+   * @throws NotAllowedException when the user is not an active participant
+   */
+  public static EventConnection connectWithTicket(User user, UUID eventId, Instant now) {
+    checkCanConnect(user);
+    return new EventConnection(UUID.randomUUID(), user.getId(), eventId, now);
+  }
+
   /** A stored connection, as it was saved. */
   public static EventConnection restore(UUID id, UUID userId, UUID eventId, Instant connectedAt) {
     return new EventConnection(id, userId, eventId, connectedAt);

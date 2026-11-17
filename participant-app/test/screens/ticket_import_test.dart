@@ -69,6 +69,59 @@ void main() {
     expect(store.pendingImport?.importId, 'i-1');
   });
 
+  const connected =
+      '{"status":"CONNECTED","ticketId":"t-1","connectionId":"t-1",'
+      '"event":{"id":"e-1","name":"Festival Margens",'
+      '"startDateTime":"2026-11-27T22:00:00Z",'
+      '"doorsOpenAt":"2026-11-27T20:00:00Z","venueName":"Cais da Ribeira"},'
+      '"ticket":{"gate":"A","sector":"2","seat":"14"}}';
+
+  testWidgets('adds the ticket at once with the registered event', (
+    tester,
+  ) async {
+    final store = await pump(
+      tester,
+      (_) async => http.Response(connected, 200),
+    );
+
+    await tester.tap(find.text('PDF do bilhete'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Adicionaste o evento Festival Margens'), findsOneWidget);
+    expect(find.text('Cais da Ribeira'), findsOneWidget);
+    expect(
+      find.text('Porta A · Lugar 14 · código QR guardado'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Fonte: organização · dados do evento registado'),
+      findsOneWidget,
+    );
+    expect(find.text('Não é o teu evento? Remover'), findsOneWidget);
+    expect(store.pendingImport, isNull);
+    expect(store.ticketFor('e-1')?.event.name, 'Festival Margens');
+    expect(store.isConnected('e-1'), isTrue);
+  });
+
+  testWidgets('says that the ticket is already in use by another account', (
+    tester,
+  ) async {
+    final store = await pump(
+      tester,
+      (_) async => http.Response('{"code":"TICKET_ALREADY_IMPORTED"}', 409),
+    );
+
+    await tester.tap(find.text('PDF do bilhete'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Este bilhete já está ligado a outra conta'),
+      findsOneWidget,
+    );
+    expect(store.pendingImport, isNull);
+    expect(store.ticketFor('e-1'), isNull);
+  });
+
   testWidgets('shows that the ticket has no QR code', (tester) async {
     final store = await pump(
       tester,

@@ -23,6 +23,18 @@
     <Class name="com.crowded.core.connection.domain.service.AccessCodeConnections"/>
     <Bug pattern="EI_EXPOSE_REP2"/>
   </Match>
+  <!-- TicketConnections keeps the event, connection, ticket, cipher and hasher ports it connects
+       a ticket's owner with; the ports are shared adapters, not state of its own. -->
+  <Match>
+    <Class name="com.crowded.core.ticket.domain.service.TicketConnections"/>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
+  <!-- ConnectedTicket hands the event and connection a participant just got back to the use
+       case in the same request; they are read there and never changed. -->
+  <Match>
+    <Class name="com.crowded.core.ticket.domain.model.ConnectedTicket"/>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
   <!-- JoinedConnection hands the event a participant just connected to back to the use case
        in the same request; it is read there and never changed. -->
   <Match>
