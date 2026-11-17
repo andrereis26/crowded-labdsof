@@ -1,7 +1,7 @@
 # The crowded-database image: Flyway with the migrations and the demo data
 # (ADR 0012). It runs once per deployment, before the services start, and exits.
 #   docker build -t crowded/database .
-FROM flyway/flyway:13.12.1-alpine AS flyway
+FROM flyway/flyway:13.12.2-alpine AS flyway
 # Only what PostgreSQL needs. The other databases' drivers and plugins are
 # unused, and their dependencies carry fixable HIGH vulnerabilities that the
 # image scan rejects (ADR 0011).
