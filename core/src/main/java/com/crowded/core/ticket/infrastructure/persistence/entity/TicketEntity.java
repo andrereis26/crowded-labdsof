@@ -7,20 +7,27 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.springframework.data.domain.Persistable;
 
 /**
  * Row of {@code ticket}, which shares its id with the participant's row of {@code
- * event_connection}. The entry code is stored encrypted.
+ * event_connection}. The entry code is stored encrypted. A ticket is only ever added, so a new one
+ * is inserted without reading it first.
  */
 @Entity
 @Table(name = "ticket")
-public class TicketEntity {
+public class TicketEntity implements Persistable<UUID> {
 
   @Id private UUID id;
+
+  @Transient private boolean stored;
 
   private String gate;
 
@@ -44,8 +51,20 @@ public class TicketEntity {
   @Column(name = "match_method", columnDefinition = "match_method", nullable = false)
   private MatchMethod matchMethod;
 
+  @Override
   public UUID getId() {
     return id;
+  }
+
+  @Override
+  public boolean isNew() {
+    return !stored;
+  }
+
+  @PostLoad
+  @PostPersist
+  void markStored() {
+    stored = true;
   }
 
   public void setId(UUID id) {

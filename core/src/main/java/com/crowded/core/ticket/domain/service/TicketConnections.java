@@ -76,7 +76,7 @@ public final class TicketConnections {
         throw new ConflictException(
             "TICKET_ALREADY_IMPORTED", "This ticket is already in use by another account.");
       }
-      return Optional.of(new ConnectedTicket(connectionOf(user, event), event, ticket, false));
+      return Optional.of(new ConnectedTicket(connectionOf(ticket), event, ticket, false));
     }
     Optional<EventConnection> existing =
         connections.findByUserAndEvent(user.getId(), event.getId());
@@ -89,7 +89,6 @@ public final class TicketConnections {
         Ticket.connect(
             connection.getId(),
             user.getId(),
-            event.getId(),
             pending.getExtraction().extractedFields(),
             pending.getEncryptedEntryCode(),
             hash,
@@ -100,9 +99,10 @@ public final class TicketConnections {
     return Optional.of(new ConnectedTicket(connection, event, ticket, true));
   }
 
-  private EventConnection connectionOf(User user, Event event) {
+  /** A ticket shares its id with its connection. */
+  private EventConnection connectionOf(Ticket ticket) {
     return connections
-        .findByUserAndEvent(user.getId(), event.getId())
+        .findById(ticket.getId())
         .orElseThrow(() -> new IllegalStateException("A ticket always has its connection"));
   }
 

@@ -286,7 +286,6 @@ class TicketImportServiceTest {
         Ticket.restore(
             UUID.randomUUID(),
             UUID.randomUUID(),
-            FESTIVAL.getId(),
             TicketDetails.NONE,
             CIPHER.encrypt(ENTRY_CODE),
             new EntryCodeHash(FESTIVAL.getId() + "|" + ENTRY_CODE),
@@ -309,14 +308,13 @@ class TicketImportServiceTest {
         Ticket.restore(
             UUID.randomUUID(),
             OWNER,
-            FESTIVAL.getId(),
             new TicketDetails("A", null, "14"),
             CIPHER.encrypt(ENTRY_CODE),
             new EntryCodeHash(FESTIVAL.getId() + "|" + ENTRY_CODE),
             ImportMethod.PDF_UPLOAD,
             MatchMethod.EXTRACTED_CODE);
     when(tickets.findByEntryCodeHash(own.getEntryCodeHash())).thenReturn(Optional.of(own));
-    when(connections.findByUserAndEvent(OWNER, FESTIVAL.getId()))
+    when(connections.findById(own.getId()))
         .thenReturn(
             Optional.of(EventConnection.restore(own.getId(), OWNER, FESTIVAL.getId(), NOW)));
 

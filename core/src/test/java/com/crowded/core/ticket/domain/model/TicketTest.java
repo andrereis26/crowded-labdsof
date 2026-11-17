@@ -10,14 +10,12 @@ class TicketTest {
 
   private static final UUID ID = UUID.randomUUID();
   private static final UUID OWNER = UUID.randomUUID();
-  private static final UUID EVENT = UUID.randomUUID();
   private static final EntryCodeHash HASH = new EntryCodeHash("abc123");
 
   private static Ticket ticket(TicketDetails details, String encryptedEntryCode) {
     return Ticket.connect(
         ID,
         OWNER,
-        EVENT,
         details,
         encryptedEntryCode,
         HASH,
@@ -30,7 +28,6 @@ class TicketTest {
     Ticket ticket = ticket(new TicketDetails("A", "2", "14"), "enc");
 
     assertThat(ticket.getId()).isEqualTo(ID);
-    assertThat(ticket.getEventId()).isEqualTo(EVENT);
     assertThat(ticket.getDetails()).isEqualTo(new TicketDetails("A", "2", "14"));
     assertThat(ticket.getEncryptedEntryCode()).isEqualTo("enc");
     assertThat(ticket.getEntryCodeHash()).isEqualTo(HASH);
@@ -66,7 +63,6 @@ class TicketTest {
         Ticket.restore(
             ID,
             OWNER,
-            EVENT,
             new TicketDetails("B", null, null),
             "other",
             new EntryCodeHash("other"),
@@ -78,7 +74,6 @@ class TicketTest {
         Ticket.connect(
             UUID.randomUUID(),
             OWNER,
-            EVENT,
             TicketDetails.NONE,
             "enc",
             HASH,

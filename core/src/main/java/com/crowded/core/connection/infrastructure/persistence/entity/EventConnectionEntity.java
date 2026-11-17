@@ -15,8 +15,8 @@ import org.springframework.data.domain.Persistable;
 
 /**
  * Row of {@code event_connection}. Each kind of connection adds its own table with the same id: a
- * row of this class alone is a ticket, until tickets get their entity. A connection is only ever
- * added, so a new one is inserted without reading it first.
+ * row of this class alone is a connection made with a ticket, whose own data is in the ticket
+ * module. A connection is only ever added, so a new one is inserted without reading it first.
  */
 @Entity
 @Table(name = "event_connection")

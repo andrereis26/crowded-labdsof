@@ -9,20 +9,11 @@ import org.springframework.data.jpa.repository.Query;
 /** Spring Data access to {@code ticket}. */
 interface SpringDataTicketRepository extends JpaRepository<TicketEntity, UUID> {
 
-  /** A ticket's owner and event, which are kept on its connection. */
-  interface Owner {
-    UUID getUserId();
+  Optional<TicketEntity> findByEntryCodeHash(String entryCodeHash);
 
-    UUID getEventId();
-  }
-
+  /** The participant a ticket belongs to, which its connection keeps. */
   @Query(
-      value =
-          "SELECT c.user_id AS userId, c.event_id AS eventId FROM event_connection c"
-              + " WHERE c.id = :ticketId",
+      value = "SELECT c.user_id FROM event_connection c WHERE c.id = :ticketId",
       nativeQuery = true)
-  Optional<Owner> findOwnerOf(UUID ticketId);
-
-  @Query(value = "SELECT t.id FROM ticket t WHERE t.entry_code_hash = :hash", nativeQuery = true)
-  Optional<UUID> findIdByEntryCodeHash(String hash);
+  Optional<UUID> findOwnerOf(UUID ticketId);
 }

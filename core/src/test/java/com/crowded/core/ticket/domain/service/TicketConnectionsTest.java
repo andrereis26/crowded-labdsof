@@ -103,7 +103,6 @@ class TicketConnectionsTest {
     return Ticket.restore(
         UUID.randomUUID(),
         owner,
-        FESTIVAL.getId(),
         DETAILS,
         ENCRYPTED,
         new EntryCodeHash(FESTIVAL.getId() + "|QR-1"),
@@ -167,8 +166,7 @@ class TicketConnectionsTest {
     EventConnection connection =
         EventConnection.restore(own.getId(), PARTICIPANT.getId(), FESTIVAL.getId(), NOW);
     when(tickets.findByEntryCodeHash(own.getEntryCodeHash())).thenReturn(Optional.of(own));
-    when(connections.findByUserAndEvent(PARTICIPANT.getId(), FESTIVAL.getId()))
-        .thenReturn(Optional.of(connection));
+    when(connections.findById(own.getId())).thenReturn(Optional.of(connection));
 
     ConnectedTicket connected =
         connecting.connectByExtractedCode(PARTICIPANT, pending("MARG-2026"), NOW).orElseThrow();
