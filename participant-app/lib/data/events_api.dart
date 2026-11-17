@@ -5,6 +5,7 @@ import 'package:flutter/painting.dart';
 import 'package:http/http.dart' as http;
 
 import 'auth_api.dart';
+import '../ui/ui.dart' show CrowdLevel;
 import '../utils/pt_format.dart';
 import 'models.dart';
 import 'notifications_api.dart' show ServerSentEvents;
@@ -55,6 +56,7 @@ class EventPage {
     this.doorsOpen,
     this.end,
     this.latestChange,
+    this.venueStatus,
   });
 
   final String id;
@@ -72,6 +74,9 @@ class EventPage {
   /// Joined with an access code rather than a ticket.
   final bool isPublic;
   final CoreChange? latestChange;
+
+  /// The crowd level the organization published; null before the first.
+  final VenueStatus? venueStatus;
 }
 
 /// An official change as Core sends it, before the app words it.
@@ -260,6 +265,7 @@ EventPage? eventPageFromJson(Map<String, dynamic> json) {
     return null;
   }
   final latest = json['latestChange'];
+  final crowd = json['crowd'];
   return EventPage(
     id: id,
     name: name,
@@ -274,7 +280,28 @@ EventPage? eventPageFromJson(Map<String, dynamic> json) {
     latestChange: latest is Map<String, dynamic>
         ? coreChangeFromJson(latest)
         : null,
+    venueStatus: crowd is Map<String, dynamic>
+        ? venueStatusFromJson(crowd)
+        : null,
   );
+}
+
+/// The crowd level in Core's `crowd`, or null when its level or time is
+/// missing or unknown to this version.
+VenueStatus? venueStatusFromJson(Map<String, dynamic> json) {
+  final level = switch (json['level']) {
+    'LOW' => CrowdLevel.low,
+    'MODERATE' => CrowdLevel.moderate,
+    'HIGH' => CrowdLevel.high,
+    'FULL' => CrowdLevel.full,
+    _ => null,
+  };
+  final provenance = json['provenance'];
+  final at = provenance is Map<String, dynamic>
+      ? _instant(provenance['lastUpdatedAt'])
+      : null;
+  if (level == null || at == null) return null;
+  return VenueStatus(crowdLevel: level, crowdUpdatedAt: at);
 }
 
 /// The change in [json], or null when a required field is missing.
@@ -343,6 +370,7 @@ Event eventFromCore(EventPage page, List<CoreChange> history) {
     joinedWithAccessCode: page.isPublic,
     changes: changes,
     updatedAt: (page.latestChange ?? history.firstOrNull)?.publishedAt,
+    venueStatus: page.venueStatus,
   );
 }
 

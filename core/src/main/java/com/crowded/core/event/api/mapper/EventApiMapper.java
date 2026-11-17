@@ -52,6 +52,7 @@ public interface EventApiMapper {
   @Mapping(target = "capacity", source = "event.capacity.people")
   @Mapping(target = "queuePoints", expression = "java(managed.event().getQueuePoints().names())")
   @Mapping(target = "confirmations", source = "event.confirmations")
+  @Mapping(target = "crowd", source = "event.crowd")
   ManagedEventResponse toResponse(ManagedEvent managed);
 
   default VenueResponse toVenue(EventState state, District district) {

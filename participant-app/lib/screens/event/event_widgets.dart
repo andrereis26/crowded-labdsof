@@ -164,12 +164,14 @@ class LiveVenuePanel extends StatelessWidget {
             Expanded(child: CrowdLevelIndicator(level: status.crowdLevel)),
           ],
         ),
-        const Divider(),
-        Text('Filas', style: AppTextStyles.footnote),
-        for (final queue in status.queues) QueueRow(queue: queue),
+        if (status.queues.isNotEmpty) ...[
+          const Divider(),
+          Text('Filas', style: AppTextStyles.footnote),
+          for (final queue in status.queues) QueueRow(queue: queue),
+        ],
         Text(
           'Fonte: organização · atualizado '
-          '${formatTimeAgo(status.queuesUpdatedAt, now: now)}',
+          '${formatTimeAgo(status.updatedAt, now: now)}',
           style: AppTextStyles.source,
         ),
         if (footer != null) ...[const Divider(), footer!],

@@ -30,6 +30,7 @@ public final class Event {
   private Capacity capacity;
   private QueuePoints queuePoints;
   private ConfirmationSettings confirmations;
+  private CrowdStatus crowd;
 
   private Event(
       UUID id,
@@ -40,7 +41,8 @@ public final class Event {
       District district,
       Capacity capacity,
       QueuePoints queuePoints,
-      ConfirmationSettings confirmations) {
+      ConfirmationSettings confirmations,
+      CrowdStatus crowd) {
     this.id = Objects.requireNonNull(id, "id");
     this.organizationId = organizationId;
     this.profile = Objects.requireNonNull(profile, "profile");
@@ -50,6 +52,7 @@ public final class Event {
     this.capacity = capacity;
     this.queuePoints = Objects.requireNonNull(queuePoints, "queuePoints");
     this.confirmations = Objects.requireNonNull(confirmations, "confirmations");
+    this.crowd = crowd;
   }
 
   /**
@@ -91,7 +94,8 @@ public final class Event {
         district,
         capacity,
         queuePoints,
-        confirmations);
+        confirmations,
+        null);
   }
 
   /**
@@ -99,6 +103,7 @@ public final class Event {
    *
    * @param organizationId the owning organization; null for an event no organization owns
    * @param capacity null when it was never set
+   * @param crowd null when no crowd level was ever published
    */
   public static Event restore(
       UUID id,
@@ -109,7 +114,8 @@ public final class Event {
       District district,
       Capacity capacity,
       QueuePoints queuePoints,
-      ConfirmationSettings confirmations) {
+      ConfirmationSettings confirmations,
+      CrowdStatus crowd) {
     return new Event(
         id,
         organizationId,
@@ -119,7 +125,8 @@ public final class Event {
         district,
         capacity,
         queuePoints,
-        confirmations);
+        confirmations,
+        crowd);
   }
 
   /** Corrects the name and description, such as a typo; participants are not notified. */
@@ -180,6 +187,20 @@ public final class Event {
     Optional<ChangePlan> plan = plan(request, now);
     plan.ifPresent(p -> state = p.after());
     return plan.map(p -> EventChange.publish(id, p, provenance));
+  }
+
+  /**
+   * Publishes the crowd level participants read now, replacing the previous one; the same level
+   * again tells them it is still current.
+   *
+   * @throws ConflictException when the event is cancelled or ended
+   */
+  public void publishCrowdLevel(CrowdLevel level, Provenance provenance) {
+    CrowdStatus published = new CrowdStatus(level, provenance);
+    if (CLOSED.contains(state.status())) {
+      throw new ConflictException("EVENT_CLOSED", "This event is cancelled or ended.");
+    }
+    crowd = published;
   }
 
   /**
@@ -381,6 +402,11 @@ public final class Event {
 
   public ConfirmationSettings getConfirmations() {
     return confirmations;
+  }
+
+  /** The crowd level participants read now; null when none was published. */
+  public CrowdStatus getCrowd() {
+    return crowd;
   }
 
   @Override

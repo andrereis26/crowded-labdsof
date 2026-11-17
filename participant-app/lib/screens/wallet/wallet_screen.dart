@@ -450,7 +450,7 @@ class _TodayPanel extends StatelessWidget {
           ),
           Text(
             'Fonte: organização e contador de entradas · '
-            '${formatTimeAgo(status.queuesUpdatedAt, now: now)}',
+            '${formatTimeAgo(status.updatedAt, now: now)}',
             style: AppTextStyles.source,
           ),
         ],

@@ -1,5 +1,6 @@
 import { ChartNoAxesColumn, DoorClosed, Info, Send } from 'lucide-react'
 import { useState } from 'react'
+import { eventErrorMessage, EventsApiError } from '../../data/eventsApi'
 import {
   ago,
   formatNumber,
@@ -23,21 +24,26 @@ import { RadioOption, Stepper, Toggle } from '../../ui/forms'
 
 const levels = Object.keys(crowdLevels) as CrowdLevel[]
 
-/** O5 · Atualizar lotação e filas. */
+/** O5 · Atualizar lotação e filas. The crowd level is published in Core;
+ * the entry counter and the queues are still demo state. */
 export function CrowdPage({
   event,
   live,
   now,
+  onPublishLevel,
   onChange,
 }: {
   event: OrgEvent
   live?: LiveState
   now: Date
+  onPublishLevel: (level: CrowdLevel) => Promise<void>
   onChange: (state: LiveState) => void
 }) {
-  const [level, setLevel] = useState<CrowdLevel>(live?.level ?? 'low')
+  const [level, setLevel] = useState<CrowdLevel>(event.crowd?.level ?? 'low')
   const [queues, setQueues] = useState<QueuePoint[]>(live?.queues ?? [])
   const [message, setMessage] = useState('')
+  const [failure, setFailure] = useState('')
+  const [sending, setSending] = useState(false)
 
   if (!live) {
     return (
@@ -54,9 +60,20 @@ export function CrowdPage({
   const suggestion = suggestedLevel(live.entries, event.capacity)
   const ratio = Math.round((live.entries / event.capacity) * 100)
 
-  const publishLevel = () => {
-    onChange({ ...live, level, levelPublishedAt: now, queues })
-    setMessage(`Lotação publicada: ${crowdLevels[level].label}.`)
+  const publishLevel = async () => {
+    setSending(true)
+    setFailure('')
+    setMessage('')
+    try {
+      await onPublishLevel(level)
+      // The live dashboard still reads the demo state.
+      onChange({ ...live, level, levelPublishedAt: now, queues })
+      setMessage(`Lotação publicada: ${crowdLevels[level].label}.`)
+    } catch (error) {
+      setFailure(eventErrorMessage(error instanceof EventsApiError ? error.code : 'UNKNOWN'))
+    } finally {
+      setSending(false)
+    }
   }
 
   const publishQueues = () => {
@@ -118,9 +135,16 @@ export function CrowdPage({
             </span>
           </p>
           <p className="text-xs text-ink-secondary">
-            Publicado por {live.levelPublishedBy} {ago(live.levelPublishedAt, now)}
+            {event.crowd
+              ? `Publicado por ${event.crowd.publishedBy} ${ago(event.crowd.publishedAt, now)}`
+              : 'Ainda não publicaste a lotação deste evento.'}
           </p>
-          <Button size="lg" icon={Send} onClick={publishLevel}>
+          {failure && (
+            <p role="alert" className="text-sm text-danger">
+              {failure}
+            </p>
+          )}
+          <Button size="lg" icon={Send} onClick={() => void publishLevel()} disabled={sending}>
             Publicar lotação
           </Button>
         </Panel>

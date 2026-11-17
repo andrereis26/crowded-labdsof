@@ -5,12 +5,14 @@ import com.crowded.core.event.domain.model.Capacity;
 import com.crowded.core.event.domain.model.ConfirmationRules;
 import com.crowded.core.event.domain.model.ConfirmationSettings;
 import com.crowded.core.event.domain.model.Coordinates;
+import com.crowded.core.event.domain.model.CrowdStatus;
 import com.crowded.core.event.domain.model.District;
 import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventCode;
 import com.crowded.core.event.domain.model.EventProfile;
 import com.crowded.core.event.domain.model.EventState;
 import com.crowded.core.event.domain.model.EventType;
+import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.model.QueuePoint;
 import com.crowded.core.event.domain.model.QueuePoints;
 import com.crowded.core.event.domain.model.ReportCategory;
@@ -74,7 +76,22 @@ public interface EventPersistenceMapper {
             new ConfirmationRules(
                 entity.getVenueRadiusMeters(),
                 entity.getHighConfidenceAnswers(),
-                entity.getMaxPromptsPerHour())));
+                entity.getMaxPromptsPerHour())),
+        crowd(entity));
+  }
+
+  /** The published crowd level; null when the event has none. */
+  private static CrowdStatus crowd(EventEntity entity) {
+    if (entity.getCrowdLevel() == null) {
+      return null;
+    }
+    return new CrowdStatus(
+        entity.getCrowdLevel(),
+        new Provenance(
+            entity.getCrowdSourceType(),
+            entity.getCrowdSourceName(),
+            entity.getCrowdLastUpdatedAt(),
+            Boolean.TRUE.equals(entity.getCrowdConfirmed())));
   }
 
   /** The categories that ask for confirmations: the event's choice, or the category's default. */
@@ -118,5 +135,13 @@ public interface EventPersistenceMapper {
   @Mapping(target = "venueRadiusMeters", source = "confirmations.rules.venueRadiusMeters")
   @Mapping(target = "highConfidenceAnswers", source = "confirmations.rules.highConfidenceAnswers")
   @Mapping(target = "maxPromptsPerHour", source = "confirmations.rules.maxPromptsPerHour")
+  @Mapping(target = "crowdLevel", source = "crowd.level")
+  @Mapping(target = "crowdSourceType", source = "crowd.provenance.sourceType")
+  @Mapping(target = "crowdSourceName", source = "crowd.provenance.sourceName")
+  @Mapping(target = "crowdLastUpdatedAt", source = "crowd.provenance.lastUpdatedAt")
+  @Mapping(
+      target = "crowdConfirmed",
+      expression =
+          "java(event.getCrowd() == null ? null : event.getCrowd().provenance().confirmed())")
   void updateEntity(Event event, @MappingTarget EventEntity entity);
 }

@@ -38,14 +38,20 @@ class VenueStatus {
   const VenueStatus({
     required this.crowdLevel,
     required this.crowdUpdatedAt,
-    required this.queues,
-    required this.queuesUpdatedAt,
+    this.queues = const [],
+    this.queuesUpdatedAt,
   });
 
   final CrowdLevel crowdLevel;
   final DateTime crowdUpdatedAt;
   final List<QueueTime> queues;
-  final DateTime queuesUpdatedAt;
+
+  /// Null while the organization has published no queue times.
+  final DateTime? queuesUpdatedAt;
+
+  /// The time the panel shows: its queues', or its crowd level's without
+  /// queues.
+  DateTime get updatedAt => queuesUpdatedAt ?? crowdUpdatedAt;
 }
 
 class WeatherInfo {

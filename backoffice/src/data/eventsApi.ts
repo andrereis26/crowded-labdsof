@@ -1,3 +1,4 @@
+import type { CrowdLevel } from '../ui/styles'
 import { apiBaseUrl } from './auth'
 import {
   categories,
@@ -6,6 +7,7 @@ import {
   type EventStatus,
   type IncidentCategory,
   type OrgEvent,
+  type PublishedCrowd,
 } from './organizer'
 
 /** An organization's events in Core (API Outline, journeys 1 and 3). */
@@ -19,6 +21,8 @@ export interface EventsApi {
   correct(before: OrgEvent, after: OrgEvent): Promise<OrgEvent>
   /** Publishes an official change, which Core notifies to the participants. */
   publishChange(event: OrgEvent, change: EventChange): Promise<void>
+  /** Publishes the crowd level that connected participants see at once. */
+  publishCrowd(eventId: string, level: CrowdLevel): Promise<PublishedCrowd>
   /** The event's image, fetched with the token, which an image tag cannot send. */
   image(eventId: string): Promise<Blob>
   /** Uploads or replaces the event's image; Core removes its metadata. */
@@ -65,6 +69,20 @@ interface EventJson {
     maxPromptsPerHour: number
   }
   imageUpdatedAt?: string | null
+  crowd?: CrowdJson | null
+}
+
+interface CrowdJson {
+  level: 'LOW' | 'MODERATE' | 'HIGH' | 'FULL'
+  provenance: { sourceName: string; lastUpdatedAt: string }
+}
+
+function crowdOf(json: CrowdJson): PublishedCrowd {
+  return {
+    level: json.level.toLowerCase() as CrowdLevel,
+    publishedBy: json.provenance.sourceName,
+    publishedAt: new Date(json.provenance.lastUpdatedAt),
+  }
 }
 
 /** A postponed or relocated event is still published, with its new values. */
@@ -187,6 +205,7 @@ export function fromJson(json: EventJson): OrgEvent {
     code: json.ticketEventCode ?? json.accessCode ?? '',
     confirmations: confirmationsOf(json.confirmations),
     imageUpdatedAt: json.imageUpdatedAt ?? undefined,
+    crowd: json.crowd ? crowdOf(json.crowd) : undefined,
     gradient: gradientFor(json.id),
   }
 }
@@ -357,6 +376,11 @@ export function httpEventsApi(
     },
     async publishChange(event, change) {
       await call('POST', `/events/${event.id}/changes`, toChangeBody(event, change))
+    },
+    async publishCrowd(eventId, level) {
+      return crowdOf(
+        await call<CrowdJson>('PUT', `/events/${eventId}/crowd`, { level: level.toUpperCase() }),
+      )
     },
     async image(eventId) {
       return (await send('GET', `/events/${eventId}/image`)).blob()

@@ -93,7 +93,8 @@ class EventControllerTest {
           new Capacity(20000),
           QueuePoints.named(List.of("Porta A", "Bar")),
           new ConfirmationSettings(
-              Set.of("QUEUE_LENGTH", "CROWD_LEVEL"), new ConfirmationRules(500, 8, 3)));
+              Set.of("QUEUE_LENGTH", "CROWD_LEVEL"), new ConfirmationRules(500, 8, 3)),
+          null);
 
   @Test
   void createsTheEventWithTheCodeOfItsType() throws Exception {

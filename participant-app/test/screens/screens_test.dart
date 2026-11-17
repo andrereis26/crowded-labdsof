@@ -210,6 +210,10 @@ class _FakeEventsApi implements EventsApi {
   static const id = '30000000-0000-4000-8000-000000000001';
 
   String status = 'POSTPONED';
+  String start = '2026-11-07T21:30:00Z';
+
+  /// Core's `crowd`: null until the organization publishes a level.
+  Map<String, Object?>? crowd;
   List<Map<String, Object?>> history = [
     _coreChange('c-doors', 'TIME_CHANGE', {
       'doorsOpenAt': '2026-11-06T19:30:00Z',
@@ -238,10 +242,11 @@ class _FakeEventsApi implements EventsApi {
     'id': id,
     'name': 'Festival Margens do Douro',
     'status': status,
-    'startDateTime': '2026-11-07T21:30:00Z',
+    'startDateTime': start,
     'venue': {'name': 'Cais da Ribeira', 'district': 'Porto'},
     'organization': {'id': 'o-1', 'name': 'Ribeira Live'},
     'latestChange': history.firstOrNull,
+    'crowd': crowd,
   })!;
 
   @override
@@ -693,6 +698,46 @@ void main() {
       await retry;
       expect(store.showsSavedData(id), isFalse);
       store.signOut();
+    });
+
+    testWidgets('shows the crowd level the organization publishes today', (
+      tester,
+    ) async {
+      Map<String, Object?> crowd(String level, DateTime at) => {
+        'level': level,
+        'provenance': {
+          'sourceType': 'ORGANIZATION',
+          'sourceName': 'Ribeira Live',
+          'lastUpdatedAt': at.toUtc().toIso8601String(),
+          'confirmed': true,
+        },
+      };
+      final events = _FakeEventsApi()
+        ..status = 'SCHEDULED'
+        ..history = []
+        ..start = _now.add(const Duration(hours: 4)).toUtc().toIso8601String()
+        ..crowd = crowd('MODERATE', _now.subtract(const Duration(minutes: 5)));
+      await _pump(tester, location: page, events: events);
+
+      expect(find.text('Agora no recinto'), findsOneWidget);
+      expect(find.text('Lotação Moderada', findRichText: true), findsOneWidget);
+      expect(
+        find.text('Fonte: organização · atualizado há 5 min'),
+        findsOneWidget,
+      );
+      expect(find.text('Filas'), findsNothing);
+
+      events
+        ..crowd = crowd('FULL', _now)
+        ..publish();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lotação Lotado', findRichText: true), findsOneWidget);
+      expect(
+        find.text('Fonte: organização · atualizado agora'),
+        findsOneWidget,
+      );
+      expect(events.pages, 1, reason: 'no reload: the stream sent it');
     });
 
     testWidgets('follows what is published while the page is open', (

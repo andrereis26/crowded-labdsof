@@ -16,6 +16,7 @@ import java.util.UUID;
  * @param connectedUsers how many participants are connected to it now
  * @param imageUpdatedAt when its image was uploaded, to fetch it again when it changes; null when
  *     it has none
+ * @param crowd the crowd level participants read now; null when none was published
  */
 public record ManagedEventResponse(
     UUID id,
@@ -33,7 +34,8 @@ public record ManagedEventResponse(
     long connectedUsers,
     List<String> queuePoints,
     ConfirmationsResponse confirmations,
-    Instant imageUpdatedAt) {
+    Instant imageUpdatedAt,
+    CrowdResponse crowd) {
 
   public ManagedEventResponse {
     queuePoints = List.copyOf(queuePoints);

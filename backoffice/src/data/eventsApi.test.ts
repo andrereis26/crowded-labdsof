@@ -275,6 +275,37 @@ describe('events in Core', () => {
     expect(changed.calls[0].url).toBe(`/api/events/${before.id}/changes`)
   })
 
+  it('publishes the crowd level and reads it with its source', async () => {
+    const crowd = {
+      level: 'HIGH',
+      provenance: {
+        sourceType: 'ORGANIZATION',
+        sourceName: 'Ribeira Live',
+        lastUpdatedAt: '2026-11-14T21:05:00Z',
+        confirmed: true,
+      },
+    }
+    const published = recording(200, crowd)
+
+    expect(
+      await httpEventsApi('jwt', published.fetchImpl, '/api').publishCrowd('e-1', 'high'),
+    ).toEqual({
+      level: 'high',
+      publishedBy: 'Ribeira Live',
+      publishedAt: new Date('2026-11-14T21:05:00Z'),
+    })
+    expect(published.calls[0].url).toBe('/api/events/e-1/crowd')
+    expect(published.calls[0].init?.method).toBe('PUT')
+    expect(JSON.parse(String(published.calls[0].init?.body))).toEqual({ level: 'HIGH' })
+    expect(fromJson({ ...json, crowd: { ...crowd, level: 'FULL' } }).crowd?.level).toBe('full')
+    expect(fromJson({ ...json, crowd: null }).crowd).toBeUndefined()
+
+    const closed = recording(409, { code: 'EVENT_CLOSED' })
+    await expect(
+      httpEventsApi('jwt', closed.fetchImpl).publishCrowd('e-1', 'low'),
+    ).rejects.toMatchObject({ code: 'EVENT_CLOSED' })
+  })
+
   it('fetches, uploads and removes the event image with the member token', async () => {
     const fetched = recording(200, undefined)
     const image = await httpEventsApi('jwt', fetched.fetchImpl, '/api').image('e-1')
