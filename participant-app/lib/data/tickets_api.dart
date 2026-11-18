@@ -169,23 +169,25 @@ class HttpTicketsApi implements TicketsApi {
         start != null) {
       return TicketConnected(
         connectionId: body['connectionId'] as String,
-        ticketId: body['ticketId'] as String?,
+        ticketId: _text(body['ticketId']),
         eventId: event['id'] as String,
         eventName: event['name'] as String,
         start: start,
         doorsOpen: _instant(event['doorsOpenAt']),
-        venueName: event['venueName'] as String? ?? '',
-        gate: ticket['gate'] as String?,
-        sector: ticket['sector'] as String?,
-        seat: ticket['seat'] as String?,
+        venueName: _text(event['venueName']) ?? '',
+        gate: _text(ticket['gate']),
+        sector: _text(ticket['sector']),
+        seat: _text(ticket['seat']),
       );
     }
-    if (response.statusCode == 200 && body['status'] == 'NEEDS_EVENT_CODE') {
+    if (response.statusCode == 200 &&
+        body['status'] == 'NEEDS_EVENT_CODE' &&
+        body['importId'] is String) {
       return TicketNeedsEventCode(
         importId: body['importId'] as String,
-        gate: ticket['gate'] as String?,
-        sector: ticket['sector'] as String?,
-        seat: ticket['seat'] as String?,
+        gate: _text(ticket['gate']),
+        sector: _text(ticket['sector']),
+        seat: _text(ticket['seat']),
       );
     }
     final code = body['code'];
@@ -194,6 +196,10 @@ class HttpTicketsApi implements TicketsApi {
       code is String ? code : 'HTTP_${response.statusCode}',
     );
   }
+
+  /// A text field, or null when it is missing or not text, so an odd answer
+  /// never fails with a type error.
+  static String? _text(Object? value) => value is String ? value : null;
 
   static DateTime? _instant(Object? value) =>
       value is String ? DateTime.tryParse(value)?.toLocal() : null;

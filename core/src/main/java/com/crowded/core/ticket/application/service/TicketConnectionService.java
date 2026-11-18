@@ -7,6 +7,7 @@ import com.crowded.core.shared.domain.exception.ConflictException;
 import com.crowded.core.ticket.application.dto.ImportedEvent;
 import com.crowded.core.ticket.application.dto.TicketImportResult;
 import com.crowded.core.ticket.domain.model.ConnectedTicket;
+import com.crowded.core.ticket.domain.model.MatchMethod;
 import com.crowded.core.ticket.domain.model.Ticket;
 import com.crowded.core.ticket.domain.model.TicketDetails;
 import com.crowded.core.ticket.domain.model.TicketImport;
@@ -62,7 +63,10 @@ public class TicketConnectionService {
    */
   @Transactional
   public Optional<TicketImportResult> connectByExtractedCode(User user, TicketImport pending) {
-    return connect(user, () -> connecting.connectByExtractedCode(user, pending, clock.instant()));
+    return connect(
+        user,
+        MatchMethod.EXTRACTED_CODE,
+        () -> connecting.connectByExtractedCode(user, pending, clock.instant()));
   }
 
   /**
@@ -76,31 +80,34 @@ public class TicketConnectionService {
   public Optional<TicketImportResult> connectByTypedCode(
       User user, TicketImport pending, String typedCode) {
     return connect(
-        user, () -> connecting.connectByTypedCode(user, pending, typedCode, clock.instant()));
+        user,
+        MatchMethod.TYPED_CODE,
+        () -> connecting.connectByTypedCode(user, pending, typedCode, clock.instant()));
   }
 
   private Optional<TicketImportResult> connect(
-      User user, Supplier<Optional<ConnectedTicket>> match) {
+      User user, MatchMethod method, Supplier<Optional<ConnectedTicket>> match) {
     ConnectedTicket connected;
     try {
       Optional<ConnectedTicket> matched = match.get();
       if (matched.isEmpty()) {
-        count("NOT_MATCHED");
+        count(method, "NOT_MATCHED");
         return Optional.empty();
       }
       connected = matched.get();
     } catch (ConflictException e) {
       log.info("Ticket import by user {} refused: the ticket is in use", user.getId());
-      count("ALREADY_IMPORTED");
+      count(method, "ALREADY_IMPORTED");
       throw e;
     }
     String outcome = connected.created() ? "CONNECTED" : "ALREADY_CONNECTED";
     log.info(
-        "Ticket import by user {} matched event {}: outcome={}",
+        "Ticket import by user {} matched event {}: method={}, outcome={}",
         user.getId(),
         connected.event().getId(),
+        method,
         outcome);
-    count(outcome);
+    count(method, outcome);
     Ticket ticket = connected.ticket();
     return Optional.of(
         TicketImportResult.connected(
@@ -119,9 +126,11 @@ public class TicketConnectionService {
         event.getState().venue().name());
   }
 
-  private void count(String outcome) {
+  /** By method, so the dashboard shows how often the typed code stands in for the AI. */
+  private void count(MatchMethod method, String outcome) {
     Counter.builder("crowded.tickets.connection")
-        .description("Ticket imports by whether the extracted code matched a registered event")
+        .description("Ticket imports by whether the extracted or typed code matched an event")
+        .tag("method", method.name())
         .tag("outcome", outcome)
         .register(meters)
         .increment();

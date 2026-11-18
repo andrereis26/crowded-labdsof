@@ -132,6 +132,7 @@ class TicketImportServiceTest {
   /** Keeps imports in memory, as the Redis adapter does. */
   private static final class InMemoryImports implements TicketImportRepository {
     final Map<UUID, TicketImport> saved = new HashMap<>();
+    boolean down;
 
     @Override
     public void save(TicketImport ticketImport) {
@@ -145,6 +146,9 @@ class TicketImportServiceTest {
 
     @Override
     public void delete(UUID importId) {
+      if (down) {
+        throw new UnavailableException("TICKET_IMPORT_UNAVAILABLE", "Down");
+      }
       saved.remove(importId);
     }
   }
@@ -197,8 +201,13 @@ class TicketImportServiceTest {
         .thenReturn(Optional.of(FESTIVAL));
   }
 
-  private double connections(String outcome) {
-    return meters.get("crowded.tickets.connection").tag("outcome", outcome).counter().count();
+  private double connections(MatchMethod method, String outcome) {
+    return meters
+        .get("crowded.tickets.connection")
+        .tag("method", method.name())
+        .tag("outcome", outcome)
+        .counter()
+        .count();
   }
 
   private TicketImportService service() {
@@ -255,7 +264,7 @@ class TicketImportServiceTest {
     assertThat(imports.saved).isEmpty();
     verify(connections).addTicketConnection(any());
     verify(tickets).add(any(), any(), eq(NOW));
-    assertThat(connections("CONNECTED")).isEqualTo(1);
+    assertThat(connections(MatchMethod.EXTRACTED_CODE, "CONNECTED")).isEqualTo(1);
   }
 
   @Test
@@ -283,7 +292,7 @@ class TicketImportServiceTest {
     assertThat(result.ticketId()).isNull();
     verifyNoInteractions(tickets);
     verify(connections, never()).addTicketConnection(any());
-    assertThat(connections("NOT_MATCHED")).isEqualTo(1);
+    assertThat(connections(MatchMethod.EXTRACTED_CODE, "NOT_MATCHED")).isEqualTo(1);
   }
 
   @Test
@@ -305,7 +314,7 @@ class TicketImportServiceTest {
         .satisfies(e -> assertThat(e.getCode()).isEqualTo("TICKET_ALREADY_IMPORTED"));
 
     assertThat(imports.saved).isEmpty();
-    assertThat(connections("ALREADY_IMPORTED")).isEqualTo(1);
+    assertThat(connections(MatchMethod.EXTRACTED_CODE, "ALREADY_IMPORTED")).isEqualTo(1);
   }
 
   @Test
@@ -330,7 +339,7 @@ class TicketImportServiceTest {
     assertThat(result.status()).isEqualTo(TicketImportStatus.CONNECTED);
     assertThat(result.ticketId()).isEqualTo(own.getId());
     verify(connections, never()).addTicketConnection(any());
-    assertThat(connections("ALREADY_CONNECTED")).isEqualTo(1);
+    assertThat(connections(MatchMethod.EXTRACTED_CODE, "ALREADY_CONNECTED")).isEqualTo(1);
   }
 
   @Test
@@ -454,7 +463,39 @@ class TicketImportServiceTest {
     assertThat(imports.saved).isEmpty();
     verify(connections).addTicketConnection(any());
     verify(tickets).add(any(), any(), eq(NOW));
-    assertThat(connections("CONNECTED")).isEqualTo(1);
+    assertThat(connections(MatchMethod.TYPED_CODE, "CONNECTED")).isEqualTo(1);
+  }
+
+  @Test
+  void keepsTheImportToTryAgainWhenConnectingFails() {
+    typedCodeIsRegistered();
+    TicketImport pending = pendingImport();
+    when(tickets.findByEntryCodeHash(any()))
+        .thenThrow(new UnavailableException("DATABASE_UNAVAILABLE", "Down"));
+
+    assertThatExceptionOfType(UnavailableException.class)
+        .isThrownBy(
+            () ->
+                service()
+                    .completeWithEventCode(
+                        new CompleteTicketImportCommand(OWNER, pending.getId(), "TYPD-2026")));
+
+    assertThat(imports.saved).containsKey(pending.getId());
+  }
+
+  @Test
+  void answersTheConnectionEvenWhenTheImportCannotBeDeletedNow() {
+    typedCodeIsRegistered();
+    TicketImport pending = pendingImport();
+    imports.down = true;
+
+    TicketImportResult result =
+        service()
+            .completeWithEventCode(
+                new CompleteTicketImportCommand(OWNER, pending.getId(), "TYPD-2026"));
+
+    assertThat(result.status()).isEqualTo(TicketImportStatus.CONNECTED);
+    verify(tickets).add(any(), any(), eq(NOW));
   }
 
   @Test

@@ -210,6 +210,24 @@ void main() {
     );
   });
 
+  test('refuses an odd answer instead of failing with a type error', () async {
+    await expectLater(
+      api((_) async => http.Response('{"status":"NEEDS_EVENT_CODE"}', 200))
+          .uploadPdf(pdf, 'b.pdf'),
+      refusedWith('HTTP_200'),
+    );
+    final result = await api(
+      (_) async => http.Response(
+        '{"status":"NEEDS_EVENT_CODE","importId":"i-1",'
+        '"ticket":{"gate":7,"seat":["14"]}}',
+        200,
+      ),
+    ).uploadPdf(pdf, 'b.pdf');
+    final pending = result as TicketNeedsEventCode;
+    expect(pending.gate, isNull);
+    expect(pending.seat, isNull);
+  });
+
   test('fails on an unexpected answer or no connection', () async {
     await expectLater(
       api((_) async => http.Response('<html>', 500)).uploadPdf(pdf, 'b.pdf'),
