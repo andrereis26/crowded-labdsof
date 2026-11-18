@@ -89,7 +89,8 @@ class TicketImportServiceTest {
           new District("Porto"),
           new Capacity(8000),
           QueuePoints.NONE,
-          new ConfirmationSettings(Set.of(), ConfirmationRules.DEFAULT));
+          new ConfirmationSettings(Set.of(), ConfirmationRules.DEFAULT),
+          null);
   private static final UUID OWNER = UUID.fromString("10000000-0000-4000-8000-000000000011");
   private static final String ENTRY_CODE = "QR-ENTRY-0001";
   private static final String TICKET_TEXT =

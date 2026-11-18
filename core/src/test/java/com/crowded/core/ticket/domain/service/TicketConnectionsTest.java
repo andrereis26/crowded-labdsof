@@ -73,7 +73,8 @@ class TicketConnectionsTest {
           new District("Porto"),
           new Capacity(8000),
           QueuePoints.NONE,
-          new ConfirmationSettings(Set.of(), ConfirmationRules.DEFAULT));
+          new ConfirmationSettings(Set.of(), ConfirmationRules.DEFAULT),
+          null);
   private static final String ENCRYPTED = "encrypted-code";
   private static final TicketDetails DETAILS = new TicketDetails("A", null, "14");
 
