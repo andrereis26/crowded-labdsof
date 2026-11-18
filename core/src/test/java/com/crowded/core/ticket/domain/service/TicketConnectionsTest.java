@@ -213,6 +213,62 @@ class TicketConnectionsTest {
   }
 
   @Test
+  void connectsToTheEventOfTheTypedCodeEvenWhenTheAiFoundAnother() {
+    festivalIsRegistered();
+    TicketImport pending = pending("OTHER-2026");
+
+    ConnectedTicket connected =
+        connecting.connectByTypedCode(PARTICIPANT, pending, " marg-2026 ", NOW).orElseThrow();
+
+    assertThat(connected.created()).isTrue();
+    assertThat(connected.event()).isSameAs(FESTIVAL);
+    Ticket ticket = connected.ticket();
+    assertThat(ticket.getMatchMethod()).isEqualTo(MatchMethod.TYPED_CODE);
+    assertThat(ticket.getImportMethod()).isEqualTo(ImportMethod.PDF_UPLOAD);
+    assertThat(ticket.getEntryCodeHash()).isEqualTo(new EntryCodeHash(FESTIVAL.getId() + "|QR-1"));
+    InOrder order = inOrder(connections, tickets);
+    order.verify(connections).lockConnectionsOf(PARTICIPANT.getId());
+    order.verify(connections).addTicketConnection(connected.connection());
+    order.verify(tickets).add(ticket, pending.getExtraction(), NOW);
+  }
+
+  @Test
+  void connectsToNothingWhenTheTypedCodeIsNotThatOfARegisteredEvent() {
+    assertThat(connecting.connectByTypedCode(PARTICIPANT, pending("MARG-2026"), "OTHER-2026", NOW))
+        .isEmpty();
+    assertThat(connecting.connectByTypedCode(PARTICIPANT, pending("MARG-2026"), "no code", NOW))
+        .isEmpty();
+    assertThat(connecting.connectByTypedCode(PARTICIPANT, pending("MARG-2026"), null, NOW))
+        .isEmpty();
+
+    verifyNoInteractions(connections, tickets);
+  }
+
+  @Test
+  void refusesATypedCodeForATicketThatAnotherAccountImported() {
+    festivalIsRegistered();
+    Ticket theirs = ticketOf(UUID.randomUUID());
+    when(tickets.findByEntryCodeHash(theirs.getEntryCodeHash())).thenReturn(Optional.of(theirs));
+
+    assertThatThrownBy(
+            () -> connecting.connectByTypedCode(PARTICIPANT, pending(null), "MARG-2026", NOW))
+        .isInstanceOfSatisfying(
+            ConflictException.class,
+            e -> assertThat(e.getCode()).isEqualTo("TICKET_ALREADY_IMPORTED"));
+
+    verify(connections, never()).addTicketConnection(any());
+  }
+
+  @Test
+  void letsOnlyAParticipantConnectWithATypedCode() {
+    assertThatThrownBy(() -> connecting.connectByTypedCode(MEMBER, pending(null), "MARG-2026", NOW))
+        .isInstanceOfSatisfying(
+            NotAllowedException.class, e -> assertThat(e.getCode()).isEqualTo("PARTICIPANT_ONLY"));
+
+    verifyNoInteractions(events, connections, tickets);
+  }
+
+  @Test
   void letsOnlyAParticipantConnectBeforeLookingAtTheCode() {
     assertThatThrownBy(() -> connecting.connectByExtractedCode(MEMBER, pending("MARG-2026"), NOW))
         .isInstanceOfSatisfying(

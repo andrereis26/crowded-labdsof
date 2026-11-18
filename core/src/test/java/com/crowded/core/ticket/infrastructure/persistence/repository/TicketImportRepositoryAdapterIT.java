@@ -43,6 +43,19 @@ class TicketImportRepositoryAdapterIT extends IntegrationTest {
   }
 
   @Test
+  void forgetsAnImportWithItsEntryCode() {
+    TicketImport pending =
+        TicketImport.start(UUID.randomUUID(), "ZW5jcnlwdGVk", TicketExtraction.NOTHING);
+    imports.save(pending);
+
+    imports.delete(pending.getId());
+    imports.delete(pending.getId());
+
+    assertThat(imports.findById(pending.getId())).isEmpty();
+    assertThat(redis.hasKey(TicketImportRepositoryAdapter.PREFIX + pending.getId())).isFalse();
+  }
+
+  @Test
   void findsNothingForAnUnknownImport() {
     assertThat(imports.findById(UUID.randomUUID())).isEmpty();
   }

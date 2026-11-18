@@ -19,15 +19,16 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Connects a participant to the registered event of the code extracted from their ticket ({@link
- * TicketConnections}) in one transaction, and logs and counts the outcome. The entry code and its
- * hash are never logged.
+ * Connects a participant to the registered event of the code extracted from their ticket or typed
+ * by them ({@link TicketConnections}) in one transaction, and logs and counts the outcome. The
+ * entry code and its hash are never logged.
  */
 @Service
 public class TicketConnectionService {
@@ -61,10 +62,28 @@ public class TicketConnectionService {
    */
   @Transactional
   public Optional<TicketImportResult> connectByExtractedCode(User user, TicketImport pending) {
+    return connect(user, () -> connecting.connectByExtractedCode(user, pending, clock.instant()));
+  }
+
+  /**
+   * Connects {@code user} to the event that the code they typed names, like {@link
+   * #connectByExtractedCode}.
+   *
+   * @throws ConflictException with {@code TICKET_ALREADY_IMPORTED} when another account imported
+   *     the same ticket
+   */
+  @Transactional
+  public Optional<TicketImportResult> connectByTypedCode(
+      User user, TicketImport pending, String typedCode) {
+    return connect(
+        user, () -> connecting.connectByTypedCode(user, pending, typedCode, clock.instant()));
+  }
+
+  private Optional<TicketImportResult> connect(
+      User user, Supplier<Optional<ConnectedTicket>> match) {
     ConnectedTicket connected;
     try {
-      Optional<ConnectedTicket> matched =
-          connecting.connectByExtractedCode(user, pending, clock.instant());
+      Optional<ConnectedTicket> matched = match.get();
       if (matched.isEmpty()) {
         count("NOT_MATCHED");
         return Optional.empty();

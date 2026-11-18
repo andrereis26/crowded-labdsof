@@ -30,10 +30,12 @@ import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.shared.domain.exception.ConflictException;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
+import com.crowded.core.shared.domain.exception.NotFoundException;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
 import com.crowded.core.shared.domain.exception.TooManyRequestsException;
 import com.crowded.core.shared.domain.exception.UnavailableException;
 import com.crowded.core.shared.domain.repository.RateLimiter;
+import com.crowded.core.ticket.application.dto.CompleteTicketImportCommand;
 import com.crowded.core.ticket.application.dto.ImportTicketCommand;
 import com.crowded.core.ticket.application.dto.ImportedEvent;
 import com.crowded.core.ticket.application.dto.TicketImportResult;
@@ -139,6 +141,11 @@ class TicketImportServiceTest {
     @Override
     public Optional<TicketImport> findById(UUID importId) {
       return Optional.ofNullable(saved.get(importId));
+    }
+
+    @Override
+    public void delete(UUID importId) {
+      saved.remove(importId);
     }
   }
 
@@ -418,6 +425,116 @@ class TicketImportServiceTest {
 
     assertThat(sentToAi.get()).isNull();
     assertThat(imports.saved).isEmpty();
+  }
+
+  private TicketImport pendingImport() {
+    TicketImportResult result = service().importTicket(command(TICKET_FILE));
+    return imports.saved.get(result.importId());
+  }
+
+  private void typedCodeIsRegistered() {
+    when(events.findUpcomingTicketedByEventCode(new EventCode("TYPD-2026"), NOW))
+        .thenReturn(Optional.of(FESTIVAL));
+  }
+
+  @Test
+  void connectsToTheEventOfTheTypedCodeAndForgetsTheImport() {
+    typedCodeIsRegistered();
+    TicketImport pending = pendingImport();
+
+    TicketImportResult result =
+        service()
+            .completeWithEventCode(
+                new CompleteTicketImportCommand(OWNER, pending.getId(), " typd-2026 "));
+
+    assertThat(result.status()).isEqualTo(TicketImportStatus.CONNECTED);
+    assertThat(result.importId()).isNull();
+    assertThat(result.event().name()).isEqualTo("Festival Margens do Douro");
+    assertThat(result.ticket()).isEqualTo(new TicketDetails("A", null, "14"));
+    assertThat(imports.saved).isEmpty();
+    verify(connections).addTicketConnection(any());
+    verify(tickets).add(any(), any(), eq(NOW));
+    assertThat(connections("CONNECTED")).isEqualTo(1);
+  }
+
+  @Test
+  void deletesTheImportWhenTheTypedCodeMatchesNoEvent() {
+    TicketImport pending = pendingImport();
+
+    assertThatExceptionOfType(NotFoundException.class)
+        .isThrownBy(
+            () ->
+                service()
+                    .completeWithEventCode(
+                        new CompleteTicketImportCommand(OWNER, pending.getId(), "NONE-2026")))
+        .satisfies(e -> assertThat(e.getCode()).isEqualTo("EVENT_NOT_ON_CROWDED"));
+
+    assertThat(imports.saved).isEmpty();
+    verifyNoInteractions(tickets);
+    verify(connections, never()).addTicketConnection(any());
+  }
+
+  @Test
+  void deletesTheImportWhenAnotherAccountImportedTheTicket() {
+    typedCodeIsRegistered();
+    TicketImport pending = pendingImport();
+    Ticket theirs =
+        Ticket.restore(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            TicketDetails.NONE,
+            CIPHER.encrypt(ENTRY_CODE),
+            new EntryCodeHash(FESTIVAL.getId() + "|" + ENTRY_CODE),
+            ImportMethod.PDF_UPLOAD,
+            MatchMethod.EXTRACTED_CODE);
+    when(tickets.findByEntryCodeHash(theirs.getEntryCodeHash())).thenReturn(Optional.of(theirs));
+
+    assertThatExceptionOfType(ConflictException.class)
+        .isThrownBy(
+            () ->
+                service()
+                    .completeWithEventCode(
+                        new CompleteTicketImportCommand(OWNER, pending.getId(), "TYPD-2026")))
+        .satisfies(e -> assertThat(e.getCode()).isEqualTo("TICKET_ALREADY_IMPORTED"));
+
+    assertThat(imports.saved).isEmpty();
+  }
+
+  @Test
+  void knowsNoImportThatDoesNotExistOrBelongsToAnotherParticipant() {
+    typedCodeIsRegistered();
+    TicketImport pending = pendingImport();
+    UUID other = UUID.fromString("10000000-0000-4000-8000-000000000012");
+    when(users.findById(other))
+        .thenReturn(Optional.of(User.restore(other, null, Role.PARTICIPANT, true)));
+
+    for (CompleteTicketImportCommand command :
+        new CompleteTicketImportCommand[] {
+          new CompleteTicketImportCommand(OWNER, UUID.randomUUID(), "TYPD-2026"),
+          new CompleteTicketImportCommand(other, pending.getId(), "TYPD-2026")
+        }) {
+      assertThatExceptionOfType(NotFoundException.class)
+          .isThrownBy(() -> service().completeWithEventCode(command))
+          .satisfies(e -> assertThat(e.getCode()).isEqualTo("IMPORT_NOT_FOUND"));
+    }
+
+    assertThat(imports.saved).containsKey(pending.getId());
+    verifyNoInteractions(tickets);
+  }
+
+  @Test
+  void letsOnlyAnActiveParticipantTypeTheCode() {
+    TicketImport pending = pendingImport();
+
+    assertThatExceptionOfType(NotAllowedException.class)
+        .isThrownBy(
+            () ->
+                service()
+                    .completeWithEventCode(
+                        new CompleteTicketImportCommand(MEMBER, pending.getId(), "TYPD-2026")))
+        .satisfies(e -> assertThat(e.getCode()).isEqualTo("PARTICIPANT_ONLY"));
+
+    assertThat(imports.saved).containsKey(pending.getId());
   }
 
   @Test

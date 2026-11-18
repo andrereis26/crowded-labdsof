@@ -41,6 +41,11 @@ public final class TicketImport {
     return new TicketImport(id, ownerId, encryptedEntryCode, extraction);
   }
 
+  /** Whether {@code userId} is the participant who imported the ticket. */
+  public boolean isOwnedBy(UUID userId) {
+    return ownerId.equals(userId);
+  }
+
   public UUID getId() {
     return id;
   }

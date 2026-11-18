@@ -21,9 +21,9 @@ import java.time.Instant;
 import java.util.Optional;
 
 /**
- * Connects a participant to the registered event that their ticket's extracted code names: an exact
- * match with a ticketed event that has not ended or been cancelled, never a similar name or date,
- * and never an event the client names. One ticket links to one account.
+ * Connects a participant to the registered event that their ticket's extracted or typed code names:
+ * an exact match with a ticketed event that has not ended or been cancelled, never a similar name
+ * or date, and never an event the client names. One ticket links to one account.
  */
 public final class TicketConnections {
 
@@ -58,10 +58,34 @@ public final class TicketConnections {
    */
   public Optional<ConnectedTicket> connectByExtractedCode(
       User user, TicketImport pending, Instant now) {
+    return connect(
+        user,
+        pending,
+        pending.getExtraction().extractedEventCode(),
+        MatchMethod.EXTRACTED_CODE,
+        now);
+  }
+
+  /**
+   * Connects {@code user} to the event whose code they typed, the same way as {@link
+   * #connectByExtractedCode}: empty when the code is not that of a registered event, and nothing is
+   * stored.
+   *
+   * @throws com.crowded.core.shared.domain.exception.NotAllowedException when the user is not an
+   *     active participant
+   * @throws ConflictException with {@code TICKET_ALREADY_IMPORTED} when another account imported
+   *     the same ticket
+   */
+  public Optional<ConnectedTicket> connectByTypedCode(
+      User user, TicketImport pending, String typedCode, Instant now) {
+    return connect(user, pending, typedCode, MatchMethod.TYPED_CODE, now);
+  }
+
+  private Optional<ConnectedTicket> connect(
+      User user, TicketImport pending, String code, MatchMethod matchMethod, Instant now) {
     EventConnection.checkCanConnect(user);
     Optional<Event> matched =
-        eventCode(pending.getExtraction().extractedEventCode())
-            .flatMap(code -> events.findUpcomingTicketedByEventCode(code, now));
+        eventCode(code).flatMap(c -> events.findUpcomingTicketedByEventCode(c, now));
     if (matched.isEmpty()) {
       return Optional.empty();
     }
@@ -93,7 +117,7 @@ public final class TicketConnections {
             pending.getEncryptedEntryCode(),
             hash,
             ImportMethod.PDF_UPLOAD,
-            MatchMethod.EXTRACTED_CODE);
+            matchMethod);
     connections.addTicketConnection(connection);
     tickets.add(ticket, pending.getExtraction(), now);
     return Optional.of(new ConnectedTicket(connection, event, ticket, true));
@@ -107,12 +131,12 @@ public final class TicketConnections {
   }
 
   /** The code as events keep it; empty when there is none or no event could have it. */
-  private static Optional<EventCode> eventCode(String extracted) {
-    if (extracted == null) {
+  private static Optional<EventCode> eventCode(String code) {
+    if (code == null) {
       return Optional.empty();
     }
     try {
-      return Optional.of(new EventCode(extracted));
+      return Optional.of(new EventCode(code));
     } catch (RuleViolationException e) {
       return Optional.empty();
     }

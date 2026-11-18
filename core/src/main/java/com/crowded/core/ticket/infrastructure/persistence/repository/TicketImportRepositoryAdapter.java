@@ -59,6 +59,15 @@ class TicketImportRepositoryAdapter implements TicketImportRepository {
     }
   }
 
+  @Override
+  public void delete(UUID importId) {
+    try {
+      redis.delete(PREFIX + importId);
+    } catch (DataAccessException e) {
+      throw unavailable();
+    }
+  }
+
   private static UnavailableException unavailable() {
     return new UnavailableException(
         "TICKET_IMPORT_UNAVAILABLE", "This is not available right now. Try again soon.");
