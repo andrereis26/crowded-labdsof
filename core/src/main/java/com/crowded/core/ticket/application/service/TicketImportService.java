@@ -4,6 +4,7 @@ import com.crowded.core.shared.domain.exception.ConflictException;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.domain.exception.NotFoundException;
 import com.crowded.core.shared.domain.exception.TooManyRequestsException;
+import com.crowded.core.shared.domain.exception.UnavailableException;
 import com.crowded.core.shared.domain.repository.RateLimiter;
 import com.crowded.core.ticket.application.dto.CompleteTicketImportCommand;
 import com.crowded.core.ticket.application.dto.ExtractionResult;
@@ -119,7 +120,8 @@ public class TicketImportService {
   /**
    * Completes the participant's pending import with the event code they typed: connects them to the
    * registered event of that code, which the server decides, never an event the client names. The
-   * import is forgotten with its entry code once it ends, connected or refused.
+   * import is forgotten with its entry code once it ends, connected or refused; after any other
+   * failure it is kept, so the participant can try again.
    *
    * @throws NotAllowedException when the user is not an active participant
    * @throws NotFoundException with {@code IMPORT_NOT_FOUND} when the participant has no such
@@ -147,9 +149,11 @@ public class TicketImportService {
     Optional<TicketImportResult> connected;
     try {
       connected = connecting.connectByTypedCode(user, pending, command.eventCode());
-    } finally {
-      imports.delete(pending.getId());
+    } catch (ConflictException e) {
+      forget(pending);
+      throw e;
     }
+    forget(pending);
     return connected.orElseThrow(
         () -> {
           log.info(
@@ -159,6 +163,19 @@ public class TicketImportService {
           return new NotFoundException(
               "EVENT_NOT_ON_CROWDED", "No registered event has this code.");
         });
+  }
+
+  /**
+   * Deletes an import that ended. When the store is down it is not deleted now but still expires on
+   * its own, so the participant's answer, already stored, does not fail.
+   */
+  private void forget(TicketImport ended) {
+    try {
+      imports.delete(ended.getId());
+    } catch (UnavailableException e) {
+      log.warn(
+          "Ticket import {} not deleted: the store is down, it expires on its own", ended.getId());
+    }
   }
 
   private User participant(UUID userId) {

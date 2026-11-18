@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.crowded.core.IntegrationTest;
 import com.crowded.core.connection.domain.repository.ConnectionRepository;
-import java.sql.Timestamp;
+import com.crowded.core.ticket.TicketTestData.Response;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -13,13 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -33,61 +27,33 @@ class TicketConnectionIT extends IntegrationTest {
 
   private static final Instant START =
       Instant.now().plus(20, ChronoUnit.DAYS).truncatedTo(ChronoUnit.HOURS);
-  private static final String PASSWORD_HASH = "{bcrypt}$2a$10$" + "a".repeat(53);
 
   @LocalServerPort private int port;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private JsonMapper json;
   @Autowired private ConnectionRepository connections;
 
-  private final UUID organization = UUID.randomUUID();
   private final UUID ana = UUID.randomUUID();
   private final UUID bruno = UUID.randomUUID();
   private final String suffix = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
   private final String entryCode = "QR-" + UUID.randomUUID();
 
-  private RestClient client;
+  private TicketTestData data;
 
   @BeforeEach
   void createAnOrganizationAndTwoParticipants() {
-    client = RestClient.create("http://localhost:" + port);
-    jdbc.update(
-        "INSERT INTO organization (id, name, created_at) VALUES (?, ?, now())",
-        organization,
-        "Festivais " + organization);
-    insertUser(ana);
-    insertUser(bruno);
+    data = new TicketTestData(jdbc, json, port, START);
+    data.insertParticipant(ana);
+    data.insertParticipant(bruno);
   }
 
-  private record Response(HttpStatusCode status, JsonNode body) {}
-
   private Response upload(UUID user, byte[] file) {
-    MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
-    parts.add(
-        "file",
-        new ByteArrayResource(file) {
-          @Override
-          public String getFilename() {
-            return "bilhete.pdf";
-          }
-        });
-    return client
-        .post()
-        .uri("/tickets")
-        .contentType(MediaType.MULTIPART_FORM_DATA)
-        .header("Authorization", "Bearer " + token(user))
-        .body(parts)
-        .exchange(
-            (req, res) -> {
-              byte[] body = res.getBody().readAllBytes();
-              return new Response(
-                  res.getStatusCode(), body.length == 0 ? null : json.readTree(body));
-            });
+    return data.upload(token(user), file);
   }
 
   @Test
   void connectsToTheEventOfTheCodeAndStoresTheTicket() {
-    UUID event = insertEvent("FEST-" + suffix, "SCHEDULED");
+    UUID event = data.insertEvent("FEST-" + suffix, "SCHEDULED");
 
     Response response = upload(ana, TicketPdfs.ticketOfEvent("FEST-" + suffix, entryCode));
 
@@ -126,7 +92,7 @@ class TicketConnectionIT extends IntegrationTest {
 
   @Test
   void storesTheEntryCodeEncryptedAndItsHashKeyed() {
-    insertEvent("SEC-" + suffix, "SCHEDULED");
+    data.insertEvent("SEC-" + suffix, "SCHEDULED");
 
     UUID ticket =
         UUID.fromString(
@@ -147,7 +113,7 @@ class TicketConnectionIT extends IntegrationTest {
 
   @Test
   void givesTheSameConnectionWhenTheOwnerImportsTheTicketAgain() {
-    UUID event = insertEvent("AGAIN-" + suffix, "SCHEDULED");
+    UUID event = data.insertEvent("AGAIN-" + suffix, "SCHEDULED");
     byte[] file = TicketPdfs.ticketOfEvent("AGAIN-" + suffix, entryCode);
 
     String first = upload(ana, file).body().get("ticketId").asString();
@@ -167,7 +133,7 @@ class TicketConnectionIT extends IntegrationTest {
 
   @Test
   void refusesTheSameTicketFromAnotherAccount() {
-    UUID event = insertEvent("USED-" + suffix, "SCHEDULED");
+    UUID event = data.insertEvent("USED-" + suffix, "SCHEDULED");
     byte[] file = TicketPdfs.ticketOfEvent("USED-" + suffix, entryCode);
     upload(ana, file);
 
@@ -184,7 +150,7 @@ class TicketConnectionIT extends IntegrationTest {
 
   @Test
   void connectsAnotherTicketOfTheSameEventToAnotherAccount() {
-    UUID event = insertEvent("TWO-" + suffix, "SCHEDULED");
+    UUID event = data.insertEvent("TWO-" + suffix, "SCHEDULED");
     upload(ana, TicketPdfs.ticketOfEvent("TWO-" + suffix, entryCode));
 
     Response other = upload(bruno, TicketPdfs.ticketOfEvent("TWO-" + suffix, entryCode + "-B"));
@@ -195,7 +161,7 @@ class TicketConnectionIT extends IntegrationTest {
 
   @Test
   void opensTheEventPageToTheTicketHolderOnly() {
-    UUID event = insertEvent("PAGE-" + suffix, "SCHEDULED");
+    UUID event = data.insertEvent("PAGE-" + suffix, "SCHEDULED");
     assertThat(page(ana, event)).isEqualTo(403);
 
     upload(ana, TicketPdfs.ticketOfEvent("PAGE-" + suffix, entryCode));
@@ -218,9 +184,9 @@ class TicketConnectionIT extends IntegrationTest {
 
   @Test
   void matchesOnlyTicketedEventsThatHaveNotEndedOrBeenCancelled() {
-    insertEvent("ENDED-" + suffix, "ENDED");
-    insertEvent("CANCEL-" + suffix, "CANCELLED");
-    insertPublicEvent("PUB-" + suffix);
+    data.insertEvent("ENDED-" + suffix, "ENDED");
+    data.insertEvent("CANCEL-" + suffix, "CANCELLED");
+    data.insertPublicEvent("PUB-" + suffix);
 
     for (String code : new String[] {"ENDED-" + suffix, "CANCEL-" + suffix, "PUB-" + suffix}) {
       Response response = upload(ana, TicketPdfs.ticketOfEvent(code, entryCode + code));
@@ -234,48 +200,10 @@ class TicketConnectionIT extends IntegrationTest {
   }
 
   private int page(UUID user, UUID event) {
-    return client
+    return data.client()
         .get()
         .uri("/events/" + event)
         .header("Authorization", "Bearer " + token(user))
         .exchange((req, res) -> res.getStatusCode().value());
-  }
-
-  private UUID insertEvent(String code, String status) {
-    return insertEvent("TICKETED", code, status);
-  }
-
-  private UUID insertPublicEvent(String code) {
-    return insertEvent("PUBLIC", code, "SCHEDULED");
-  }
-
-  private UUID insertEvent(String type, String code, String status) {
-    UUID id = UUID.randomUUID();
-    Instant start = "ENDED".equals(status) ? START.minus(60, ChronoUnit.DAYS) : START;
-    jdbc.update(
-        "INSERT INTO event (id, organization_id, name, description, type, ticket_event_code,"
-            + " access_code, start_date_time, doors_open_at, end_date_time, status, venue_name,"
-            + " address, district, latitude, longitude)"
-            + " VALUES (?, ?, 'Festival Teste', 'Teste', ?::event_type, ?, ?, ?, ?, ?,"
-            + " ?::event_status, 'Cais de Teste', 'Porto', 'Porto', 41.14, -8.6)",
-        id,
-        organization,
-        type,
-        "TICKETED".equals(type) ? code : null,
-        "PUBLIC".equals(type) ? code : null,
-        Timestamp.from(start),
-        Timestamp.from(start.minus(1, ChronoUnit.HOURS)),
-        Timestamp.from(start.plus(3, ChronoUnit.HOURS)),
-        status);
-    return id;
-  }
-
-  private void insertUser(UUID id) {
-    jdbc.update(
-        "INSERT INTO app_user (id, organization_id, email, password_hash, role, created_at,"
-            + " active, name) VALUES (?, NULL, ?, ?, 'PARTICIPANT'::role, now(), true, 'Pessoa')",
-        id,
-        id + "@crowded.test",
-        PASSWORD_HASH);
   }
 }
