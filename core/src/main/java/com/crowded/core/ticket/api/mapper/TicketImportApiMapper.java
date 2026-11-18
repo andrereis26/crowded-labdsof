@@ -3,6 +3,7 @@ package com.crowded.core.ticket.api.mapper;
 import com.crowded.core.ticket.api.dto.ImportedEventResponse;
 import com.crowded.core.ticket.api.dto.TicketDetailsResponse;
 import com.crowded.core.ticket.api.dto.TicketImportResponse;
+import com.crowded.core.ticket.application.dto.CompleteTicketImportCommand;
 import com.crowded.core.ticket.application.dto.ImportTicketCommand;
 import com.crowded.core.ticket.application.dto.ImportedEvent;
 import com.crowded.core.ticket.application.dto.TicketImportResult;
@@ -15,6 +16,8 @@ import org.mapstruct.Mapper;
 public interface TicketImportApiMapper {
 
   ImportTicketCommand toCommand(UUID ownerId, byte[] file);
+
+  CompleteTicketImportCommand toCommand(UUID ownerId, UUID importId, String eventCode);
 
   TicketImportResponse toResponse(TicketImportResult result);
 

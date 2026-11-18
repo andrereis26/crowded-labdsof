@@ -806,33 +806,7 @@ class AppStore extends ChangeNotifier {
     }
     switch (result) {
       case TicketConnected():
-        final event = Event(
-          id: result.eventId,
-          name: result.eventName,
-          venue: result.venueName,
-          city: '',
-          start: result.start,
-          doorsOpen: result.doorsOpen,
-          art: const EventArt(Color(0xFF3C50AA), Color(0xFF14142D)),
-        );
-        final ticket = Ticket(
-          id: result.ticketId ?? result.connectionId,
-          event: event,
-          origin: TicketOrigin.pdf,
-          importedAt: now,
-          gate: result.gate,
-          seat: result.seat,
-          // The entry code is read from Core only when its screen is wired.
-          hasEntryCode: false,
-        );
-        _tickets
-          ..removeWhere((t) => t.event.id == event.id)
-          ..add(ticket);
-        _left.remove(event.id);
-        lastImported = ticket;
-        pendingImport = null;
-        notifyListeners();
-        return ImportOutcome.added;
+        return _addConnected(result);
       case TicketWithoutQrCode():
         pendingImport = null;
         notifyListeners();
@@ -859,12 +833,66 @@ class AppStore extends ChangeNotifier {
     return ImportOutcome.needsEventCode;
   }
 
+  ImportOutcome _addConnected(TicketConnected result) {
+    final event = Event(
+      id: result.eventId,
+      name: result.eventName,
+      venue: result.venueName,
+      city: '',
+      start: result.start,
+      doorsOpen: result.doorsOpen,
+      art: const EventArt(Color(0xFF3C50AA), Color(0xFF14142D)),
+    );
+    final ticket = Ticket(
+      id: result.ticketId ?? result.connectionId,
+      event: event,
+      origin: TicketOrigin.pdf,
+      importedAt: now,
+      gate: result.gate,
+      seat: result.seat,
+      // The entry code is read from Core only when its screen is wired.
+      hasEntryCode: false,
+    );
+    _tickets
+      ..removeWhere((t) => t.event.id == event.id)
+      ..add(ticket);
+    _left.remove(event.id);
+    lastImported = ticket;
+    pendingImport = null;
+    notifyListeners();
+    return ImportOutcome.added;
+  }
+
   /// Completes [pendingImport] with the event code printed on the ticket.
-  ImportOutcome submitEventCode(String code) {
-    final origin = pendingImport?.origin ?? TicketOrigin.pdf;
-    final outcome = _addTicket(code, origin);
-    if (outcome != ImportOutcome.added) notifyListeners();
-    return outcome;
+  ///
+  /// With [ticketsApi] and a pending import in Core, Core decides the event
+  /// from the code. A code that matches no event, an import that expired and
+  /// a ticket that another account has end as an [ImportOutcome]; any other
+  /// failure throws [TicketsApiException] and keeps the import to try again.
+  Future<ImportOutcome> submitEventCode(String code) async {
+    final api = ticketsApi;
+    final importId = pendingImport?.importId;
+    if (api == null || importId == null) {
+      final origin = pendingImport?.origin ?? TicketOrigin.pdf;
+      final outcome = _addTicket(code, origin);
+      if (outcome != ImportOutcome.added) notifyListeners();
+      return outcome;
+    }
+    try {
+      return _addConnected(await api.submitEventCode(importId, code.trim()));
+    } on TicketsApiException catch (e) {
+      final outcome = e.eventNotOnCrowded
+          ? ImportOutcome.eventNotOnCrowded
+          : e.importNotFound
+          ? ImportOutcome.importExpired
+          : e.alreadyImported
+          ? ImportOutcome.linkedToAnotherAccount
+          : null;
+      if (outcome == null) rethrow;
+      pendingImport = null;
+      notifyListeners();
+      return outcome;
+    }
   }
 
   ImportOutcome _addTicket(String code, TicketOrigin origin) {

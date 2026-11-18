@@ -48,6 +48,7 @@ class ImportScreen extends StatefulWidget {
     ImportOutcome.noQrCode => '/import/error/no-qr',
     ImportOutcome.eventNotOnCrowded => '/import/error/not-on-crowded',
     ImportOutcome.linkedToAnotherAccount => '/import/error/other-account',
+    ImportOutcome.importExpired => '/import/error/expired',
   };
 
   @override

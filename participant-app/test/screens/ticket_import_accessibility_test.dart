@@ -119,6 +119,44 @@ void main() {
     });
   }
 
+  for (final size in [const Size(390, 844), const Size(1440, 900)]) {
+    testWidgets('P2b and its refusals meet the accessibility guidelines at '
+        '$size', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(
+        tester,
+        size,
+        (request) async => request.url.path.endsWith('/tickets')
+            ? http.Response(
+                '{"status":"NEEDS_EVENT_CODE","importId":"i-1","ticket":{}}',
+                200,
+              )
+            : http.Response('{"code":"IMPORT_NOT_FOUND"}', 404),
+      );
+
+      // The code field, with its label and the title as a header.
+      await tester.tap(find.text('PDF do bilhete'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel(RegExp('Código do evento')), findsWidgets);
+      await _expectAccessible(tester);
+
+      // The code is missing: the error is in text.
+      await tester.tap(find.text('Associar bilhete'));
+      await tester.pumpAndSettle();
+      expect(find.text('Escreve o código do evento.'), findsOneWidget);
+      await _expectAccessible(tester);
+
+      // The import expired.
+      await tester.enterText(find.byType(TextField), 'MARG-2026');
+      await tester.tap(find.text('Associar bilhete'));
+      await tester.pumpAndSettle();
+      expect(find.text('O pedido expirou'), findsOneWidget);
+      await _expectAccessible(tester);
+
+      semantics.dispose();
+    });
+  }
+
   testWidgets('P2 announces that the ticket is being read', (tester) async {
     final semantics = tester.ensureSemantics();
     final answer = Completer<http.Response>();

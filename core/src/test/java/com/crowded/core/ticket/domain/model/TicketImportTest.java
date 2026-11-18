@@ -54,6 +54,15 @@ class TicketImportTest {
   }
 
   @Test
+  void belongsToItsOwnerOnly() {
+    TicketImport started = TicketImport.start(OWNER, "encrypted", EXTRACTION);
+
+    assertThat(started.isOwnedBy(OWNER)).isTrue();
+    assertThat(started.isOwnedBy(UUID.randomUUID())).isFalse();
+    assertThat(started.isOwnedBy(null)).isFalse();
+  }
+
+  @Test
   void neverPrintsTheEntryCode() {
     assertThat(TicketImport.start(OWNER, "encrypted", EXTRACTION).toString())
         .doesNotContain("encrypted");

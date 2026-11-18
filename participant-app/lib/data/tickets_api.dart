@@ -63,7 +63,9 @@ final class TicketWithoutQrCode extends TicketUploadResult {
 
 /// A refusal from Core, with its error code: `RATE_LIMITED` after too many
 /// imports in an hour, `TICKET_ALREADY_IMPORTED` when another account has the
-/// ticket, or `NETWORK` when Core could not be reached.
+/// ticket, `EVENT_NOT_ON_CROWDED` when no registered event has the typed code,
+/// `IMPORT_NOT_FOUND` when the pending import expired, or `NETWORK` when Core
+/// could not be reached.
 class TicketsApiException implements Exception {
   const TicketsApiException(this.code);
 
@@ -73,14 +75,27 @@ class TicketsApiException implements Exception {
 
   bool get alreadyImported => code == 'TICKET_ALREADY_IMPORTED';
 
+  bool get eventNotOnCrowded => code == 'EVENT_NOT_ON_CROWDED';
+
+  bool get importNotFound => code == 'IMPORT_NOT_FOUND';
+
   @override
   String toString() => 'TicketsApiException($code)';
 }
 
-/// Ticket import in Core (`POST /tickets`).
+/// Ticket import in Core (`POST /tickets` and
+/// `POST /ticket-imports/{importId}/event-code`).
 abstract interface class TicketsApi {
   /// Uploads a ticket PDF for the signed-in participant.
   Future<TicketUploadResult> uploadPdf(Uint8List bytes, String fileName);
+
+  /// Completes the pending import [importId] with the event code printed on
+  /// the ticket. Core decides the event from the code.
+  ///
+  /// Throws [TicketsApiException] when no registered event has the code (the
+  /// import is deleted), when the import expired, or when another account has
+  /// the ticket.
+  Future<TicketConnected> submitEventCode(String importId, String eventCode);
 }
 
 /// [TicketsApi] over HTTP, with the signed-in participant's token, so Core
@@ -110,6 +125,33 @@ class HttpTicketsApi implements TicketsApi {
     } on Exception {
       throw const TicketsApiException('NETWORK');
     }
+    return _result(response);
+  }
+
+  @override
+  Future<TicketConnected> submitEventCode(
+    String importId,
+    String eventCode,
+  ) async {
+    final http.Response response;
+    try {
+      response = await _client.post(
+        _base.resolve('ticket-imports/$importId/event-code'),
+        headers: {
+          'Authorization': 'Bearer ${_token()}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'eventCode': eventCode}),
+      );
+    } on Exception {
+      throw const TicketsApiException('NETWORK');
+    }
+    final result = _result(response);
+    if (result is TicketConnected) return result;
+    throw TicketsApiException('HTTP_${response.statusCode}');
+  }
+
+  static TicketUploadResult _result(http.Response response) {
     final body = _json(response);
     final ticket = body['ticket'] is Map<String, dynamic>
         ? body['ticket'] as Map<String, dynamic>

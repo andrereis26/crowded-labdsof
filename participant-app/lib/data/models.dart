@@ -433,6 +433,10 @@ enum ImportOutcome {
 
   /// The ticket is already linked to another account.
   linkedToAnotherAccount,
+
+  /// The pending import expired before the code was typed: the ticket has to
+  /// be uploaded again.
+  importExpired,
 }
 
 /// A ticket file being imported, with what was read from it (P2b).

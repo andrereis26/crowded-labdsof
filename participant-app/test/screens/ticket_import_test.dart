@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:crowded/app.dart';
@@ -101,6 +102,138 @@ void main() {
     expect(store.pendingImport, isNull);
     expect(store.ticketFor('e-1')?.event.name, 'Festival Margens');
     expect(store.isConnected('e-1'), isTrue);
+  });
+
+  const pendingAnswer =
+      '{"status":"NEEDS_EVENT_CODE","importId":"i-1","ticket":{}}';
+
+  /// Uploads the ticket and types [code] in P2b, with Core answering the typed
+  /// code with [status] and [body].
+  Future<(AppStore, List<http.Request>)> typeCode(
+    WidgetTester tester,
+    String code,
+    int status,
+    String body,
+  ) async {
+    final requests = <http.Request>[];
+    final store = await pump(tester, (request) async {
+      requests.add(request);
+      return request.url.path.endsWith('/tickets')
+          ? http.Response(pendingAnswer, 200)
+          : http.Response(body, status);
+    });
+    await tester.tap(find.text('PDF do bilhete'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), code);
+    await tester.tap(find.text('Associar bilhete'));
+    await tester.pumpAndSettle();
+    return (store, requests);
+  }
+
+  testWidgets('connects the ticket to the event of the typed code', (
+    tester,
+  ) async {
+    final (store, requests) = await typeCode(
+      tester,
+      ' marg-2026 ',
+      200,
+      connected,
+    );
+
+    final sent = requests.last;
+    expect(sent.url.path, '/api/ticket-imports/i-1/event-code');
+    expect(jsonDecode(sent.body), {'eventCode': 'marg-2026'});
+    expect(find.text('Adicionaste o evento Festival Margens'), findsOneWidget);
+    expect(store.pendingImport, isNull);
+    expect(store.ticketFor('e-1')?.event.name, 'Festival Margens');
+  });
+
+  testWidgets('says that the event of the typed code does not use Crowded', (
+    tester,
+  ) async {
+    final (store, _) = await typeCode(
+      tester,
+      'NOPE-2026',
+      404,
+      '{"code":"EVENT_NOT_ON_CROWDED"}',
+    );
+
+    expect(find.text('Este evento ainda não usa o Crowded'), findsOneWidget);
+    expect(store.pendingImport, isNull);
+    expect(store.ticketFor('e-1'), isNull);
+  });
+
+  testWidgets('asks to import the ticket again when the import expired', (
+    tester,
+  ) async {
+    final (store, _) = await typeCode(
+      tester,
+      'MARG-2026',
+      404,
+      '{"code":"IMPORT_NOT_FOUND"}',
+    );
+
+    expect(find.text('O pedido expirou'), findsOneWidget);
+    expect(find.text('Importa o bilhete outra vez.'), findsOneWidget);
+    expect(store.pendingImport, isNull);
+
+    await tester.tap(find.text('Carregar outro ficheiro'));
+    await tester.pumpAndSettle();
+    expect(find.text('PDF do bilhete'), findsOneWidget);
+  });
+
+  testWidgets('says that another account has the ticket of the typed code', (
+    tester,
+  ) async {
+    final (store, _) = await typeCode(
+      tester,
+      'MARG-2026',
+      409,
+      '{"code":"TICKET_ALREADY_IMPORTED"}',
+    );
+
+    expect(
+      find.text('Este bilhete já está ligado a outra conta'),
+      findsOneWidget,
+    );
+    expect(store.pendingImport, isNull);
+  });
+
+  testWidgets('keeps the import to try again when Core cannot be reached', (
+    tester,
+  ) async {
+    var offline = false;
+    final store = await pump(tester, (request) async {
+      if (request.url.path.endsWith('/tickets')) {
+        return http.Response(pendingAnswer, 200);
+      }
+      offline = true;
+      throw http.ClientException('offline');
+    });
+    await tester.tap(find.text('PDF do bilhete'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'MARG-2026');
+    await tester.tap(find.text('Associar bilhete'));
+    await tester.pumpAndSettle();
+
+    expect(offline, isTrue);
+    expect(
+      find.text('Não foi possível associar o bilhete. Tenta outra vez.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Não conseguimos associar o bilhete a um evento'),
+      findsOneWidget,
+    );
+    expect(store.pendingImport?.importId, 'i-1');
+  });
+
+  testWidgets('asks for the code before sending anything', (tester) async {
+    final (store, requests) = await typeCode(tester, '   ', 200, connected);
+
+    expect(find.text('Escreve o código do evento.'), findsOneWidget);
+    expect(requests.map((r) => r.url.path), ['/api/tickets']);
+    expect(store.pendingImport?.importId, 'i-1');
   });
 
   testWidgets('says that the ticket is already in use by another account', (

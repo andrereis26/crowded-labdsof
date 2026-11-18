@@ -138,6 +138,78 @@ void main() {
     expect(const TicketsApiException('NETWORK').tooManyRequests, isFalse);
   });
 
+  const connected =
+      '{"status":"CONNECTED","ticketId":"t-1","connectionId":"t-1",'
+      '"event":{"id":"e-1","name":"Festival Margens",'
+      '"startDateTime":"2026-11-27T22:00:00Z","venueName":"Cais"},'
+      '"ticket":{"gate":"A","seat":"14"}}';
+
+  test('completes the pending import with the typed code', () async {
+    late http.Request sent;
+    final result = await api((request) async {
+      sent = request;
+      return http.Response(connected, 200);
+    }).submitEventCode('i-1', 'MARG-2026');
+
+    expect(sent.method, 'POST');
+    expect(
+      sent.url.toString(),
+      'https://crowded.test/api/ticket-imports/i-1/event-code',
+    );
+    expect(sent.headers['Authorization'], 'Bearer token-123');
+    expect(sent.headers['content-type'], startsWith('application/json'));
+    expect(jsonDecode(sent.body), {'eventCode': 'MARG-2026'});
+    expect(result.eventId, 'e-1');
+    expect(result.eventName, 'Festival Margens');
+    expect(result.gate, 'A');
+  });
+
+  test('reports the refusals of the typed code', () async {
+    Future<TicketConnected> submit(int status, String code) =>
+        api((_) async => http.Response('{"code":"$code"}', status))
+            .submitEventCode('i-1', 'MARG-2026');
+
+    await expectLater(
+      submit(404, 'EVENT_NOT_ON_CROWDED'),
+      refusedWith('EVENT_NOT_ON_CROWDED'),
+    );
+    await expectLater(
+      submit(404, 'IMPORT_NOT_FOUND'),
+      refusedWith('IMPORT_NOT_FOUND'),
+    );
+    await expectLater(
+      submit(409, 'TICKET_ALREADY_IMPORTED'),
+      refusedWith('TICKET_ALREADY_IMPORTED'),
+    );
+    expect(
+      const TicketsApiException('EVENT_NOT_ON_CROWDED').eventNotOnCrowded,
+      isTrue,
+    );
+    expect(
+      const TicketsApiException('IMPORT_NOT_FOUND').importNotFound,
+      isTrue,
+    );
+    expect(const TicketsApiException('NETWORK').importNotFound, isFalse);
+  });
+
+  test('fails on an unexpected answer or no connection to the code', () async {
+    await expectLater(
+      api((_) async => http.Response('<html>', 500))
+          .submitEventCode('i-1', 'MARG-2026'),
+      refusedWith('HTTP_500'),
+    );
+    await expectLater(
+      api((_) async => http.Response('{}', 200))
+          .submitEventCode('i-1', 'MARG-2026'),
+      refusedWith('HTTP_200'),
+    );
+    await expectLater(
+      api((_) async => throw http.ClientException('offline'))
+          .submitEventCode('i-1', 'MARG-2026'),
+      refusedWith('NETWORK'),
+    );
+  });
+
   test('fails on an unexpected answer or no connection', () async {
     await expectLater(
       api((_) async => http.Response('<html>', 500)).uploadPdf(pdf, 'b.pdf'),

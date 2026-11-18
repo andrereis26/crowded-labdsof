@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/app_store.dart';
 import '../../data/models.dart';
+import '../../data/tickets_api.dart';
 import '../../ui/ui.dart';
 import '../../utils/pt_format.dart';
 import '../shared/shell.dart';
@@ -143,6 +144,7 @@ class EventCodeScreen extends StatefulWidget {
 class _EventCodeScreenState extends State<EventCodeScreen> {
   late final TextEditingController _code;
   String? _error;
+  bool _sending = false;
 
   @override
   void initState() {
@@ -158,13 +160,26 @@ class _EventCodeScreenState extends State<EventCodeScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_sending) return;
     if (_code.text.trim().isEmpty) {
       setState(() => _error = 'Escreve o código do evento.');
       return;
     }
-    final outcome = AppStore.read(context).submitEventCode(_code.text);
-    context.pushReplacement(ImportScreen.pathFor(outcome));
+    setState(() => _sending = true);
+    try {
+      final outcome = await AppStore.read(context).submitEventCode(_code.text);
+      if (mounted) context.pushReplacement(ImportScreen.pathFor(outcome));
+    } on TicketsApiException {
+      if (mounted) {
+        showMessage(
+          context,
+          'Não foi possível associar o bilhete. Tenta outra vez.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   @override
@@ -258,6 +273,7 @@ class ImportErrorScreen extends StatelessWidget {
   static ImportOutcome outcomeFor(String slug) => switch (slug) {
     'no-qr' => ImportOutcome.noQrCode,
     'other-account' => ImportOutcome.linkedToAnotherAccount,
+    'expired' => ImportOutcome.importExpired,
     _ => ImportOutcome.eventNotOnCrowded,
   };
 
@@ -276,6 +292,11 @@ class ImportErrorScreen extends StatelessWidget {
             'contacta a organização do evento.',
         AppTagTone.danger,
       ),
+      ImportOutcome.importExpired => (
+        'O pedido expirou',
+        'Importa o bilhete outra vez.',
+        AppTagTone.warning,
+      ),
       _ => (
         'Este evento ainda não usa o Crowded',
         'Não guardámos o bilhete nem o ficheiro. Quando a organização aderir '
@@ -283,7 +304,9 @@ class ImportErrorScreen extends StatelessWidget {
         AppTagTone.danger,
       ),
     };
-    final uploadFirst = outcome == ImportOutcome.noQrCode;
+    final uploadFirst =
+        outcome == ImportOutcome.noQrCode ||
+        outcome == ImportOutcome.importExpired;
     final upload = uploadFirst
         ? AppButton(
             label: 'Carregar outro ficheiro',
