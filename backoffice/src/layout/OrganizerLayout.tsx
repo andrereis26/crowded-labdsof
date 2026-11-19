@@ -30,6 +30,7 @@ export function OrganizerLayout({
   openIncidents,
   now,
   onSelectEvent,
+  onSignOut,
   children,
 }: {
   scope: OrganizerScope
@@ -40,6 +41,7 @@ export function OrganizerLayout({
   openIncidents: number
   now: Date
   onSelectEvent: (id: string) => void
+  onSignOut: () => void
   children: ReactNode
 }) {
   const nav: NavItem[] = [
@@ -62,6 +64,7 @@ export function OrganizerLayout({
         label="Organização"
         nav={nav}
         user={organization.user}
+        onSignOut={onSignOut}
         identity={
           <>
             <Avatar initials={organization.initials} size={30} />

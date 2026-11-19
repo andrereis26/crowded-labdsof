@@ -7,7 +7,7 @@ const items: { label: string; to: string; icon: Icon }[] = [
 ]
 
 /** "Mais" tab on phones: the sections that do not fit in the tab bar. */
-export function MorePage() {
+export function MorePage({ onSignOut }: { onSignOut: () => void }) {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Mais" />
@@ -24,6 +24,7 @@ export function MorePage() {
       </ul>
       <button
         type="button"
+        onClick={onSignOut}
         className="flex items-center gap-3 rounded-[14px] bg-surface px-4 py-3.5 text-[15px] font-medium text-danger"
       >
         <LogOut size={20} aria-hidden />

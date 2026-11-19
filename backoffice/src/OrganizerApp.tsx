@@ -48,10 +48,12 @@ export function OrganizerApp({
   now,
   api,
   geocode,
+  onSignOut,
 }: {
   now: Date
   api: EventsApi
   geocode: Geocoder
+  onSignOut: () => void
 }) {
   const [loaded, setLoaded] = useState<OrgEvent[]>()
   const [loadError, setLoadError] = useState(false)
@@ -235,6 +237,7 @@ export function OrganizerApp({
       openIncidents={openIncidents}
       now={now}
       onSelectEvent={selectEvent}
+      onSignOut={onSignOut}
     >
       <Routes>
         <Route index element={<Navigate to="events" replace />} />
@@ -319,7 +322,7 @@ export function OrganizerApp({
             <RequestPage event={event} />
           ))}
         />
-        <Route path="more" element={<MorePage />} />
+        <Route path="more" element={<MorePage onSignOut={onSignOut} />} />
         <Route
           path="*"
           element={

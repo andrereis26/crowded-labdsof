@@ -44,12 +44,14 @@ export function Sidebar({
   identity,
   nav,
   user,
+  onSignOut,
 }: {
   label: string
   /** Card under the logo: the platform or the organization. */
   identity: ReactNode
   nav: NavItem[]
   user: { initials: string; name: string; role: string }
+  onSignOut: () => void
 }) {
   return (
     <aside className="fixed inset-y-0 left-0 z-20 hidden w-[248px] flex-col gap-0.5 bg-sidebar px-3.5 py-5 lg:flex">
@@ -85,6 +87,7 @@ export function Sidebar({
         <button
           type="button"
           aria-label="Terminar sessão"
+          onClick={onSignOut}
           className="rounded-md p-1 text-sidebar-text hover:text-white"
         >
           <LogOut size={18} aria-hidden />

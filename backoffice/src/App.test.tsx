@@ -226,6 +226,26 @@ describe('C1 and C4 sign-in', () => {
     expect(await screen.findByRole('heading', { name: 'Eventos', level: 2 })).toBeInTheDocument()
   })
 
+  it('signs the member out from the "Mais" page', async () => {
+    const user = userEvent.setup()
+    renderAt('/organization/more', undefined, { session: session('ORGANIZATION_MEMBER') })
+
+    const buttons = await screen.findAllByRole('button', { name: 'Terminar sessão' })
+    await user.click(buttons[buttons.length - 1])
+
+    expect(screen.getByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
+  })
+
+  it('signs the administrator out from the side menu', async () => {
+    const user = userEvent.setup()
+    renderAsAdministrator('/organizations')
+    await screen.findByRole('heading', { name: 'Organizações' })
+
+    await user.click(screen.getByRole('button', { name: 'Terminar sessão' }))
+
+    expect(screen.getByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
+  })
+
   it('sends the administrator to the organizations', async () => {
     const user = userEvent.setup()
     renderAt(
