@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -175,6 +176,15 @@ class EventControllerTest {
                 null,
                 EventType.TICKETED,
                 "Braga"));
+  }
+
+  @Test
+  void deletesTheEvent() throws Exception {
+    mockMvc
+        .perform(asUser(delete("/events/{eventId}", event.getId()), ""))
+        .andExpect(status().isNoContent());
+
+    verify(service).delete(USER, event.getId());
   }
 
   @Test

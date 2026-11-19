@@ -3,6 +3,7 @@ package com.crowded.core.event.domain.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.crowded.core.shared.domain.exception.ConflictException;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
 import java.time.Instant;
 import java.util.List;
@@ -100,6 +101,16 @@ class EventRegistrationTest {
         .isInstanceOf(RuleViolationException.class)
         .hasFieldOrPropertyWithValue("code", "TYPE_REQUIRED");
     assertThatThrownBy(() -> event.correctDistrict(null)).isInstanceOf(NullPointerException.class);
+  }
+
+  @Test
+  void canBeDeletedOnlyWhileNobodyIsConnected() {
+    Event event = register(SCHEDULE, VENUE, new Capacity(4500));
+
+    event.checkCanBeDeleted(0);
+    assertThatThrownBy(() -> event.checkCanBeDeleted(1))
+        .isInstanceOf(ConflictException.class)
+        .hasFieldOrPropertyWithValue("code", "EVENT_HAS_PARTICIPANTS");
   }
 
   @Test

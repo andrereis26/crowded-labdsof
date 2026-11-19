@@ -297,6 +297,29 @@ describe('O2–O4 with Core', () => {
     })
   })
 
+  it('deletes an event created by mistake, but not one with participants', async () => {
+    const user = userEvent.setup()
+    const api = fakeEventsApi(
+      demoEvents().map((e) => (e.id === 'margens-inverno' ? { ...e, connected: 0 } : e)),
+    )
+    await renderAt('/organization/events/margens-inverno/edit', api)
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar evento' }))
+    let dialog = screen.getByRole('dialog', { name: 'Eliminar evento?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Manter evento' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    api.refuse = 'EVENT_HAS_PARTICIPANTS'
+    await user.click(screen.getByRole('button', { name: 'Eliminar evento' }))
+    dialog = screen.getByRole('dialog', { name: 'Eliminar evento?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Eliminar evento' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/Cancela-o/)
+
+    await user.click(within(dialog).getByRole('button', { name: 'Eliminar evento' }))
+    expect(await screen.findByText('Margens Inverno eliminado.')).toBeInTheDocument()
+    expect(api.events.some((e) => e.id === 'margens-inverno')).toBe(false)
+  })
+
   it('starts the form over when another event is picked in the top bar', async () => {
     const user = userEvent.setup()
     await renderAt('/organization/events/margens-inverno/edit')
@@ -305,6 +328,16 @@ describe('O2–O4 with Core', () => {
     await user.click(screen.getByRole('button', { name: /Jazz no Parque/ }))
 
     expect(screen.getByLabelText('Nome do evento')).toHaveValue('Jazz no Parque')
+  })
+
+  it('offers to cancel instead of deleting once participants are connected', async () => {
+    await renderAt('/organization/events/jazz-no-parque/edit')
+
+    expect(screen.queryByRole('button', { name: 'Eliminar evento' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'cancela-o' })).toHaveAttribute(
+      'href',
+      '/organization/events/jazz-no-parque',
+    )
   })
 
   it('adds, replaces and removes the image of an event', async () => {

@@ -29,6 +29,9 @@ public interface EventRepository {
   /** Stores the event's new state. */
   void save(Event event);
 
+  /** Deletes the event and everything that belongs to it. */
+  void delete(Event event);
+
   /** How many events each organization has; an organization without events is not in the map. */
   Map<UUID, Long> countByOrganization();
 

@@ -8,7 +8,7 @@ Core service of Crowded ([Technical Design](../docs/deliverables/technical-desig
 | `POST /auth/password` | A member replaces their temporary password at the first sign-in | #141 |
 | `GET /admin/organizations`, `POST /admin/organizations` | The platform administrator lists and creates organizations | #140 |
 | `POST /admin/organizations/{organizationId}/members`, `PATCH /admin/members/{userId}` | The platform administrator creates, deactivates and reactivates members, and issues new temporary passwords | #140 |
-| `POST /events`, `PATCH /events/{eventId}`, `GET /organizations/me/events` | An organization creates, corrects and lists its events | #36 |
+| `POST /events`, `PATCH /events/{eventId}`, `DELETE /events/{eventId}`, `GET /organizations/me/events` | An organization creates, corrects, deletes and lists its events | #36 |
 | `POST /events/{eventId}/changes` | An organization publishes an official change to its event | #37 |
 | `PUT /events/{eventId}/crowd` | An organization publishes its event's crowd level, which connected participants see live | #39 |
 | `GET /events/{eventId}`, `GET /events/{eventId}/changes`, `GET /events/{eventId}/live` | A connected participant or the organization reads the event page and its change history, and follows the page live | #34 |

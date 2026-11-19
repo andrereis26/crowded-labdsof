@@ -139,6 +139,20 @@ public final class Event {
     capacity = Objects.requireNonNull(newCapacity, "capacity");
   }
 
+  /**
+   * Checks that the event can be deleted, such as one registered by mistake. Once a participant is
+   * connected, the organization cancels it instead, which notifies them.
+   *
+   * @throws ConflictException when a participant is connected to it
+   */
+  public void checkCanBeDeleted(long connectedParticipants) {
+    if (connectedParticipants > 0) {
+      throw new ConflictException(
+          "EVENT_HAS_PARTICIPANTS",
+          "Participants are connected to this event: cancel it instead, which notifies them.");
+    }
+  }
+
   /** Corrects the district, which selects the weather warnings; participants are not notified. */
   public void correctDistrict(District newDistrict) {
     district = Objects.requireNonNull(newDistrict, "district");

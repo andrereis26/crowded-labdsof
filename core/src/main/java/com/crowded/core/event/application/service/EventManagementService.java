@@ -212,6 +212,31 @@ public class EventManagementService {
   }
 
   /**
+   * Deletes an event nobody is connected to, such as one registered by mistake; participants are
+   * not notified, as there are none.
+   *
+   * @throws NotFoundException when the event does not exist
+   * @throws NotAllowedException when the user is not an active member of its organization
+   * @throws ConflictException when a participant is connected to it
+   */
+  @Transactional
+  public void delete(UUID userId, UUID eventId) {
+    Event event =
+        events
+            .findByIdForUpdate(eventId)
+            .orElseThrow(() -> new NotFoundException("EVENT_NOT_FOUND", "There is no such event."));
+    access.checkManager(userId, event);
+    event.checkCanBeDeleted(connections.countByEvent(List.of(eventId)).getOrDefault(eventId, 0L));
+    events.delete(event);
+    updates.announce(eventId);
+
+    // Not linked to the event, or deleting the event would delete this entry with it.
+    audit.record(
+        userId, null, "EVENT_DELETED", "Event", eventId, Map.of("name", event.getProfile().name()));
+    log.info("Deleted event {} by user {}", eventId, userId);
+  }
+
+  /**
    * The events of the member's organization, the latest start first.
    *
    * @throws NotAllowedException when the user is not an active member of an organization
