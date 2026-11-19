@@ -243,7 +243,12 @@ export function toCorrectionBody(before: OrgEvent, after: OrgEvent): Record<stri
   if (after.name.trim() !== before.name) body.name = after.name.trim()
   if (after.description.trim() !== before.description) body.description = after.description.trim()
   if (after.capacity !== before.capacity) body.capacity = after.capacity
-  if (after.code.trim().toUpperCase() !== before.code) Object.assign(body, codeJson(after))
+  // A new type keeps the code unless it changed, but Core reads it in the new type's field.
+  if (after.kind !== before.kind) body.type = after.kind === 'ticketed' ? 'TICKETED' : 'PUBLIC'
+  if (after.kind !== before.kind || after.code.trim().toUpperCase() !== before.code) {
+    Object.assign(body, codeJson(after))
+  }
+  if (after.district !== before.district) body.district = after.district
   if (after.entrances.join('\n') !== before.entrances.join('\n')) body.queuePoints = after.entrances
   const confirmations = confirmationsJson(after.confirmations)
   if (JSON.stringify(confirmations) !== JSON.stringify(confirmationsJson(before.confirmations))) {

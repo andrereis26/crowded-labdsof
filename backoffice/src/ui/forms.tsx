@@ -113,10 +113,11 @@ export function InfoTip({ id, children }: { id?: string; children: ReactNode }) 
   )
 }
 
-const boxClass = (invalid?: boolean) =>
-  `relative flex w-full items-center gap-2 rounded-[10px] border bg-surface px-3.5 focus-within:outline-2 focus-within:outline-primary ${
+// A disabled box is grayed out, so a locked field reads as locked before it is clicked.
+const boxClass = (invalid?: boolean, disabled?: boolean) =>
+  `relative flex w-full items-center gap-2 rounded-[10px] border px-3.5 focus-within:outline-2 focus-within:outline-primary ${
     invalid ? 'border-danger' : 'border-border'
-  }`
+  } ${disabled ? 'cursor-not-allowed bg-background text-ink-secondary' : 'bg-surface'}`
 
 /** Text box with an optional leading icon and a unit after the value, such
  * as "m"; the label names the unit for screen readers. */
@@ -127,10 +128,16 @@ export function TextInput({
   ...props
 }: ComponentProps<'input'> & { icon?: Icon; unit?: string }) {
   return (
-    <div className={`${boxClass(!!props['aria-invalid'])} ${className}`}>
-      {Icon && <Icon size={18} className="shrink-0 text-ink" aria-hidden />}
+    <div className={`${boxClass(!!props['aria-invalid'], props.disabled)} ${className}`}>
+      {Icon && (
+        <Icon
+          size={18}
+          className={`shrink-0 ${props.disabled ? 'text-ink-secondary' : 'text-ink'}`}
+          aria-hidden
+        />
+      )}
       <input
-        className="min-w-0 flex-1 bg-transparent py-3 text-[15px] outline-none placeholder:text-ink-secondary"
+        className="min-w-0 flex-1 bg-transparent py-3 text-[15px] outline-none placeholder:text-ink-secondary disabled:cursor-not-allowed"
         {...props}
       />
       {unit && (
@@ -183,7 +190,7 @@ export function Select({
         />
       )}
       <select
-        className={`ui-select w-full cursor-pointer appearance-none border border-border bg-surface text-left focus:outline-2 focus:outline-primary ${
+        className={`ui-select w-full cursor-pointer appearance-none border border-border bg-surface text-left focus:outline-2 focus:outline-primary disabled:cursor-not-allowed disabled:bg-background disabled:text-ink-secondary ${
           small
             ? `rounded-[10px] py-2 pr-8 text-[13px] font-medium ${Icon ? 'pl-[34px]' : 'pl-3'}`
             : `rounded-[10px] py-3 pr-10 text-[15px] ${Icon ? 'pl-10' : 'pl-3.5'}`

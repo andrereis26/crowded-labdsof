@@ -26,7 +26,7 @@ public final class Event {
   private EventProfile profile;
   private Admission admission;
   private EventState state;
-  private final District district;
+  private District district;
   private Capacity capacity;
   private QueuePoints queuePoints;
   private ConfirmationSettings confirmations;
@@ -137,6 +137,21 @@ public final class Event {
   /** Sets how many people the venue holds. */
   public void changeCapacity(Capacity newCapacity) {
     capacity = Objects.requireNonNull(newCapacity, "capacity");
+  }
+
+  /** Corrects the district, which selects the weather warnings; participants are not notified. */
+  public void correctDistrict(District newDistrict) {
+    district = Objects.requireNonNull(newDistrict, "district");
+  }
+
+  /**
+   * Turns a ticketed event into a public one or back, keeping its code, which from now on is read
+   * as the other type's. Participants already connected keep their connection.
+   *
+   * @throws RuleViolationException when the type is missing
+   */
+  public void changeType(EventType newType) {
+    admission = new Admission(newType, admission.code());
   }
 
   /**

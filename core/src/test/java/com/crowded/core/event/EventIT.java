@@ -165,6 +165,23 @@ class EventIT extends IntegrationTest {
     assertThat(wrongField.statusCode()).isEqualTo(400);
     assertThat(json.readTree(wrongField.body()).get("code").asString())
         .isEqualTo("CODE_TYPE_MISMATCH");
+
+    HttpResponse<String> retyped =
+        send(
+            member,
+            "PATCH",
+            "/events/" + event,
+            "{\"type\": \"TICKETED\", \"ticketEventCode\": \"second-"
+                + suffix
+                + "\", \"district\": \"Braga\"}");
+    assertThat(retyped.statusCode()).isEqualTo(200);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT type || '/' || ticket_event_code || '/' || coalesce(access_code, '-')"
+                    + " || '/' || district FROM event WHERE id = ?",
+                String.class,
+                event))
+        .isEqualTo("TICKETED/SECOND-" + suffix + "/-/Braga");
   }
 
   @Test

@@ -18,7 +18,9 @@ import com.crowded.core.event.application.dto.CorrectEventCommand;
 import com.crowded.core.event.application.dto.ManagedEvent;
 import com.crowded.core.event.application.dto.RegisterEventCommand;
 import com.crowded.core.event.application.dto.VenueInput;
+import com.crowded.core.event.domain.model.Admission;
 import com.crowded.core.event.domain.model.ConfirmationRules;
+import com.crowded.core.event.domain.model.District;
 import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventCode;
 import com.crowded.core.event.domain.model.EventState;
@@ -175,7 +177,9 @@ class EventManagementServiceTest {
                 "inverno-26",
                 null,
                 List.of("Porta B"),
-                new ConfirmationsInput(Set.of(), 200, 5, 5)));
+                new ConfirmationsInput(Set.of(), 200, 5, 5),
+                null,
+                null));
 
     assertThat(corrected.connectedUsers()).isEqualTo(42);
     assertThat(event.getProfile().name()).isEqualTo("Concerto de Inverno");
@@ -199,12 +203,45 @@ class EventManagementServiceTest {
   }
 
   @Test
+  void turnsATicketedEventPublicAndMovesItToAnotherDistrict() {
+    Event event = givenEvent();
+
+    service.correct(
+        new CorrectEventCommand(
+            MEMBER,
+            event.getId(),
+            null,
+            null,
+            null,
+            null,
+            "INVERNO-26",
+            null,
+            null,
+            EventType.PUBLIC,
+            "Braga"));
+
+    assertThat(event.getAdmission())
+        .isEqualTo(new Admission(EventType.PUBLIC, new EventCode("INVERNO-26")));
+    assertThat(event.getDistrict()).isEqualTo(new District("Braga"));
+    verify(events)
+        .isCodeUsedByAnotherUpcomingEvent(new EventCode("INVERNO-26"), event.getId(), NOW);
+    verify(audit)
+        .record(
+            MEMBER,
+            event.getId(),
+            "EVENT_UPDATED",
+            "Event",
+            event.getId(),
+            Map.of("fields", "type,code,district"));
+  }
+
+  @Test
   void leavesTheCodeUncheckedWhenItIsNotCorrected() {
     Event event = givenEvent();
 
     service.correct(
         new CorrectEventCommand(
-            MEMBER, event.getId(), null, "Novo texto.", null, null, null, null, null));
+            MEMBER, event.getId(), null, "Novo texto.", null, null, null, null, null, null, null));
 
     assertThat(event.getProfile().description()).isEqualTo("Novo texto.");
     verify(events, never()).lockCodes();
@@ -219,7 +256,17 @@ class EventManagementServiceTest {
             () ->
                 service.correct(
                     new CorrectEventCommand(
-                        MEMBER, event.getId(), null, null, null, null, "PUB-26", null, null)))
+                        MEMBER,
+                        event.getId(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        "PUB-26",
+                        null,
+                        null,
+                        null,
+                        null)))
         .hasFieldOrPropertyWithValue("code", "CODE_TYPE_MISMATCH");
     verify(events, never()).lockCodes();
     verify(events, never()).save(any());
@@ -234,14 +281,34 @@ class EventManagementServiceTest {
             () ->
                 service.correct(
                     new CorrectEventCommand(
-                        MEMBER, other.getId(), "Meu", null, null, null, null, null, null)))
+                        MEMBER,
+                        other.getId(),
+                        "Meu",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null)))
         .isInstanceOf(NotAllowedException.class)
         .hasFieldOrPropertyWithValue("code", "NOT_EVENT_ORGANIZATION");
     assertThatThrownBy(
             () ->
                 service.correct(
                     new CorrectEventCommand(
-                        MEMBER, UUID.randomUUID(), "Meu", null, null, null, null, null, null)))
+                        MEMBER,
+                        UUID.randomUUID(),
+                        "Meu",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null)))
         .isInstanceOf(NotFoundException.class);
     verify(events, never()).save(any());
     verifyNoInteractions(updates);

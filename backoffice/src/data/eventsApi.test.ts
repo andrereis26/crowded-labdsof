@@ -175,6 +175,15 @@ describe('events in Core', () => {
     })
   })
 
+  it('sends a new type with the code in its field, and a new district', () => {
+    const before = margens()
+    expect(toCorrectionBody(before, { ...before, kind: 'public', district: 'Braga' })).toEqual({
+      type: 'PUBLIC',
+      accessCode: before.code,
+      district: 'Braga',
+    })
+  })
+
   it('turns each official change into its request', () => {
     const e = margens()
     expect(
