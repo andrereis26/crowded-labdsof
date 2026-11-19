@@ -297,6 +297,16 @@ describe('O2–O4 with Core', () => {
     })
   })
 
+  it('starts the form over when another event is picked in the top bar', async () => {
+    const user = userEvent.setup()
+    await renderAt('/organization/events/margens-inverno/edit')
+
+    await user.click(screen.getByRole('button', { name: /Mudar de evento/ }))
+    await user.click(screen.getByRole('button', { name: /Jazz no Parque/ }))
+
+    expect(screen.getByLabelText('Nome do evento')).toHaveValue('Jazz no Parque')
+  })
+
   it('adds, replaces and removes the image of an event', async () => {
     // The browser's picker hides other types; a file dropped or pasted may still be one.
     const user = userEvent.setup({ applyAccept: false })

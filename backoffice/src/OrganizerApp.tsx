@@ -260,7 +260,10 @@ export function OrganizerApp({
         <Route
           path="events/:id/edit"
           element={
+            // Switching events in the top bar keeps this route: a new key starts
+            // the form over, so it never shows or saves the previous event.
             <EventFormPage
+              key={routeEventId}
               events={events}
               geocode={geocode}
               onCreate={create}
