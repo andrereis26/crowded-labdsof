@@ -1,6 +1,6 @@
 # ADR 0005: Authentication in Core with JWTs
 
-- Status: accepted
+- Status: accepted; token lifetime, refresh tokens and cookies for browsers in [ADR 0021](0021-browser-sessions-in-cookies-with-refresh-tokens.md)
 - Date: 2026-10-11
 - Deciders: Crowded team
 
