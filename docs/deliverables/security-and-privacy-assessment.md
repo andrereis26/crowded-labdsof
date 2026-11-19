@@ -77,6 +77,7 @@ The following measures limit personal data and credentials used in ticket and lo
 | Measure | Related requirements and decisions |
 |---|---|
 | Ticket processing | Extract ticket text locally. Remove personal data and access codes before sending content to an external AI provider. Do not store entry codes in plain text ([Responsible AI Opportunity Assessment](./responsible-ai-opportunity-assessment.md), SR-004, SR-018). |
+| Ticket file handling | Treat the file as untrusted: Core decides it is a PDF by reading it, never by its name or declared type, and refuses a larger file than 10 MB (at the router and in Core). It reads at most 10 pages, at a resolution bounded by the page size, so a small file cannot declare a page that does not fit in memory. The file stays in memory and is never written to disk or served back. Imports are limited per participant (SR-005, SR-011, ADR 0004). |
 | Ticket extraction data | Store structured extracted fields without personal data or entry codes (SR-004, SR-018). A ticket whose event does not use Crowded is not stored at all (FR-083). |
 | Location | Request consent and use approximate location. For report and confirmation checks, check it only at the time of the action, store the check result rather than the location, and do not track continuously (SR-009, SR-017). |
 
