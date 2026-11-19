@@ -325,12 +325,15 @@ CoreChange? coreChangeFromJson(Map<String, dynamic> json) {
     previousValue: previous is Map<String, dynamic> ? previous : const {},
     newValue: next is Map<String, dynamic> ? next : const {},
     publisher:
-        (provenance as Map<String, dynamic>)['sourceName'] as String? ??
+        stringFromJson((provenance as Map<String, dynamic>)['sourceName']) ??
         'Organização',
     publishedAt: publishedAt,
-    ticketStillValid: json['ticketStillValid'] as bool?,
-    refundInfo: json['refundInfo'] as String?,
-    message: json['message'] as String?,
+    ticketStillValid: switch (json['ticketStillValid']) {
+      final bool valid => valid,
+      _ => null,
+    },
+    refundInfo: stringFromJson(json['refundInfo']),
+    message: stringFromJson(json['message']),
     severity: severityFromCore(json['severity']),
   );
 }
@@ -353,6 +356,9 @@ EventStatus eventStatusFromCore(Object? status) => switch (status) {
 
 DateTime? _instant(Object? value) =>
     value is String ? DateTime.tryParse(value)?.toLocal() : null;
+
+/// A text as Core sends it, or null when it is missing or not a text.
+String? stringFromJson(Object? value) => value is String ? value : null;
 
 /// A time as Core sends it, or null when it is missing or not a time.
 DateTime? instantFromJson(Object? value) => _instant(value);

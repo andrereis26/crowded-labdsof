@@ -175,7 +175,7 @@ ConnectedEvent? _connectedEventFromJson(Map<String, dynamic> json) {
   final event = Event(
     id: id,
     name: name,
-    venue: shown['venueName'] as String? ?? '',
+    venue: stringFromJson(shown['venueName']) ?? '',
     city: '',
     start: start,
     doorsOpen: instantFromJson(shown['doorsOpenAt']),
@@ -197,10 +197,12 @@ ConnectedEvent? _connectedEventFromJson(Map<String, dynamic> json) {
         ? Ticket(
             id: connectionId,
             event: event,
-            gate: ticket['gate'] as String?,
-            sector: ticket['sector'] as String?,
-            seat: ticket['seat'] as String?,
-            hasEntryCode: ticket['hasEntryCode'] as bool? ?? false,
+            gate: stringFromJson(ticket['gate']),
+            sector: stringFromJson(ticket['sector']),
+            seat: stringFromJson(ticket['seat']),
+            // The code itself is not read from Core yet, so the entry code
+            // screen has nothing to show.
+            hasEntryCode: false,
           )
         : null,
   );

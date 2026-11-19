@@ -178,7 +178,8 @@ void main() {
       expect(ticketed.ticket?.gate, 'A');
       expect(ticketed.ticket?.sector, '2');
       expect(ticketed.ticket?.seat, '14');
-      expect(ticketed.ticket?.hasEntryCode, isTrue);
+      // Its code is not read from Core yet, so there is none to show.
+      expect(ticketed.ticket?.hasEntryCode, isFalse);
       final byCode = result.events[1];
       expect(byCode.ticket, isNull);
       expect(byCode.event.joinedWithAccessCode, isTrue);
@@ -196,6 +197,30 @@ void main() {
       ).myConnections();
 
       expect(result.events, isEmpty);
+    });
+
+    test('reads a value of the wrong type as missing', () async {
+      final result = await api(
+        (_) async => http.Response(
+          '{"connections":[{"connectionId":"t-1","type":"TICKET",'
+          '"event":{"id":"e-1","name":"Arraial","status":"SCHEDULED",'
+          '"startDateTime":"2026-12-01T20:00:00Z","venueName":7,'
+          '"latestChange":{"id":"ch-1","type":"CANCELLATION",'
+          '"severity":"CRITICAL","ticketStillValid":"no","message":3,'
+          '"provenance":{"sourceName":1,'
+          '"lastUpdatedAt":"2026-11-20T10:00:00Z"}}},'
+          '"ticket":{"gate":2,"seat":true,"hasEntryCode":"yes"}}],'
+          '"syncedAt":"2026-11-18T10:00:00Z"}',
+          200,
+        ),
+      ).myConnections();
+
+      final connected = result.events.single;
+      expect(connected.event.venue, '');
+      expect(connected.event.changes.single.kind, ChangeKind.cancelled);
+      expect(connected.event.changes.single.publisher, 'Organização');
+      expect(connected.ticket?.gate, isNull);
+      expect(connected.ticket?.seat, isNull);
     });
 
     test('leaves out a connection it cannot read', () async {
