@@ -148,6 +148,7 @@ Security is specified separately in section 3. Scaling beyond one node is out of
 | SR-021 | The system shall decide on the server which event a ticket or an access code connects to, from the extracted or typed code, and shall never accept an event identifier from the client for that purpose. | 10 |
 | SR-001 | The system shall restrict organization actions (events and their changes, on-site information, alerts, surveys, incidents) to active members of the organization that owns the event. | 10 |
 | SR-002 | The system shall only allow members of organizations created by a platform administrator to publish event information, changes and alerts. | 10 |
+| SR-026 | The system shall keep session tokens out of reach of page scripts in the browser, shall refuse cookie-authenticated requests that come from another site, shall end a session after a period without use and at a maximum age, and shall end it at once when the user signs out. | 9 |
 | SR-022 | Temporary passwords set by a platform administrator shall only allow setting a new password, and shall expire after 7 days. | 8 |
 | SR-003 | The system shall scope participant data (tickets, connections, incidents, preferences, location) to the participant or the authorized role permitted to access it. | 8 |
 | SR-004 | The system shall remove personal data (e.g., name, email, tax number) and access codes from ticket content before sending it to an external AI provider. | 8 |

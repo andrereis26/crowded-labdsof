@@ -1,6 +1,6 @@
 # ADR 0004: Use Redis for token revocation, rate limiting and caching
 
-- Status: accepted
+- Status: accepted; refresh tokens and the deny-list of signed-out tokens added in [ADR 0021](0021-browser-sessions-in-cookies-with-refresh-tokens.md)
 - Date: 2026-10-11
 - Deciders: Crowded team
 

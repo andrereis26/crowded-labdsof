@@ -20,7 +20,7 @@ The system is split into two client apps, a router, three backend services and t
 | **Notifications** | Fan-out to connected users, preferences, deduplication, notification center and live banners (SSE); push to the mobile app later. | Notifications, device tokens |
 | **Message Broker** | Asynchronous messages between Core, Jobs and Notifications, with retries and a dead-letter queue. | – |
 | **Database** | One PostgreSQL database. Each table has one owning (writing) service; other services may only read it. | – |
-| **Cache** | Token revocation list, rate-limit counters and read cache. | – |
+| **Cache** | Refresh tokens, token revocation lists, rate-limit counters and read cache. | – |
 
 Synchronous traffic goes through the Router to Core and Notifications. Everything else between services goes through the Message Broker: for example, Core records a change published by the organization and publishes `NotificationRequested`, and Notifications delivers it; Jobs publishes the IPMA data it fetched, and Core applies it ([Asynchronous Flows](asynchronous-flows.md)).
 
