@@ -226,15 +226,21 @@ class _EntryCodeContent extends StatelessWidget {
   final DateTime now;
   final bool desktop;
 
-  String get _origin {
-    final label = ticket.origin.label;
-    return label[0].toLowerCase() + label.substring(1);
+  /// How and when the ticket was imported ("importado de PDF em 12 nov"), or
+  /// null when Core's list does not say.
+  String? get _imported {
+    final origin = ticket.origin;
+    final at = ticket.importedAt;
+    if (origin == null || at == null) return null;
+    final label = origin.label;
+    return '${label[0].toLowerCase()}${label.substring(1)} em '
+        '${formatDayMonth(at)}';
   }
 
   @override
   Widget build(BuildContext context) {
     final event = ticket.event;
-    final imported = formatDayMonth(ticket.importedAt);
+    final imported = _imported;
     final fields = [
       if (ticket.gate != null) ('PORTA', ticket.gate!),
       if (ticket.seat != null) ('LUGAR', ticket.seat!),
@@ -318,7 +324,10 @@ class _EntryCodeContent extends StatelessWidget {
                 ),
               ],
             ),
-          _OriginNote('QR do bilhete · $_origin em $imported', strong: true),
+          _OriginNote(
+            imported == null ? 'QR do bilhete' : 'QR do bilhete · $imported',
+            strong: true,
+          ),
         ] else ...[
           Container(
             padding: const EdgeInsets.symmetric(
@@ -351,7 +360,11 @@ class _EntryCodeContent extends StatelessWidget {
               ],
             ),
           ),
-          _OriginNote('Bilhete $_origin em $imported · sem código'),
+          _OriginNote(
+            imported == null
+                ? 'Bilhete sem código'
+                : 'Bilhete $imported · sem código',
+          ),
         ],
       ],
     );

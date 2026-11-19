@@ -91,6 +91,7 @@ class CoreChange {
     this.ticketStillValid,
     this.refundInfo,
     this.message,
+    this.severity = Severity.information,
   });
 
   final String id;
@@ -104,6 +105,9 @@ class CoreChange {
   final bool? ticketStillValid;
   final String? refundInfo;
   final String? message;
+
+  /// How much the change matters.
+  final Severity severity;
 }
 
 /// [EventsApi] over HTTP, with the token in the `Authorization` header.
@@ -327,8 +331,16 @@ CoreChange? coreChangeFromJson(Map<String, dynamic> json) {
     ticketStillValid: json['ticketStillValid'] as bool?,
     refundInfo: json['refundInfo'] as String?,
     message: json['message'] as String?,
+    severity: severityFromCore(json['severity']),
   );
 }
+
+/// Core's classification of a change or an alert.
+Severity severityFromCore(Object? severity) => switch (severity) {
+  'CRITICAL' => Severity.critical,
+  'WARNING' => Severity.warning,
+  _ => Severity.information,
+};
 
 /// The app has no status of its own for an event in progress or over: it
 /// reads the schedule for that.
@@ -342,6 +354,9 @@ EventStatus eventStatusFromCore(Object? status) => switch (status) {
 DateTime? _instant(Object? value) =>
     value is String ? DateTime.tryParse(value)?.toLocal() : null;
 
+/// A time as Core sends it, or null when it is missing or not a time.
+DateTime? instantFromJson(Object? value) => _instant(value);
+
 /// Pictures for events from Core until the catalog has photos: the same
 /// event always gets the same one.
 const _arts = [
@@ -350,6 +365,10 @@ const _arts = [
   EventArt(Color(0xFF2E8C6B), Color(0xFF0F2620)),
   EventArt(Color(0xFF6B2E8C), Color(0xFF1C0F26)),
 ];
+
+/// The picture of an event from Core.
+EventArt eventArtFor(String id) =>
+    _arts[id.codeUnits.fold(0, (a, b) => a + b) % _arts.length];
 
 /// The event as the app shows it, from its page and its history (newest
 /// first). Changes of a type this version does not know are left out.
@@ -364,7 +383,7 @@ Event eventFromCore(EventPage page, List<CoreChange> history) {
     start: page.start,
     doorsOpen: page.doorsOpen,
     end: page.end,
-    art: _arts[page.id.codeUnits.fold(0, (a, b) => a + b) % _arts.length],
+    art: eventArtFor(page.id),
     status: page.status,
     organizer: page.organization,
     joinedWithAccessCode: page.isPublic,
@@ -432,5 +451,6 @@ EventChange? changeFromCore(CoreChange change) {
     newStart: newStart,
     ticketStillValid: change.ticketStillValid ?? true,
     refund: refund == null || refund.isEmpty ? null : Refund(where: refund),
+    severity: change.severity,
   );
 }

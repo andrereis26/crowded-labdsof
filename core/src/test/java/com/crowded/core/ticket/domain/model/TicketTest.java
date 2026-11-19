@@ -36,6 +36,11 @@ class TicketTest {
   }
 
   @Test
+  void aTicketKeepsTheEntryCodeThatGetsItsOwnerIn() {
+    assertThat(ticket(null, "enc").hasEntryCode()).isTrue();
+  }
+
+  @Test
   void missingDetailsAreNone() {
     assertThat(ticket(null, "enc").getDetails()).isEqualTo(TicketDetails.NONE);
   }

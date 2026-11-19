@@ -33,20 +33,50 @@ import '../../utils/pt_format.dart';
   ),
 };
 
-/// Wallet card for a ticket, with the date and status wording of the
-/// mockups ("HOJE", "ADIADO · 8 NOV", "Adiado · era 25 OUT").
+/// The latest change and the active alerts of an event as card notes, each
+/// with the severity in words and an icon ("Importante · Evento cancelado").
+List<WalletCardNote> eventNotes(Event event) {
+  final change = event.changes.firstOrNull;
+  final alerts = event.alerts;
+  final alertSeverity = alerts.isEmpty
+      ? null
+      : alerts
+            .map((a) => a.severity)
+            .reduce((a, b) => a.index <= b.index ? a : b);
+  return [
+    if (change != null)
+      WalletCardNote(
+        icon: change.severity.icon,
+        text: '${change.severity.label} · ${change.title}',
+      ),
+    if (alertSeverity != null)
+      WalletCardNote(
+        icon: alertSeverity.icon,
+        text:
+            '${alertSeverity.label} · '
+            '${alerts.length == 1 ? '1 alerta ativo' : '${alerts.length} alertas ativos'}',
+      ),
+  ];
+}
+
+/// Wallet card for one of the participant's events, with the date and status
+/// wording of the mockups ("HOJE", "ADIADO · 8 NOV", "Adiado · era 25 OUT"),
+/// the doors opening time, the latest change and the active alerts. A
+/// [ticket] adds its gate and seat.
 ///
 /// Wrapped in a [Hero] so it expands into the event page (P1 → P5).
-class TicketCard extends StatelessWidget {
-  const TicketCard({
+class ConnectionCard extends StatelessWidget {
+  const ConnectionCard({
     super.key,
-    required this.ticket,
+    required this.event,
     required this.now,
+    this.ticket,
     this.onTap,
     this.savedAt,
   });
 
-  final Ticket ticket;
+  final Event event;
+  final Ticket? ticket;
   final DateTime now;
   final VoidCallback? onTap;
 
@@ -57,11 +87,10 @@ class TicketCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final event = ticket.event;
     final (dateLabel, statusLabel, tone) = eventCardStatus(
       event,
       now,
-      scheduledLabel: 'Bilhete',
+      scheduledLabel: ticket == null ? 'Público' : 'Bilhete',
     );
 
     final updatedAt = event.updatedAt;
@@ -78,8 +107,10 @@ class TicketCard extends StatelessWidget {
         dateLabel: dateLabel,
         venue: event.place,
         time: formatTime(event.start),
-        gate: ticket.gate,
-        seat: ticket.seat,
+        doors: event.doorsOpen == null ? null : formatTime(event.doorsOpen!),
+        gate: ticket?.gate,
+        seat: ticket?.seat,
+        notes: eventNotes(event),
         statusLabel: statusLabel,
         statusTone: tone,
         source: source,
@@ -88,4 +119,33 @@ class TicketCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Wallet card for a ticket: a [ConnectionCard] with its ticket.
+class TicketCard extends StatelessWidget {
+  const TicketCard({
+    super.key,
+    required this.ticket,
+    required this.now,
+    this.onTap,
+    this.savedAt,
+  });
+
+  final Ticket ticket;
+  final DateTime now;
+  final VoidCallback? onTap;
+
+  /// When offline: the time the data was saved, shown instead of "há …".
+  final DateTime? savedAt;
+
+  static Object heroTag(String eventId) => ConnectionCard.heroTag(eventId);
+
+  @override
+  Widget build(BuildContext context) => ConnectionCard(
+    event: ticket.event,
+    ticket: ticket,
+    now: now,
+    onTap: onTap,
+    savedAt: savedAt,
+  );
 }

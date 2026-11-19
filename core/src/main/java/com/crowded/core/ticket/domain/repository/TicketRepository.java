@@ -4,6 +4,7 @@ import com.crowded.core.ticket.domain.model.EntryCodeHash;
 import com.crowded.core.ticket.domain.model.Ticket;
 import com.crowded.core.ticket.domain.model.TicketExtraction;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,6 +21,9 @@ public interface TicketRepository {
 
   /** The ticket with {@code hash}, whoever owns it; empty when there is none. */
   Optional<Ticket> findByEntryCodeHash(EntryCodeHash hash);
+
+  /** Every ticket of {@code ownerId}; empty when they have none. */
+  List<Ticket> findByOwner(UUID ownerId);
 
   /** The ticket that shares its id with a connection; empty when the connection has none. */
   Optional<Ticket> findById(UUID id);

@@ -2,15 +2,18 @@ package com.crowded.core.connection.api.controller;
 
 import com.crowded.core.connection.api.dto.ConnectionResponse;
 import com.crowded.core.connection.api.dto.JoinWithAccessCodeRequest;
+import com.crowded.core.connection.api.dto.MyConnectionsResponse;
 import com.crowded.core.connection.api.mapper.ConnectionApiMapper;
 import com.crowded.core.connection.application.dto.JoinedEvent;
 import com.crowded.core.connection.application.service.AccessCodeConnectionService;
+import com.crowded.core.connection.application.service.MyConnectionService;
 import com.crowded.core.shared.api.controller.CurrentUser;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,10 +23,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class ConnectionController {
 
   private final AccessCodeConnectionService accessCodes;
+  private final MyConnectionService myConnections;
   private final ConnectionApiMapper mapper;
 
-  public ConnectionController(AccessCodeConnectionService accessCodes, ConnectionApiMapper mapper) {
+  public ConnectionController(
+      AccessCodeConnectionService accessCodes,
+      MyConnectionService myConnections,
+      ConnectionApiMapper mapper) {
     this.accessCodes = accessCodes;
+    this.myConnections = myConnections;
     this.mapper = mapper;
   }
 
@@ -39,5 +47,14 @@ public class ConnectionController {
             mapper.toCommand(CurrentUser.id(token), request.accessCode()));
     return ResponseEntity.status(joined.created() ? HttpStatus.CREATED : HttpStatus.OK)
         .body(mapper.toResponse(joined));
+  }
+
+  /**
+   * The signed-in participant's events, those that have not ended first. The participant comes from
+   * the token, never from the request.
+   */
+  @GetMapping("/me/connections")
+  public MyConnectionsResponse myConnections(@AuthenticationPrincipal Jwt token) {
+    return mapper.toResponse(myConnections.listOf(CurrentUser.id(token)));
   }
 }

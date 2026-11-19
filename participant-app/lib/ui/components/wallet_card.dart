@@ -20,6 +20,15 @@ enum WalletCardStatusTone {
   final Color foreground;
 }
 
+/// A line on a wallet card about a change or an alert: an icon and words, so
+/// it never relies on colour.
+class WalletCardNote {
+  const WalletCardNote({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+}
+
 /// Ticket card in the wallet (P1), styled like an iPhone wallet pass.
 ///
 /// The event photo fills the card under a shade that keeps the white text
@@ -35,8 +44,10 @@ class WalletCard extends StatelessWidget {
     required this.source,
     this.statusTone = WalletCardStatusTone.confirmed,
     this.time,
+    this.doors,
     this.gate,
     this.seat,
+    this.notes = const [],
     this.image,
     this.gradient,
     this.onTap,
@@ -48,8 +59,14 @@ class WalletCard extends StatelessWidget {
   final String dateLabel;
   final String venue;
   final String? time;
+
+  /// When the doors open.
+  final String? doors;
   final String? gate;
   final String? seat;
+
+  /// The latest change and the active alerts, when there are any.
+  final List<WalletCardNote> notes;
   final String statusLabel;
   final WalletCardStatusTone statusTone;
 
@@ -69,6 +86,7 @@ class WalletCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final fields = [
       if (time != null) ('HORA', time!),
+      if (doors != null) ('ABERTURA', doors!),
       if (gate != null) ('PORTA', gate!),
       if (seat != null) ('LUGAR', seat!),
     ];
@@ -81,6 +99,7 @@ class WalletCard extends StatelessWidget {
         venue,
         for (final (label, value) in fields) '$label $value',
         statusLabel,
+        for (final note in notes) note.text,
       ].join(', '),
       excludeSemantics: true,
       child: Container(
@@ -165,6 +184,30 @@ class WalletCard extends StatelessWidget {
             color: Colors.white.withValues(alpha: 0.85),
           ),
         ),
+        if (notes.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          for (final note in notes)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                spacing: 6,
+                children: [
+                  Icon(note.icon, size: 14, color: Colors.white),
+                  Expanded(
+                    child: Text(
+                      note.text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: white.copyWith(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
         const Spacer(),
         Row(
           spacing: 28,

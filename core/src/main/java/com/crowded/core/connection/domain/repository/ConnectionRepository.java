@@ -2,6 +2,7 @@ package com.crowded.core.connection.domain.repository;
 
 import com.crowded.core.connection.domain.model.EventConnection;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,6 +27,9 @@ public interface ConnectionRepository {
 
   /** {@code userId}'s earliest connection to {@code eventId}; empty when there is none. */
   Optional<EventConnection> findByUserAndEvent(UUID userId, UUID eventId);
+
+  /** Every connection of {@code userId}, whatever its kind; empty when there is none. */
+  List<EventConnection> findByUser(UUID userId);
 
   /** The connection with {@code id}; empty when there is none. */
   Optional<EventConnection> findById(UUID id);

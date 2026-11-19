@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:crowded/data/connections_api.dart';
+import 'package:crowded/data/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -118,6 +119,127 @@ void main() {
     expect(
       const ConnectionsApiException('NETWORK').toString(),
       'ConnectionsApiException(NETWORK)',
+    );
+  });
+
+  group('my connections', () {
+    const list =
+        '{"connections":['
+        '{"connectionId":"t-1","type":"TICKET","event":{"id":"$event",'
+        '"name":"Festival Margens","status":"CANCELLED",'
+        '"startDateTime":"2026-11-27T22:00:00Z",'
+        '"doorsOpenAt":"2026-11-27T20:00:00Z","venueName":"Cais",'
+        '"latestChange":{"id":"ch-1","type":"CANCELLATION",'
+        '"severity":"CRITICAL","previousValue":{},"newValue":{},'
+        '"ticketStillValid":false,"refundInfo":null,'
+        '"message":"Cancelado.","provenance":{"sourceType":"ORGANIZATION",'
+        '"sourceName":"Margens","lastUpdatedAt":"2026-11-20T10:00:00Z",'
+        '"confirmed":true}},'
+        '"activeAlerts":[{"id":"a-1","type":"ENTRANCE_CLOSURE",'
+        '"severity":"WARNING","message":"Entrada Sul fechada.",'
+        '"sentAt":"2026-11-27T21:00:00Z"}]},'
+        '"ticket":{"gate":"A","sector":"2","seat":"14","hasEntryCode":true}},'
+        '{"connectionId":"c-2","type":"ACCESS_CODE","event":{"id":"e-2",'
+        '"name":"Arraial","status":"SCHEDULED",'
+        '"startDateTime":"2026-12-01T20:00:00Z","doorsOpenAt":null,'
+        '"venueName":"Fontainhas","latestChange":null,"activeAlerts":[]},'
+        '"ticket":null}],"syncedAt":"2026-11-18T10:00:00Z"}';
+
+    test('asks for the events of the signed-in participant', () async {
+      late http.Request sent;
+      await api((request) async {
+        sent = request;
+        return http.Response(list, 200);
+      }).myConnections();
+
+      expect(sent.method, 'GET');
+      expect(sent.url.toString(), 'https://crowded.test/api/me/connections');
+      expect(sent.headers['Authorization'], 'Bearer token-123');
+    });
+
+    test('reads each event, its change, alerts and ticket, in order', () async {
+      final result = await api((_) async => http.Response(list, 200))
+          .myConnections();
+
+      expect(result.syncedAt.toUtc(), DateTime.utc(2026, 11, 18, 10));
+      expect(result.events.map((e) => e.event.name), [
+        'Festival Margens',
+        'Arraial',
+      ]);
+      final ticketed = result.events[0];
+      expect(ticketed.event.status, EventStatus.cancelled);
+      expect(ticketed.event.doorsOpen?.toUtc(), DateTime.utc(2026, 11, 27, 20));
+      expect(ticketed.event.joinedWithAccessCode, isFalse);
+      expect(ticketed.event.changes.single.kind, ChangeKind.cancelled);
+      expect(ticketed.event.changes.single.severity, Severity.critical);
+      expect(ticketed.event.alerts.single.severity, Severity.warning);
+      expect(ticketed.event.alerts.single.message, 'Entrada Sul fechada.');
+      expect(ticketed.ticket?.id, 't-1');
+      expect(ticketed.ticket?.gate, 'A');
+      expect(ticketed.ticket?.sector, '2');
+      expect(ticketed.ticket?.seat, '14');
+      expect(ticketed.ticket?.hasEntryCode, isTrue);
+      final byCode = result.events[1];
+      expect(byCode.ticket, isNull);
+      expect(byCode.event.joinedWithAccessCode, isTrue);
+      expect(byCode.event.doorsOpen, isNull);
+      expect(byCode.event.changes, isEmpty);
+      expect(byCode.event.alerts, isEmpty);
+    });
+
+    test('an empty list is a participant without events', () async {
+      final result = await api(
+        (_) async => http.Response(
+          '{"connections":[],"syncedAt":"2026-11-18T10:00:00Z"}',
+          200,
+        ),
+      ).myConnections();
+
+      expect(result.events, isEmpty);
+    });
+
+    test('leaves out a connection it cannot read', () async {
+      final result = await api(
+        (_) async => http.Response(
+          '{"connections":[{"connectionId":"x"},'
+          '{"connectionId":"c-2","type":"ACCESS_CODE","event":{"id":"e-2",'
+          '"name":"Arraial","status":"SCHEDULED",'
+          '"startDateTime":"2026-12-01T20:00:00Z","venueName":"Fontainhas"}}],'
+          '"syncedAt":"2026-11-18T10:00:00Z"}',
+          200,
+        ),
+      ).myConnections();
+
+      expect(result.events.map((e) => e.event.id), ['e-2']);
+    });
+
+    test(
+      'reports an ended session, no network and unreadable answers',
+      () async {
+        await expectLater(
+          api((_) async => http.Response('', 401)).myConnections(),
+          refusedWith('UNAUTHORIZED'),
+        );
+        await expectLater(
+          api((_) async => throw http.ClientException('offline'))
+              .myConnections(),
+          refusedWith('NETWORK'),
+        );
+        await expectLater(
+          api((_) async => http.Response('<html>Bad</html>', 502))
+              .myConnections(),
+          refusedWith('HTTP_502'),
+        );
+        await expectLater(
+          api((_) async => http.Response('{"code":"BOOM"}', 500))
+              .myConnections(),
+          refusedWith('BOOM'),
+        );
+        await expectLater(
+          api((_) async => http.Response('{}', 200)).myConnections(),
+          refusedWith('HTTP_200'),
+        );
+      },
     );
   });
 }

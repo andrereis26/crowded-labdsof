@@ -73,6 +73,11 @@ public final class Ticket {
         id, ownerId, details, encryptedEntryCode, entryCodeHash, importMethod, matchMethod);
   }
 
+  /** Whether the ticket keeps the entry code that gets its owner in. */
+  public boolean hasEntryCode() {
+    return !encryptedEntryCode.isBlank();
+  }
+
   public boolean isOwnedBy(UUID userId) {
     return ownerId.equals(userId);
   }

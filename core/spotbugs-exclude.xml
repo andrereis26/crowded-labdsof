@@ -47,4 +47,21 @@
     <Class name="com.crowded.core.event.application.dto.ManagedEvent"/>
     <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
   </Match>
+  <!-- MyConnections, MyEvent and their responses hold lists they copy as immutable lists, and
+       hand them to the mapper in the same request; they are read there and never changed. -->
+  <Match>
+    <Or>
+      <Class name="com.crowded.core.connection.application.dto.MyConnections"/>
+      <Class name="com.crowded.core.connection.application.dto.MyEvent"/>
+      <Class name="com.crowded.core.connection.api.dto.MyConnectionsResponse"/>
+      <Class name="com.crowded.core.connection.api.dto.MyEventResponse"/>
+    </Or>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
+  <!-- ConnectedEvent hands the event, its change and its ticket, which the use case just read,
+       to the list it builds in the same request; they are read there and never changed. -->
+  <Match>
+    <Class name="com.crowded.core.connection.domain.model.ConnectedEvent"/>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
 </FindBugsFilter>

@@ -71,6 +71,11 @@ class EventRepositoryAdapter implements EventRepository {
   }
 
   @Override
+  public List<Event> findAllById(Collection<UUID> ids) {
+    return toDomain(events.findAllById(ids));
+  }
+
+  @Override
   public List<Event> findByOrganization(UUID organizationId) {
     return toDomain(events.findByOrganizationIdOrderByStartDateTimeDesc(organizationId));
   }

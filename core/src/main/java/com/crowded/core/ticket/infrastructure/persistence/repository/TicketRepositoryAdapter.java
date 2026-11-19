@@ -9,6 +9,7 @@ import com.crowded.core.ticket.domain.repository.TicketRepository;
 import com.crowded.core.ticket.infrastructure.persistence.entity.TicketEntity;
 import com.crowded.core.ticket.infrastructure.persistence.mapper.TicketPersistenceMapper;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -54,6 +55,13 @@ class TicketRepositoryAdapter implements TicketRepository {
   @Override
   public Optional<Ticket> findByEntryCodeHash(EntryCodeHash hash) {
     return tickets.findByEntryCodeHash(hash.value()).flatMap(this::withOwner);
+  }
+
+  @Override
+  public List<Ticket> findByOwner(UUID ownerId) {
+    return tickets.findByOwner(ownerId).stream()
+        .map(entity -> mapper.toDomain(entity, ownerId))
+        .toList();
   }
 
   @Override
