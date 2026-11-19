@@ -151,7 +151,10 @@ class EventControllerTest {
         .perform(
             asUser(
                 patch("/events/{eventId}", event.getId()),
-                "{\"name\": \"Novo\", \"accessCode\": \"SJ-2026\", \"capacity\": 100}"))
+                """
+                {"name": "Novo", "accessCode": "SJ-2026", "capacity": 100,
+                 "type": "TICKETED", "district": "Braga"}
+                """))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.connectedUsers").value(3));
 
@@ -161,7 +164,17 @@ class EventControllerTest {
     assertThat(command.getValue())
         .isEqualTo(
             new CorrectEventCommand(
-                USER, event.getId(), "Novo", null, 100, null, "SJ-2026", null, null));
+                USER,
+                event.getId(),
+                "Novo",
+                null,
+                100,
+                null,
+                "SJ-2026",
+                null,
+                null,
+                EventType.TICKETED,
+                "Braga"));
   }
 
   @Test

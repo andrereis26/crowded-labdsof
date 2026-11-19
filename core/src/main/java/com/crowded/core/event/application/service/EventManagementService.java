@@ -173,10 +173,18 @@ public class EventManagementService {
       event.changeCapacity(new Capacity(command.capacity()));
       corrected.add("capacity");
     }
+    if (command.type() != null) {
+      event.changeType(command.type());
+      corrected.add("type");
+    }
     if (command.ticketEventCode() != null || command.accessCode() != null) {
       event.replaceCode(command.ticketEventCode(), command.accessCode());
       codes.checkFree(event.getAdmission().code(), event.getId(), now);
       corrected.add("code");
+    }
+    if (command.district() != null) {
+      event.correctDistrict(new District(command.district()));
+      corrected.add("district");
     }
     if (command.queuePoints() != null) {
       event.defineQueuePoints(QueuePoints.named(command.queuePoints()));

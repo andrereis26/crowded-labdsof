@@ -82,6 +82,27 @@ class EventRegistrationTest {
   }
 
   @Test
+  void correctsTheDistrictAndTheTypeWithoutAnOfficialChange() {
+    Event event = register(SCHEDULE, VENUE, new Capacity(4500));
+    EventState before = event.getState();
+
+    event.correctDistrict(new District("Braga"));
+    event.changeType(EventType.PUBLIC);
+
+    assertThat(event.getDistrict()).isEqualTo(new District("Braga"));
+    assertThat(event.getAdmission().accessCode()).isEqualTo("MARGINV26");
+    assertThat(event.getAdmission().ticketEventCode()).isNull();
+    assertThat(event.getState()).isEqualTo(before);
+
+    event.changeType(EventType.TICKETED);
+    assertThat(event.getAdmission().ticketEventCode()).isEqualTo("MARGINV26");
+    assertThatThrownBy(() -> event.changeType(null))
+        .isInstanceOf(RuleViolationException.class)
+        .hasFieldOrPropertyWithValue("code", "TYPE_REQUIRED");
+    assertThatThrownBy(() -> event.correctDistrict(null)).isInstanceOf(NullPointerException.class);
+  }
+
+  @Test
   void takesANewCodeOnlyInTheFieldOfItsType() {
     Event event = register(SCHEDULE, VENUE, new Capacity(4500));
 

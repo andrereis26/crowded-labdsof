@@ -274,9 +274,9 @@ describe('O2–O4 with Core', () => {
     const user = userEvent.setup()
     const { events } = await renderAt('/organization/events/margens-inverno/edit')
 
-    expect(screen.getByLabelText('Data')).toBeDisabled()
-    expect(screen.getByLabelText('Morada')).toBeDisabled()
-    expect(screen.getByRole('radio', { name: /Público/ })).toBeDisabled()
+    for (const label of ['Data', 'Abertura de portas', 'Início', 'Fim', 'Local', 'Morada']) {
+      expect(screen.getByLabelText(label)).toBeDisabled()
+    }
     expect(screen.getByRole('link', { name: 'Alterar ou cancelar' })).toHaveAttribute(
       'href',
       '/organization/events/margens-inverno',
@@ -284,12 +284,16 @@ describe('O2–O4 with Core', () => {
     await user.clear(screen.getByLabelText('Capacidade'))
     await user.type(screen.getByLabelText('Capacidade'), '5000')
     await user.click(screen.getByRole('button', { name: 'Remover Porta B' }))
+    await user.click(screen.getByRole('radio', { name: /Público/ }))
+    await user.selectOptions(screen.getByLabelText('Distrito'), 'Braga')
     await user.click(screen.getByRole('button', { name: 'Guardar alterações' }))
 
     expect(await screen.findByRole('status')).toHaveTextContent('Alterações guardadas.')
     expect(events.events.find((e) => e.id === 'margens-inverno')).toMatchObject({
       capacity: 5000,
       entrances: ['Porta A', 'Bar principal'],
+      kind: 'public',
+      district: 'Braga',
     })
   })
 

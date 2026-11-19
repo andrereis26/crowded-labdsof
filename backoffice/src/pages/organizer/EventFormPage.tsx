@@ -273,7 +273,6 @@ export function EventFormPage({
                   name="event-kind"
                   value={k}
                   checked={event.kind === k}
-                  disabled={editing && event.kind !== k}
                   onChange={(v) => chooseKind(v as EventKind)}
                   card
                   className="min-w-0 flex-1 items-start"
@@ -351,7 +350,6 @@ export function EventFormPage({
                 <Select
                   {...p}
                   value={event.district}
-                  disabled={editing}
                   onChange={(e) => set('district', e.target.value)}
                   options={[{ value: '', label: 'Escolher distrito' }, ...districts]}
                 />
