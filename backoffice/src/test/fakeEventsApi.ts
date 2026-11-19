@@ -46,6 +46,10 @@ export function fakeEventsApi(events: OrgEvent[] = demoEvents()) {
       stored = stored.map((e) => (e.id === before.id ? corrected : e))
       return corrected
     },
+    async remove(eventId) {
+      check('remove')
+      stored = stored.filter((e) => e.id !== eventId)
+    },
     async publishChange(event, change) {
       check('publishChange')
       stored = stored.map((e) => (e.id === event.id ? applyChange(e, change) : e))

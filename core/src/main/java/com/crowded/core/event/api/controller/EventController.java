@@ -11,14 +11,17 @@ import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /** An organization's events in the backoffice (API Outline, journey 1). */
@@ -56,5 +59,12 @@ public class EventController {
       @Valid @RequestBody CorrectEventRequest request) {
     return mapper.toResponse(
         service.correct(mapper.toCommand(CurrentUser.id(token), eventId, request)));
+  }
+
+  /** Deletes an event nobody is connected to, such as one created by mistake: 204. */
+  @DeleteMapping("/events/{eventId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable UUID eventId, @AuthenticationPrincipal Jwt token) {
+    service.delete(CurrentUser.id(token), eventId);
   }
 }

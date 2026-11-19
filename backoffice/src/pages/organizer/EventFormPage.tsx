@@ -1,5 +1,5 @@
-import { AlertTriangle, Calendar, Clock, MapPin, Plus, X } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { AlertTriangle, Calendar, Clock, MapPin, Plus, Trash2, X } from 'lucide-react'
+import { useCallback, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { errorField, eventErrorMessage, EventsApiError } from '../../data/eventsApi'
 import { MAP_UNAVAILABLE, type Geocoder } from '../../data/geocoding'
@@ -20,7 +20,16 @@ import {
   type EventKind,
   type OrgEvent,
 } from '../../data/organizer'
-import { Breadcrumb, Button, Notice, PageHeader, Panel, Tag, TicketCard } from '../../ui/components'
+import {
+  Breadcrumb,
+  Button,
+  Dialog,
+  Notice,
+  PageHeader,
+  Panel,
+  Tag,
+  TicketCard,
+} from '../../ui/components'
 import { Field, RadioDot, RadioOption, Select, TextArea, TextInput } from '../../ui/forms'
 import { QrCode } from '../../ui/qr'
 import { downloadQrPng } from '../../ui/qrMatrix'
@@ -37,6 +46,7 @@ export function EventFormPage({
   onCreate,
   onCorrect,
   onImage,
+  onDelete,
 }: {
   events: OrgEvent[]
   geocode: Geocoder
@@ -44,6 +54,8 @@ export function EventFormPage({
   onCorrect: (before: OrgEvent, after: OrgEvent) => Promise<OrgEvent>
   /** Uploads (a file) or removes (null) the saved event's image. */
   onImage: (eventId: string, file: File | null) => Promise<void>
+  /** Deletes the saved event; only offered when editing. */
+  onDelete?: (eventId: string) => Promise<void>
 }) {
   const { id } = useParams()
   const existing = events.find((e) => e.id === id)
@@ -406,6 +418,7 @@ export function EventFormPage({
             <Link to={cancelTo} className="text-center text-sm font-semibold text-primary">
               Cancelar
             </Link>
+            {existing && onDelete && <DeleteEvent event={existing} onDelete={onDelete} />}
           </Panel>
 
           <EventImagePanel current={event.image} choice={imageChoice} onChange={setImageChoice} />
@@ -459,6 +472,87 @@ export function EventFormPage({
         </div>
       </div>
     </form>
+  )
+}
+
+/** Deletes an event created by mistake while nobody is connected to it; once
+ * someone is, cancelling it is the way out, as that notifies them. */
+function DeleteEvent({
+  event,
+  onDelete,
+}: {
+  event: OrgEvent
+  onDelete: (eventId: string) => Promise<void>
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState('')
+  const navigate = useNavigate()
+  const close = useCallback(() => {
+    if (!deleting) setConfirming(false)
+  }, [deleting])
+
+  if (event.connected > 0) {
+    return (
+      <p className="border-t border-border pt-3 text-xs leading-[1.35] text-ink-secondary">
+        Já há participantes ligados, por isso este evento já não pode ser eliminado. Para o retirar,{' '}
+        <Link to={`/organization/events/${event.id}`} className="font-semibold text-primary">
+          cancela-o
+        </Link>
+        , o que os notifica.
+      </p>
+    )
+  }
+
+  const confirm = async () => {
+    setDeleting(true)
+    setError('')
+    try {
+      await onDelete(event.id)
+      navigate('/organization/events', { state: { message: `${event.name} eliminado.` } })
+    } catch (e) {
+      setError(eventErrorMessage(e instanceof EventsApiError ? e.code : 'UNKNOWN'))
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col border-t border-border pt-3">
+      <Button variant="danger" icon={Trash2} onClick={() => setConfirming(true)}>
+        Eliminar evento
+      </Button>
+      {confirming && (
+        <Dialog title="Eliminar evento?" phoneTitle="Eliminar evento" onClose={close}>
+          <p className="text-[15px] leading-[1.4]">
+            <strong>{event.name}</strong> é eliminado com tudo o que lhe pertence. Não é possível
+            desfazer.
+          </p>
+          <p className="text-[13px] leading-[1.4] text-ink-secondary">
+            Ninguém está ligado a este evento, por isso ninguém é notificado.
+          </p>
+          {error && (
+            <div role="alert">
+              <Notice tone="warning" icon={AlertTriangle} title="Não foi possível eliminar">
+                {error}
+              </Notice>
+            </div>
+          )}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="secondary" onClick={close} disabled={deleting}>
+              Manter evento
+            </Button>
+            <Button
+              variant="danger"
+              icon={Trash2}
+              disabled={deleting}
+              onClick={() => void confirm()}
+            >
+              {deleting ? 'A eliminar…' : 'Eliminar evento'}
+            </Button>
+          </div>
+        </Dialog>
+      )}
+    </div>
   )
 }
 

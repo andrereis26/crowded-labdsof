@@ -17,8 +17,11 @@ export interface EventsApi {
   /** Registers and publishes `event`; returns it as Core stored it. */
   create(event: OrgEvent): Promise<OrgEvent>
   /** Sends what changed from `before` to `after` that is not an official
-   * change: name, description, capacity, code, queue points, confirmations. */
+   * change: name, description, type, district, capacity, code, queue points,
+   * confirmations. */
   correct(before: OrgEvent, after: OrgEvent): Promise<OrgEvent>
+  /** Deletes an event nobody is connected to, such as one created by mistake. */
+  remove(eventId: string): Promise<void>
   /** Publishes an official change, which Core notifies to the participants. */
   publishChange(event: OrgEvent, change: EventChange): Promise<void>
   /** Publishes the crowd level that connected participants see at once. */
@@ -379,6 +382,9 @@ export function httpEventsApi(
       if (Object.keys(body).length === 0) return before
       return fromJson(await call<EventJson>('PATCH', `/events/${before.id}`, body))
     },
+    async remove(eventId) {
+      await send('DELETE', `/events/${eventId}`)
+    },
     async publishChange(event, change) {
       await call('POST', `/events/${event.id}/changes`, toChangeBody(event, change))
     },
@@ -422,6 +428,8 @@ export function errorField(code: string): keyof OrgEvent | undefined {
 /** The member's message for a refusal from Core, in European Portuguese. */
 export function eventErrorMessage(code: string): string {
   switch (code) {
+    case 'EVENT_HAS_PARTICIPANTS':
+      return 'Já há participantes ligados a este evento. Cancela-o em vez de o eliminar, para os notificar.'
     case 'EVENT_CODE_TAKEN':
       return 'Este código já é usado por outro evento futuro. Escolhe outro código.'
     case 'CODE_INVALID':

@@ -1,5 +1,6 @@
 import { Calendar, ChartNoAxesColumn, ChevronRight, Megaphone, Plus, Users } from 'lucide-react'
-import { Link } from 'react-router'
+import { useState } from 'react'
+import { Link, useLocation } from 'react-router'
 import {
   ago,
   connected,
@@ -11,7 +12,14 @@ import {
   type OrgEvent,
   type SentAlert,
 } from '../../data/organizer'
-import { ButtonLink, EventThumb, PageHeader, StatCard, Tag } from '../../ui/components'
+import {
+  ButtonLink,
+  EventThumb,
+  PageHeader,
+  StatCard,
+  SuccessBanner,
+  Tag,
+} from '../../ui/components'
 
 const DAY = 24 * 3600000
 
@@ -25,6 +33,9 @@ export function EventsPage({
   alerts: SentAlert[]
   now: Date
 }) {
+  const location = useLocation()
+  // Set by the page that sent the member here, such as after deleting an event.
+  const [message] = useState<string>((location.state as { message?: string } | null)?.message ?? '')
   const liveEvents = events.filter((e) => e.status === 'live')
   const upcoming = events.filter((e) => e.status === 'published')
   const active = events.filter((e) => e.status !== 'ended' && e.status !== 'cancelled')
@@ -38,6 +49,7 @@ export function EventsPage({
 
   return (
     <div className="flex flex-col gap-4 lg:gap-[22px]">
+      <SuccessBanner>{message}</SuccessBanner>
       <PageHeader
         title="Eventos"
         description={`${organization.name} · ${events.length} eventos`}

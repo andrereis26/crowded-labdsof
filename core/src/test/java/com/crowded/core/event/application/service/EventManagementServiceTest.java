@@ -315,6 +315,42 @@ class EventManagementServiceTest {
   }
 
   @Test
+  void deletesAnEventNobodyIsConnectedToAndAuditsItApart() {
+    Event event = givenEvent();
+
+    service.delete(MEMBER, event.getId());
+
+    verify(events).delete(event);
+    verify(updates).announce(event.getId());
+    verify(audit)
+        .record(
+            MEMBER,
+            null,
+            "EVENT_DELETED",
+            "Event",
+            event.getId(),
+            Map.of("name", event.getProfile().name()));
+  }
+
+  @Test
+  void refusesToDeleteAnEventWithParticipantsOrOfAnotherOrganization() {
+    Event event = givenEvent();
+    when(connections.countByEvent(List.of(event.getId()))).thenReturn(Map.of(event.getId(), 1L));
+    Event other = StoredEvents.restore(UUID.randomUUID(), UUID.randomUUID(), scheduled());
+    when(events.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
+
+    assertThatThrownBy(() -> service.delete(MEMBER, event.getId()))
+        .isInstanceOf(ConflictException.class)
+        .hasFieldOrPropertyWithValue("code", "EVENT_HAS_PARTICIPANTS");
+    assertThatThrownBy(() -> service.delete(MEMBER, other.getId()))
+        .isInstanceOf(NotAllowedException.class);
+    assertThatThrownBy(() -> service.delete(MEMBER, UUID.randomUUID()))
+        .isInstanceOf(NotFoundException.class);
+    verify(events, never()).delete(any());
+    verifyNoInteractions(updates);
+  }
+
+  @Test
   void listsTheMembersOrganizationsEventsWithTheirConnections() {
     Event first = StoredEvents.restore(UUID.randomUUID(), ORGANIZATION, scheduled());
     Event second = StoredEvents.restore(UUID.randomUUID(), ORGANIZATION, scheduled());

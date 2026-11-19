@@ -180,6 +180,11 @@ export function OrganizerApp({
   const create = async (event: OrgEvent) => keep(await api.create(event))
   const correct = async (before: OrgEvent, after: OrgEvent) =>
     keep(await api.correct(before, after))
+  const remove = async (eventId: string) => {
+    await api.remove(eventId)
+    setLoaded((all = []) => all.filter((e) => e.id !== eventId))
+    setCurrentId((id) => (id === eventId ? undefined : id))
+  }
   /** Uploads or removes the event's image, after the event is saved. */
   const changeImage = async (eventId: string, file: File | null) => {
     if (file) {
@@ -269,6 +274,7 @@ export function OrganizerApp({
               onCreate={create}
               onCorrect={correct}
               onImage={changeImage}
+              onDelete={remove}
             />
           }
         />

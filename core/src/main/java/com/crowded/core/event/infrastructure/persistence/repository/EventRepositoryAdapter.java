@@ -99,6 +99,12 @@ class EventRepositoryAdapter implements EventRepository {
   }
 
   @Override
+  public void delete(Event event) {
+    // The database deletes the rows that belong to the event with it (ON DELETE CASCADE).
+    events.deleteById(event.getId());
+  }
+
+  @Override
   public Map<UUID, Long> countByOrganization() {
     return events.countGroupedByOrganization().stream()
         .collect(Collectors.toMap(row -> (UUID) row[0], row -> (Long) row[1]));

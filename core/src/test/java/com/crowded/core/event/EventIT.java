@@ -185,6 +185,35 @@ class EventIT extends IntegrationTest {
   }
 
   @Test
+  void deletesAnEventNobodyIsConnectedToButNotOneWithParticipants() throws Exception {
+    UUID mistake = insertEvent(organization, "PUBLIC", "OOPS-" + suffix, "SCHEDULED");
+    UUID joined = insertEvent(organization, "PUBLIC", "JOINED-" + suffix, "SCHEDULED");
+    UUID connection = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO event_connection (id, user_id, event_id, connected_at) VALUES (?, ?, ?, now())",
+        connection,
+        participant,
+        joined);
+
+    assertThat(send(member, "DELETE", "/events/" + mistake, null).statusCode()).isEqualTo(204);
+    assertThat(
+            jdbc.queryForObject("SELECT count(*) FROM event WHERE id = ?", Integer.class, mistake))
+        .isZero();
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM audit_log_entry WHERE entity_id = ? AND action ="
+                    + " 'EVENT_DELETED'",
+                Integer.class,
+                mistake))
+        .isOne();
+
+    HttpResponse<String> refused = send(member, "DELETE", "/events/" + joined, null);
+    assertThat(refused.statusCode()).isEqualTo(409);
+    assertThat(json.readTree(refused.body()).get("code").asString())
+        .isEqualTo("EVENT_HAS_PARTICIPANTS");
+  }
+
+  @Test
   void refusesWhoIsNotAnActiveMemberOfTheOrganization() throws Exception {
     UUID event = insertEvent(organization, "TICKETED", "OWN-" + suffix, "SCHEDULED");
 
