@@ -3,8 +3,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import 'data/app_store.dart';
+import 'data/connections_api.dart';
 import 'dev/component_gallery.dart';
 import 'data/models.dart';
+import 'data/tickets_api.dart';
 import 'screens/account/account_screen.dart';
 import 'screens/account/delete_account_screen.dart';
 import 'screens/account/notification_preferences_screen.dart';
@@ -216,7 +218,20 @@ class CrowdedApp extends StatefulWidget {
 }
 
 class _CrowdedAppState extends State<CrowdedApp> {
-  late final AppStore _store = widget.store ?? AppStore();
+  late final AppStore _store = widget.store ?? _withCore();
+
+  /// The store with Core's ticket import and connections, which read the
+  /// signed-in participant's token when each request is made.
+  AppStore _withCore() {
+    late final AppStore store;
+    String token() => store.session?.accessToken ?? '';
+    store = AppStore(
+      ticketsApi: HttpTicketsApi(token: token),
+      connectionsApi: HttpConnectionsApi(token: token),
+    );
+    return store;
+  }
+
   late final GoRouter _router = buildRouter(
     store: _store,
     initialLocation: widget.initialLocation,

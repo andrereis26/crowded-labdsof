@@ -1,106 +1,115 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:crowded/app.dart';
 import 'package:crowded/data/app_store.dart';
 import 'package:crowded/data/auth_api.dart';
 import 'package:crowded/data/connections_api.dart';
-import 'package:crowded/data/models.dart';
 import 'package:crowded/data/notifications_api.dart';
 import 'package:crowded/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 final _now = DateTime(2026, 11, 18, 15);
-const _art = EventArt(Color(0xFF2E4A8C), Color(0xFF0F1626));
 
-Event _event(
+String _time(DateTime time) => time.toUtc().toIso8601String();
+
+Map<String, Object?> _cancellation() => {
+  'id': 'ch-1',
+  'type': 'CANCELLATION',
+  'severity': 'CRITICAL',
+  'previousValue': <String, Object?>{},
+  'newValue': <String, Object?>{},
+  'ticketStillValid': false,
+  'refundInfo': null,
+  'message': 'Cancelado.',
+  'provenance': {
+    'sourceType': 'ORGANIZATION',
+    'sourceName': 'Margens',
+    'lastUpdatedAt': _time(_now),
+    'confirmed': true,
+  },
+};
+
+Map<String, Object?> _alert(String severity) => {
+  'id': 'a-$severity',
+  'type': 'ENTRANCE_CLOSURE',
+  'severity': severity,
+  'message': 'Entrada Sul fechada.',
+  'sentAt': _time(_now),
+};
+
+/// One connection as `GET /me/connections` gives it; the doors open two
+/// hours before the start.
+Map<String, Object?> _connection(
   String id,
   String name, {
   required DateTime start,
-  EventStatus status = EventStatus.scheduled,
-  List<EventChange> changes = const [],
-  List<EventAlert> alerts = const [],
-  bool byCode = false,
-}) => Event(
-  id: id,
-  name: name,
-  venue: 'Cais da Ribeira',
-  city: '',
-  start: start,
-  doorsOpen: start.subtract(const Duration(hours: 2)),
-  art: _art,
-  status: status,
-  changes: changes,
-  alerts: alerts,
-  joinedWithAccessCode: byCode,
-);
+  String type = 'TICKET',
+  String status = 'SCHEDULED',
+  Map<String, Object?>? change,
+  List<Map<String, Object?>> alerts = const [],
+  Map<String, Object?>? ticket,
+}) => {
+  'connectionId': 'c-$id',
+  'type': type,
+  'event': {
+    'id': id,
+    'name': name,
+    'status': status,
+    'startDateTime': _time(start),
+    'doorsOpenAt': _time(start.subtract(const Duration(hours: 2))),
+    'venueName': 'Cais da Ribeira',
+    'latestChange': change,
+    'activeAlerts': alerts,
+  },
+  'ticket': ticket,
+};
 
-EventChange _cancellation() => EventChange(
-  id: 'ch-1',
-  kind: ChangeKind.cancelled,
-  title: 'Evento cancelado',
-  description: 'Cancelado pela organização.',
-  detectedAt: _now,
-  publisher: 'Margens',
-  severity: Severity.critical,
-);
-
-EventAlert _alert(Severity severity) => EventAlert(
-  message: 'Entrada Sul fechada.',
-  publisher: 'Organização',
-  sentAt: _now,
-  severity: severity,
-);
-
-/// The events as the list of Core gives them: those not over first.
-List<ConnectedEvent> _events() {
-  final soon = _event(
+/// The events of the list, in Core's order: those not over first.
+List<Map<String, Object?>> _events() => [
+  _connection(
     'e-1',
     'Concerto no Cais',
     start: DateTime(2026, 11, 20, 21),
-    alerts: [_alert(Severity.warning)],
-  );
-  final cancelled = _event(
+    alerts: [_alert('WARNING')],
+    ticket: {'gate': 'A', 'sector': null, 'seat': '14', 'hasEntryCode': true},
+  ),
+  _connection(
     'e-2',
     'Festival Margens',
     start: DateTime(2026, 11, 27, 22),
-    status: EventStatus.cancelled,
-    changes: [_cancellation()],
-  );
-  final byCode = _event(
+    status: 'CANCELLED',
+    change: _cancellation(),
+    ticket: {'gate': 'B', 'sector': null, 'seat': '3', 'hasEntryCode': true},
+  ),
+  _connection(
     'e-3',
     'Arraial de São João',
     start: DateTime(2026, 12, 3, 20),
-    byCode: true,
-  );
-  return [
-    ConnectedEvent(
-      event: soon,
-      ticket: Ticket(id: 't-1', event: soon, gate: 'A', seat: '14'),
-    ),
-    ConnectedEvent(
-      event: cancelled,
-      ticket: Ticket(id: 't-2', event: cancelled, gate: 'B', seat: '3'),
-    ),
-    ConnectedEvent(event: byCode),
-  ];
-}
+    type: 'ACCESS_CODE',
+  ),
+];
 
-class _FakeConnectionsApi implements ConnectionsApi {
-  _FakeConnectionsApi(this.answer);
+http.Response _list(List<Map<String, Object?>> connections) => http.Response(
+  jsonEncode({'connections': connections, 'syncedAt': _time(_now)}),
+  200,
+  headers: {'content-type': 'application/json; charset=utf-8'},
+);
 
-  Future<MyConnections> Function() answer;
-  int calls = 0;
+/// Core's side of the list: what it answers, and the requests it got.
+class _Core {
+  _Core(this.answer);
 
-  @override
-  Future<MyConnections> myConnections() {
-    calls++;
+  Future<http.Response> Function() answer;
+  final requests = <http.Request>[];
+
+  Future<http.Response> handle(http.Request request) {
+    requests.add(request);
     return answer();
   }
-
-  @override
-  Future<JoinedEvent> joinWithAccessCode(String accessCode) =>
-      throw UnimplementedError();
 }
 
 class _QuietNotificationsApi implements NotificationsApi {
@@ -117,7 +126,7 @@ class _QuietNotificationsApi implements NotificationsApi {
 
 Future<AppStore> _pump(
   WidgetTester tester,
-  _FakeConnectionsApi api, {
+  _Core core, {
   Size size = const Size(390, 4000),
   bool settle = true,
 }) async {
@@ -128,13 +137,17 @@ Future<AppStore> _pump(
     clock: () => _now,
     notifications: _QuietNotificationsApi(),
     session: AuthSession(
-      accessToken: 'token',
+      accessToken: 'token-123',
       expiresAt: _now.add(const Duration(hours: 1)),
       userId: 'u-1',
       role: 'PARTICIPANT',
       email: 'ana@crowded.test',
     ),
-    connectionsApi: api,
+    connectionsApi: HttpConnectionsApi(
+      token: () => 'token-123',
+      client: MockClient(core.handle),
+      baseUrl: 'https://crowded.test/api',
+    ),
   );
   await tester.pumpWidget(CrowdedApp(store: store, initialLocation: '/events'));
   if (settle) {
@@ -145,17 +158,24 @@ Future<AppStore> _pump(
   return store;
 }
 
-MyConnections _list(List<ConnectedEvent> events) =>
-    MyConnections(events: events, syncedAt: _now);
-
 void main() {
   group('P1 with the events of Core', () {
+    testWidgets('asks Core for the events of the signed-in participant', (
+      tester,
+    ) async {
+      final core = _Core(() async => _list(_events()));
+      await _pump(tester, core);
+
+      final request = core.requests.single;
+      expect(request.method, 'GET');
+      expect(request.url.toString(), 'https://crowded.test/api/me/connections');
+      expect(request.headers['Authorization'], 'Bearer token-123');
+    });
+
     testWidgets('lists each event with its time, doors, venue, change and '
         'alerts', (tester) async {
-      final api = _FakeConnectionsApi(() async => _list(_events()));
-      await _pump(tester, api);
+      await _pump(tester, _Core(() async => _list(_events())));
 
-      expect(api.calls, 1);
       expect(find.text('Concerto no Cais'), findsOneWidget);
       expect(find.text('21:00'), findsOneWidget);
       expect(find.text('19:00'), findsOneWidget);
@@ -172,7 +192,7 @@ void main() {
     testWidgets('keeps the order of Core, the events not over first', (
       tester,
     ) async {
-      await _pump(tester, _FakeConnectionsApi(() async => _list(_events())));
+      await _pump(tester, _Core(() async => _list(_events())));
 
       double top(String name) => tester.getTopLeft(find.text(name)).dy;
       expect(top('Concerto no Cais'), lessThan(top('Festival Margens')));
@@ -182,7 +202,7 @@ void main() {
     testWidgets('highlights a cancelled event with words and an icon, not '
         'colour alone', (tester) async {
       final semantics = tester.ensureSemantics();
-      await _pump(tester, _FakeConnectionsApi(() async => _list(_events())));
+      await _pump(tester, _Core(() async => _list(_events())));
 
       expect(find.text('CANCELADO'), findsOneWidget);
       expect(find.text('Cancelado'), findsOneWidget);
@@ -205,23 +225,21 @@ void main() {
     testWidgets('counts the active alerts and names the most serious', (
       tester,
     ) async {
-      final busy = _event(
+      final busy = _connection(
         'e-9',
         'Feira',
         start: DateTime(2026, 11, 22, 10),
-        alerts: [_alert(Severity.information), _alert(Severity.critical)],
+        type: 'ACCESS_CODE',
+        alerts: [_alert('INFO'), _alert('CRITICAL')],
       );
-      await _pump(
-        tester,
-        _FakeConnectionsApi(() async => _list([ConnectedEvent(event: busy)])),
-      );
+      await _pump(tester, _Core(() async => _list([busy])));
 
       expect(find.text('Importante · 2 alertas ativos'), findsOneWidget);
     });
 
     testWidgets('shows only the options to import a ticket or enter an '
         'access code when there are no events', (tester) async {
-      await _pump(tester, _FakeConnectionsApi(() async => _list(const [])));
+      await _pump(tester, _Core(() async => _list(const [])));
 
       expect(find.text('Ainda não tens eventos'), findsOneWidget);
       expect(find.text('Importar bilhete'), findsOneWidget);
@@ -231,12 +249,8 @@ void main() {
     });
 
     testWidgets('shows that it is loading', (tester) async {
-      final answer = Completer<MyConnections>();
-      await _pump(
-        tester,
-        _FakeConnectionsApi(() => answer.future),
-        settle: false,
-      );
+      final answer = Completer<http.Response>();
+      await _pump(tester, _Core(() => answer.future), settle: false);
       await tester.pump();
 
       expect(find.text('A carregar os teus eventos'), findsOneWidget);
@@ -249,10 +263,8 @@ void main() {
     });
 
     testWidgets('shows an error and loads again on request', (tester) async {
-      final api = _FakeConnectionsApi(
-        () async => throw const ConnectionsApiException('NETWORK'),
-      );
-      await _pump(tester, api);
+      final core = _Core(() async => throw http.ClientException('offline'));
+      await _pump(tester, core);
 
       expect(
         find.text('Não foi possível carregar os teus eventos'),
@@ -260,11 +272,11 @@ void main() {
       );
       expect(find.text('Ainda não tens eventos'), findsNothing);
 
-      api.answer = () async => _list(_events());
+      core.answer = () async => _list(_events());
       await tester.tap(find.text('Tentar de novo'));
       await tester.pumpAndSettle();
 
-      expect(api.calls, 2);
+      expect(core.requests, hasLength(2));
       expect(
         find.text('Não foi possível carregar os teus eventos'),
         findsNothing,
@@ -272,13 +284,27 @@ void main() {
       expect(find.text('Concerto no Cais'), findsOneWidget);
     });
 
+    testWidgets('shows an error when Core answers with a problem', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        _Core(() async => http.Response('{"code":"BOOM"}', 500)),
+      );
+
+      expect(
+        find.text('Não foi possível carregar os teus eventos'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('keeps the events on screen when a later load fails', (
       tester,
     ) async {
-      final api = _FakeConnectionsApi(() async => _list(_events()));
-      final store = await _pump(tester, api);
+      final core = _Core(() async => _list(_events()));
+      final store = await _pump(tester, core);
 
-      api.answer = () async => throw const ConnectionsApiException('NETWORK');
+      core.answer = () async => http.Response('', 502);
       await store.refreshConnections();
       await tester.pumpAndSettle();
 
@@ -291,8 +317,8 @@ void main() {
     });
 
     testWidgets('a pull refreshes the list', (tester) async {
-      final api = _FakeConnectionsApi(() async => _list(_events()));
-      await _pump(tester, api, size: const Size(390, 844));
+      final core = _Core(() async => _list(_events()));
+      await _pump(tester, core, size: const Size(390, 844));
 
       await tester.fling(
         find.byType(ListView).first,
@@ -301,7 +327,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(api.calls, 2);
+      expect(core.requests, hasLength(2));
     });
   });
 
@@ -314,11 +340,7 @@ void main() {
       tester,
     ) async {
       final semantics = tester.ensureSemantics();
-      await _pump(
-        tester,
-        _FakeConnectionsApi(() async => _list(_events())),
-        size: size,
-      );
+      await _pump(tester, _Core(() async => _list(_events())), size: size);
 
       expect(tester.takeException(), isNull);
       await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
@@ -331,20 +353,14 @@ void main() {
       tester,
     ) async {
       final semantics = tester.ensureSemantics();
-      await _pump(
-        tester,
-        _FakeConnectionsApi(() async => _list(const [])),
-        size: size,
-      );
+      await _pump(tester, _Core(() async => _list(const [])), size: size);
       await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
       await expectLater(tester, meetsGuideline(textContrastGuideline));
 
       await tester.pumpWidget(const SizedBox());
       await _pump(
         tester,
-        _FakeConnectionsApi(
-          () async => throw const ConnectionsApiException('NETWORK'),
-        ),
+        _Core(() async => throw http.ClientException('offline')),
         size: size,
       );
       await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
