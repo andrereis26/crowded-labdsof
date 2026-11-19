@@ -248,8 +248,13 @@ class _DesktopWallet extends StatelessWidget {
     ];
     final today = tickets.where((t) => isSameDay(t.event.start, now)).toList();
     final upcoming = tickets.where((t) => !today.contains(t)).toList();
+    // Core's list has only the latest change, which may not be the date's.
     final changed = tickets
-        .where((t) => t.event.status == EventStatus.postponed)
+        .where(
+          (t) =>
+              t.event.status == EventStatus.postponed &&
+              t.event.latestDateChange != null,
+        )
         .toList();
     final publicEvents = [
       for (final c in connections)

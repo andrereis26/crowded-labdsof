@@ -458,6 +458,9 @@ class AppStore extends ChangeNotifier {
     _fromCore.clear();
     _connected.clear();
     _coreOrder = {};
+    _connectionsAccount++;
+    _connectionsLoad = null;
+    _connectionsStale = false;
     _tickets.removeWhere((t) => _coreId.hasMatch(t.event.id));
     connectionsStatus = ConnectionsStatus.idle;
     connectionsSyncedAt = null;
@@ -490,7 +493,16 @@ class AppStore extends ChangeNotifier {
 
   final Map<String, Event> _connected = {};
   Map<String, int> _coreOrder = {};
-  bool _loadingConnections = false;
+
+  /// The load running now, which a later request joins.
+  Future<void>? _connectionsLoad;
+
+  /// Whether something changed while a load was running, so it asks again.
+  bool _connectionsStale = false;
+
+  /// Changes when the account signs out, so an answer for the last one is
+  /// dropped.
+  int _connectionsAccount = 0;
 
   /// How the last load of [connections] from Core went; idle without
   /// [connectionsApi].
@@ -498,9 +510,6 @@ class AppStore extends ChangeNotifier {
 
   /// When Core read the list now shown, null before the first load.
   DateTime? connectionsSyncedAt;
-
-  /// The error code of the last failed load.
-  String? connectionsError;
 
   /// The participant's events for P1, in Core's order; those not in its list
   /// yet follow, soonest first.
@@ -520,42 +529,60 @@ class AppStore extends ChangeNotifier {
   }
 
   /// Loads the participant's events from Core. Without [connectionsApi] the
-  /// demo events stay. A failed load keeps what was shown before.
-  Future<void> refreshConnections() async {
+  /// demo events stay. A failed load keeps what was shown before. A request
+  /// made while a load runs waits for it, and the load then asks once more.
+  Future<void> refreshConnections() {
     final api = connectionsApi;
-    if (api == null || _loadingConnections) return;
-    _loadingConnections = true;
+    if (api == null) return Future.value();
+    final running = _connectionsLoad;
+    if (running != null) {
+      _connectionsStale = true;
+      return running;
+    }
+    return _connectionsLoad = _loadConnections(api);
+  }
+
+  Future<void> _loadConnections(ConnectionsApi api) async {
+    final account = _connectionsAccount;
     connectionsStatus = ConnectionsStatus.loading;
     notifyListeners();
     try {
-      final list = await api.myConnections();
-      _tickets = [
-        for (final e in list.events)
-          if (e.ticket != null) e.ticket!,
-      ];
-      _public = {
-        for (final e in list.events)
-          if (e.ticket == null) e.event.id,
-      };
-      _connected
-        ..clear()
-        ..addAll({for (final e in list.events) e.event.id: e.event});
-      _coreOrder = {
-        for (final (index, e) in list.events.indexed) e.event.id: index,
-      };
-      for (final e in list.events) {
-        _left.remove(e.event.id);
-      }
-      connectionsSyncedAt = list.syncedAt;
-      connectionsError = null;
+      do {
+        _connectionsStale = false;
+        final list = await api.myConnections();
+        if (account != _connectionsAccount) return;
+        _showConnections(list);
+      } while (_connectionsStale);
       connectionsStatus = ConnectionsStatus.loaded;
-    } on ConnectionsApiException catch (e) {
-      connectionsError = e.code;
-      connectionsStatus = ConnectionsStatus.failed;
+    } on ConnectionsApiException {
+      if (account == _connectionsAccount) {
+        connectionsStatus = ConnectionsStatus.failed;
+      }
     } finally {
-      _loadingConnections = false;
+      if (account == _connectionsAccount) _connectionsLoad = null;
       notifyListeners();
     }
+  }
+
+  void _showConnections(MyConnections list) {
+    _tickets = [
+      for (final e in list.events)
+        if (e.ticket != null) e.ticket!,
+    ];
+    _public = {
+      for (final e in list.events)
+        if (e.ticket == null) e.event.id,
+    };
+    _connected
+      ..clear()
+      ..addAll({for (final e in list.events) e.event.id: e.event});
+    _coreOrder = {
+      for (final (index, e) in list.events.indexed) e.event.id: index,
+    };
+    for (final e in list.events) {
+      _left.remove(e.event.id);
+    }
+    connectionsSyncedAt = list.syncedAt;
   }
 
   /// When the participant left [eventId], if they did (P8).

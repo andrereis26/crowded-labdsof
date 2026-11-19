@@ -316,6 +316,76 @@ void main() {
       expect(find.text('Concerto no Cais'), findsOneWidget);
     });
 
+    testWidgets('drops an answer that arrives after the account signed out', (
+      tester,
+    ) async {
+      final answer = Completer<http.Response>();
+      final store = await _pump(
+        tester,
+        _Core(() => answer.future),
+        settle: false,
+      );
+      await tester.pump();
+
+      store.signOut();
+      answer.complete(_list(_events()));
+      await tester.pumpAndSettle();
+
+      expect(store.connections, isEmpty);
+      expect(store.connectionsStatus, ConnectionsStatus.idle);
+    });
+
+    testWidgets('asks again when a refresh is requested during a load', (
+      tester,
+    ) async {
+      final answers = [Completer<http.Response>(), Completer<http.Response>()];
+      var call = 0;
+      final core = _Core(() => answers[call++].future);
+      final store = await _pump(tester, core, settle: false);
+      await tester.pump();
+
+      // A join or an import finishes while the first load runs.
+      final joined = store.refreshConnections();
+      answers[0].complete(_list(const []));
+      await tester.pump();
+      answers[1].complete(_list(_events()));
+      await joined;
+      await tester.pumpAndSettle();
+
+      expect(core.requests, hasLength(2));
+      expect(find.text('Concerto no Cais'), findsOneWidget);
+    });
+
+    testWidgets('a postponed event whose latest change is not its date does '
+        'not break the desktop list', (tester) async {
+      final retimed = _connection(
+        'e-7',
+        'Noite de Fado',
+        start: DateTime(2026, 12, 20, 20),
+        status: 'POSTPONED',
+        change: {
+          ..._cancellation(),
+          'type': 'TIME_CHANGE',
+          'severity': 'WARNING',
+        },
+        ticket: {
+          'gate': 'A',
+          'sector': null,
+          'seat': '1',
+          'hasEntryCode': true,
+        },
+      );
+      await _pump(
+        tester,
+        _Core(() async => _list([retimed])),
+        size: const Size(1440, 900),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Noite de Fado'), findsOneWidget);
+      expect(find.text('ALTERAÇÃO OFICIAL'), findsNothing);
+    });
+
     testWidgets('a pull refreshes the list', (tester) async {
       final core = _Core(() async => _list(_events()));
       await _pump(tester, core, size: const Size(390, 844));

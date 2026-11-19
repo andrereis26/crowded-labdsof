@@ -3,14 +3,15 @@ package com.crowded.core.event.infrastructure.persistence.repository;
 import com.crowded.core.event.domain.model.ChangeType;
 import com.crowded.core.event.domain.model.EventChange;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
+import com.crowded.core.event.infrastructure.persistence.entity.EventChangeEntity;
 import com.crowded.core.event.infrastructure.persistence.mapper.EventChangePersistenceMapper;
 import com.crowded.core.shared.infrastructure.persistence.JsonColumnConverter;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Repository;
 
 /** {@link EventChangeRepository} on PostgreSQL. */
@@ -54,13 +55,10 @@ class EventChangeRepositoryAdapter implements EventChangeRepository {
     if (eventIds.isEmpty()) {
       return Map.of();
     }
-    Map<UUID, EventChange> latest = new HashMap<>();
-    changes
-        .findByEventIdInOrderByProvenanceLastUpdatedAtDescIdDesc(eventIds)
-        .forEach(
-            entity ->
-                latest.computeIfAbsent(entity.getEventId(), id -> mapper.toDomain(entity, json)));
-    return latest;
+    return changes.findLatestOfEach(eventIds).stream()
+        .collect(
+            Collectors.toMap(
+                EventChangeEntity::getEventId, entity -> mapper.toDomain(entity, json)));
   }
 
   @Override
