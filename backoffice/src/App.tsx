@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useNavigate } from 'react-router'
 import { type AdminOrganization, type Member } from './data/admin'
 import { AdminApiError, httpAdminApi, type AdminApi, type MemberChange } from './data/adminApi'
 import { httpEventsApi, type EventsApi } from './data/eventsApi'
@@ -51,6 +51,15 @@ export default function App({
   const [loadError, setLoadError] = useState('')
   // The temporary password C4 replaces, in memory only, never in the URL or storage.
   const [pending, setPending] = useState<{ email: string; temporaryPassword: string }>()
+  const navigate = useNavigate()
+  /** Forgets the session and what it loaded, so the next user starts clean. */
+  const signOut = () => {
+    setSession(undefined)
+    setOrganizations([])
+    setMembers([])
+    setLoadError('')
+    navigate('/sign-in', { replace: true })
+  }
   const administrator = session?.role === 'ADMINISTRATOR'
   const api = useMemo(
     () => (session && administrator ? adminApiFor(session.accessToken) : undefined),
@@ -182,7 +191,7 @@ export default function App({
         path="/organization/*"
         element={
           eventsApi ? (
-            <OrganizerApp now={now} api={eventsApi} geocode={geocoder} />
+            <OrganizerApp now={now} api={eventsApi} geocode={geocoder} onSignOut={signOut} />
           ) : (
             <Navigate to="/sign-in" replace />
           )
@@ -192,7 +201,7 @@ export default function App({
         path="*"
         element={
           administrator ? (
-            <AdminLayout>
+            <AdminLayout onSignOut={signOut}>
               <Routes>
                 <Route
                   path="/organizations"

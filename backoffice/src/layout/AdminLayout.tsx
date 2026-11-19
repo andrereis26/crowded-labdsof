@@ -9,13 +9,20 @@ const nav: NavItem[] = [{ label: 'Organizações', to: '/organizations', icon: B
 /** Platform administration (A2): dark side menu and a white top bar on
  * desktop. On small screens the menu is hidden and the page shows its own
  * header. */
-export function AdminLayout({ children }: { children: ReactNode }) {
+export function AdminLayout({
+  onSignOut,
+  children,
+}: {
+  onSignOut: () => void
+  children: ReactNode
+}) {
   return (
     <div className="min-h-screen lg:pl-[248px]">
       <Sidebar
         label="Administração"
         nav={nav}
         user={admin}
+        onSignOut={onSignOut}
         identity={
           <>
             <Avatar initials="CR" size={30} className="bg-primary text-white" />
