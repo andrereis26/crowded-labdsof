@@ -354,15 +354,14 @@ void main() {
 
   group('P1 os meus eventos', () {
     testWidgets('lists tickets, changes and public events', (tester) async {
-      await _pump(tester);
+      // Tall enough to build every card of the list.
+      await _pump(tester, size: const Size(390, 4000));
 
       expect(find.text('Os meus eventos'), findsWidgets);
       expect(find.text('HOJE'), findsOneWidget);
       expect(find.text('ADIADO · 8 NOV'), findsOneWidget);
       expect(find.text('Adiado'), findsOneWidget);
-
-      await tester.scrollUntilVisible(find.text('Corrida de Natal'), 200);
-      expect(find.text('Eventos públicos'), findsOneWidget);
+      expect(find.text('Corrida de Natal'), findsOneWidget);
       expect(find.text('Feira Medieval de Gaia'), findsOneWidget);
       expect(find.text('Público'), findsNWidgets(2));
     });
@@ -1084,6 +1083,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(store.signedIn, isTrue);
       expect(store.session?.accessToken, 'token');
+      await tester.scrollUntilVisible(find.text('ADIADO · 8 NOV'), 200);
       expect(find.text('ADIADO · 8 NOV'), findsOneWidget);
     });
 
@@ -1200,6 +1200,7 @@ void main() {
       await tester.tap(find.widgetWithText(AppButton, 'Criar conta'));
       await tester.pumpAndSettle();
       expect(store.account?.email, 'ana@email.pt');
+      await tester.scrollUntilVisible(find.text('ADIADO · 8 NOV'), 200);
       expect(find.text('ADIADO · 8 NOV'), findsOneWidget);
     });
 

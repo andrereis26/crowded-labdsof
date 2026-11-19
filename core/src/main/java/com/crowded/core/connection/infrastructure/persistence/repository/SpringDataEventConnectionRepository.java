@@ -13,6 +13,8 @@ interface SpringDataEventConnectionRepository extends JpaRepository<EventConnect
 
   boolean existsByUserIdAndEventId(UUID userId, UUID eventId);
 
+  List<EventConnectionEntity> findByUserId(UUID userId);
+
   Optional<EventConnectionEntity> findFirstByUserIdAndEventIdOrderByConnectedAt(
       UUID userId, UUID eventId);
 

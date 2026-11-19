@@ -38,6 +38,10 @@ void main() {
     );
   });
 
+  /// The codes sent: the list that follows a connection is not one.
+  List<http.Request> posted(List<http.Request> sent) =>
+      sent.where((request) => request.method == 'POST').toList();
+
   Future<(AppStore, List<http.Request>)> pump(
     WidgetTester tester,
     Future<http.Response> Function(http.Request) handler, {
@@ -85,7 +89,7 @@ void main() {
     await tester.tap(find.text('Ler código QR'));
     await tester.pumpAndSettle();
 
-    expect(jsonDecode(sent.single.body), {'accessCode': 'SAOJOAO26'});
+    expect(jsonDecode(posted(sent).single.body), {'accessCode': 'SAOJOAO26'});
     expect(store.isConnected(_event), isTrue);
     expect(find.text('Arraial'), findsWidgets);
     expect(find.byType(AccessCodeScreen), findsNothing);
@@ -101,7 +105,7 @@ void main() {
     await tester.tap(find.text('Abrir evento'));
     await tester.pumpAndSettle();
 
-    expect(jsonDecode(sent.single.body), {'accessCode': 'saojoao26'});
+    expect(jsonDecode(posted(sent).single.body), {'accessCode': 'saojoao26'});
     expect(store.isConnected(_event), isTrue);
     expect(find.text('Arraial'), findsWidgets);
   });
@@ -180,7 +184,7 @@ void main() {
     await tester.tap(find.text('Ler código QR'));
     await tester.pump();
 
-    expect(sent, hasLength(1));
+    expect(posted(sent), hasLength(1));
     answer.complete(http.Response(_joined, 201));
     await tester.pumpAndSettle();
     expect(find.text('Arraial'), findsWidgets);

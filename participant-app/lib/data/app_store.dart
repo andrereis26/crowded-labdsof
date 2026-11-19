@@ -16,6 +16,9 @@ import 'models.dart';
 import 'notifications_api.dart';
 import 'tickets_api.dart';
 
+/// How the last load of the participant's events (P1) from Core went.
+enum ConnectionsStatus { idle, loading, loaded, failed }
+
 /// App state for the participant screens. Registration, sign-in and the
 /// pages of events Core knows go to Core, and the notifications to
 /// Notifications; the wallet and the rest are [DemoData] until their APIs
@@ -36,8 +39,9 @@ class AppStore extends ChangeNotifier {
        _eventsApi = events ?? HttpEventsApi() {
     final demo = DemoData(now);
     _registered = {for (final e in demo.registered) e.id: e};
-    _tickets = demo.tickets;
-    _public = demo.publicIds;
+    // With Core's connections, its list is the participant's events.
+    _tickets = connectionsApi == null ? demo.tickets : [];
+    _public = connectionsApi == null ? demo.publicIds : {};
     _left = demo.leftEvents;
     _requests = demo.yesNoRequests;
     _preferences = NotificationPreferences()
@@ -266,7 +270,8 @@ class AppStore extends ChangeNotifier {
   /// A registered event, as Core last sent it when it knows it. Pages of
   /// events the participant is not connected to are not shown: use
   /// [isConnected].
-  Event? eventById(String id) => _fromCore[id] ?? _registered[id];
+  Event? eventById(String id) =>
+      _fromCore[id] ?? _connected[id] ?? _registered[id];
 
   // Events from Core (P5, P6, P7): each page loads the event and its history
   // when it opens, and follows its live stream while it is open (ADR 0007).
@@ -451,6 +456,11 @@ class AppStore extends ChangeNotifier {
     }
     _follows.clear();
     _fromCore.clear();
+    _connected.clear();
+    _coreOrder = {};
+    _tickets.removeWhere((t) => _coreId.hasMatch(t.event.id));
+    connectionsStatus = ConnectionsStatus.idle;
+    connectionsSyncedAt = null;
     _syncs.clear();
     _histories.clear();
     // Public events joined through Core belong to this account, not to the
@@ -473,6 +483,80 @@ class AppStore extends ChangeNotifier {
   List<Event> get publicEvents =>
       _public.map(eventById).whereType<Event>().toList()
         ..sort((a, b) => a.start.compareTo(b.start));
+
+  // The participant's events from Core (P1): loaded when the screen opens
+  // and on request. They replace the tickets and public events held until
+  // then, and keep Core's order, the events that have not ended first.
+
+  final Map<String, Event> _connected = {};
+  Map<String, int> _coreOrder = {};
+  bool _loadingConnections = false;
+
+  /// How the last load of [connections] from Core went; idle without
+  /// [connectionsApi].
+  ConnectionsStatus connectionsStatus = ConnectionsStatus.idle;
+
+  /// When Core read the list now shown, null before the first load.
+  DateTime? connectionsSyncedAt;
+
+  /// The error code of the last failed load.
+  String? connectionsError;
+
+  /// The participant's events for P1, in Core's order; those not in its list
+  /// yet follow, soonest first.
+  List<ConnectedEvent> get connections {
+    final all = [
+      for (final t in _tickets) ConnectedEvent(event: t.event, ticket: t),
+      for (final e in publicEvents) ConnectedEvent(event: e),
+    ];
+    return all..sort((a, b) {
+      final first = _coreOrder[a.event.id];
+      final second = _coreOrder[b.event.id];
+      if (first != null && second != null) return first.compareTo(second);
+      if (first != null) return -1;
+      if (second != null) return 1;
+      return a.event.start.compareTo(b.event.start);
+    });
+  }
+
+  /// Loads the participant's events from Core. Without [connectionsApi] the
+  /// demo events stay. A failed load keeps what was shown before.
+  Future<void> refreshConnections() async {
+    final api = connectionsApi;
+    if (api == null || _loadingConnections) return;
+    _loadingConnections = true;
+    connectionsStatus = ConnectionsStatus.loading;
+    notifyListeners();
+    try {
+      final list = await api.myConnections();
+      _tickets = [
+        for (final e in list.events)
+          if (e.ticket != null) e.ticket!,
+      ];
+      _public = {
+        for (final e in list.events)
+          if (e.ticket == null) e.event.id,
+      };
+      _connected
+        ..clear()
+        ..addAll({for (final e in list.events) e.event.id: e.event});
+      _coreOrder = {
+        for (final (index, e) in list.events.indexed) e.event.id: index,
+      };
+      for (final e in list.events) {
+        _left.remove(e.event.id);
+      }
+      connectionsSyncedAt = list.syncedAt;
+      connectionsError = null;
+      connectionsStatus = ConnectionsStatus.loaded;
+    } on ConnectionsApiException catch (e) {
+      connectionsError = e.code;
+      connectionsStatus = ConnectionsStatus.failed;
+    } finally {
+      _loadingConnections = false;
+      notifyListeners();
+    }
+  }
 
   /// When the participant left [eventId], if they did (P8).
   DateTime? leftAt(String eventId) => _left[eventId];
@@ -505,6 +589,8 @@ class AppStore extends ChangeNotifier {
     _public.add(eventId);
     _left.remove(eventId);
     notifyListeners();
+    // Core's list has the event's change and alerts, which the code did not give.
+    if (api != null) unawaited(refreshConnections());
     return eventId;
   }
 
@@ -860,6 +946,8 @@ class AppStore extends ChangeNotifier {
     lastImported = ticket;
     pendingImport = null;
     notifyListeners();
+    // Core's list has the event's change and alerts, which the import did not give.
+    unawaited(refreshConnections());
     return ImportOutcome.added;
   }
 

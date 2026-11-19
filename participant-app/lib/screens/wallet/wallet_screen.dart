@@ -9,10 +9,27 @@ import '../event/event_widgets.dart';
 import '../shared/shell.dart';
 import '../shared/ticket_card.dart';
 
-/// P1 · Os meus eventos: the participant's tickets and the public events
-/// joined with an access code.
-class WalletScreen extends StatelessWidget {
+/// P1 · Os meus eventos: the participant's events, tickets and public events
+/// joined with an access code, those that have not ended first.
+class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
+
+  @override
+  State<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends State<WalletScreen> {
+  bool _requested = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_requested) return;
+    _requested = true;
+    final store = AppStore.of(context);
+    // Not while the screen is being built: loading notifies its listeners.
+    Future.microtask(store.refreshConnections);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +43,23 @@ class WalletScreen extends StatelessWidget {
 void _openEvent(BuildContext context, Event event) =>
     context.push('/event/${event.id}');
 
+/// What the list says while it loads, when it fails and while it is empty;
+/// null when the events are shown.
+Widget? _listState(AppStore store, List<ConnectedEvent> connections) {
+  final failed = store.connectionsStatus == ConnectionsStatus.failed;
+  if (failed) {
+    return AppErrorState(
+      message: 'Não foi possível carregar os teus eventos',
+      onRetry: store.refreshConnections,
+    );
+  }
+  if (connections.isNotEmpty) return null;
+  if (store.connectionsStatus == ConnectionsStatus.loading) {
+    return const AppLoadingState(message: 'A carregar os teus eventos');
+  }
+  return const NoEventsState();
+}
+
 class _MobileWallet extends StatelessWidget {
   const _MobileWallet({required this.store});
 
@@ -33,61 +67,55 @@ class _MobileWallet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tickets = store.tickets;
-    final publicEvents = store.publicEvents;
+    final connections = store.connections;
+    final state = _listState(store, connections);
 
     return SafeArea(
       bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.screen,
-          AppSpacing.sm,
-          AppSpacing.screen,
-          AppSpacing.xxl,
-        ),
-        children: [
-          SectionHeader(
-            title: 'Os meus eventos',
-            actions: [
-              AppCircleButton(
-                icon: Icons.notifications_none,
-                semanticLabel: 'Notificações',
-                badgeCount: store.unreadCount,
-                onPressed: () => context.push('/notifications'),
-              ),
-              if (tickets.isNotEmpty || publicEvents.isNotEmpty)
-                AppCircleButton(
-                  icon: Icons.add,
-                  semanticLabel: 'Adicionar evento',
-                  dark: true,
-                  onPressed: () => context.push('/import'),
-                ),
-            ],
+      child: RefreshIndicator(
+        onRefresh: store.refreshConnections,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screen,
+            AppSpacing.sm,
+            AppSpacing.screen,
+            AppSpacing.xxl,
           ),
-          if (tickets.isEmpty && publicEvents.isEmpty)
-            const NoEventsState()
-          else if (tickets.isNotEmpty)
-            TicketStack(
-              tickets: tickets,
-              now: store.now,
-              onOpen: (t) => _openEvent(context, t.event),
+          children: [
+            SectionHeader(
+              title: 'Os meus eventos',
+              actions: [
+                AppCircleButton(
+                  icon: Icons.notifications_none,
+                  semanticLabel: 'Notificações',
+                  badgeCount: store.unreadCount,
+                  onPressed: () => context.push('/notifications'),
+                ),
+                if (connections.isNotEmpty)
+                  AppCircleButton(
+                    icon: Icons.add,
+                    semanticLabel: 'Adicionar evento',
+                    dark: true,
+                    onPressed: () => context.push('/import'),
+                  ),
+              ],
             ),
-          if (publicEvents.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xxl),
-            Text(
-              'Eventos públicos',
-              style: AppTextStyles.headline.copyWith(fontSize: 20),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            for (final event in publicEvents) ...[
-              PublicEventRow(
-                event: event,
-                onTap: () => _openEvent(context, event),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
+            ?state,
+            if (state is AppErrorState && connections.isNotEmpty)
+              const SizedBox(height: AppSpacing.md),
+            if (connections.isNotEmpty && state is! AppLoadingState)
+              for (final connection in connections) ...[
+                ConnectionCard(
+                  event: connection.event,
+                  ticket: connection.ticket,
+                  now: store.now,
+                  onTap: () => _openEvent(context, connection.event),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -121,46 +149,6 @@ class NoEventsState extends StatelessWidget {
             label: 'Inserir código de acesso',
             onPressed: () => context.push('/access-code'),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Wallet cards stacked like the iPhone wallet: the soonest ticket in front,
-/// later ones behind it showing only their header.
-class TicketStack extends StatelessWidget {
-  const TicketStack({
-    super.key,
-    required this.tickets,
-    required this.now,
-    required this.onOpen,
-  });
-
-  /// Soonest first.
-  final List<Ticket> tickets;
-  final DateTime now;
-  final ValueChanged<Ticket> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final back = tickets.reversed.toList();
-    const step = WalletCard.collapsedHeight;
-    return SizedBox(
-      height: (back.length - 1) * step + WalletCard.height,
-      child: Stack(
-        children: [
-          for (final (index, ticket) in back.indexed)
-            Positioned(
-              top: index * step,
-              left: 0,
-              right: 0,
-              child: TicketCard(
-                ticket: ticket,
-                now: now,
-                onTap: () => onOpen(ticket),
-              ),
-            ),
         ],
       ),
     );
@@ -208,6 +196,25 @@ class PublicEventRow extends StatelessWidget {
                       '${formatDayMonth(event.start)} · ${event.venue}',
                       style: AppTextStyles.footnote,
                     ),
+                    for (final note in eventNotes(event))
+                      Row(
+                        spacing: 4,
+                        children: [
+                          Icon(
+                            note.icon,
+                            size: 14,
+                            color: AppColors.inkSecondary,
+                          ),
+                          Expanded(
+                            child: Text(
+                              note.text,
+                              style: AppTextStyles.footnote.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -234,13 +241,21 @@ class _DesktopWallet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = store.now;
-    final tickets = store.tickets;
+    final connections = store.connections;
+    final tickets = [
+      for (final c in connections)
+        if (c.ticket != null) c.ticket!,
+    ];
     final today = tickets.where((t) => isSameDay(t.event.start, now)).toList();
     final upcoming = tickets.where((t) => !today.contains(t)).toList();
     final changed = tickets
         .where((t) => t.event.status == EventStatus.postponed)
         .toList();
-    final publicEvents = store.publicEvents;
+    final publicEvents = [
+      for (final c in connections)
+        if (c.ticket == null) c.event,
+    ];
+    final state = _listState(store, connections);
 
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 40),
@@ -293,14 +308,16 @@ class _DesktopWallet extends StatelessWidget {
                         '${ticket.event.latestDateChange!.id}',
                       ),
                     ),
-                  if (tickets.isEmpty && publicEvents.isEmpty)
+                  if (state is NoEventsState)
                     const AppPanel(
                       children: [
                         Center(
                           child: SizedBox(width: 360, child: NoEventsState()),
                         ),
                       ],
-                    ),
+                    )
+                  else
+                    ?state,
                   for (final ticket in today) ...[
                     Text(
                       'Hoje',

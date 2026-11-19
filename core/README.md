@@ -15,6 +15,7 @@ Core service of Crowded ([Technical Design](../docs/deliverables/technical-desig
 | `PUT`, `DELETE` and `GET /events/{eventId}/image` | Adds, removes and reads an event's image | #172 |
 | `POST /tickets` | Imports a ticket from its PDF | #20 |
 | `POST /connections` | Connects a participant to a public event with its access code | #139 |
+| `GET /me/connections` | Lists the signed-in participant's events, those that have not ended first, with each one's latest change, active alerts and, for a ticket, gate, sector and seat | #24 |
 
 - **Responsibility:** domain rules, authentication (issues JWTs), REST API, Organization API, live event-page updates (SSE), AI ticket extraction and alert drafts. Applies the changes detected by Jobs.
 - **Owns (writes):** users, organizations, events, connections, on-site information, weather, alerts, surveys, reports, incidents.

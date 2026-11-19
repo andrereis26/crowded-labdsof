@@ -3,6 +3,7 @@ package com.crowded.core.event.domain.repository;
 import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventCode;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +20,9 @@ public interface EventRepository {
 
   /** The event, to read it. */
   Optional<Event> findById(UUID id);
+
+  /** The events with these ids, to read them; one that does not exist is left out. */
+  List<Event> findAllById(Collection<UUID> ids);
 
   /** The organization's events, the latest start first. */
   List<Event> findByOrganization(UUID organizationId);

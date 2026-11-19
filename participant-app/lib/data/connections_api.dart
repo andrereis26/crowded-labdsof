@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'auth_api.dart';
+import 'events_api.dart';
+import 'models.dart';
 
 /// The public event a participant connected to with its access code
 /// (`POST /connections`, API Outline "Connect to an event").
@@ -12,6 +14,15 @@ class JoinedEvent {
 
   final String connectionId;
   final String eventId;
+}
+
+/// The participant's events as Core lists them, and when it read them.
+class MyConnections {
+  const MyConnections({required this.events, required this.syncedAt});
+
+  /// Those that have not ended first, then the ones that ended: Core's order.
+  final List<ConnectedEvent> events;
+  final DateTime syncedAt;
 }
 
 /// A refusal from Core, with its error code: `ACCESS_CODE_NOT_FOUND` when
@@ -35,6 +46,10 @@ abstract interface class ConnectionsApi {
   /// Connects the signed-in participant to the public event of [accessCode],
   /// typed or read from its QR code. Core decides the event from the code.
   Future<JoinedEvent> joinWithAccessCode(String accessCode);
+
+  /// The signed-in participant's events (`GET /me/connections`), with each
+  /// one's latest change and active alerts.
+  Future<MyConnections> myConnections();
 }
 
 /// [ConnectionsApi] over HTTP, with the signed-in participant's token, so
@@ -93,6 +108,31 @@ class HttpConnectionsApi implements ConnectionsApi {
     );
   }
 
+  @override
+  Future<MyConnections> myConnections() async {
+    final http.Response response;
+    try {
+      response = await _client
+          .get(
+            _base.resolve('me/connections'),
+            headers: {'Authorization': 'Bearer ${_token()}'},
+          )
+          .timeout(_timeout);
+    } on Exception {
+      throw const ConnectionsApiException('NETWORK');
+    }
+    if (response.statusCode == 401) {
+      throw const ConnectionsApiException('UNAUTHORIZED');
+    }
+    final body = _json(response);
+    final list = myConnectionsFromJson(body);
+    if (response.statusCode == 200 && list != null) return list;
+    final code = body['code'];
+    throw ConnectionsApiException(
+      code is String ? code : 'HTTP_${response.statusCode}',
+    );
+  }
+
   static Map<String, dynamic> _json(http.Response response) {
     try {
       final decoded = jsonDecode(utf8.decode(response.bodyBytes));
@@ -101,4 +141,81 @@ class HttpConnectionsApi implements ConnectionsApi {
       return const {};
     }
   }
+}
+
+/// The list Core sent, or null when it is not one. A connection it cannot
+/// read is left out rather than failing the whole list.
+MyConnections? myConnectionsFromJson(Map<String, dynamic> json) {
+  final connections = json['connections'];
+  final syncedAt = instantFromJson(json['syncedAt']);
+  if (connections is! List || syncedAt == null) return null;
+  return MyConnections(
+    events: [
+      for (final item in connections.whereType<Map<String, dynamic>>())
+        ?_connectedEventFromJson(item),
+    ],
+    syncedAt: syncedAt,
+  );
+}
+
+ConnectedEvent? _connectedEventFromJson(Map<String, dynamic> json) {
+  final connectionId = json['connectionId'];
+  final shown = json['event'];
+  if (connectionId is! String || shown is! Map<String, dynamic>) return null;
+  final id = shown['id'];
+  final name = shown['name'];
+  final start = instantFromJson(shown['startDateTime']);
+  if (id is! String || name is! String || start == null) return null;
+  final latest = shown['latestChange'];
+  final change = latest is Map<String, dynamic>
+      ? coreChangeFromJson(latest)
+      : null;
+  final converted = change == null ? null : changeFromCore(change);
+  final alerts = shown['activeAlerts'];
+  final event = Event(
+    id: id,
+    name: name,
+    venue: shown['venueName'] as String? ?? '',
+    city: '',
+    start: start,
+    doorsOpen: instantFromJson(shown['doorsOpenAt']),
+    art: eventArtFor(id),
+    status: eventStatusFromCore(shown['status']),
+    joinedWithAccessCode: json['type'] == 'ACCESS_CODE',
+    changes: [?converted],
+    alerts: [
+      if (alerts is List)
+        for (final item in alerts.whereType<Map<String, dynamic>>())
+          ?_alertFromJson(item),
+    ],
+    updatedAt: change?.publishedAt,
+  );
+  final ticket = json['ticket'];
+  return ConnectedEvent(
+    event: event,
+    ticket: ticket is Map<String, dynamic>
+        ? Ticket(
+            id: connectionId,
+            event: event,
+            gate: ticket['gate'] as String?,
+            sector: ticket['sector'] as String?,
+            seat: ticket['seat'] as String?,
+            hasEntryCode: ticket['hasEntryCode'] as bool? ?? false,
+          )
+        : null,
+  );
+}
+
+EventAlert? _alertFromJson(Map<String, dynamic> json) {
+  final message = json['message'];
+  final sentAt = instantFromJson(json['sentAt']);
+  if (message is! String || sentAt == null) return null;
+  final severity = severityFromCore(json['severity']);
+  return EventAlert(
+    message: message,
+    publisher: 'Organização',
+    sentAt: sentAt,
+    urgent: severity == Severity.critical,
+    severity: severity,
+  );
 }

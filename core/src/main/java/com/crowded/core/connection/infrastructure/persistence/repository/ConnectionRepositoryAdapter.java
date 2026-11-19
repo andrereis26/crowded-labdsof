@@ -4,6 +4,7 @@ import com.crowded.core.connection.domain.model.EventConnection;
 import com.crowded.core.connection.domain.repository.ConnectionRepository;
 import com.crowded.core.connection.infrastructure.persistence.mapper.ConnectionPersistenceMapper;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,6 +44,11 @@ class ConnectionRepositoryAdapter implements ConnectionRepository {
   @Override
   public void lockConnectionsOf(UUID userId) {
     connections.lockUntilCommit(PARTICIPANT_CONNECTIONS_LOCK, userId.toString());
+  }
+
+  @Override
+  public List<EventConnection> findByUser(UUID userId) {
+    return connections.findByUserId(userId).stream().map(mapper::toDomain).toList();
   }
 
   @Override

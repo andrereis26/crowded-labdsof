@@ -73,6 +73,19 @@ class WeatherInfo {
 
 enum WeatherIcon { sun, cloud, rain }
 
+/// How much a change or an alert matters to the participant, always shown
+/// with its [label] and an icon, never by colour alone.
+enum Severity {
+  critical('Importante', Icons.error_outline),
+  warning('Atenção', Icons.warning_amber_rounded),
+  information('Informação', Icons.info_outline);
+
+  const Severity(this.label, this.icon);
+
+  final String label;
+  final IconData icon;
+}
+
 /// Organizer alert shown on the event page.
 class EventAlert {
   const EventAlert({
@@ -80,12 +93,14 @@ class EventAlert {
     required this.publisher,
     required this.sentAt,
     this.urgent = false,
+    this.severity = Severity.information,
   });
 
   final String message;
   final String publisher;
   final DateTime sentAt;
   final bool urgent;
+  final Severity severity;
 }
 
 /// Participant estimate confirmed by others (P5 desktop, P14).
@@ -122,6 +137,7 @@ class EventChange {
     this.newStart,
     this.ticketStillValid = true,
     this.refund,
+    this.severity = Severity.information,
   });
 
   final String id;
@@ -141,6 +157,9 @@ class EventChange {
 
   /// Refund information written by the organization, if any (P7).
   final Refund? refund;
+
+  /// How much the change matters, as Core classifies it.
+  final Severity severity;
 }
 
 /// Refund information that the organization adds to a change (O4, P7).
@@ -304,9 +323,10 @@ class Ticket {
   const Ticket({
     required this.id,
     required this.event,
-    required this.origin,
-    required this.importedAt,
+    this.origin,
+    this.importedAt,
     this.gate,
+    this.sector,
     this.seat,
     this.hasEntryCode = true,
     this.codeReference,
@@ -316,14 +336,26 @@ class Ticket {
 
   /// The registered event whose code matched the ticket.
   final Event event;
-  final TicketOrigin origin;
-  final DateTime importedAt;
+
+  /// How the ticket was imported; null when Core's list does not say.
+  final TicketOrigin? origin;
+  final DateTime? importedAt;
   final String? gate;
+  final String? sector;
   final String? seat;
   final bool hasEntryCode;
 
   /// Last digits of the entry code, shown under it (P19).
   final String? codeReference;
+}
+
+/// One of the participant's connections as P1 lists it: an event, with the
+/// ticket when the connection was made with one.
+class ConnectedEvent {
+  const ConnectedEvent({required this.event, this.ticket});
+
+  final Event event;
+  final Ticket? ticket;
 }
 
 enum NotificationKind {

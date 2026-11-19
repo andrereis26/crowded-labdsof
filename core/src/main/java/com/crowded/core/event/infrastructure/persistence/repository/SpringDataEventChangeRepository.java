@@ -2,6 +2,7 @@ package com.crowded.core.event.infrastructure.persistence.repository;
 
 import com.crowded.core.event.domain.model.ChangeType;
 import com.crowded.core.event.infrastructure.persistence.entity.EventChangeEntity;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,4 +18,8 @@ interface SpringDataEventChangeRepository extends JpaRepository<EventChangeEntit
       UUID eventId);
 
   List<EventChangeEntity> findByEventIdOrderByProvenanceLastUpdatedAtDescIdDesc(UUID eventId);
+
+  /** The changes of these events, the newest first, so the first of each event is its latest. */
+  List<EventChangeEntity> findByEventIdInOrderByProvenanceLastUpdatedAtDescIdDesc(
+      Collection<UUID> eventIds);
 }
