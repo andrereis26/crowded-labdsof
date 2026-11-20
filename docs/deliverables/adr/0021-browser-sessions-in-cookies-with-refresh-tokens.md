@@ -52,7 +52,7 @@ Option 4.
 - **Core and Notifications read the `Authorization` header first, then the `crowded_access` cookie.** Jobs is not reachable through the router and keeps the header only.
 - `POST /auth/refresh` takes the refresh cookie, or `refreshToken` in the body, and answers as the sign-in did. Clients call it once when a request gets `401`, then repeat the request. If it fails, the user is signed out.
 
-**Cross-site requests.** Core turned CSRF protection off because it read no cookie; now it does. Both cookies are `SameSite=Strict`. Core and Notifications also refuse, with `403 ORIGIN_NOT_ALLOWED`, any POST, PUT, PATCH or DELETE that carries a Crowded cookie or asks for one, unless its `Origin` header is one of the configured public origins. Requests that only carry the bearer header skip the check: a browser cannot add that header to a cross-site request.
+**Cross-site requests.** Core turned CSRF protection off because it read no cookie; now it does. Both cookies are `SameSite=Strict`. Core and Notifications also refuse, with `403 ORIGIN_NOT_ALLOWED`, a POST, PUT, PATCH or DELETE whose `Origin` header names another host than the one the request was sent to, and one that carries a Crowded cookie without an `Origin`. Browsers send `Origin` with every such request; the router passes the `Host` the browser used, port included. The phone app sends neither header nor cookie, and a browser cannot add the bearer header to a cross-site request, so the phone app is never refused.
 
 **Signing out and revocation.**
 
@@ -70,7 +70,7 @@ Option 4.
 - No token is readable by page scripts in a browser. A reload or a new tab keeps the session, and sign-out ends it at once in every service.
 - Sessions last days or weeks instead of an hour, and a stolen refresh token is detected the next time either holder uses it.
 - Core keeps the refresh tokens in Redis, which writes them to disk (append-only file). If that data is lost, every user signs in again.
-- Cookies make cross-site request forgery possible again. `SameSite=Strict` and the Origin check cover it. Each environment configures its public origins: the domain in production, and the local ports when developing.
-- `Secure` cookies work on `http://localhost` in Chrome and Firefox. A browser that does not treat localhost as secure needs a local-only switch to leave the attribute off.
+- Cookies make cross-site request forgery possible again. `SameSite=Strict` and the Origin check cover it. Comparing `Origin` with `Host` needs no list of origins per environment, but the router must keep passing the browser's `Host`.
+- `Secure` cookies need HTTPS, so the router now serves it, with a Let's Encrypt certificate that a `certbot` service keeps (deployment/README.md, TLS). They also work on `http://localhost` in Chrome and Firefox, as the local stack runs; `crowded.sessions.cookie-secure` turns the attribute off for a browser that does not treat localhost as secure.
 - Two ways to receive tokens (cookie and body) mean both have to be tested, in Core and in each client.
 - Access tokens expire every 15 minutes, so clients refresh more often. Each refresh is one Redis read and one write.
