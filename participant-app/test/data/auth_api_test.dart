@@ -141,6 +141,23 @@ void main() {
       expect(ended, 1);
     });
 
+    test('keeps the tokens while Core is briefly unavailable', () async {
+      final tokens = _MemoryTokens()
+        ..kept = (accessToken: 'jwt', refreshToken: 'refresh-1');
+      final core = _Core({'GET /api/me': (_) => http.Response('', 502)});
+      var ended = 0;
+      final api = HttpAuthApi(
+        baseUrl: 'https://crowded.test/api',
+        client: core.client,
+        cookies: false,
+        tokens: tokens,
+      )..onEnded = () => ended++;
+
+      expect(await api.restore(), isNull);
+      expect(tokens.kept, (accessToken: 'jwt', refreshToken: 'refresh-1'));
+      expect(ended, 0);
+    });
+
     test('starts signed out without stored tokens', () async {
       final core = _Core({});
       final api = HttpAuthApi(

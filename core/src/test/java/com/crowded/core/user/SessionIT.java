@@ -3,6 +3,10 @@ package com.crowded.core.user;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.crowded.core.IntegrationTest;
+import com.crowded.core.user.domain.model.RefreshToken;
+import com.crowded.core.user.domain.model.Session;
+import com.crowded.core.user.domain.model.SessionLifetime;
+import com.crowded.core.user.domain.repository.Sessions;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -12,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -33,6 +38,7 @@ class SessionIT extends IntegrationTest {
 
   @LocalServerPort private int port;
   @Autowired private JsonMapper json;
+  @Autowired private Sessions sessions;
 
   @Test
   void keepsABrowsersSessionInCookiesThatScriptsCannotRead() throws Exception {
@@ -184,6 +190,34 @@ class SessionIT extends IntegrationTest {
             send(HttpRequest.newBuilder(uri("/me")).header("Cookie", cookies(signedIn)).GET())
                 .statusCode())
         .isEqualTo(200);
+  }
+
+  @Test
+  void storesARefreshOnlyOverTheSessionItRead() {
+    UUID user = UUID.randomUUID();
+    Instant now = Instant.now();
+    SessionLifetime lifetime = new SessionLifetime(Duration.ofHours(12), Duration.ofDays(7));
+    RefreshToken first = RefreshToken.generate(UUID.randomUUID(), new Random());
+    RefreshToken second = RefreshToken.generate(first.sessionId(), new Random());
+    RefreshToken third = RefreshToken.generate(first.sessionId(), new Random());
+    sessions.save(Session.start(first, user, lifetime, now));
+
+    // Two refreshes read the session at once: the first one stored wins.
+    Session a = sessions.findById(first.sessionId()).orElseThrow();
+    Session b = sessions.findById(first.sessionId()).orElseThrow();
+    a.refresh(first, second, now);
+    b.refresh(first, third, now);
+    assertThat(sessions.replace(a, first.hash())).isTrue();
+    assertThat(sessions.replace(b, first.hash())).isFalse();
+    assertThat(sessions.findById(first.sessionId()).orElseThrow().getTokenHash())
+        .isEqualTo(second.hash());
+
+    // A session that ended meanwhile, such as a deactivated member's, is not stored again.
+    Session late = sessions.findById(first.sessionId()).orElseThrow();
+    late.refresh(second, third, now);
+    sessions.endAllOf(user);
+    assertThat(sessions.replace(late, second.hash())).isFalse();
+    assertThat(sessions.findById(first.sessionId())).isEmpty();
   }
 
   /** Registers a participant and returns their email. */

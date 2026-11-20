@@ -94,6 +94,12 @@ public final class Session {
         "INVALID_REFRESH_TOKEN", "The session ended. Sign in again.");
   }
 
+  /** The refusal of a refresh that another request, such as another tab's, has just made. */
+  public static NotAuthenticatedException refreshedMeanwhile() {
+    return new NotAuthenticatedException(
+        "REFRESH_TOKEN_ROTATED", "The session was just refreshed. Repeat the request.");
+  }
+
   /**
    * Continues the session: {@code presented} is spent and {@code next} replaces it.
    *
@@ -110,8 +116,7 @@ public final class Session {
     String presentedHash = presented.hash();
     if (!presentedHash.equals(tokenHash)) {
       if (presentedHash.equals(previousTokenHash) && now.isBefore(rotatedAt.plus(ROTATION_GRACE))) {
-        throw new NotAuthenticatedException(
-            "REFRESH_TOKEN_ROTATED", "The session was just refreshed. Repeat the request.");
+        throw refreshedMeanwhile();
       }
       if (presentedHash.equals(previousTokenHash)) {
         ended = true;

@@ -114,13 +114,14 @@ public class AuthController {
       HttpServletResponse response) {
     String refreshToken =
         SessionCookies.refreshToken(http).orElse(request == null ? null : request.refreshToken());
+    // First, so the browser is signed out even when Redis cannot be reached (503).
+    cookies.clear(response);
     Optional<Jwt> access = validAccessToken(http);
     sessions.signOut(
         new SignOutCommand(
             refreshToken,
             access.map(Jwt::getId).orElse(null),
             access.map(Jwt::getExpiresAt).orElse(null)));
-    cookies.clear(response);
   }
 
   private SignInResponse respond(

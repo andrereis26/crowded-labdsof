@@ -15,6 +15,14 @@ public interface Sessions {
   /** Stores the session until it expires, or forgets it once it {@link Session#hasEnded()}. */
   void save(Session session);
 
+  /**
+   * Stores a refreshed session only while the stored one still has {@code readTokenHash}, the token
+   * hash it was read with, so two refreshes at once cannot both win.
+   *
+   * @return false when another refresh changed the session meanwhile, or it ended
+   */
+  boolean replace(Session session, String readTokenHash);
+
   Optional<Session> findById(UUID sessionId);
 
   /** Ends every session of {@code userId}, such as when their account is deactivated. */

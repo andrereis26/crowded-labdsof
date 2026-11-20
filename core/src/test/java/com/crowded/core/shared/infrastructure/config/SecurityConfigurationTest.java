@@ -1,14 +1,20 @@
 package com.crowded.core.shared.infrastructure.config;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItems;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.crowded.core.shared.api.controller.SessionBearerTokenResolver;
 import com.crowded.core.shared.api.controller.SessionCookies;
+import com.crowded.core.shared.domain.exception.UnavailableException;
 import com.crowded.core.user.api.controller.AuthController;
 import com.crowded.core.user.api.mapper.AuthApiMapper;
 import com.crowded.core.user.application.service.AuthService;
@@ -73,6 +79,26 @@ class SecurityConfigurationTest {
                 .header("Origin", "http://localhost")
                 .cookie(new Cookie("crowded_access", "expired")))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void clearsTheCookiesOnSignOutEvenWhenRedisIsDown() throws Exception {
+    doThrow(new UnavailableException("SESSIONS_UNAVAILABLE", "Down."))
+        .when(sessionService)
+        .signOut(any());
+
+    mockMvc
+        .perform(
+            post("/auth/logout")
+                .header("Origin", "http://localhost")
+                .cookie(new Cookie("crowded_refresh", "r")))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(
+            header()
+                .stringValues(
+                    "Set-Cookie",
+                    hasItems(
+                        containsString("crowded_access=;"), containsString("crowded_refresh=;"))));
   }
 
   @Test
