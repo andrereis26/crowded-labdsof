@@ -30,6 +30,7 @@ import com.crowded.core.user.domain.model.Role;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.model.UserAccount;
 import com.crowded.core.user.domain.repository.PasswordHasher;
+import com.crowded.core.user.domain.repository.Sessions;
 import com.crowded.core.user.domain.repository.TokenRevocations;
 import com.crowded.core.user.domain.repository.UserRepository;
 import com.crowded.core.user.domain.service.TemporaryPasswords;
@@ -60,6 +61,7 @@ class MemberAdministrationServiceTest {
   private final OrganizationRepository organizations = mock(OrganizationRepository.class);
   private final PasswordHasher passwords = mock(PasswordHasher.class);
   private final TokenRevocations revocations = mock(TokenRevocations.class);
+  private final Sessions sessions = mock(Sessions.class);
   private final AuditLog audit = mock(AuditLog.class);
   private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private final MemberAdministrationService service =
@@ -69,6 +71,7 @@ class MemberAdministrationServiceTest {
           organizations,
           passwords,
           revocations,
+          sessions,
           audit,
           Clock.fixed(NOW, ZoneOffset.UTC),
           meters,
@@ -157,6 +160,7 @@ class MemberAdministrationServiceTest {
     assertThat(changed.expiresAt()).isNull();
     assertThat(stored().isActive()).isFalse();
     verify(revocations).revokeIssuedBefore(member.getId(), NOW);
+    verify(sessions).endAllOf(member.getId());
     verifyAudited("MEMBER_DEACTIVATED", member.getId());
   }
 
@@ -170,6 +174,7 @@ class MemberAdministrationServiceTest {
     assertThat(changed.active()).isTrue();
     assertThat(stored().getPasswordHash()).isEqualTo(member.getPasswordHash());
     verify(revocations, never()).revokeIssuedBefore(any(), any());
+    verify(sessions, never()).endAllOf(any());
     verifyAudited("MEMBER_REACTIVATED", member.getId());
   }
 
@@ -187,6 +192,7 @@ class MemberAdministrationServiceTest {
     assertThat(stored.getPasswordHash()).isEqualTo("hash:" + FIXED_PASSWORD);
     assertThat(stored.hasTemporaryPassword()).isTrue();
     verify(revocations).revokeIssuedBefore(member.getId(), NOW);
+    verify(sessions).endAllOf(member.getId());
     verifyAudited("MEMBER_PASSWORD_RESET", member.getId());
   }
 
@@ -200,6 +206,7 @@ class MemberAdministrationServiceTest {
     assertThat(changed.active()).isTrue();
     verify(audit, never()).record(any(), any(), anyString(), anyString(), any(), anyMap());
     verify(revocations, never()).revokeIssuedBefore(any(), any());
+    verify(sessions, never()).endAllOf(any());
   }
 
   @Test

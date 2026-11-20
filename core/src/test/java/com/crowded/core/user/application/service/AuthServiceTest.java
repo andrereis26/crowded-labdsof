@@ -33,7 +33,9 @@ import com.crowded.core.user.domain.model.Role;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.model.UserAccount;
 import com.crowded.core.user.domain.repository.PasswordHasher;
+import com.crowded.core.user.domain.repository.Sessions;
 import com.crowded.core.user.domain.repository.TokenIssuer;
+import com.crowded.core.user.domain.repository.TokenRevocations;
 import com.crowded.core.user.domain.repository.UserRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
@@ -59,6 +61,7 @@ class AuthServiceTest {
   private final UserRepository users = mock(UserRepository.class);
   private final PasswordHasher passwords = mock(PasswordHasher.class);
   private final TokenIssuer tokens = mock(TokenIssuer.class);
+  private final Sessions sessions = mock(Sessions.class);
   private final RateLimiter limiter = mock(RateLimiter.class);
   private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private final AuditLog audit = mock(AuditLog.class);
@@ -74,7 +77,14 @@ class AuthServiceTest {
         new AuthService(
             users,
             passwords,
-            tokens,
+            new SessionService(
+                sessions,
+                SessionServiceTest.LIFETIMES,
+                tokens,
+                mock(TokenRevocations.class),
+                users,
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                meters),
             limiter,
             Clock.fixed(NOW, ZoneOffset.UTC),
             meters,
@@ -166,9 +176,11 @@ class AuthServiceTest {
         service.signIn(new SignInCommand("Equipa@Ribeira-Live.test", PASSWORD, ADDRESS));
 
     assertThat(signedIn.token()).isEqualTo(token);
+    assertThat(signedIn.refreshToken()).isNotBlank();
     assertThat(signedIn.user()).isEqualTo(member.user());
     assertThat(signedIn.mustChangePassword()).isFalse();
     assertThat(member.getLastSignedInAt()).isEqualTo(NOW);
+    verify(sessions).save(argThat(session -> session.getUserId().equals(member.getId())));
     verify(users).saveSignIn(member);
     assertThat(meters.counter("crowded.auth.sign-ins", "outcome", "signed-in").count()).isOne();
   }

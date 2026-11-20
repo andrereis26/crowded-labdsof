@@ -9,10 +9,12 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Every request needs a valid JWT (ADR 0005), except registration, sign-in and replacing a
- * temporary password, which give one, and the health and metrics endpoints, which the container
- * health check, Docker Swarm and Prometheus call without one; the router keeps them inside the
- * Swarm. The API keeps no session and reads no cookie, so it needs no CSRF protection.
+ * Every request needs a valid JWT (ADR 0005), from the {@code Authorization} header or the
+ * browser's session cookie (ADR 0021), except the {@code /auth} endpoints that start, refresh or
+ * end a session, and the health and metrics endpoints, which the container health check, Docker
+ * Swarm and Prometheus call without one; the router keeps them inside the Swarm. Spring's CSRF
+ * tokens stay off: the cookies are {@code SameSite=Strict}, and a filter refuses changes from
+ * another origin (ADR 0021).
  */
 @Configuration(proxyBeanMethods = false)
 public class SecurityConfiguration {
@@ -26,7 +28,12 @@ public class SecurityConfiguration {
                         "/actuator/health", "/actuator/health/**", "/actuator/prometheus")
                     .permitAll()
                     .requestMatchers(
-                        HttpMethod.POST, "/auth/register", "/auth/login", "/auth/password")
+                        HttpMethod.POST,
+                        "/auth/register",
+                        "/auth/login",
+                        "/auth/password",
+                        "/auth/refresh",
+                        "/auth/logout")
                     .permitAll()
                     .anyRequest()
                     .authenticated())

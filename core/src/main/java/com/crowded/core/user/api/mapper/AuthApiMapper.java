@@ -14,7 +14,10 @@ import com.crowded.core.user.domain.model.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-/** Maps the registration and sign-in requests and responses to and from the application layer. */
+/**
+ * Maps the registration, sign-in and session requests and responses to and from the application
+ * layer.
+ */
 @Mapper
 public interface AuthApiMapper {
 
@@ -27,9 +30,16 @@ public interface AuthApiMapper {
   @Mapping(target = "userId", source = "id")
   RegisteredResponse toRegisteredResponse(User user);
 
+  /** The session with its tokens, for the phone app. */
   @Mapping(target = "accessToken", source = "token.value")
   @Mapping(target = "expiresAt", source = "token.expiresAt")
   SignInResponse toSignInResponse(SignedIn signedIn);
+
+  /** The session without its tokens, which went into cookies (ADR 0021). */
+  @Mapping(target = "accessToken", ignore = true)
+  @Mapping(target = "refreshToken", ignore = true)
+  @Mapping(target = "expiresAt", source = "token.expiresAt")
+  SignInResponse toCookieSignInResponse(SignedIn signedIn);
 
   SignedInUserResponse toSignedInUser(User user);
 }

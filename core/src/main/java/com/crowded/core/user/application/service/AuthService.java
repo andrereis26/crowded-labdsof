@@ -16,7 +16,6 @@ import com.crowded.core.user.domain.model.Password;
 import com.crowded.core.user.domain.model.User;
 import com.crowded.core.user.domain.model.UserAccount;
 import com.crowded.core.user.domain.repository.PasswordHasher;
-import com.crowded.core.user.domain.repository.TokenIssuer;
 import com.crowded.core.user.domain.repository.UserRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -51,7 +50,7 @@ public class AuthService {
 
   private final UserRepository users;
   private final PasswordHasher passwords;
-  private final TokenIssuer tokens;
+  private final SessionService sessions;
   private final RateLimiter limiter;
   private final Clock clock;
   private final MeterRegistry meters;
@@ -66,7 +65,7 @@ public class AuthService {
   AuthService(
       UserRepository users,
       PasswordHasher passwords,
-      TokenIssuer tokens,
+      SessionService sessions,
       RateLimiter limiter,
       Clock clock,
       MeterRegistry meters,
@@ -76,7 +75,7 @@ public class AuthService {
       @Value("${crowded.rate-limits.registrations-per-address:10}") int registrationsPerAddress) {
     this.users = users;
     this.passwords = passwords;
-    this.tokens = tokens;
+    this.sessions = sessions;
     this.limiter = limiter;
     this.clock = clock;
     this.meters = meters;
@@ -137,7 +136,7 @@ public class AuthService {
     users.saveSignIn(account);
     count("crowded.auth.sign-ins", "Sign-in attempts", "signed-in");
     log.info("User {} signed in", account.getId());
-    return new SignedIn(tokens.issue(account.getId()), account.user(), false);
+    return sessions.start(account);
   }
 
   /**
@@ -175,7 +174,7 @@ public class AuthService {
         account.getId(), null, "MEMBER_PASSWORD_CHOSEN", "User", account.getId(), Map.of());
     count("crowded.auth.sign-ins", "Sign-in attempts", "password-chosen");
     log.info("User {} replaced the temporary password and signed in", account.getId());
-    return new SignedIn(tokens.issue(account.getId()), account.user(), false);
+    return sessions.start(account);
   }
 
   /** The account with this email, after the sign-in's rate limits per address and per email. */

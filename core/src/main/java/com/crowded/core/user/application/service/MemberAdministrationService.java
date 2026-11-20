@@ -13,6 +13,7 @@ import com.crowded.core.user.application.dto.TemporaryPassword;
 import com.crowded.core.user.domain.model.Email;
 import com.crowded.core.user.domain.model.UserAccount;
 import com.crowded.core.user.domain.repository.PasswordHasher;
+import com.crowded.core.user.domain.repository.Sessions;
 import com.crowded.core.user.domain.repository.TokenRevocations;
 import com.crowded.core.user.domain.repository.UserRepository;
 import com.crowded.core.user.domain.service.TemporaryPasswords;
@@ -47,6 +48,7 @@ public class MemberAdministrationService {
   private final OrganizationRepository organizations;
   private final PasswordHasher passwords;
   private final TokenRevocations revocations;
+  private final Sessions sessions;
   private final AuditLog audit;
   private final Clock clock;
   private final MeterRegistry meters;
@@ -59,6 +61,7 @@ public class MemberAdministrationService {
       OrganizationRepository organizations,
       PasswordHasher passwords,
       TokenRevocations revocations,
+      Sessions sessions,
       AuditLog audit,
       Clock clock,
       MeterRegistry meters) {
@@ -68,6 +71,7 @@ public class MemberAdministrationService {
         organizations,
         passwords,
         revocations,
+        sessions,
         audit,
         clock,
         meters,
@@ -80,6 +84,7 @@ public class MemberAdministrationService {
       OrganizationRepository organizations,
       PasswordHasher passwords,
       TokenRevocations revocations,
+      Sessions sessions,
       AuditLog audit,
       Clock clock,
       MeterRegistry meters,
@@ -89,6 +94,7 @@ public class MemberAdministrationService {
     this.organizations = organizations;
     this.passwords = passwords;
     this.revocations = revocations;
+    this.sessions = sessions;
     this.audit = audit;
     this.clock = clock;
     this.meters = meters;
@@ -179,6 +185,7 @@ public class MemberAdministrationService {
     if (revoke) {
       // Last, so a failure rolls the change back with the transaction.
       revocations.revokeIssuedBefore(member.getId(), now);
+      sessions.endAllOf(member.getId());
     }
     log.info("Administrator {} changed member {}", command.administratorId(), member.getId());
     return new MemberChanged(

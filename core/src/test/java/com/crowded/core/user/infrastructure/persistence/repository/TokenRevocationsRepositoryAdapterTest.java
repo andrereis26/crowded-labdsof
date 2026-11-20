@@ -9,8 +9,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.crowded.core.shared.domain.exception.UnavailableException;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.RedisConnectionFailureException;
@@ -28,7 +30,8 @@ class TokenRevocationsRepositoryAdapterTest {
   private final ValueOperations<String, String> values = mock(ValueOperations.class);
 
   private final TokenRevocationsRepositoryAdapter adapter =
-      new TokenRevocationsRepositoryAdapter(redis, Duration.ofHours(1));
+      new TokenRevocationsRepositoryAdapter(
+          redis, Duration.ofHours(1), Clock.fixed(AT, ZoneOffset.UTC));
 
   @Test
   void keepsTheRevocationInMillisecondsUntilTheLastTokenExpires() {
@@ -59,6 +62,38 @@ class TokenRevocationsRepositoryAdapterTest {
 
     assertThatThrownBy(() -> adapter.revokedBefore(USER)).isInstanceOf(UnavailableException.class);
     assertThatThrownBy(() -> adapter.revokeIssuedBefore(USER, AT))
+        .isInstanceOf(UnavailableException.class);
+  }
+
+  @Test
+  void keepsASignedOutTokenUntilItWouldHaveExpired() {
+    when(redis.opsForValue()).thenReturn(values);
+    when(redis.hasKey("revoked-token:jti-1")).thenReturn(true);
+
+    adapter.revokeToken("jti-1", AT.plus(Duration.ofMinutes(15)));
+    adapter.revokeToken("expired", AT.minusSeconds(1));
+
+    verify(values).set("revoked-token:jti-1", "1", Duration.ofMinutes(16));
+    verify(values, org.mockito.Mockito.never())
+        .set(
+            org.mockito.ArgumentMatchers.eq("revoked-token:expired"),
+            anyString(),
+            any(Duration.class));
+    assertThat(adapter.isTokenRevoked("jti-1")).isTrue();
+    assertThat(adapter.isTokenRevoked("jti-2")).isFalse();
+  }
+
+  @Test
+  void failsSafeWhenASignedOutTokenCannotBeStoredOrRead() {
+    when(redis.opsForValue()).thenReturn(values);
+    org.mockito.Mockito.doThrow(new RedisConnectionFailureException("down"))
+        .when(values)
+        .set(anyString(), anyString(), any(Duration.class));
+    when(redis.hasKey(anyString())).thenThrow(new RedisConnectionFailureException("down"));
+
+    assertThatThrownBy(() -> adapter.revokeToken("jti-1", AT.plusSeconds(60)))
+        .isInstanceOf(UnavailableException.class);
+    assertThatThrownBy(() -> adapter.isTokenRevoked("jti-1"))
         .isInstanceOf(UnavailableException.class);
   }
 }

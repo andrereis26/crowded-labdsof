@@ -51,8 +51,22 @@ crowded:
   jwt:
     # Private key Core signs tokens with. Only Core gets it.
     private-key-location: ${JWT_PRIVATE_KEY_LOCATION}
-    # Short-lived (ADR 0005); there is no refresh token, so the user signs in again.
-    lifetime: 1h
+    # Short (ADR 0021): a refresh token continues the session.
+    lifetime: 15m
+  # Sessions by role (ADR 0021): they end after "idle" without use and "maximum"
+  # after sign-in. Backoffice accounts change events and accounts, so theirs are
+  # shorter.
+  sessions:
+    participant:
+      idle: 30d
+      maximum: 90d
+    backoffice:
+      idle: 12h
+      maximum: 7d
+    # Where the browser sees the API: the router removes /api before Core.
+    cookie-path: /api
+    # Browsers keep Secure cookies only over HTTPS, or on http://localhost.
+    cookie-secure: true
   # Per-user limits (ADR 0004); NGINX keeps a coarse per-IP one.
   rate-limits:
     sign-ins-per-email: 10 # per 15 minutes

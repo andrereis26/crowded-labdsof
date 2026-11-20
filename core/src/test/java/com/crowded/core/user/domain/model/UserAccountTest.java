@@ -165,6 +165,21 @@ class UserAccountTest {
   }
 
   @Test
+  void continuesASessionOnlyWhileActiveWithoutATemporaryPassword() {
+    UserAccount participant = UserAccount.registerParticipant(EMAIL, "hash", NOW);
+    participant.continueSession();
+
+    participant.deactivate();
+    assertThatThrownBy(participant::continueSession)
+        .isInstanceOfSatisfying(
+            NotAuthenticatedException.class,
+            e -> assertThat(e.getCode()).isEqualTo("INVALID_REFRESH_TOKEN"));
+
+    UserAccount member = UserAccount.addMember(ORGANIZATION, "Rita", EMAIL, "temporary", NOW);
+    assertThatThrownBy(member::continueSession).isInstanceOf(NotAuthenticatedException.class);
+  }
+
+  @Test
   void hasNoTemporaryPasswordToReplaceOnceItChoseOne() {
     UserAccount participant = UserAccount.registerParticipant(EMAIL, "hash", NOW);
 
