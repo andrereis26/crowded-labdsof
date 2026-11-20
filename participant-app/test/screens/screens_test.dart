@@ -16,6 +16,7 @@ import 'package:crowded/ui/ui.dart';
 import 'package:crowded/utils/pt_format.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 
 /// Saturday 17 October 2026, 15:00.
 final _now = DateTime(2026, 10, 17, 15);
@@ -23,13 +24,7 @@ final _now = DateTime(2026, 10, 17, 15);
 const _email = 'ines.martins@email.pt';
 
 AuthSession _session(String email, {String role = 'PARTICIPANT'}) =>
-    AuthSession(
-      accessToken: 'token',
-      expiresAt: _now.add(const Duration(hours: 1)),
-      userId: 'u-1',
-      role: role,
-      email: email,
-    );
+    AuthSession(accessToken: 'token', userId: 'u-1', role: role, email: email);
 
 /// Core's registration and sign-in, without a network: one account, whose
 /// password is `palavra-secreta`, plus the ones registered in the test.
@@ -65,6 +60,29 @@ class _FakeAuthApi implements AuthApi {
           : 'PARTICIPANT',
     );
   }
+
+  /// Who `GET /me` answers at start-up; nobody unless a test sets it.
+  AuthSession? restored;
+  int signOuts = 0;
+  void Function()? ended;
+
+  /// Holds the answer of `GET /me` until the test completes it.
+  final restoreAnswered = Completer<void>();
+
+  @override
+  Future<AuthSession?> restore() async {
+    await restoreAnswered.future;
+    return restored;
+  }
+
+  @override
+  Future<void> signOut() async => signOuts++;
+
+  @override
+  http.Client client() => http.Client();
+
+  @override
+  set onEnded(void Function()? callback) => ended = callback;
 }
 
 AppNotification _notification(
@@ -136,7 +154,6 @@ class _FakeNotificationsApi implements NotificationsApi {
 
   final List<AppNotification> stored;
   final read = <String>[];
-  final tokens = <String>[];
   int lists = 0;
   int connections = 0;
   String? failListWith;
@@ -147,7 +164,7 @@ class _FakeNotificationsApi implements NotificationsApi {
 
   /// Copies, as each response from the server is a new object.
   @override
-  Future<NotificationPage> list(String token) async {
+  Future<NotificationPage> list() async {
     lists++;
     if (failListWith != null) throw NotificationsException(failListWith!);
     final stored = [...this.stored];
@@ -173,14 +190,13 @@ class _FakeNotificationsApi implements NotificationsApi {
   }
 
   @override
-  Future<void> markRead(String token, String notificationId) async {
+  Future<void> markRead(String notificationId) async {
     read.add(notificationId);
   }
 
   @override
-  Stream<LiveEvent> live(String token) {
+  Stream<LiveEvent> live() {
     connections++;
-    tokens.add(token);
     _live = StreamController<LiveEvent>(
       onListen: () => _live!.add(const LiveOpened()),
     );
@@ -250,7 +266,7 @@ class _FakeEventsApi implements EventsApi {
   })!;
 
   @override
-  Future<EventPage> page(String token, String eventId) async {
+  Future<EventPage> page(String eventId) async {
     pages++;
     await gate?.future;
     if (failWith != null) throw EventsException(failWith!);
@@ -259,7 +275,7 @@ class _FakeEventsApi implements EventsApi {
 
   /// Like Core, sends the page as soon as the stream opens.
   @override
-  Stream<EventPage> live(String token, String eventId) {
+  Stream<EventPage> live(String eventId) {
     connections++;
     final live = StreamController<EventPage>();
     live.onListen = () {
@@ -284,7 +300,7 @@ class _FakeEventsApi implements EventsApi {
   }
 
   @override
-  Future<List<CoreChange>> changes(String token, String eventId) async {
+  Future<List<CoreChange>> changes(String eventId) async {
     if (failWith != null) throw EventsException(failWith!);
     return [for (final c in history) coreChangeFromJson(c)!];
   }
@@ -922,7 +938,6 @@ void main() {
     ) async {
       final api = _FakeNotificationsApi();
       final store = await _pump(tester, notifications: api);
-      expect(api.tokens, ['token']);
       expect(store.unreadCount, 2);
 
       api.send(fresh());
@@ -1090,7 +1105,13 @@ void main() {
     testWidgets('sends an organization member to the backoffice', (
       tester,
     ) async {
-      final store = await _pump(tester, location: '/sign-in', signedIn: false);
+      final auth = _FakeAuthApi();
+      final store = await _pump(
+        tester,
+        location: '/sign-in',
+        signedIn: false,
+        auth: auth,
+      );
 
       await tester.enterText(
         find.byType(TextField).at(0),
@@ -1105,6 +1126,8 @@ void main() {
         findsOneWidget,
       );
       expect(store.signedIn, isFalse);
+      // Core started a session for the organization's account: it is ended.
+      expect(auth.signOuts, 1);
     });
 
     testWidgets('says when Core cannot be reached or limits the attempts', (
@@ -1224,7 +1247,8 @@ void main() {
   });
 
   testWidgets('C0 lists the account menu and signs out to C1', (tester) async {
-    final store = await _pump(tester, location: '/account');
+    final auth = _FakeAuthApi();
+    final store = await _pump(tester, location: '/account', auth: auth);
 
     expect(find.text(_email), findsOneWidget);
     expect(find.text('Contribuições'), findsOneWidget);
@@ -1234,7 +1258,80 @@ void main() {
     await tester.tap(find.text('Terminar sessão'));
     await tester.pumpAndSettle();
     expect(store.signedIn, isFalse);
+    expect(auth.signOuts, 1);
     expect(find.text('Sabe o que se passa nos teus eventos'), findsOneWidget);
+  });
+
+  group('the session of an earlier visit (ADR 0021)', () {
+    Future<AppStore> start(WidgetTester tester, _FakeAuthApi auth) async {
+      final store = AppStore(
+        clock: () => _now,
+        auth: auth,
+        notifications: _FakeNotificationsApi(),
+        events: _FakeEventsApi(),
+      );
+      // As the app does: the session is picked up before the first page.
+      final restoring = store.restoreSession();
+      await tester.pumpWidget(
+        CrowdedApp(store: store, initialLocation: '/account'),
+      );
+      await tester.pump();
+      expect(store.restoring, isTrue);
+      expect(find.bySemanticsLabel('A carregar'), findsOneWidget);
+      auth.restoreAnswered.complete();
+      await restoring;
+      await tester.pumpAndSettle();
+      return store;
+    }
+
+    testWidgets('keeps the participant on the page they reopened', (
+      tester,
+    ) async {
+      final auth = _FakeAuthApi()..restored = _session(_email);
+      final store = await start(tester, auth);
+
+      expect(store.signedIn, isTrue);
+      expect(find.text(_email), findsOneWidget);
+    });
+
+    testWidgets('asks to sign in when there is none', (tester) async {
+      final store = await start(tester, _FakeAuthApi());
+
+      expect(store.signedIn, isFalse);
+      expect(find.text('Sabe o que se passa nos teus eventos'), findsOneWidget);
+    });
+
+    testWidgets('says an organization account belongs in the backoffice', (
+      tester,
+    ) async {
+      final auth = _FakeAuthApi()
+        ..restored = _session(
+          'equipa@ribeira-live.test',
+          role: 'ORGANIZATION_MEMBER',
+        );
+      final store = await start(tester, auth);
+
+      expect(store.signedIn, isFalse);
+      expect(
+        find.text('Esta conta é de uma organização. Entra no backoffice.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Terminar sessão'));
+      await tester.pumpAndSettle();
+      expect(auth.signOuts, 1);
+      expect(store.organizationNotice, isNull);
+    });
+
+    testWidgets('signs out when Core ends the session', (tester) async {
+      final auth = _FakeAuthApi()..restored = _session(_email);
+      final store = await start(tester, auth);
+
+      auth.ended!();
+      await tester.pumpAndSettle();
+
+      expect(store.signedIn, isFalse);
+      expect(find.text('Sabe o que se passa nos teus eventos'), findsOneWidget);
+    });
   });
 
   testWidgets('C2 updates notification preferences', (tester) async {

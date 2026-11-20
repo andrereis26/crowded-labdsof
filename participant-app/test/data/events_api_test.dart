@@ -76,16 +76,15 @@ http.Response _json(Object body, [int status = 200]) => http.Response.bytes(
 
 void main() {
   group('HttpEventsApi', () {
-    test('reads the page with the token', () async {
+    test('reads the page', () async {
       late http.Request sent;
       final page = await _api((request) {
         sent = request;
         return _json(_page(latestChange: _change()));
-      }).page('jwt', _event);
+      }).page(_event);
 
       expect(sent.method, 'GET');
       expect(sent.url.toString(), 'https://crowded.test/api/events/$_event');
-      expect(sent.headers['Authorization'], 'Bearer jwt');
       expect(page.name, 'Festival Margens do Douro');
       expect(page.status, EventStatus.postponed);
       expect(page.start, DateTime.utc(2026, 11, 27, 20).toLocal());
@@ -105,7 +104,7 @@ void main() {
           _change(id: 'c-bad', type: 'POSTPONEMENT', publishedAt: 'never'),
           _change(id: 'c-1'),
         ]);
-      }).changes('jwt', _event);
+      }).changes(_event);
 
       expect(asked.path, '/api/events/$_event/changes');
       expect(changes.map((c) => c.id), [
@@ -122,7 +121,7 @@ void main() {
     test('says why Core refused, or that it could not be reached', () async {
       Future<String> codeOf(http.Response Function(http.Request) answer) =>
           _api(answer)
-              .page('jwt', _event)
+              .page(_event)
               .then<String>((_) => 'none')
               .catchError((Object e) => (e as EventsException).code);
 
@@ -173,11 +172,10 @@ void main() {
           200,
           headers: {'content-type': 'text/event-stream'},
         );
-      }).live('jwt', _event).toList();
+      }).live(_event).toList();
 
       expect(sent.url.path, '/api/events/$_event/live');
       expect(sent.headers['Accept'], 'text/event-stream');
-      expect(sent.headers['Authorization'], 'Bearer jwt');
       expect(pages.map((p) => p.status), [
         EventStatus.scheduled,
         EventStatus.cancelled,
@@ -189,7 +187,7 @@ void main() {
         http.StreamedResponse Function(http.BaseRequest) answer,
       ) =>
           streaming(answer)
-              .live('jwt', _event)
+              .live(_event)
               .drain<void>()
               .then<String>((_) => 'none')
               .catchError((Object e) => (e as EventsException).code);

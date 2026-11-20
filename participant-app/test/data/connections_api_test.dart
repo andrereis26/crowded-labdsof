@@ -15,7 +15,6 @@ void main() {
       '"venueName":"Fontainhas"}}';
 
   HttpConnectionsApi api(MockClientHandler handler) => HttpConnectionsApi(
-    token: () => 'token-123',
     client: MockClient(handler),
     baseUrl: 'https://crowded.test/api',
   );
@@ -33,7 +32,6 @@ void main() {
 
     expect(sent.method, 'POST');
     expect(sent.url.toString(), 'https://crowded.test/api/connections');
-    expect(sent.headers['Authorization'], 'Bearer token-123');
     expect(sent.headers['Content-Type'], startsWith('application/json'));
     expect(jsonDecode(sent.body), {'accessCode': 'SAOJOAO26'});
   });
@@ -98,7 +96,6 @@ void main() {
 
   test('stops waiting for a Core that does not answer', () async {
     final silent = HttpConnectionsApi(
-      token: () => 'token-123',
       client: MockClient((_) => Completer<http.Response>().future),
       baseUrl: 'https://crowded.test/api',
       timeout: const Duration(milliseconds: 10),
@@ -154,7 +151,6 @@ void main() {
 
       expect(sent.method, 'GET');
       expect(sent.url.toString(), 'https://crowded.test/api/me/connections');
-      expect(sent.headers['Authorization'], 'Bearer token-123');
     });
 
     test('reads each event, its change, alerts and ticket, in order', () async {

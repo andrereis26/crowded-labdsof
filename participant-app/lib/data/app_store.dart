@@ -34,9 +34,12 @@ class AppStore extends ChangeNotifier {
     this.ticketsApi,
     this.connectionsApi,
   }) : _clock = clock ?? DateTime.now,
-       _auth = auth ?? HttpAuthApi(),
-       _notificationsApi = notifications ?? HttpNotificationsApi(),
-       _eventsApi = events ?? HttpEventsApi() {
+       _auth = auth ?? HttpAuthApi() {
+    // Core's APIs send the session's token or cookies, and refresh it.
+    _notificationsApi =
+        notifications ?? HttpNotificationsApi(client: _auth.client);
+    _eventsApi = events ?? HttpEventsApi(client: _auth.client);
+    _auth.onEnded = _sessionEnded;
     final demo = DemoData(now);
     _registered = {for (final e in demo.registered) e.id: e};
     // With Core's connections, its list is the participant's events.
@@ -83,8 +86,9 @@ class AppStore extends ChangeNotifier {
   static AppStore of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppStoreScope>()!.notifier!;
 
-  // Account (C0, C1, C3): registration and sign-in in Core. The token
-  // stays in memory, so reloading the app signs the participant out.
+  // Account (C0, C1, C3): registration and sign-in in Core. The session
+  // outlives a reload: cookies on the web, secure storage on a phone
+  // (ADR 0021).
 
   AuthSession? _session;
   AuthSession? get session => _session;
@@ -107,8 +111,11 @@ class AppStore extends ChangeNotifier {
         password: password,
       );
       if (session.role != 'PARTICIPANT') {
-        return 'Esta conta é de uma organização. Entra no backoffice.';
+        // Core started a session for the organization's account: end it.
+        unawaited(_auth.signOut());
+        return _organizationAccount;
       }
+      _organizationSession = false;
       _session = session;
       _startNotifications();
       notifyListeners();
@@ -157,13 +164,61 @@ class AppStore extends ChangeNotifier {
     'PASSWORD_TOO_WEAK' => _weakPassword,
     'RATE_LIMITED' =>
       'Demasiadas tentativas. Tenta novamente daqui a alguns minutos.',
-    'PASSWORD_CHANGE_REQUIRED' =>
-      'Esta conta é de uma organização. Entra no backoffice.',
+    'PASSWORD_CHANGE_REQUIRED' => _organizationAccount,
     'NETWORK' => 'Não foi possível ligar ao Crowded. Verifica a ligação e tenta novamente.',
     _ => 'Não foi possível entrar agora. Tenta novamente.',
   };
 
+  static const _organizationAccount =
+      'Esta conta é de uma organização. Entra no backoffice.';
+
+  bool _restoring = false;
+
+  /// Whether the session of an earlier visit is being picked up, so no page
+  /// asks to sign in meanwhile.
+  bool get restoring => _restoring;
+
+  bool _organizationSession = false;
+
+  /// What the sign-in page says when the browser's session belongs to an
+  /// organization's account, which signed in to the backoffice.
+  String? get organizationNotice =>
+      _organizationSession ? _organizationAccount : null;
+
+  /// Picks up the session of an earlier visit, from Core's cookies on the
+  /// web or the phone's secure storage.
+  Future<void> restoreSession() async {
+    _restoring = true;
+    notifyListeners();
+    final AuthSession? session;
+    try {
+      session = await _auth.restore();
+    } finally {
+      _restoring = false;
+    }
+    if (session?.role == 'PARTICIPANT') {
+      _session = session;
+      _startNotifications();
+    } else {
+      _organizationSession = session != null;
+    }
+    notifyListeners();
+  }
+
+  /// Signs out with Core and deletes what the app kept of Core's events.
   void signOut() {
+    unawaited(_auth.signOut());
+    _organizationSession = false;
+    _signedOut();
+  }
+
+  /// Core ended the session, such as after 30 days without use.
+  void _sessionEnded() {
+    if (_session == null) return;
+    _signedOut();
+  }
+
+  void _signedOut() {
     _stopNotifications();
     _forgetCoreEvents();
     _session = null;
@@ -184,6 +239,7 @@ class AppStore extends ChangeNotifier {
     _contributions = [];
     _preferences = NotificationPreferences();
     pendingImport = null;
+    unawaited(_auth.signOut());
     _session = null;
     notifyListeners();
   }
@@ -279,7 +335,7 @@ class AppStore extends ChangeNotifier {
   // drops, with the time it was loaded. Demo events, which Core does not
   // know, are not asked for.
 
-  final EventsApi _eventsApi;
+  late final EventsApi _eventsApi;
   final Map<String, Event> _fromCore = {};
   final Map<String, EventSync> _syncs = {};
   final Map<String, List<CoreChange>> _histories = {};
@@ -310,9 +366,9 @@ class AppStore extends ChangeNotifier {
   /// Loads [eventId]'s page and history from Core, unless it is a demo
   /// event or a load is already on its way.
   Future<void> refreshEvent(String eventId) async {
-    final token = _session?.accessToken;
+    final session = _session;
     final previous = _syncs[eventId];
-    if (token == null ||
+    if (session == null ||
         !_coreId.hasMatch(eventId) ||
         (previous?.loading ?? false)) {
       return;
@@ -325,12 +381,12 @@ class AppStore extends ChangeNotifier {
     );
     notifyListeners();
     try {
-      final page = await _eventsApi.page(token, eventId);
-      final history = await _eventsApi.changes(token, eventId);
-      if (_session?.accessToken != token) return;
+      final page = await _eventsApi.page(eventId);
+      final history = await _eventsApi.changes(eventId);
+      if (!identical(_session, session)) return;
       _keep(eventId, page, history);
     } on EventsException catch (e) {
-      if (_session?.accessToken != token) return;
+      if (!identical(_session, session)) return;
       _failed(eventId, e.code, noLongerVisible: e.noLongerVisible);
     }
     notifyListeners();
@@ -385,13 +441,13 @@ class AppStore extends ChangeNotifier {
 
   void _connectEvent(String eventId) {
     final follow = _follows[eventId];
-    final token = _session?.accessToken;
-    if (follow == null || token == null) return;
+    final session = _session;
+    if (follow == null || session == null) return;
     follow.retry = null;
     follow.stream = _eventsApi
-        .live(token, eventId)
+        .live(eventId)
         .listen(
-          (page) => _onEventPage(eventId, token, page),
+          (page) => _onEventPage(eventId, session, page),
           onError: (Object error) => _onEventStreamEnded(eventId, error),
           onDone: () => _onEventStreamEnded(eventId, null),
           cancelOnError: true,
@@ -402,7 +458,7 @@ class AppStore extends ChangeNotifier {
   /// history is loaded again when that is a new one.
   Future<void> _onEventPage(
     String eventId,
-    String token,
+    AuthSession session,
     EventPage page,
   ) async {
     final follow = _follows[eventId];
@@ -412,14 +468,14 @@ class AppStore extends ChangeNotifier {
     var history = _histories[eventId];
     if (history == null || history.firstOrNull?.id != page.latestChange?.id) {
       try {
-        history = await _eventsApi.changes(token, eventId);
+        history = await _eventsApi.changes(eventId);
       } on EventsException catch (e) {
-        if (_session?.accessToken != token) return;
+        if (!identical(_session, session)) return;
         _failed(eventId, e.code, noLongerVisible: e.noLongerVisible);
         notifyListeners();
         return;
       }
-      if (_session?.accessToken != token) return;
+      if (!identical(_session, session)) return;
     }
     // A later page may have come while the history was loading.
     _keep(eventId, _follows[eventId]?.latest ?? page, history);
@@ -432,7 +488,7 @@ class AppStore extends ChangeNotifier {
     follow.stream = null;
     if (!signedIn) return;
     final code = error is EventsException ? error.code : 'STREAM_ENDED';
-    // A refused token ends the stream: signing in again opens the page anew.
+    // A refused session ends the stream: signing in again opens the page anew.
     if (code == 'UNAUTHORIZED') return;
     final gone = error is EventsException && error.noLongerVisible;
     _failed(
@@ -635,7 +691,7 @@ class AppStore extends ChangeNotifier {
   // stream drops, the app reconnects and fetches the list again, so what
   // was created meanwhile appears once.
 
-  final NotificationsApi _notificationsApi;
+  late final NotificationsApi _notificationsApi;
   List<AppNotification> _notifications = [];
   final Set<String> _readPending = {};
   final Set<String> _receivedLive = {};
@@ -687,17 +743,15 @@ class AppStore extends ChangeNotifier {
   }
 
   void _connect() {
-    final token = _session?.accessToken;
-    if (token == null) return;
+    final session = _session;
+    if (session == null) return;
     _live?.cancel();
-    _live = _notificationsApi
-        .live(token)
-        .listen(
-          _onLive,
-          onError: _onLiveEnded,
-          onDone: () => _onLiveEnded(null),
-          cancelOnError: true,
-        );
+    _live = _notificationsApi.live().listen(
+      _onLive,
+      onError: _onLiveEnded,
+      onDone: () => _onLiveEnded(null),
+      cancelOnError: true,
+    );
   }
 
   void _onLive(LiveEvent event) {
@@ -714,7 +768,7 @@ class AppStore extends ChangeNotifier {
   void _onLiveEnded(Object? error) {
     _live = null;
     if (!signedIn) return;
-    // A refused token ends the session's stream: signing in again opens it.
+    // A refused session ends its stream: signing in again opens it.
     if (error is NotificationsException && error.code == 'UNAUTHORIZED') {
       return;
     }
@@ -736,11 +790,11 @@ class AppStore extends ChangeNotifier {
   /// Loads the notification center again, keeping the ones marked read
   /// and the ones received live while the request was on its way.
   Future<void> refreshNotifications() async {
-    final token = _session?.accessToken;
-    if (token == null) return;
+    final session = _session;
+    if (session == null) return;
     try {
-      final page = await _notificationsApi.list(token);
-      if (_session?.accessToken != token) return;
+      final page = await _notificationsApi.list();
+      if (!identical(_session, session)) return;
       final listed = {for (final n in page.notifications) n.id};
       for (final n in page.notifications) {
         if (_readPending.contains(n.id)) n.read = true;
@@ -753,7 +807,7 @@ class AppStore extends ChangeNotifier {
       ];
       _notificationsFailed = false;
     } on NotificationsException {
-      if (_session?.accessToken != token) return;
+      if (!identical(_session, session)) return;
       _notificationsFailed = true;
     }
     notifyListeners();
@@ -771,11 +825,11 @@ class AppStore extends ChangeNotifier {
     notification.read = true;
     listed?.read = true;
     notifyListeners();
-    final token = _session?.accessToken;
-    if (wasRead || listed == null || token == null) return;
+    final session = _session;
+    if (wasRead || listed == null || session == null) return;
     _readPending.add(notification.id);
     _notificationsApi
-        .markRead(token, notification.id)
+        .markRead(notification.id)
         .catchError((Object _) {})
         .whenComplete(() => _readPending.remove(notification.id));
   }

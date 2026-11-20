@@ -114,14 +114,14 @@ class _Core {
 
 class _QuietNotificationsApi implements NotificationsApi {
   @override
-  Future<NotificationPage> list(String token) async =>
+  Future<NotificationPage> list() async =>
       const NotificationPage(notifications: [], unread: 0);
 
   @override
-  Future<void> markRead(String token, String notificationId) async {}
+  Future<void> markRead(String notificationId) async {}
 
   @override
-  Stream<LiveEvent> live(String token) => StreamController<LiveEvent>().stream;
+  Stream<LiveEvent> live() => StreamController<LiveEvent>().stream;
 }
 
 Future<AppStore> _pump(
@@ -138,13 +138,11 @@ Future<AppStore> _pump(
     notifications: _QuietNotificationsApi(),
     session: AuthSession(
       accessToken: 'token-123',
-      expiresAt: _now.add(const Duration(hours: 1)),
       userId: 'u-1',
       role: 'PARTICIPANT',
       email: 'ana@crowded.test',
     ),
     connectionsApi: HttpConnectionsApi(
-      token: () => 'token-123',
       client: MockClient(core.handle),
       baseUrl: 'https://crowded.test/api',
     ),
@@ -169,7 +167,6 @@ void main() {
       final request = core.requests.single;
       expect(request.method, 'GET');
       expect(request.url.toString(), 'https://crowded.test/api/me/connections');
-      expect(request.headers['Authorization'], 'Bearer token-123');
     });
 
     testWidgets('lists each event with its time, doors, venue, change and '

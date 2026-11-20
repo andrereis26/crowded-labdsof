@@ -10,7 +10,6 @@ void main() {
   final pdf = Uint8List.fromList(utf8.encode('%PDF-1.7 ticket'));
 
   HttpTicketsApi api(MockClientHandler handler) => HttpTicketsApi(
-    token: () => 'token-123',
     client: MockClient(handler),
     baseUrl: 'https://crowded.test/api',
   );
@@ -30,7 +29,6 @@ void main() {
 
     expect(sent.method, 'POST');
     expect(sent.url.toString(), 'https://crowded.test/api/tickets');
-    expect(sent.headers['Authorization'], 'Bearer token-123');
     expect(sent.headers['content-type'], startsWith('multipart/form-data'));
     expect(sent.body, contains('name="file"; filename="bilhete.pdf"'));
     expect(sent.body, contains('%PDF-1.7 ticket'));
@@ -156,7 +154,6 @@ void main() {
       sent.url.toString(),
       'https://crowded.test/api/ticket-imports/i-1/event-code',
     );
-    expect(sent.headers['Authorization'], 'Bearer token-123');
     expect(sent.headers['content-type'], startsWith('application/json'));
     expect(jsonDecode(sent.body), {'eventCode': 'MARG-2026'});
     expect(result.eventId, 'e-1');

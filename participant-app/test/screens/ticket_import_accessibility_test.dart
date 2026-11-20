@@ -35,13 +35,11 @@ Future<void> _pump(
     notifications: _QuietNotificationsApi(),
     session: AuthSession(
       accessToken: 'token',
-      expiresAt: _now.add(const Duration(hours: 1)),
       userId: 'u-1',
       role: 'PARTICIPANT',
       email: 'ana@crowded.test',
     ),
     ticketsApi: HttpTicketsApi(
-      token: () => 'token',
       client: MockClient(handler),
       baseUrl: 'https://crowded.test/api',
     ),
@@ -201,12 +199,12 @@ void main() {
 /// Notifications that stay quiet, so the signed-in store opens no connection.
 class _QuietNotificationsApi implements NotificationsApi {
   @override
-  Future<NotificationPage> list(String token) async =>
+  Future<NotificationPage> list() async =>
       const NotificationPage(notifications: [], unread: 0);
 
   @override
-  Future<void> markRead(String token, String notificationId) async {}
+  Future<void> markRead(String notificationId) async {}
 
   @override
-  Stream<LiveEvent> live(String token) => StreamController<LiveEvent>().stream;
+  Stream<LiveEvent> live() => StreamController<LiveEvent>().stream;
 }

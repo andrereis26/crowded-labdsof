@@ -27,7 +27,7 @@ Map<String, Object?> _json({
 
 void main() {
   group('HttpNotificationsApi', () {
-    test('lists the notifications with the token', () async {
+    test('lists the notifications', () async {
       late http.Request sent;
       final api = HttpNotificationsApi(
         baseUrl: 'https://crowded.test/api',
@@ -48,11 +48,10 @@ void main() {
         }),
       );
 
-      final page = await api.list('jwt');
+      final page = await api.list();
 
       expect(sent.method, 'GET');
       expect(sent.url.toString(), 'https://crowded.test/api/notifications');
-      expect(sent.headers['Authorization'], 'Bearer jwt');
       expect(page.unread, 2);
       expect(page.notifications.map((n) => n.id), [
         'n-1',
@@ -78,14 +77,13 @@ void main() {
         }),
       );
 
-      await api.markRead('jwt', 'n-1');
+      await api.markRead('n-1');
 
       expect(sent.method, 'POST');
       expect(
         sent.url.toString(),
         'https://crowded.test/api/notifications/n-1/read',
       );
-      expect(sent.headers['Authorization'], 'Bearer jwt');
     });
 
     test('reports refusals with their code', () async {
@@ -94,7 +92,7 @@ void main() {
           client: () => MockClient((request) async => response),
         );
         try {
-          await api.markRead('jwt', 'n-1');
+          await api.markRead('n-1');
         } on NotificationsException catch (e) {
           return e.code;
         }
@@ -123,7 +121,7 @@ void main() {
       );
 
       expect(
-        offline.list('jwt'),
+        offline.list(),
         throwsA(
           isA<NotificationsException>().having(
             (e) => e.code,
@@ -133,7 +131,7 @@ void main() {
         ),
       );
       expect(
-        invalid.list('jwt'),
+        invalid.list(),
         throwsA(
           isA<NotificationsException>().having(
             (e) => e.code,
@@ -142,7 +140,7 @@ void main() {
           ),
         ),
       );
-      expect(notAnObject.list('jwt'), throwsA(isA<NotificationsException>()));
+      expect(notAnObject.list(), throwsA(isA<NotificationsException>()));
     });
 
     test('streams the opening and each new notification', () async {
@@ -158,7 +156,7 @@ void main() {
       final events = <LiveEvent>[];
       final done = Completer<void>();
 
-      api.live('jwt').listen(events.add, onDone: done.complete);
+      api.live().listen(events.add, onDone: done.complete);
       body.add(utf8.encode('retry:5000\n:open\n\n'));
       body.add(utf8.encode(':keep-alive\n\n'));
       body.add(
@@ -176,7 +174,6 @@ void main() {
         sent.url.toString(),
         'https://crowded.test/api/notifications/stream',
       );
-      expect(sent.headers['Authorization'], 'Bearer jwt');
       expect(sent.headers['Accept'], 'text/event-stream');
       expect(events, hasLength(2));
       expect(events.first, isA<LiveOpened>());
@@ -188,7 +185,7 @@ void main() {
         client: () => MockClient((request) async => http.Response('', 401)),
       );
       await expectLater(
-        refused.live('jwt'),
+        refused.live(),
         emitsError(
           isA<NotificationsException>().having(
             (e) => e.code,
@@ -206,7 +203,7 @@ void main() {
         ),
       );
       final result = expectLater(
-        dropped.live('jwt'),
+        dropped.live(),
         emitsInOrder([
           isA<LiveOpened>(),
           emitsError(isA<NotificationsException>()),
@@ -229,7 +226,7 @@ void main() {
         ),
       );
       final opened = Completer<void>();
-      final subscription = api.live('jwt').listen((_) => opened.complete());
+      final subscription = api.live().listen((_) => opened.complete());
       body.add(utf8.encode(':open\n\n'));
       await opened.future;
 

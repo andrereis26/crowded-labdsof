@@ -4,7 +4,7 @@ Flutter app for participants, on mobile and the web ([ADR 0006](../docs/delivera
 
 ## Setup
 
-**Prerequisites:** Flutter 3.47, the version CI pins (3.47.7), and Chrome for `flutter run -d chrome`. [`scripts/local/setup.sh`](../scripts/local/setup.sh) (`setup.ps1` on Windows) checks Flutter and creates `.env` ([Getting Started](../README.md#getting-started)). Signing in, the notifications and the pages of events Core knows need Core and Notifications behind the router, as `scripts/local/stack-up.sh` runs them; the other screens run on demo data.
+**Prerequisites:** Flutter 3.47, the version CI pins (3.47.7), and Chrome for `flutter run -d chrome`. [`scripts/local/setup.sh`](../scripts/local/setup.sh) (`setup.ps1` on Windows) checks Flutter and creates `.env` ([Getting Started](../README.md#getting-started)). Signing in, the notifications and the pages of events Core knows need Core and Notifications behind the router, as `scripts/local/stack-up.sh` runs them; the other screens run on demo data. The session outlives a reload ([ADR 0021](../docs/deliverables/adr/0021-browser-sessions-in-cookies-with-refresh-tokens.md)): on the web Core keeps it in cookies, and on Android and iOS the tokens are in the phone's secure storage (`flutter_secure_storage`). At start-up the app asks Core who is signed in (`GET /me`), and `HttpAuthApi.client()` refreshes an expired token by itself for every request to Core and Notifications.
 
 **Configuration from `.env`:** `PARTICIPANT_APP_PORT` (8090).
 

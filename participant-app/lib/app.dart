@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import 'data/app_store.dart';
+import 'data/auth_api.dart';
 import 'data/connections_api.dart';
 import 'dev/component_gallery.dart';
 import 'data/models.dart';
@@ -40,6 +43,17 @@ GoRouter buildRouter({
   initialLocation: initialLocation,
   refreshListenable: store,
   redirect: (context, state) {
+    // While the session of an earlier visit is picked up, a loading page
+    // keeps the address to come back to.
+    final atStart = state.matchedLocation == '/starting';
+    if (store.restoring) {
+      if (atStart) return null;
+      return Uri(
+        path: '/starting',
+        queryParameters: {'from': state.uri.toString()},
+      ).toString();
+    }
+    if (atStart) return state.uri.queryParameters['from'] ?? '/events';
     // Signed-out users only see C1; signed-in users skip it.
     final atSignIn = state.matchedLocation == '/sign-in';
     if (!store.signedIn) return atSignIn ? null : '/sign-in';
@@ -55,6 +69,7 @@ GoRouter buildRouter({
     return null;
   },
   routes: [
+    GoRoute(path: '/starting', builder: (context, state) => const _Starting()),
     GoRoute(
       path: '/sign-in',
       builder: (context, state) => const SignInScreen(), // C1
@@ -220,15 +235,16 @@ class CrowdedApp extends StatefulWidget {
 class _CrowdedAppState extends State<CrowdedApp> {
   late final AppStore _store = widget.store ?? _withCore();
 
-  /// The store with Core's ticket import and connections, which read the
-  /// signed-in participant's token when each request is made.
+  /// The store with Core's session, ticket import and connections. It picks
+  /// up the session of an earlier visit before the first page asks for it.
   AppStore _withCore() {
-    late final AppStore store;
-    String token() => store.session?.accessToken ?? '';
-    store = AppStore(
-      ticketsApi: HttpTicketsApi(token: token),
-      connectionsApi: HttpConnectionsApi(token: token),
+    final auth = HttpAuthApi();
+    final store = AppStore(
+      auth: auth,
+      ticketsApi: HttpTicketsApi(client: auth.client()),
+      connectionsApi: HttpConnectionsApi(client: auth.client()),
     );
+    unawaited(store.restoreSession());
     return store;
   }
 
@@ -264,4 +280,21 @@ class _CrowdedAppState extends State<CrowdedApp> {
       ),
     );
   }
+}
+
+/// Shown for a moment at start-up, while the session of an earlier visit is
+/// picked up.
+class _Starting extends StatelessWidget {
+  const _Starting();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.surface,
+    body: Center(
+      child: Semantics(
+        label: 'A carregar',
+        child: const CircularProgressIndicator(),
+      ),
+    ),
+  );
 }
