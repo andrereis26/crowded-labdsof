@@ -6,11 +6,14 @@ import { httpEventsApi, type EventsApi } from './data/eventsApi'
 import { photonGeocoder, type Geocoder } from './data/geocoding'
 import {
   choosePasswordWithCore,
+  homeOf,
+  isBackofficeRole,
   signInWithCore,
   type ChoosePassword,
-  type Session,
   type SignIn,
 } from './data/auth'
+import { useAuth } from './auth/useAuth'
+import { RequireRole, SessionLoading } from './auth/RequireRole'
 import { AdminLayout } from './layout/AdminLayout'
 import { OrganizerApp } from './OrganizerApp'
 import { OrganizationsPage, type Outcome } from './pages/admin/OrganizationsPage'
@@ -26,7 +29,8 @@ function codeOf(error: unknown): string {
 
 /** `now` is fixed at start-up so demo times stay stable between renders.
  * Sign-in, the platform administration (A2) and the organization's events
- * (O2–O4) go to Core; the other organizer pages still show demo data. */
+ * (O2–O4) go to Core; the other organizer pages still show demo data. Who is
+ * signed in comes from the {@link AuthProvider} around it. */
 export default function App({
   now,
   signIn = signInWithCore,
@@ -34,41 +38,43 @@ export default function App({
   adminApiFor = httpAdminApi,
   eventsApiFor = httpEventsApi,
   geocoder = defaultGeocoder,
-  initialSession,
 }: {
   now: Date
   signIn?: SignIn
   choosePassword?: ChoosePassword
-  adminApiFor?: (accessToken: string) => AdminApi
-  eventsApiFor?: (accessToken: string) => EventsApi
+  /** The API clients, given the session's fetch. */
+  adminApiFor?: (fetchImpl: typeof fetch) => AdminApi
+  eventsApiFor?: (fetchImpl: typeof fetch) => EventsApi
   geocoder?: Geocoder
-  /** A session to start with, for tests. */
-  initialSession?: Session
 }) {
-  const [session, setSession] = useState<Session | undefined>(initialSession)
+  const auth = useAuth()
+  const session = auth.state.status === 'signed-in' ? auth.state.session : undefined
   const [organizations, setOrganizations] = useState<AdminOrganization[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [loadError, setLoadError] = useState('')
   // The temporary password C4 replaces, in memory only, never in the URL or storage.
   const [pending, setPending] = useState<{ email: string; temporaryPassword: string }>()
   const navigate = useNavigate()
-  /** Forgets the session and what it loaded, so the next user starts clean. */
-  const signOut = () => {
-    setSession(undefined)
+  /** Ends the session with Core and forgets what it loaded, so the next user
+   * starts clean. */
+  const signOut = async () => {
+    await auth.signOut()
     setOrganizations([])
     setMembers([])
     setLoadError('')
     navigate('/sign-in', { replace: true })
   }
+  // A new client for each user, so one never sees what the previous one loaded.
+  const userId = session?.userId
   const administrator = session?.role === 'ADMINISTRATOR'
   const api = useMemo(
-    () => (session && administrator ? adminApiFor(session.accessToken) : undefined),
-    [session, administrator, adminApiFor],
+    () => (userId && administrator ? adminApiFor(auth.fetch) : undefined),
+    [userId, administrator, adminApiFor, auth.fetch],
   )
   const member = session?.role === 'ORGANIZATION_MEMBER'
   const eventsApi = useMemo(
-    () => (session && member ? eventsApiFor(session.accessToken) : undefined),
-    [session, member, eventsApiFor],
+    () => (userId && member ? eventsApiFor(auth.fetch) : undefined),
+    [userId, member, eventsApiFor, auth.fetch],
   )
 
   const show = useCallback((data: Awaited<ReturnType<AdminApi['list']>>) => {
@@ -159,19 +165,40 @@ export default function App({
     }
   }
 
+  // Someone already signed in skips the sign-in page.
+  const signedInHome =
+    session && isBackofficeRole(session.role) ? (
+      <Navigate to={homeOf(session.role)} replace />
+    ) : undefined
+
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/sign-in" replace />} />
+      <Route
+        path="/"
+        element={
+          auth.state.status === 'loading' ? (
+            <SessionLoading />
+          ) : (
+            (signedInHome ?? <Navigate to="/sign-in" replace />)
+          )
+        }
+      />
       <Route
         path="/sign-in"
         element={
-          <SignInPage
-            signIn={signIn}
-            onSignedIn={setSession}
-            onTemporaryPassword={(email, temporaryPassword) =>
-              setPending({ email, temporaryPassword })
-            }
-          />
+          auth.state.status === 'loading' ? (
+            <SessionLoading />
+          ) : (
+            (signedInHome ?? (
+              <SignInPage
+                signIn={signIn}
+                onSignedIn={auth.signedIn}
+                onTemporaryPassword={(email, temporaryPassword) =>
+                  setPending({ email, temporaryPassword })
+                }
+              />
+            ))
+          )
         }
       />
       <Route
@@ -182,7 +209,7 @@ export default function App({
             choosePassword={choosePassword}
             onSignedIn={(signedIn) => {
               setPending(undefined)
-              setSession(signedIn)
+              auth.signedIn(signedIn)
             }}
           />
         }
@@ -190,17 +217,17 @@ export default function App({
       <Route
         path="/organization/*"
         element={
-          eventsApi ? (
-            <OrganizerApp now={now} api={eventsApi} geocode={geocoder} onSignOut={signOut} />
-          ) : (
-            <Navigate to="/sign-in" replace />
-          )
+          <RequireRole role="ORGANIZATION_MEMBER">
+            {eventsApi && (
+              <OrganizerApp now={now} api={eventsApi} geocode={geocoder} onSignOut={signOut} />
+            )}
+          </RequireRole>
         }
       />
       <Route
         path="*"
         element={
-          administrator ? (
+          <RequireRole role="ADMINISTRATOR">
             <AdminLayout onSignOut={signOut}>
               <Routes>
                 <Route
@@ -233,9 +260,7 @@ export default function App({
                 />
               </Routes>
             </AdminLayout>
-          ) : (
-            <Navigate to="/sign-in" replace />
-          )
+          </RequireRole>
         }
       />
     </Routes>

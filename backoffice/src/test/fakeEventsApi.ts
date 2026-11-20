@@ -60,11 +60,8 @@ export function fakeEventsApi(events: OrgEvent[] = demoEvents()) {
       stored = stored.map((e) => (e.id === eventId ? { ...e, crowd } : e))
       return crowd
     },
-    async image(eventId) {
-      check('image')
-      const image = images.get(eventId)
-      if (!image) throw new EventsApiError('EVENT_IMAGE_NOT_FOUND')
-      return image
+    imageUrl(event) {
+      return `/api/events/${event.id}/image?v=${event.imageUpdatedAt ?? ''}`
     },
     async uploadImage(eventId, file) {
       check('uploadImage')
