@@ -83,7 +83,8 @@ public class SessionService {
   }
 
   /**
-   * Continues the session {@code refreshToken} belongs to, with new tokens.
+   * Continues the session {@code refreshToken} belongs to, with new tokens. They are issued only if
+   * no other refresh stored the session meanwhile, as two tabs may refresh at once.
    *
    * @throws NotAuthenticatedException when the session ended or the token does not continue it, or
    *     with {@code REFRESH_TOKEN_ROTATED} when another request has just refreshed it
@@ -94,11 +95,12 @@ public class SessionService {
     Session session =
         sessions.findById(presented.sessionId()).orElseThrow(() -> refused(Session.invalidToken()));
     RefreshToken next = RefreshToken.generate(session.getId(), random);
+    String readTokenHash = session.getTokenHash();
     try {
       session.refresh(presented, next, clock.instant());
     } catch (NotAuthenticatedException e) {
-      sessions.save(session);
       if (session.hasEnded()) {
+        sessions.save(session);
         log.warn("Ended session {}: expired or its refresh token was reused", session.getId());
       }
       throw refused(e);
@@ -108,7 +110,9 @@ public class SessionService {
             .findAccountById(session.getUserId())
             .orElseThrow(() -> refused(Session.invalidToken()));
     account.continueSession();
-    sessions.save(session);
+    if (!sessions.replace(session, readTokenHash)) {
+      throw refused(Session.refreshedMeanwhile());
+    }
     count("refreshed");
     return signedIn(account, session, next);
   }

@@ -136,6 +136,33 @@ class SessionServiceTest {
   }
 
   @Test
+  void letsOnlyOneOfTwoRefreshesAtOnceWin() {
+    SignedIn first = service.start(participant);
+    String[] winner = new String[1];
+    sessions.meanwhile = () -> winner[0] = service.refresh(first.refreshToken()).refreshToken();
+
+    assertRefused(() -> service.refresh(first.refreshToken()), "REFRESH_TOKEN_ROTATED");
+
+    // Tokens for the sign-in and the winner only; the winner's refresh token is stored.
+    verify(tokens, org.mockito.Mockito.times(2)).issue(any());
+    assertThat(sessions.only().getTokenHash())
+        .isEqualTo(RefreshToken.parse(winner[0]).orElseThrow().hash());
+    assertThat(meters.counter("crowded.auth.sessions", "outcome", "rotated").count()).isOne();
+  }
+
+  @Test
+  void issuesNothingForASessionEndedMeanwhile() {
+    SignedIn signedIn = service.start(participant);
+    sessions.meanwhile = () -> sessions.endAllOf(participant.getId());
+
+    assertRefused(() -> service.refresh(signedIn.refreshToken()), "REFRESH_TOKEN_ROTATED");
+
+    assertThat(sessions.all()).isEmpty();
+    // Only the sign-in's.
+    verify(tokens, org.mockito.Mockito.times(1)).issue(any());
+  }
+
+  @Test
   void endsTheSessionOfADeactivatedAccount() {
     SignedIn signedIn = service.start(participant);
     participant.deactivate();
@@ -188,6 +215,9 @@ class SessionServiceTest {
 
     private final Map<UUID, Session> stored = new HashMap<>();
 
+    /** Runs once before the next replace, as a request that gets there first. */
+    private Runnable meanwhile;
+
     @Override
     public void save(Session session) {
       if (session.hasEnded()) {
@@ -195,6 +225,21 @@ class SessionServiceTest {
       } else {
         stored.put(session.getId(), copy(session));
       }
+    }
+
+    @Override
+    public boolean replace(Session session, String readTokenHash) {
+      Runnable first = meanwhile;
+      meanwhile = null;
+      if (first != null) {
+        first.run();
+      }
+      Session current = stored.get(session.getId());
+      if (current == null || !current.getTokenHash().equals(readTokenHash)) {
+        return false;
+      }
+      save(session);
+      return true;
     }
 
     @Override

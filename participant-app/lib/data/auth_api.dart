@@ -215,7 +215,10 @@ class HttpAuthApi implements AuthApi {
       return null;
     }
     if (response.statusCode != 200) {
-      await _forget();
+      // Core may be restarting (502) or busy (429): the stored tokens stay for
+      // the next visit. A session that ended was forgotten when its refresh
+      // was refused.
+      _session = null;
       return null;
     }
     final me = _decode(response.body);
