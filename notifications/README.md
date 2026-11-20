@@ -22,7 +22,7 @@ For an official change (`OFFICIAL_CHANGE`), the service reads the change from Co
 
 ## Notification center and live stream
 
-The API is in the [API Outline](../docs/deliverables/api-outline.md#notification-center-notifications); the router serves it under `/api/notifications/`. Every endpoint needs a token, and a participant only ever sees and reads their own notifications (SR-003).
+The API is in the [API Outline](../docs/deliverables/api-outline.md#notification-center-notifications); the router serves it under `/api/notifications/`. Every endpoint needs a token, in the `Authorization` header or Core's `crowded_access` cookie, that is not revoked or signed out, and a change must come from the host it was sent to ([ADR 0021](../docs/deliverables/adr/0021-browser-sessions-in-cookies-with-refresh-tokens.md)). A participant only ever sees and reads their own notifications (SR-003).
 
 - **Center:** `GET /notifications` lists them newest first with the event's name, read from Core's `event`, and the unread count; `POST /notifications/{id}/read` stamps `read_at` once.
 - **Live stream (ADR 0007):** `GET /notifications/stream` is a server-sent event stream. When a message stores new notifications, each one is announced after the transaction commits on the Redis channel `notifications:created`, which every instance subscribes to; the instance holding the recipient's streams sends it and stamps `delivered_at` the first time. A notification that already existed is not announced again, so a redelivered message shows no second banner. A comment every 25 s keeps idle connections open, and the stream ends when the token expires or the service stops; the client reconnects and fetches what it missed from the center.

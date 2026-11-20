@@ -12,12 +12,14 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
  * Refuses a token issued before Core revoked its user's tokens (ADR 0004), for example after an
- * administrator deactivated a member. Core writes {@code revoked-before:<userId>} in Redis, in
- * epoch milliseconds. When Redis cannot be read, the token is refused: the services fail safe.
+ * administrator deactivated a member, and a token its user signed out with (ADR 0021). Core writes
+ * {@code revoked-before:<userId>} in Redis, in epoch milliseconds, and {@code revoked-token:<jti>}.
+ * When Redis cannot be read, the token is refused: the services fail safe.
  */
 class RevokedTokenValidator implements OAuth2TokenValidator<Jwt> {
 
   static final String PREFIX = "revoked-before:";
+  static final String TOKEN_PREFIX = "revoked-token:";
 
   /** When Core issued the token, in epoch milliseconds; {@code iat} has whole seconds. */
   static final String ISSUED_AT_MILLIS = "iat_ms";
@@ -42,10 +44,16 @@ class RevokedTokenValidator implements OAuth2TokenValidator<Jwt> {
       return OAuth2TokenValidatorResult.success();
     }
     String revokedBefore;
+    boolean signedOut;
     try {
       revokedBefore = redis.opsForValue().get(PREFIX + userId);
+      signedOut =
+          token.getId() != null && Boolean.TRUE.equals(redis.hasKey(TOKEN_PREFIX + token.getId()));
     } catch (DataAccessException e) {
       return failure("The token's status cannot be checked.");
+    }
+    if (signedOut) {
+      return failure("The token was revoked.");
     }
     if (revokedBefore != null
         && issuedAt(token).isBefore(Instant.ofEpochMilli(Long.parseLong(revokedBefore)))) {
