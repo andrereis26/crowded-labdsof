@@ -26,8 +26,10 @@ export interface EventsApi {
   publishChange(event: OrgEvent, change: EventChange): Promise<void>
   /** Publishes the crowd level that connected participants see at once. */
   publishCrowd(eventId: string, level: CrowdLevel): Promise<PublishedCrowd>
-  /** The event's image, fetched with the token, which an image tag cannot send. */
-  image(eventId: string): Promise<Blob>
+  /** Where an image tag loads the event's image: the browser sends the
+   * session cookie (ADR 0021), and each upload gets its own address, so a
+   * replaced image is never shown from the cache. */
+  imageUrl(event: Pick<OrgEvent, 'id' | 'imageUpdatedAt'>): string
   /** Uploads or replaces the event's image; Core removes its metadata. */
   uploadImage(eventId: string, file: Blob): Promise<void>
   /** Removes the event's image. */
@@ -328,9 +330,8 @@ export function toChangeBody(e: OrgEvent, change: EventChange) {
   }
 }
 
-/** {@link EventsApi} over HTTP, with the member's token. */
+/** {@link EventsApi} over HTTP, with the member's session (its cookies). */
 export function httpEventsApi(
-  accessToken: string,
   fetchImpl: typeof fetch = fetch,
   baseUrl: string = apiBaseUrl,
 ): EventsApi {
@@ -343,7 +344,6 @@ export function httpEventsApi(
       response = await fetchImpl(`${base}${path}`, {
         ...init,
         method,
-        headers: { Authorization: `Bearer ${accessToken}`, ...init.headers },
       })
     } catch {
       throw new EventsApiError('NETWORK')
@@ -393,8 +393,9 @@ export function httpEventsApi(
         await call<CrowdJson>('PUT', `/events/${eventId}/crowd`, { level: level.toUpperCase() }),
       )
     },
-    async image(eventId) {
-      return (await send('GET', `/events/${eventId}/image`)).blob()
+    imageUrl(event) {
+      const version = event.imageUpdatedAt ? `?v=${encodeURIComponent(event.imageUpdatedAt)}` : ''
+      return `${base}/events/${event.id}/image${version}`
     },
     async uploadImage(eventId, file) {
       await send('PUT', `/events/${eventId}/image`, {

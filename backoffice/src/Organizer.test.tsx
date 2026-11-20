@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
-import App from './App'
+import { AppWithSession } from './test/renderApp'
 import type { Session } from './data/auth'
 import {
   accessCodeFor,
@@ -19,8 +19,6 @@ import { fakeEventsApi, fakeGeocoder } from './test/fakeEventsApi'
 const now = new Date(2026, 9, 17, 22, 47)
 
 const member: Session = {
-  accessToken: 'jwt',
-  expiresAt: new Date(2026, 9, 18),
   userId: 'u-1',
   role: 'ORGANIZATION_MEMBER',
   organizationId: 'org-1',
@@ -30,9 +28,9 @@ const member: Session = {
 async function renderAt(path: string, events = fakeEventsApi()) {
   const view = render(
     <MemoryRouter initialEntries={[path]}>
-      <App
+      <AppWithSession
         now={now}
-        initialSession={member}
+        session={member}
         eventsApiFor={() => events.api}
         geocoder={fakeGeocoder}
       />
@@ -450,9 +448,9 @@ describe('O2–O4 with Core', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/organization/events/new']}>
-        <App
+        <AppWithSession
           now={now}
-          initialSession={member}
+          session={member}
           eventsApiFor={() => fakeEventsApi().api}
           geocoder={() => Promise.reject(new Error('down'))}
         />
@@ -475,7 +473,7 @@ describe('O2–O4 with Core', () => {
     events.refuse = 'NETWORK'
     render(
       <MemoryRouter initialEntries={['/organization/events']}>
-        <App now={now} initialSession={member} eventsApiFor={() => events.api} />
+        <AppWithSession now={now} session={member} eventsApiFor={() => events.api} />
       </MemoryRouter>,
     )
 
@@ -496,7 +494,7 @@ describe('O2–O4 with Core', () => {
   it('sends who is not signed in as a member to the sign-in', () => {
     render(
       <MemoryRouter initialEntries={['/organization/events']}>
-        <App now={now} />
+        <AppWithSession now={now} />
       </MemoryRouter>,
     )
     expect(screen.getByRole('heading', { name: /Entrar/ })).toBeInTheDocument()

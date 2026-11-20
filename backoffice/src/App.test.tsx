@@ -1,10 +1,14 @@
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
-import App from './App'
+import { fakeAuthApi } from './test/fakeAuthApi'
+import { AppWithSession } from './test/renderApp'
 import { AdminApiError, type AdminApi } from './data/adminApi'
-import type { ChoosePassword, Session, SignIn, SignInOutcome } from './data/auth'
+import App from './App'
+import { AuthProvider } from './auth/AuthContext'
+import type { AuthApi, ChoosePassword, Session, SignIn, SignInOutcome } from './data/auth'
+import { httpEventsApi } from './data/eventsApi'
 import {
   demoMembers,
   lastAccessLabel,
@@ -21,8 +25,6 @@ const now = new Date(2026, 10, 7, 22, 0)
 
 function session(role: Session['role']): Session {
   return {
-    accessToken: 'jwt',
-    expiresAt: new Date(2026, 10, 7, 23, 0),
     userId: 'u-1',
     role,
     organizationId: role === 'ADMINISTRATOR' ? null : 'organizacao-margens',
@@ -107,17 +109,23 @@ function fakeChoosePassword(...outcomes: SignInOutcome[]) {
 function renderAt(
   path: string | { pathname: string; state: unknown },
   signIn: SignIn = fakeSignIn({ kind: 'error', title: 'Erro', message: 'Sem rede.' }).signIn,
-  options: { session?: Session; adminApi?: AdminApi; choosePassword?: ChoosePassword } = {},
+  options: {
+    session?: Session
+    adminApi?: AdminApi
+    choosePassword?: ChoosePassword
+    auth?: AuthApi
+  } = {},
 ) {
   const api = options.adminApi ?? fakeAdminApi()
   const events = fakeEventsApi()
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <App
+      <AppWithSession
         now={now}
         signIn={signIn}
         choosePassword={options.choosePassword}
-        initialSession={options.session}
+        session={options.session}
+        auth={options.auth}
         adminApiFor={() => api}
         eventsApiFor={() => events.api}
       />
@@ -226,14 +234,19 @@ describe('C1 and C4 sign-in', () => {
     expect(await screen.findByRole('heading', { name: 'Eventos', level: 2 })).toBeInTheDocument()
   })
 
-  it('signs the member out from the "Mais" page', async () => {
+  it('signs the member out with Core from the "Mais" page', async () => {
     const user = userEvent.setup()
-    renderAt('/organization/more', undefined, { session: session('ORGANIZATION_MEMBER') })
+    const auth = fakeAuthApi()
+    renderAt('/organization/more', undefined, {
+      session: session('ORGANIZATION_MEMBER'),
+      auth: auth.api,
+    })
 
     const buttons = await screen.findAllByRole('button', { name: 'Terminar sessão' })
     await user.click(buttons[buttons.length - 1])
 
-    expect(screen.getByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
+    expect(auth.signOuts).toHaveLength(1)
   })
 
   it('signs the administrator out from the side menu', async () => {
@@ -243,7 +256,7 @@ describe('C1 and C4 sign-in', () => {
 
     await user.click(screen.getByRole('button', { name: 'Terminar sessão' }))
 
-    expect(screen.getByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
   })
 
   it('sends the administrator to the organizations', async () => {
@@ -437,13 +450,73 @@ describe('A2 platform administration', () => {
     )
   })
 
-  it('sends anyone but the administrator to the sign-in page', () => {
+  it('sends a member to their own area and anyone signed out to the sign-in page', async () => {
     renderAt('/organizations', undefined, { session: session('ORGANIZATION_MEMBER') })
+    expect(await screen.findByRole('heading', { name: 'Eventos', level: 2 })).toBeInTheDocument()
+    cleanup()
+
+    renderAt('/organizations')
     expect(screen.getByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
   })
 
   it('shows a placeholder for sections not built yet', () => {
     renderAsAdministrator('/auditoria')
     expect(screen.getByText('Disponível em breve.')).toBeInTheDocument()
+  })
+})
+
+describe('the session Core keeps in cookies (ADR 0021)', () => {
+  /** The app as main.tsx mounts it, asking `auth` who is signed in. */
+  function renderStarting(path: string, auth: AuthApi, fetchImpl?: typeof fetch) {
+    const events = fakeEventsApi()
+    return render(
+      <MemoryRouter initialEntries={[path]}>
+        <AuthProvider auth={auth} fetchImpl={fetchImpl}>
+          <App
+            now={now}
+            adminApiFor={() => fakeAdminApi()}
+            eventsApiFor={fetchImpl ? (f) => httpEventsApi(f, '/api') : () => events.api}
+          />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+  }
+
+  it('keeps the member on the page they reloaded, without the sign-in page in between', async () => {
+    renderStarting('/organization/events', fakeAuthApi(session('ORGANIZATION_MEMBER')).api)
+
+    expect(screen.getByRole('status')).toHaveTextContent('A carregar…')
+    expect(screen.queryByRole('heading', { name: 'Entrar no Crowded' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Eventos', level: 2 })).toBeInTheDocument()
+  })
+
+  it('skips the sign-in page for someone already signed in', async () => {
+    renderStarting('/sign-in', fakeAuthApi(session('ADMINISTRATOR')).api)
+    expect(await screen.findByRole('heading', { name: 'Organizações' })).toBeInTheDocument()
+    cleanup()
+
+    renderStarting('/', fakeAuthApi().api)
+    expect(await screen.findByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
+  })
+
+  it('tells a participant the account is for the app, and signs them out', async () => {
+    const user = userEvent.setup()
+    const auth = fakeAuthApi({ userId: 'p-1', role: 'PARTICIPANT', organizationId: null })
+    renderStarting('/organization/events', auth.api)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Conta de participante' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Terminar sessão' }))
+
+    expect(await screen.findByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
+    expect(auth.signOuts).toHaveLength(1)
+  })
+
+  it('goes back to the sign-in page when the session has ended', async () => {
+    const ended: typeof fetch = () => Promise.resolve(new Response(null, { status: 401 }))
+    renderStarting('/organization/events', fakeAuthApi(session('ORGANIZATION_MEMBER')).api, ended)
+
+    expect(await screen.findByRole('heading', { name: 'Entrar no Crowded' })).toBeInTheDocument()
   })
 })

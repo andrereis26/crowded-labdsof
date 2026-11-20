@@ -253,22 +253,23 @@ describe('events in Core', () => {
     })
   })
 
-  it('calls Core with the member token', async () => {
+  it("calls Core with the member's session", async () => {
     const { calls, fetchImpl } = recording(200, [json])
-    const api = httpEventsApi('jwt', fetchImpl, '/api/')
+    const api = httpEventsApi(fetchImpl, '/api/')
 
     expect(await api.list()).toHaveLength(1)
     expect(calls[0].url).toBe('/api/organizations/me/events')
-    expect(new Headers(calls[0].init?.headers).get('Authorization')).toBe('Bearer jwt')
+    // The browser sends the session's cookies; there is no token to add.
+    expect(new Headers(calls[0].init?.headers).get('Authorization')).toBeNull()
 
     const created = recording(201, json)
-    expect((await httpEventsApi('jwt', created.fetchImpl, '/api').create(margens())).id).toBe('e-1')
+    expect((await httpEventsApi(created.fetchImpl, '/api').create(margens())).id).toBe('e-1')
     expect(created.calls[0].init?.method).toBe('POST')
     expect(created.calls[0].url).toBe('/api/events')
 
     const corrected = recording(200, json)
     const before = margens()
-    const correctApi = httpEventsApi('jwt', corrected.fetchImpl, '/api')
+    const correctApi = httpEventsApi(corrected.fetchImpl, '/api')
     expect(await correctApi.correct(before, before)).toBe(before)
     expect(corrected.calls).toHaveLength(0)
     await correctApi.correct(before, { ...before, capacity: 1 })
@@ -277,7 +278,7 @@ describe('events in Core', () => {
     expect(JSON.parse(String(corrected.calls[0].init?.body))).toEqual({ capacity: 1 })
 
     const changed = recording(201, { changeId: 'c-1', severity: 'CRITICAL' })
-    await httpEventsApi('jwt', changed.fetchImpl, '/api').publishChange(before, {
+    await httpEventsApi(changed.fetchImpl, '/api').publishChange(before, {
       kind: 'cancel',
       message: '',
     })
@@ -296,9 +297,7 @@ describe('events in Core', () => {
     }
     const published = recording(200, crowd)
 
-    expect(
-      await httpEventsApi('jwt', published.fetchImpl, '/api').publishCrowd('e-1', 'high'),
-    ).toEqual({
+    expect(await httpEventsApi(published.fetchImpl, '/api').publishCrowd('e-1', 'high')).toEqual({
       level: 'high',
       publishedBy: 'Ribeira Live',
       publishedAt: new Date('2026-11-14T21:05:00Z'),
@@ -310,35 +309,34 @@ describe('events in Core', () => {
     expect(fromJson({ ...json, crowd: null }).crowd).toBeUndefined()
 
     const closed = recording(409, { code: 'EVENT_CLOSED' })
-    await expect(
-      httpEventsApi('jwt', closed.fetchImpl).publishCrowd('e-1', 'low'),
-    ).rejects.toMatchObject({ code: 'EVENT_CLOSED' })
+    await expect(httpEventsApi(closed.fetchImpl).publishCrowd('e-1', 'low')).rejects.toMatchObject({
+      code: 'EVENT_CLOSED',
+    })
   })
 
-  it('fetches, uploads and removes the event image with the member token', async () => {
-    const fetched = recording(200, undefined)
-    const image = await httpEventsApi('jwt', fetched.fetchImpl, '/api').image('e-1')
-    expect(image.size).toBe(0)
-    expect(fetched.calls[0].url).toBe('/api/events/e-1/image')
-    expect(new Headers(fetched.calls[0].init?.headers).get('Authorization')).toBe('Bearer jwt')
+  it('gives each upload of the event image its own address, and uploads and removes it', async () => {
+    const api = httpEventsApi(fetch, '/api')
+    expect(api.imageUrl({ id: 'e-1', imageUpdatedAt: '2026-11-19T10:00:00Z' })).toBe(
+      '/api/events/e-1/image?v=2026-11-19T10%3A00%3A00Z',
+    )
+    expect(api.imageUrl({ id: 'e-1' })).toBe('/api/events/e-1/image')
 
     const uploaded = recording(204, undefined)
     const file = new Blob(['png'], { type: 'image/png' })
-    await httpEventsApi('jwt', uploaded.fetchImpl, '/api').uploadImage('e-1', file)
+    await httpEventsApi(uploaded.fetchImpl, '/api').uploadImage('e-1', file)
     expect(uploaded.calls[0].init?.method).toBe('PUT')
     expect(uploaded.calls[0].init?.body).toBe(file)
     const headers = new Headers(uploaded.calls[0].init?.headers)
     expect(headers.get('Content-Type')).toBe('image/png')
-    expect(headers.get('Authorization')).toBe('Bearer jwt')
 
     const removed = recording(204, undefined)
-    await httpEventsApi('jwt', removed.fetchImpl, '/api').removeImage('e-1')
+    await httpEventsApi(removed.fetchImpl, '/api').removeImage('e-1')
     expect(removed.calls[0]).toMatchObject({ url: '/api/events/e-1/image' })
     expect(removed.calls[0].init?.method).toBe('DELETE')
 
     const refused = recording(400, { code: 'IMAGE_TOO_LARGE' })
     await expect(
-      httpEventsApi('jwt', refused.fetchImpl).uploadImage('e-1', new Blob(['x'])),
+      httpEventsApi(refused.fetchImpl).uploadImage('e-1', new Blob(['x'])),
     ).rejects.toMatchObject({ code: 'IMAGE_TOO_LARGE' })
     expect(eventErrorMessage('IMAGE_TOO_LARGE')).toBe(
       'A imagem tem mais de 5 MB. Escolhe uma mais pequena.',
@@ -357,17 +355,17 @@ describe('events in Core', () => {
 
   it('reports Core refusals and lost connections by their code', async () => {
     const refused = recording(409, { code: 'EVENT_CODE_TAKEN' })
-    await expect(httpEventsApi('jwt', refused.fetchImpl).create(margens())).rejects.toMatchObject({
+    await expect(httpEventsApi(refused.fetchImpl).create(margens())).rejects.toMatchObject({
       code: 'EVENT_CODE_TAKEN',
     })
 
     const failed = recording(500, undefined)
-    await expect(httpEventsApi('jwt', failed.fetchImpl).list()).rejects.toMatchObject({
+    await expect(httpEventsApi(failed.fetchImpl).list()).rejects.toMatchObject({
       code: 'HTTP_500',
     })
 
     const offline: typeof fetch = () => Promise.reject(new TypeError('offline'))
-    await expect(httpEventsApi('jwt', offline).list()).rejects.toBeInstanceOf(EventsApiError)
+    await expect(httpEventsApi(offline).list()).rejects.toBeInstanceOf(EventsApiError)
   })
 
   it('places each refusal on its field, in European Portuguese', () => {

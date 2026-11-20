@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import axe from 'axe-core'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
-import App from '../App'
+import { AppWithSession } from '../test/renderApp'
 import type { ChoosePassword, SignIn } from '../data/auth'
 
 /** WCAG 2.1 A and AA rules of axe. Colour contrast needs a real layout, which jsdom has not:
@@ -30,7 +30,7 @@ describe('C1 sign-in accessibility', () => {
     const user = userEvent.setup()
     const { container } = render(
       <MemoryRouter initialEntries={['/sign-in']}>
-        <App now={new Date(2026, 10, 12)} signIn={refused} />
+        <AppWithSession now={new Date(2026, 10, 12)} signIn={refused} />
       </MemoryRouter>,
     )
     expect(await violations(container)).toEqual([])
@@ -47,7 +47,7 @@ describe('C1 sign-in accessibility', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/sign-in']}>
-        <App now={new Date(2026, 10, 12)} signIn={refused} />
+        <AppWithSession now={new Date(2026, 10, 12)} signIn={refused} />
       </MemoryRouter>,
     )
 
@@ -75,7 +75,11 @@ describe('C4 new password accessibility', () => {
     const user = userEvent.setup()
     const { container } = render(
       <MemoryRouter initialEntries={['/sign-in']}>
-        <App now={new Date(2026, 10, 12)} signIn={temporary} choosePassword={choosePassword} />
+        <AppWithSession
+          now={new Date(2026, 10, 12)}
+          signIn={temporary}
+          choosePassword={choosePassword}
+        />
       </MemoryRouter>,
     )
     await user.type(screen.getByLabelText('Email'), 'novo@ribeira-live.test')

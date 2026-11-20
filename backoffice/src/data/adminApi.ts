@@ -94,9 +94,8 @@ export function fromJson(json: OrganizationJson[]): {
   }
 }
 
-/** {@link AdminApi} over HTTP, with the administrator's token. */
+/** {@link AdminApi} over HTTP, with the administrator's session (its cookies). */
 export function httpAdminApi(
-  accessToken: string,
   fetchImpl: typeof fetch = fetch,
   baseUrl: string = apiBaseUrl,
 ): AdminApi {
@@ -107,10 +106,7 @@ export function httpAdminApi(
     try {
       response = await fetchImpl(`${base}${path}`, {
         method,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-        },
+        headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body),
       })
     } catch {

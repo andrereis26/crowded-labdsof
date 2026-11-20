@@ -43,11 +43,12 @@ describe('platform administration in Core', () => {
   it('lists the organizations and members in the shape A2 shows', async () => {
     const { calls, fetchImpl } = recording(200, [organization])
 
-    const { organizations, members } = await httpAdminApi('jwt', fetchImpl, '/api/').list()
+    const { organizations, members } = await httpAdminApi(fetchImpl, '/api/').list()
 
     expect(calls[0].url).toBe('/api/admin/organizations')
     expect(calls[0].init?.method).toBe('GET')
-    expect(new Headers(calls[0].init?.headers).get('Authorization')).toBe('Bearer jwt')
+    // The browser sends the session's cookies; there is no token to add.
+    expect(new Headers(calls[0].init?.headers).get('Authorization')).toBeNull()
     expect(organizations).toEqual([
       expect.objectContaining({
         id: 'org-1',
@@ -75,7 +76,7 @@ describe('platform administration in Core', () => {
 
   it('creates organizations and members, and changes members', async () => {
     const created = recording(201, { organizationId: 'org-2' })
-    expect(await httpAdminApi('jwt', created.fetchImpl).createOrganization('Paredes')).toBe('org-2')
+    expect(await httpAdminApi(created.fetchImpl).createOrganization('Paredes')).toBe('org-2')
     expect(created.calls[0].url).toBe('/api/admin/organizations')
     expect(JSON.parse(String(created.calls[0].init?.body))).toEqual({ name: 'Paredes' })
 
@@ -84,13 +85,11 @@ describe('platform administration in Core', () => {
       temporaryPassword: 'T7q-mK4-v9Px',
       expiresAt: '2026-11-19T10:00:00Z',
     })
-    expect(await httpAdminApi('jwt', added.fetchImpl).addMember('org-2', 'Inês', 'i@p.pt')).toEqual(
-      {
-        userId: 'u-3',
-        temporaryPassword: 'T7q-mK4-v9Px',
-        expiresAt: new Date('2026-11-19T10:00:00Z'),
-      },
-    )
+    expect(await httpAdminApi(added.fetchImpl).addMember('org-2', 'Inês', 'i@p.pt')).toEqual({
+      userId: 'u-3',
+      temporaryPassword: 'T7q-mK4-v9Px',
+      expiresAt: new Date('2026-11-19T10:00:00Z'),
+    })
     expect(added.calls[0].url).toBe('/api/admin/organizations/org-2/members')
 
     const changed = recording(200, {
@@ -99,9 +98,11 @@ describe('platform administration in Core', () => {
       temporaryPassword: null,
       expiresAt: null,
     })
-    expect(
-      await httpAdminApi('jwt', changed.fetchImpl).changeMember('u-3', { active: false }),
-    ).toEqual({ active: false, temporaryPassword: undefined, expiresAt: undefined })
+    expect(await httpAdminApi(changed.fetchImpl).changeMember('u-3', { active: false })).toEqual({
+      active: false,
+      temporaryPassword: undefined,
+      expiresAt: undefined,
+    })
     expect(changed.calls[0].init?.method).toBe('PATCH')
     expect(changed.calls[0].url).toBe('/api/admin/members/u-3')
   })
@@ -109,16 +110,16 @@ describe('platform administration in Core', () => {
   it('turns refusals and network failures into codes and messages', async () => {
     const refused = recording(409, { status: 409, code: 'ORGANIZATION_NAME_TAKEN' })
     await expect(
-      httpAdminApi('jwt', refused.fetchImpl).createOrganization('Ribeira Live'),
+      httpAdminApi(refused.fetchImpl).createOrganization('Ribeira Live'),
     ).rejects.toEqual(new AdminApiError('ORGANIZATION_NAME_TAKEN'))
 
     const broken = recording(502, undefined)
-    await expect(httpAdminApi('jwt', broken.fetchImpl).list()).rejects.toMatchObject({
+    await expect(httpAdminApi(broken.fetchImpl).list()).rejects.toMatchObject({
       code: 'HTTP_502',
     })
 
     const offline: typeof fetch = () => Promise.reject(new TypeError('Failed to fetch'))
-    await expect(httpAdminApi('jwt', offline).list()).rejects.toMatchObject({ code: 'NETWORK' })
+    await expect(httpAdminApi(offline).list()).rejects.toMatchObject({ code: 'NETWORK' })
 
     expect(adminErrorMessage('ORGANIZATION_NAME_TAKEN')).toBe(
       'Já existe uma organização com este nome.',
