@@ -49,6 +49,22 @@ class RevokedTokenValidatorTest {
   }
 
   @Test
+  void refusesATokenItsUserSignedOutWith() {
+    when(redis.opsForValue()).thenReturn(values);
+    when(redis.hasKey("revoked-token:signed-out")).thenReturn(true);
+
+    Jwt.Builder signedOut =
+        Jwt.withTokenValue("t")
+            .header("alg", "RS256")
+            .subject(USER.toString())
+            .issuedAt(REVOKED_AT)
+            .expiresAt(REVOKED_AT.plusSeconds(900));
+
+    assertThat(validator.validate(signedOut.jti("signed-out").build()).hasErrors()).isTrue();
+    assertThat(validator.validate(signedOut.jti("other").build()).hasErrors()).isFalse();
+  }
+
+  @Test
   void refusesEveryTokenWhenRedisIsDown() {
     when(redis.opsForValue()).thenReturn(values);
     when(values.get("revoked-before:" + USER))

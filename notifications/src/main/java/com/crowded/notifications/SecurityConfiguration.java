@@ -18,9 +18,10 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Every request needs a valid, unrevoked JWT (ADR 0004, ADR 0005), except the health and metrics
- * endpoints, which the container health check, Docker Swarm and Prometheus call without one; the
- * router keeps them inside the Swarm.
+ * Every request needs a valid, unrevoked JWT (ADR 0004, ADR 0005), from the {@code Authorization}
+ * header or the browser's session cookie (ADR 0021), except the health and metrics endpoints, which
+ * the container health check, Docker Swarm and Prometheus call without one; the router keeps them
+ * inside the Swarm.
  */
 @Configuration(proxyBeanMethods = false)
 class SecurityConfiguration {
@@ -35,6 +36,9 @@ class SecurityConfiguration {
                     .permitAll()
                     .anyRequest()
                     .authenticated())
+        // The session cookie is SameSite=Strict and OriginCheckFilter refuses changes from
+        // another origin (ADR 0021), so Spring's CSRF tokens stay off, as in Core.
+        .csrf(csrf -> csrf.disable())
         .oauth2ResourceServer(server -> server.jwt(Customizer.withDefaults()));
     return http.build();
   }
