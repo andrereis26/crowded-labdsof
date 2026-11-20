@@ -6,8 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
-/// Core's sign-in, refusing every attempt, so C1 shows its error.
+/// Core's sign-in, refusing every attempt, so C1 shows its error. With
+/// [restored], the browser holds an organization account's session.
 class _RefusingAuthApi implements AuthApi {
+  _RefusingAuthApi({this.restored});
+
+  final AuthSession? restored;
+
   @override
   Future<void> register({
     required String email,
@@ -21,7 +26,7 @@ class _RefusingAuthApi implements AuthApi {
   }) async => throw const AuthException('INVALID_CREDENTIALS');
 
   @override
-  Future<AuthSession?> restore() async => null;
+  Future<AuthSession?> restore() async => restored;
 
   @override
   Future<void> signOut() async {}
@@ -140,5 +145,29 @@ void main() {
       find.text('O email ou a palavra-passe estão errados.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets("C1 meets the guidelines with an organization's session", (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final store = AppStore(
+      auth: _RefusingAuthApi(
+        restored: const AuthSession(
+          userId: 'u-1',
+          role: 'ORGANIZATION_MEMBER',
+          email: 'equipa@ribeira-live.test',
+        ),
+      ),
+    );
+    await store.restoreSession();
+    await tester.pumpWidget(
+      CrowdedApp(store: store, initialLocation: '/sign-in'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Terminar sessão'), findsOneWidget);
+
+    await _expectAccessible(tester);
+    semantics.dispose();
   });
 }

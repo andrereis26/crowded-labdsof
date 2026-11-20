@@ -98,3 +98,19 @@ describe('C4 new password accessibility', () => {
     expect(await violations(container)).toEqual([])
   })
 })
+
+describe('participant account in the backoffice accessibility', () => {
+  it('has no WCAG 2.1 AA violations', async () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/organization/events']}>
+        <AppWithSession
+          now={new Date(2026, 10, 12)}
+          session={{ userId: 'p-1', role: 'PARTICIPANT', organizationId: null }}
+        />
+      </MemoryRouter>,
+    )
+    await screen.findByRole('heading', { name: 'Conta de participante' })
+
+    expect(await violations(container)).toEqual([])
+  })
+})
