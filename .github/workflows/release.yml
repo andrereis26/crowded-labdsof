@@ -72,6 +72,7 @@ jobs:
       TF_VAR_ssh_allowed_cidrs: ${{ vars.SSH_ALLOWED_CIDRS || '[]' }}
     outputs:
       host: ${{ steps.outputs.outputs.host }}
+      fqdn: ${{ steps.outputs.outputs.fqdn }}
       user: ${{ steps.outputs.outputs.user }}
       resource-group: ${{ steps.outputs.outputs.resource-group }}
       nsg: ${{ steps.outputs.outputs.nsg }}
@@ -88,6 +89,7 @@ jobs:
         run: |
           {
             echo "host=$(tofu output -raw public_ip)"
+            echo "fqdn=$(tofu output -raw fqdn)"
             echo "user=$(tofu output -raw admin_username)"
             echo "resource-group=$(tofu output -raw resource_group_name)"
             echo "nsg=$(tofu output -raw network_security_group_name)"
@@ -103,7 +105,7 @@ jobs:
     timeout-minutes: 90
     environment:
       name: production
-      url: http://${{ needs.infrastructure.outputs.host }}/
+      url: https://${{ needs.infrastructure.outputs.fqdn }}/
     permissions:
       contents: read
       id-token: write
@@ -231,9 +233,11 @@ jobs:
         if: steps.release.outputs.deploy == 'true'
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          FQDN: ${{ needs.infrastructure.outputs.fqdn }}
         run: |
           {
-            printf 'export RELEASE_ID=%q DOCKERHUB_NAMESPACE=%q DOPPLER_TOKEN=%q\n' "$GITHUB_SHA" "$NAMESPACE" "$DOPPLER_TOKEN"
+            printf 'export RELEASE_ID=%q DOCKERHUB_NAMESPACE=%q DOPPLER_TOKEN=%q TLS_DOMAIN=%q\n' \
+              "$GITHUB_SHA" "$NAMESPACE" "$DOPPLER_TOKEN" "$FQDN"
             for app in database core jobs notifications backoffice participant-app; do
               var="$(tr 'a-z-' 'A-Z_' <<<"$app")_IMAGE"
               printf 'export %s=%q\n' "$var" "$NAMESPACE/crowded-$app:main"
@@ -245,12 +249,23 @@ jobs:
       - id: check
         name: Check from outside
         if: steps.deploy.outcome == 'success'
+        env:
+          FQDN: ${{ needs.infrastructure.outputs.fqdn }}
         run: |
           for path in /healthz / /backoffice/; do
             curl --fail --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors \
               --max-time 10 --output /dev/null "http://$HOST$path"
             echo "http://$HOST$path answers."
           done
+          # HTTPS needs the certificate, which certbot may still be asking
+          # Let's Encrypt for; until then the router serves HTTP, so this only
+          # warns.
+          if curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors \
+            --max-time 10 --output /dev/null "https://$FQDN/"; then
+            echo "https://$FQDN/ answers."
+          else
+            echo "::warning::https://$FQDN/ does not answer yet: check the certbot service's logs."
+          fi
 
       - name: Roll back
         if: failure() && steps.check.outcome == 'failure'

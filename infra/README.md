@@ -1,6 +1,6 @@
 # Infrastructure
 
-The production environment on Azure, as code ([ADR 0013](../docs/deliverables/adr/0013-single-azure-vm-docker-swarm-with-terraform.md), [ADR 0014](../docs/deliverables/adr/0014-opentofu-state-access-and-deployment-from-main.md)): one resource group with the virtual network and subnet, the network security group, a static public IP with a DNS name, the Ubuntu 24.04 virtual machine (`Standard_B2ls_v2`, 2 vCPU, 4 GB) and its managed data disk, in `spaincentral`, provisioned with **OpenTofu**. Pull requests that change it show the plan; every merge to `main` applies it and deploys the release ([`deployment/`](../deployment/README.md)).
+The production environment on Azure, as code ([ADR 0013](../docs/deliverables/adr/0013-single-azure-vm-docker-swarm-with-terraform.md), [ADR 0014](../docs/deliverables/adr/0014-opentofu-state-access-and-deployment-from-main.md)): one resource group with the virtual network and subnet, the network security group, which opens ports 80 and 443 to the router (HTTPS, and Let's Encrypt's challenge, [`deployment/`](../deployment/README.md#tls)), a static public IP with a DNS name, the Ubuntu 24.04 virtual machine (`Standard_B2ls_v2`, 2 vCPU, 4 GB) and its managed data disk, in `spaincentral`, provisioned with **OpenTofu**. Pull requests that change it show the plan; every merge to `main` applies it and deploys the release ([`deployment/`](../deployment/README.md)).
 
 | Path | What it is |
 |---|---|

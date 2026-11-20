@@ -25,6 +25,8 @@
 #   DATABASE_IMAGE, CORE_IMAGE, JOBS_IMAGE, NOTIFICATIONS_IMAGE, BACKOFFICE_IMAGE,
 #   PARTICIPANT_APP_IMAGE optional, image (tag or digest) for that service;
 #                         default: the current release's, else <namespace>/crowded-<service>:main
+#   TLS_DOMAIN            the domain of the router's certificate; default: the
+#                         current release's
 #   STACK_NAME, DEPLOY_ROOT, KEEP_RELEASES, WAIT_TIMEOUT_SECONDS, SMOKE_URL,
 #   SWARM_ADVERTISE_ADDR  optional, see lib/common.sh and README.md
 
@@ -207,7 +209,8 @@ write_release() {
       printf '%s=%q\n' "${var}" "${!var}"
     done
     # Swarm configs cannot change either, so the router's is versioned the same way.
-    printf '%s=%q\n' ROUTER_CONF_VERSION "$(sha256sum "${release_dir}/router/nginx.conf" | cut -c1-12)"
+    printf '%s=%q\n' ROUTER_CONF_VERSION "$(cat "${release_dir}/router/nginx.conf" "${release_dir}/router/routes.conf" | sha256sum | cut -c1-12)"
+    printf '%s=%q\n' TLS_DOMAIN "${TLS_DOMAIN}"
     printf '%s=%q\n' OBSERVABILITY_CONF_VERSION "$(observability_version "${release_dir}/observability")"
   } >"${release_dir}/release.env"
   chmod 600 "${release_dir}/release.env"
@@ -284,6 +287,8 @@ main() {
   release="$(date -u +%Y%m%dT%H%M%SZ)-${RELEASE_ID:0:12}"
   release_dir="${RELEASES_DIR}/${release}"
 
+  TLS_DOMAIN="${TLS_DOMAIN:-$(current_value TLS_DOMAIN)}"
+  [[ -n "${TLS_DOMAIN}" ]] || die "TLS_DOMAIN is required: the domain of the router's certificate"
   resolve_images
   create_secrets
   write_release "${release_dir}"

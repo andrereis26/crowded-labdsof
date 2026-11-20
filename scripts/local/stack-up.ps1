@@ -124,11 +124,14 @@ if ($WithObservability) {
 # --- 4. Deployment --------------------------------------------------------------
 # Swarm configs cannot change, so the router's is named after its hash, and
 # the observability configs after their folder's.
-$stackEnvironment.ROUTER_CONF_VERSION = Get-ShortHash -Path ([IO.Path]::Combine($Root, 'deployment', 'router', 'nginx.conf'))
+$routerFiles = 'nginx.conf', 'routes.conf' | ForEach-Object { [IO.Path]::Combine($Root, 'deployment', 'router', $_) }
+$stackEnvironment.ROUTER_CONF_VERSION = Get-ShortHash -Text (($routerFiles | ForEach-Object { [IO.File]::ReadAllText($_) }) -join '')
 $observabilityFiles = Get-ChildItem -LiteralPath ([IO.Path]::Combine($Root, 'deployment', 'observability')) -Recurse -File |
     Sort-Object -Property FullName
 $stackEnvironment.OBSERVABILITY_CONF_VERSION = Get-ShortHash -Text (($observabilityFiles | ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join '')
 # The migration job runs again whenever the database image changes.
+# The certificate's domain; certbot does not run locally (stack.local.yml).
+$stackEnvironment.TLS_DOMAIN = 'localhost'
 $stackEnvironment.CROWDED_RELEASE = "local-$(Get-ShortHash -Text (Get-NativeOutput docker @('image', 'inspect', '--format', '{{.Id}}', $stackEnvironment.DATABASE_IMAGE)))"
 
 function Invoke-StackDeploy([hashtable]$Environment) {
@@ -166,7 +169,7 @@ docker run --detach --name $Gateway --label $LocalLabel --restart unless-stopped
     --publish "127.0.0.1:$($config.RABBITMQ_PORT):5672" `
     --publish "127.0.0.1:$($config.REDIS_PORT):6379" `
     --volume "$(Join-Path $LocalDir 'gateway.nginx.conf'):/etc/nginx/nginx.conf:ro" `
-    --volume "$([IO.Path]::Combine($Root, 'deployment', 'router', 'nginx.conf')):/etc/nginx/conf.d/default.conf:ro" `
+    --volume "$([IO.Path]::Combine($Root, 'deployment', 'router', 'routes.conf')):/etc/nginx/routes.conf:ro" `
     $GatewayImage | Out-Null
 docker network connect "${StackName}_backend" $Gateway
 
