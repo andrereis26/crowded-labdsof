@@ -58,6 +58,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final store = AppStore.of(context);
     final form = _Form(
       mode: _mode,
       email: _email,
@@ -65,7 +66,8 @@ class _SignInScreenState extends State<SignInScreen> {
       confirmation: _confirmation,
       showPassword: _showPassword,
       busy: _busy,
-      error: _error,
+      error: _error ?? store.organizationNotice,
+      onSignOut: store.organizationNotice == null ? null : store.signOut,
       onModeChanged: (m) => setState(() {
         _mode = m;
         _error = null;
@@ -201,6 +203,7 @@ class _Form extends StatelessWidget {
     required this.showPassword,
     required this.busy,
     required this.error,
+    this.onSignOut,
     required this.onModeChanged,
     required this.onTogglePassword,
     required this.onSubmit,
@@ -213,6 +216,9 @@ class _Form extends StatelessWidget {
   final bool showPassword;
   final bool busy;
   final String? error;
+
+  /// Ends the organization's session the browser holds, when there is one.
+  final VoidCallback? onSignOut;
   final ValueChanged<_Mode> onModeChanged;
   final VoidCallback onTogglePassword;
   final VoidCallback onSubmit;
@@ -285,6 +291,14 @@ class _Form extends StatelessWidget {
               child: Text(
                 error!,
                 style: AppTextStyles.caption.copyWith(color: AppColors.danger),
+              ),
+            ),
+          if (onSignOut != null)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: AppInlineLink(
+                label: 'Terminar sessão',
+                onPressed: onSignOut!,
               ),
             ),
           if (!registering)

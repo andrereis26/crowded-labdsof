@@ -46,19 +46,19 @@ class NotificationsException implements Exception {
 /// The participant's notifications in Notifications (API Outline,
 /// Notification center).
 abstract interface class NotificationsApi {
-  Future<NotificationPage> list(String token);
+  Future<NotificationPage> list();
 
-  Future<void> markRead(String token, String notificationId);
+  Future<void> markRead(String notificationId);
 
   /// `GET /notifications/stream`: one connection, which ends when the server
   /// closes it or the subscription is cancelled. Fails with a
   /// [NotificationsException] when it cannot be opened.
-  Stream<LiveEvent> live(String token);
+  Stream<LiveEvent> live();
 }
 
-/// [NotificationsApi] over HTTP. On the web, `package:http` reads the stream
-/// with `fetch`, so the token goes in the `Authorization` header as for every
-/// other request.
+/// [NotificationsApi] over HTTP, with the session's client ([AuthApi.client]),
+/// which sends the token or the cookies. On the web, `package:http` reads the
+/// stream with `fetch`, which sends the cookies as for every other request.
 class HttpNotificationsApi implements NotificationsApi {
   HttpNotificationsApi({
     http.Client Function()? client,
@@ -70,13 +70,12 @@ class HttpNotificationsApi implements NotificationsApi {
   final Uri _base;
 
   @override
-  Future<NotificationPage> list(String token) async {
+  Future<NotificationPage> list() async {
     final client = _client();
     try {
       final response = await _send(
         client,
         http.Request('GET', _base.resolve('notifications')),
-        token,
       );
       final body = jsonDecode(await response.stream.bytesToString());
       if (body is! Map<String, dynamic>) {
@@ -99,7 +98,7 @@ class HttpNotificationsApi implements NotificationsApi {
   }
 
   @override
-  Future<void> markRead(String token, String notificationId) async {
+  Future<void> markRead(String notificationId) async {
     final client = _client();
     try {
       final response = await _send(
@@ -108,7 +107,6 @@ class HttpNotificationsApi implements NotificationsApi {
           'POST',
           _base.resolve('notifications/$notificationId/read'),
         ),
-        token,
       );
       await response.stream.drain<void>();
     } finally {
@@ -117,7 +115,7 @@ class HttpNotificationsApi implements NotificationsApi {
   }
 
   @override
-  Stream<LiveEvent> live(String token) {
+  Stream<LiveEvent> live() {
     final client = _client();
     late final StreamController<LiveEvent> controller;
     StreamSubscription<String>? lines;
@@ -128,7 +126,7 @@ class HttpNotificationsApi implements NotificationsApi {
             'GET',
             _base.resolve('notifications/stream'),
           )..headers['Accept'] = 'text/event-stream';
-          final response = await _send(client, request, token);
+          final response = await _send(client, request);
           if (controller.isClosed) return;
           final parser = ServerSentEvents();
           lines = response.stream
@@ -187,9 +185,7 @@ class HttpNotificationsApi implements NotificationsApi {
   Future<http.StreamedResponse> _send(
     http.Client client,
     http.Request request,
-    String token,
   ) async {
-    request.headers['Authorization'] = 'Bearer $token';
     final http.StreamedResponse response;
     try {
       response = await client.send(request);

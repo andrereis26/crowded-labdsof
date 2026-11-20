@@ -4,6 +4,7 @@ import 'package:crowded/data/auth_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 
 /// Core's sign-in, refusing every attempt, so C1 shows its error.
 class _RefusingAuthApi implements AuthApi {
@@ -18,6 +19,18 @@ class _RefusingAuthApi implements AuthApi {
     required String email,
     required String password,
   }) async => throw const AuthException('INVALID_CREDENTIALS');
+
+  @override
+  Future<AuthSession?> restore() async => null;
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  http.Client client() => http.Client();
+
+  @override
+  set onEnded(void Function()? callback) {}
 }
 
 /// The WCAG 2.1 AA checks Flutter can run: every tap target has a label, and

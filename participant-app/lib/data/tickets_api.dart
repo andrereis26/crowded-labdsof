@@ -98,24 +98,19 @@ abstract interface class TicketsApi {
   Future<TicketConnected> submitEventCode(String importId, String eventCode);
 }
 
-/// [TicketsApi] over HTTP, with the signed-in participant's token, so Core
-/// decides whose ticket it is.
+/// [TicketsApi] over HTTP, with the session's client ([AuthApi.client]), so
+/// Core decides whose ticket it is.
 class HttpTicketsApi implements TicketsApi {
-  HttpTicketsApi({
-    required this._token,
-    http.Client? client,
-    String baseUrl = apiBaseUrl,
-  }) : _client = client ?? http.Client(),
-       _base = Uri.base.resolve(baseUrl.endsWith('/') ? baseUrl : '$baseUrl/');
+  HttpTicketsApi({http.Client? client, String baseUrl = apiBaseUrl})
+    : _client = client ?? http.Client(),
+      _base = Uri.base.resolve(baseUrl.endsWith('/') ? baseUrl : '$baseUrl/');
 
-  final String Function() _token;
   final http.Client _client;
   final Uri _base;
 
   @override
   Future<TicketUploadResult> uploadPdf(Uint8List bytes, String fileName) async {
     final request = http.MultipartRequest('POST', _base.resolve('tickets'))
-      ..headers['Authorization'] = 'Bearer ${_token()}'
       ..files.add(
         http.MultipartFile.fromBytes('file', bytes, filename: fileName),
       );
@@ -137,10 +132,7 @@ class HttpTicketsApi implements TicketsApi {
     try {
       response = await _client.post(
         _base.resolve('ticket-imports/$importId/event-code'),
-        headers: {
-          'Authorization': 'Bearer ${_token()}',
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'eventCode': eventCode}),
       );
     } on Exception {

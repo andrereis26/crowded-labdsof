@@ -30,16 +30,16 @@ class EventsException implements Exception {
 /// journey 3).
 abstract interface class EventsApi {
   /// `GET /events/{eventId}`.
-  Future<EventPage> page(String token, String eventId);
+  Future<EventPage> page(String eventId);
 
   /// `GET /events/{eventId}/changes`, newest first.
-  Future<List<CoreChange>> changes(String token, String eventId);
+  Future<List<CoreChange>> changes(String eventId);
 
   /// `GET /events/{eventId}/live`: the page now, then again after each
   /// change, until the server closes the stream or the subscription is
   /// cancelled. Fails with an [EventsException] when it cannot be opened
   /// or drops.
-  Stream<EventPage> live(String token, String eventId);
+  Stream<EventPage> live(String eventId);
 }
 
 /// What `GET /events/{eventId}` says about an event.
@@ -110,7 +110,8 @@ class CoreChange {
   final Severity severity;
 }
 
-/// [EventsApi] over HTTP, with the token in the `Authorization` header.
+/// [EventsApi] over HTTP, with the session's client ([AuthApi.client]),
+/// which sends the token or the cookies.
 class HttpEventsApi implements EventsApi {
   HttpEventsApi({http.Client Function()? client, String baseUrl = apiBaseUrl})
     : _client = client ?? http.Client.new,
@@ -120,19 +121,16 @@ class HttpEventsApi implements EventsApi {
   final Uri _base;
 
   @override
-  Future<EventPage> page(String token, String eventId) async {
-    final body = await _get(token, 'events/${Uri.encodeComponent(eventId)}');
+  Future<EventPage> page(String eventId) async {
+    final body = await _get('events/${Uri.encodeComponent(eventId)}');
     final page = body is Map<String, dynamic> ? eventPageFromJson(body) : null;
     if (page == null) throw const EventsException('INVALID_RESPONSE');
     return page;
   }
 
   @override
-  Future<List<CoreChange>> changes(String token, String eventId) async {
-    final body = await _get(
-      token,
-      'events/${Uri.encodeComponent(eventId)}/changes',
-    );
+  Future<List<CoreChange>> changes(String eventId) async {
+    final body = await _get('events/${Uri.encodeComponent(eventId)}/changes');
     if (body is! List) throw const EventsException('INVALID_RESPONSE');
     return [
       for (final item in body.whereType<Map<String, dynamic>>())
@@ -141,7 +139,7 @@ class HttpEventsApi implements EventsApi {
   }
 
   @override
-  Stream<EventPage> live(String token, String eventId) {
+  Stream<EventPage> live(String eventId) {
     final client = _client();
     late final StreamController<EventPage> controller;
     StreamSubscription<String>? lines;
@@ -152,7 +150,7 @@ class HttpEventsApi implements EventsApi {
             'GET',
             _base.resolve('events/${Uri.encodeComponent(eventId)}/live'),
           )..headers['Accept'] = 'text/event-stream';
-          final response = await _send(client, request, token);
+          final response = await _send(client, request);
           if (controller.isClosed) return;
           final parser = ServerSentEvents();
           lines = response.stream
@@ -196,13 +194,12 @@ class HttpEventsApi implements EventsApi {
     }
   }
 
-  Future<Object?> _get(String token, String path) async {
+  Future<Object?> _get(String path) async {
     final client = _client();
     try {
       final response = await _send(
         client,
         http.Request('GET', _base.resolve(path)),
-        token,
       );
       final String text;
       try {
@@ -220,14 +217,12 @@ class HttpEventsApi implements EventsApi {
     }
   }
 
-  /// Sends [request] with the token; an answer other than 2xx becomes an
+  /// Sends [request] in the session; an answer other than 2xx becomes an
   /// [EventsException] with Core's error code.
   Future<http.StreamedResponse> _send(
     http.Client client,
     http.Request request,
-    String token,
   ) async {
-    request.headers['Authorization'] = 'Bearer $token';
     final http.StreamedResponse response;
     try {
       response = await client.send(request);

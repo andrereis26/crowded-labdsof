@@ -57,13 +57,11 @@ void main() {
       events: _OneEventApi(),
       session: AuthSession(
         accessToken: 'token',
-        expiresAt: _now.add(const Duration(hours: 1)),
         userId: 'u-1',
         role: 'PARTICIPANT',
         email: 'ana@crowded.test',
       ),
       connectionsApi: HttpConnectionsApi(
-        token: () => 'token',
         client: MockClient((request) {
           sent.add(request);
           return handler(request);
@@ -243,14 +241,14 @@ void main() {
 
 class _QuietNotificationsApi implements NotificationsApi {
   @override
-  Future<NotificationPage> list(String token) async =>
+  Future<NotificationPage> list() async =>
       const NotificationPage(notifications: [], unread: 0);
 
   @override
-  Future<void> markRead(String token, String notificationId) async {}
+  Future<void> markRead(String notificationId) async {}
 
   @override
-  Stream<LiveEvent> live(String token) => StreamController<LiveEvent>().stream;
+  Stream<LiveEvent> live() => StreamController<LiveEvent>().stream;
 }
 
 /// Core's page of the event the code connects to.
@@ -265,12 +263,12 @@ class _OneEventApi implements EventsApi {
   })!;
 
   @override
-  Future<EventPage> page(String token, String eventId) async => _page();
+  Future<EventPage> page(String eventId) async => _page();
 
   @override
-  Future<List<CoreChange>> changes(String token, String eventId) async => [];
+  Future<List<CoreChange>> changes(String eventId) async => [];
 
   @override
-  Stream<EventPage> live(String token, String eventId) =>
+  Stream<EventPage> live(String eventId) =>
       StreamController<EventPage>().stream;
 }

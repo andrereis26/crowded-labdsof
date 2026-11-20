@@ -52,18 +52,16 @@ abstract interface class ConnectionsApi {
   Future<MyConnections> myConnections();
 }
 
-/// [ConnectionsApi] over HTTP, with the signed-in participant's token, so
+/// [ConnectionsApi] over HTTP, with the session's client ([AuthApi.client]), so
 /// Core decides who connects.
 class HttpConnectionsApi implements ConnectionsApi {
   HttpConnectionsApi({
-    required this._token,
     http.Client? client,
     String baseUrl = apiBaseUrl,
     this._timeout = const Duration(seconds: 15),
   }) : _client = client ?? http.Client(),
        _base = Uri.base.resolve(baseUrl.endsWith('/') ? baseUrl : '$baseUrl/');
 
-  final String Function() _token;
   final http.Client _client;
   final Uri _base;
 
@@ -78,10 +76,7 @@ class HttpConnectionsApi implements ConnectionsApi {
       response = await _client
           .post(
             _base.resolve('connections'),
-            headers: {
-              'Authorization': 'Bearer ${_token()}',
-              'Content-Type': 'application/json',
-            },
+            headers: {'Content-Type': 'application/json'},
             body: jsonEncode({'accessCode': accessCode}),
           )
           .timeout(_timeout);
@@ -113,10 +108,7 @@ class HttpConnectionsApi implements ConnectionsApi {
     final http.Response response;
     try {
       response = await _client
-          .get(
-            _base.resolve('me/connections'),
-            headers: {'Authorization': 'Bearer ${_token()}'},
-          )
+          .get(_base.resolve('me/connections'))
           .timeout(_timeout);
     } on Exception {
       throw const ConnectionsApiException('NETWORK');
