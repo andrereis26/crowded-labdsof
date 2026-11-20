@@ -62,9 +62,9 @@ variable "ssh_allowed_cidrs" {
 }
 
 variable "router_ports" {
-  description = "Ports the router publishes, open to everyone."
+  description = "Ports the router publishes, open to everyone: HTTP, for Let's Encrypt and the redirect, and HTTPS."
   type        = list(number)
-  default     = [80]
+  default     = [80, 443]
 }
 
 variable "dns_label" {

@@ -4,12 +4,13 @@ Everything needed to run Crowded on the Docker Swarm host ([ADR 0013](../docs/de
 
 | Path | What it is |
 |---|---|
-| `docker-compose.swarm.yml` | The Swarm stack: router, the `database` migration job, `core`, `jobs`, `notifications`, `backoffice`, `participant-app`, PostgreSQL, RabbitMQ and Redis |
+| `docker-compose.swarm.yml` | The Swarm stack: router, `certbot`, the `database` migration job, `core`, `jobs`, `notifications`, `backoffice`, `participant-app`, PostgreSQL, RabbitMQ and Redis |
 | `observability/` | Prometheus, Loki, Alloy and Grafana ([ADR 0009](../docs/deliverables/adr/0009-observability-stack.md)): `docker-compose.observability.yml`, deployed with the stack file, and their configuration ([README](observability/README.md)) |
 | `remote-deploy.sh` | Prepares the host, deploys a release, checks it and rolls back if it fails |
 | `remote-rollback.sh` | Deploys an earlier release again |
 | `lib/common.sh` | Functions both scripts share |
-| `router/nginx.conf` | The router's routes, rate limit and SSE settings |
+| `router/nginx.conf` | The router: HTTPS on 443, and port 80 for Let's Encrypt and the redirect ([TLS](#tls)) |
+| `router/routes.conf` | The router's routes, rate limit and SSE settings, which the local gateway serves too |
 
 ## How a Deployment Works
 
@@ -49,6 +50,7 @@ Releases from before ticket extraction moved to Groq ran a local model from `/op
 RELEASE_ID=<commit sha> \
 DOCKERHUB_NAMESPACE=<namespace> \
 DOPPLER_TOKEN=<service token> \
+TLS_DOMAIN=<the VM's DNS name> \
 CORE_IMAGE=<namespace>/crowded-core:<commit sha> \
 bash /opt/crowded/deployment/remote-deploy.sh
 ```
@@ -60,6 +62,7 @@ bash /opt/crowded/deployment/remote-deploy.sh
 | `RELEASE_ID` | required | Commit SHA being deployed |
 | `DOCKERHUB_NAMESPACE` | required | Docker Hub user or organization of the images |
 | `DOPPLER_TOKEN` | required | Doppler service token of the environment's config |
+| `TLS_DOMAIN` | the current release's; required on the first deployment | Domain of the router's certificate: the VM's DNS name (`tofu output fqdn`), which the Release workflow passes |
 | `DATABASE_IMAGE`, `CORE_IMAGE`, `JOBS_IMAGE`, `NOTIFICATIONS_IMAGE`, `BACKOFFICE_IMAGE`, `PARTICIPANT_APP_IMAGE` | the current release's, else `<namespace>/crowded-<service>:main` | Image for that service, by tag or digest |
 | `STACK_NAME` | `crowded` | Swarm stack name |
 | `DEPLOY_ROOT` | `/opt/crowded` | Where releases are kept |
@@ -140,4 +143,14 @@ Secrets reach the containers as files in `/run/secrets`, never as environment va
 
 The backoffice is built with Vite's `base: '/backoffice/'`, so its asset URLs keep the prefix the router removes.
 
-`/api/actuator` and `/api/notifications/actuator` answer 404: health and metrics stay inside the Swarm, where Prometheus scrapes them. The router is the only service with a published port (80); the data stores are on an internal network that the router cannot reach.
+`/api/actuator` and `/api/notifications/actuator` answer 404: health and metrics stay inside the Swarm, where Prometheus scrapes them. The router is the only service with published ports (80 and 443); the data stores are on an internal network that the router cannot reach.
+
+## TLS
+
+The router serves Crowded over HTTPS with a Let's Encrypt certificate for `TLS_DOMAIN`, the DNS name Azure gives the VM's public IP (`<label>.<region>.cloudapp.azure.com`). The browsers keep the session's `Secure` cookies only over HTTPS ([ADR 0021](../docs/deliverables/adr/0021-browser-sessions-in-cookies-with-refresh-tokens.md)).
+
+- The `certbot` service asks for the certificate through the HTTP-01 challenge, which the router serves on port 80 from the `acme-challenge` volume. It checks twice a day and renews 30 days before the certificate expires; after a failure it tries again in 15 minutes. No email is registered, so Let's Encrypt sends no expiry warnings: the renewals and certbot's logs are the only check.
+- The certificate stays in the `letsencrypt` volume, so a new deployment keeps it. The router reads it at each TLS handshake, so a renewal needs no reload.
+- Port 80 sends every request to HTTPS once the certificate exists, except `/healthz` and the challenge. Before that, as on the first deployment, port 80 serves the routes over HTTP, so the site answers while the certificate is issued; signing in on the web needs HTTPS.
+- Let's Encrypt allows 50 certificates a week per registered domain, and `cloudapp.azure.com` is not on the Public Suffix List, so every Azure VM name shares that limit. When it is reached, certbot logs the refusal and keeps trying, and the Release workflow warns that HTTPS does not answer. A domain of our own would have its own limit.
+- Locally there is no certificate: `scripts/local/stack-up.sh` runs no `certbot`, and the gateway serves `routes.conf` over HTTP on `localhost`, where browsers keep `Secure` cookies.

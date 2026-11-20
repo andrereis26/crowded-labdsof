@@ -123,11 +123,13 @@ fi
 # --- 4. Deployment --------------------------------------------------------------
 # Swarm configs cannot change, so the router's is named after its hash, and
 # the observability configs after their folder's.
-ROUTER_CONF_VERSION="$(sha256_12 <"${ROOT}/deployment/router/nginx.conf")"
+ROUTER_CONF_VERSION="$(cat "${ROOT}/deployment/router/nginx.conf" "${ROOT}/deployment/router/routes.conf" | sha256_12)"
 OBSERVABILITY_CONF_VERSION="$(cd "${ROOT}/deployment/observability" && find . -type f | LC_ALL=C sort | xargs cat | sha256_12)"
 # The migration job runs again whenever the database image changes.
 CROWDED_RELEASE="local-$(docker image inspect --format '{{.Id}}' "${DATABASE_IMAGE}" | sha256_12)"
-export ROUTER_CONF_VERSION OBSERVABILITY_CONF_VERSION CROWDED_RELEASE
+# The certificate's domain; certbot does not run locally (stack.local.yml).
+TLS_DOMAIN=localhost
+export ROUTER_CONF_VERSION OBSERVABILITY_CONF_VERSION CROWDED_RELEASE TLS_DOMAIN
 
 deploy() {
   docker stack deploy --prune --resolve-image never "${stack_files[@]}" "${STACK_NAME}" >/dev/null
@@ -164,7 +166,7 @@ docker run --detach --name "${GATEWAY}" --label "${LOCAL_LABEL}" --restart unles
   --publish "127.0.0.1:${RABBITMQ_PORT}:5672" \
   --publish "127.0.0.1:${REDIS_PORT}:6379" \
   --volume "${LOCAL_DIR}/gateway.nginx.conf:/etc/nginx/nginx.conf:ro" \
-  --volume "${ROOT}/deployment/router/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+  --volume "${ROOT}/deployment/router/routes.conf:/etc/nginx/routes.conf:ro" \
   "${GATEWAY_IMAGE}" >/dev/null
 docker network connect "${STACK_NAME}_backend" "${GATEWAY}"
 

@@ -10,6 +10,10 @@ services:
   router:
     deploy:
       replicas: 0
+  # No certificate locally: the gateway serves plain HTTP on localhost.
+  certbot:
+    deploy:
+      replicas: 0
 
 networks:
   edge:
