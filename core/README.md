@@ -6,6 +6,7 @@ Core service of Crowded ([Technical Design](../docs/deliverables/technical-desig
 |---|---|---|
 | `POST /auth/register`, `POST /auth/login` | Registers participants and signs users in | #59 |
 | `POST /auth/password` | A member replaces their temporary password at the first sign-in | #141 |
+| `POST /auth/refresh`, `POST /auth/logout`, `GET /me` | Continues and ends a session, and tells each app who is signed in ([ADR 0021](../docs/deliverables/adr/0021-browser-sessions-in-cookies-with-refresh-tokens.md)) | #194 |
 | `GET /admin/organizations`, `POST /admin/organizations` | The platform administrator lists and creates organizations | #140 |
 | `POST /admin/organizations/{organizationId}/members`, `PATCH /admin/members/{userId}` | The platform administrator creates, deactivates and reactivates members, and issues new temporary passwords | #140 |
 | `POST /events`, `PATCH /events/{eventId}`, `DELETE /events/{eventId}`, `GET /organizations/me/events` | An organization creates, corrects, deletes and lists its events | #36 |
@@ -100,7 +101,10 @@ The domain is a rich model ([ADR 0017](../docs/deliverables/adr/0017-rich-domain
 | `REDIS_PASSWORD` | Redis password | empty (no auth) |
 | `JWT_PUBLIC_KEY_LOCATION` | Public key that checks token signatures, e.g. `file:/run/secrets/jwt-public.pem` | – |
 | `JWT_PRIVATE_KEY_LOCATION` | Private key Core signs tokens with (`crowded.jwt.private-key-location`). Only Core gets it. | – |
+| `crowded.jwt.lifetime`, `crowded.sessions.*` | The access token's lifetime, and the sessions': by role, without use and at most, plus the cookies' path and `Secure` flag (`application.yml`, [ADR 0021](../docs/deliverables/adr/0021-browser-sessions-in-cookies-with-refresh-tokens.md)) | `15m`; participants `30d`/`90d`, backoffice `12h`/`7d`; `/api`; `true` |
 | `CROWDED_TICKETS_ENTRYCODEKEY` | Base64 256-bit key that encrypts the entry codes of imported tickets with AES-GCM (`crowded.tickets.entry-code-key`). Without it, Core starts but refuses ticket imports (503 `TICKET_IMPORT_UNAVAILABLE`). Locally it is `TICKET_ENTRY_CODE_KEY` of `.env`, which `setup` creates; deployments read the Doppler secret of the same name. | – |
 | `CROWDED_AI_GROQ_APIKEY` | Groq API key, so Core reads imported tickets with AI (`crowded.ai.groq.api-key`, [ADR 0020](../docs/deliverables/adr/0020-groq-for-ticket-extraction.md)). Without it, every extraction fails and the participant types the event code. Locally it is the optional `GROQ_API_KEY` of `.env`; deployments read the Doppler secret of the same name. The model is `crowded.ai.groq.model` | – |
 
 Tokens are signed with an RSA key pair: Core holds the private key, and every service validates with the public key ([ADR 0005](../docs/deliverables/adr/0005-authentication-in-core-with-jwt.md)).
+
+**Sessions ([ADR 0021](../docs/deliverables/adr/0021-browser-sessions-in-cookies-with-refresh-tokens.md)):** sign-in starts a session with an access token and a refresh token that changes on each use. Browsers ask for `delivery: COOKIE` and get both in `HttpOnly` cookies (`SessionCookies`); the phone app gets them in the body. Requests carry the token in the `Authorization` header or the `crowded_access` cookie (`SessionBearerTokenResolver`), and `OriginCheckFilter` refuses a change whose `Origin` is not the host it was sent to. Redis keeps each session as `session:<id>`, with the hashes of its tokens, and `user-sessions:<userId>` lists a user's sessions, which end together when an administrator deactivates the member or issues a new temporary password; a signed-out access token is `revoked-token:<jti>` until it expires.

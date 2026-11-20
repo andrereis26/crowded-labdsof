@@ -1,5 +1,7 @@
 package com.crowded.core.user.infrastructure.config;
 
+import com.crowded.core.user.domain.model.SessionLifetime;
+import com.crowded.core.user.domain.model.SessionLifetimes;
 import com.crowded.core.user.domain.repository.TokenIssuer;
 import com.crowded.core.user.domain.repository.TokenRevocations;
 import java.io.IOException;
@@ -30,7 +32,7 @@ class TokenConfiguration {
   TokenIssuer tokenIssuer(
       @Value("${crowded.jwt.private-key-location}") Resource privateKey,
       @Value("${spring.security.oauth2.resourceserver.jwt.public-key-location}") Resource publicKey,
-      @Value("${crowded.jwt.lifetime:1h}") Duration lifetime,
+      @Value("${crowded.jwt.lifetime:15m}") Duration lifetime,
       Clock clock)
       throws IOException {
     RSAPrivateKey signing;
@@ -40,6 +42,18 @@ class TokenConfiguration {
     RSAPublicKey verifying = publicKey(publicKey);
     return new JwtTokenIssuer(
         NimbusJwtEncoder.withKeyPair(verifying, signing).build(), clock, lifetime);
+  }
+
+  /** How long sessions last, by role (ADR 0021). */
+  @Bean
+  SessionLifetimes sessionLifetimes(
+      @Value("${crowded.sessions.participant.idle:30d}") Duration participantIdle,
+      @Value("${crowded.sessions.participant.maximum:90d}") Duration participantMaximum,
+      @Value("${crowded.sessions.backoffice.idle:12h}") Duration backofficeIdle,
+      @Value("${crowded.sessions.backoffice.maximum:7d}") Duration backofficeMaximum) {
+    return new SessionLifetimes(
+        new SessionLifetime(participantIdle, participantMaximum),
+        new SessionLifetime(backofficeIdle, backofficeMaximum));
   }
 
   /**

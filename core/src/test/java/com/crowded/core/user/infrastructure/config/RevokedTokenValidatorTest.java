@@ -41,6 +41,32 @@ class RevokedTokenValidatorTest {
   }
 
   @Test
+  void refusesATokenItsUserSignedOutWith() {
+    when(revocations.revokedBefore(USER)).thenReturn(Optional.empty());
+    when(revocations.isTokenRevoked("signed-out")).thenReturn(true);
+
+    Jwt signedOut =
+        Jwt.withTokenValue("t")
+            .header("alg", "RS256")
+            .subject(USER.toString())
+            .jti("signed-out")
+            .issuedAt(REVOKED_AT)
+            .expiresAt(REVOKED_AT.plusSeconds(900))
+            .build();
+    Jwt other =
+        Jwt.withTokenValue("t")
+            .header("alg", "RS256")
+            .subject(USER.toString())
+            .jti("other")
+            .issuedAt(REVOKED_AT)
+            .expiresAt(REVOKED_AT.plusSeconds(900))
+            .build();
+
+    assertThat(validator.validate(signedOut).hasErrors()).isTrue();
+    assertThat(validator.validate(other).hasErrors()).isFalse();
+  }
+
+  @Test
   void refusesEveryTokenWhenTheRevocationsCannotBeRead() {
     when(revocations.revokedBefore(USER))
         .thenThrow(new UnavailableException("REVOCATIONS_UNAVAILABLE", "Down."));

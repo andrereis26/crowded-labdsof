@@ -162,6 +162,18 @@ public final class UserAccount {
   }
 
   /**
+   * Checks that a session of this account may go on, when its refresh token is used.
+   *
+   * @throws NotAuthenticatedException when the account was deactivated or must replace a temporary
+   *     password, which ends its sessions
+   */
+  public void continueSession() {
+    if (!active || mustChangePassword) {
+      throw Session.invalidToken();
+    }
+  }
+
+  /**
    * Replaces the temporary password with one the member chose, and records the sign-in it allows.
    * The temporary password stops working.
    *

@@ -13,8 +13,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
  * Refuses a token issued before its user's tokens were revoked (ADR 0004), such as when an
- * administrator deactivates a member. When the revocations cannot be read, the token is refused
- * too: the services fail safe.
+ * administrator deactivates a member, and a token its user signed out with (ADR 0021). When the
+ * revocations cannot be read, the token is refused too: the services fail safe.
  */
 class RevokedTokenValidator implements OAuth2TokenValidator<Jwt> {
 
@@ -38,12 +38,14 @@ class RevokedTokenValidator implements OAuth2TokenValidator<Jwt> {
       return OAuth2TokenValidatorResult.success();
     }
     Optional<Instant> revokedBefore;
+    boolean signedOut;
     try {
       revokedBefore = revocations.revokedBefore(userId);
+      signedOut = token.getId() != null && revocations.isTokenRevoked(token.getId());
     } catch (UnavailableException e) {
       return failure("The token's status cannot be checked.");
     }
-    if (revokedBefore.isPresent() && issuedAt(token).isBefore(revokedBefore.get())) {
+    if (signedOut || (revokedBefore.isPresent() && issuedAt(token).isBefore(revokedBefore.get()))) {
       return failure("The token was revoked.");
     }
     return OAuth2TokenValidatorResult.success();

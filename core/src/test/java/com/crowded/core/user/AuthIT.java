@@ -78,7 +78,7 @@ class AuthIT extends IntegrationTest {
     Instant expiresAt = Instant.parse(body.get("expiresAt").asString());
     assertThat(expiresAt)
         .isBetween(
-            Instant.now().plus(Duration.ofMinutes(59)), Instant.now().plus(Duration.ofMinutes(61)));
+            Instant.now().plus(Duration.ofMinutes(14)), Instant.now().plus(Duration.ofMinutes(16)));
 
     // Core accepts the token it issued: the request reaches the endpoint, which refuses it.
     HttpResponse<String> withToken =

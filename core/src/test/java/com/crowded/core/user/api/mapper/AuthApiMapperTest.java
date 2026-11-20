@@ -8,6 +8,7 @@ import com.crowded.core.user.api.dto.RegisteredResponse;
 import com.crowded.core.user.api.dto.SignInRequest;
 import com.crowded.core.user.api.dto.SignInResponse;
 import com.crowded.core.user.api.dto.SignedInUserResponse;
+import com.crowded.core.user.api.dto.TokenDelivery;
 import com.crowded.core.user.application.dto.ChoosePasswordCommand;
 import com.crowded.core.user.application.dto.RegisterCommand;
 import com.crowded.core.user.application.dto.SignInCommand;
@@ -27,11 +28,14 @@ class AuthApiMapperTest {
   void mapsTheRequestsWithTheClientAddress() {
     assertThat(mapper.toCommand(new RegisterRequest("a@b.pt", "segredo-123"), "203.0.113.7"))
         .isEqualTo(new RegisterCommand("a@b.pt", "segredo-123", "203.0.113.7"));
-    assertThat(mapper.toCommand(new SignInRequest("a@b.pt", "segredo-123"), "203.0.113.7"))
+    assertThat(
+            mapper.toCommand(
+                new SignInRequest("a@b.pt", "segredo-123", TokenDelivery.COOKIE), "203.0.113.7"))
         .isEqualTo(new SignInCommand("a@b.pt", "segredo-123", "203.0.113.7"));
     assertThat(
             mapper.toCommand(
-                new ChoosePasswordRequest("a@b.pt", "abc-def-ghij", "Nova-pr0pria"), // ggignore
+                new ChoosePasswordRequest(
+                    "a@b.pt", "abc-def-ghij", "Nova-pr0pria", null), // ggignore
                 "203.0.113.7"))
         .isEqualTo(
             new ChoosePasswordCommand(
@@ -47,13 +51,14 @@ class AuthApiMapperTest {
 
     assertThat(mapper.toRegisteredResponse(member))
         .isEqualTo(new RegisteredResponse(id, "ORGANIZATION_MEMBER"));
-    assertThat(
-            mapper.toSignInResponse(new SignedIn(new IssuedToken("jwt", expiresAt), member, false)))
-        .isEqualTo(
-            new SignInResponse(
-                "jwt",
-                expiresAt,
-                false,
-                new SignedInUserResponse(id, "ORGANIZATION_MEMBER", organization)));
+    Instant refreshExpiresAt = Instant.parse("2026-11-12T22:45:00Z");
+    SignedIn signedIn =
+        new SignedIn(new IssuedToken("jwt", expiresAt), "refresh", refreshExpiresAt, member, false);
+    SignedInUserResponse user = new SignedInUserResponse(id, "ORGANIZATION_MEMBER", organization);
+
+    assertThat(mapper.toSignInResponse(signedIn))
+        .isEqualTo(new SignInResponse("jwt", "refresh", expiresAt, refreshExpiresAt, false, user));
+    assertThat(mapper.toCookieSignInResponse(signedIn))
+        .isEqualTo(new SignInResponse(null, null, expiresAt, refreshExpiresAt, false, user));
   }
 }
