@@ -72,6 +72,7 @@ public class EventPages {
         organization.getId(),
         organization.getName(),
         changes.findLatest(eventId).map(EventChangeView::of).orElse(null),
-        event.getCrowd());
+        event.getCrowd(),
+        event.getQueuePoints().timed());
   }
 }

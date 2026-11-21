@@ -22,6 +22,8 @@ import com.crowded.core.event.domain.model.CrowdStatus;
 import com.crowded.core.event.domain.model.EventStatus;
 import com.crowded.core.event.domain.model.EventType;
 import com.crowded.core.event.domain.model.Provenance;
+import com.crowded.core.event.domain.model.QueuePoint;
+import com.crowded.core.event.domain.model.QueueTime;
 import com.crowded.core.event.domain.model.Severity;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.infrastructure.config.SecurityConfiguration;
@@ -86,7 +88,10 @@ class EventPageControllerTest {
           ORGANIZATION,
           "Ribeira Live",
           POSTPONEMENT,
-          new CrowdStatus(CrowdLevel.HIGH, Provenance.organization("Ribeira Live", NOW)));
+          new CrowdStatus(CrowdLevel.HIGH, Provenance.organization("Ribeira Live", NOW)),
+          List.of(
+              new QueuePoint(
+                  "Porta A", new QueueTime(15, Provenance.organization("Ribeira Live", NOW)))));
 
   @Autowired private MockMvc mockMvc;
 
@@ -115,7 +120,11 @@ class EventPageControllerTest {
         .andExpect(jsonPath("$.latestChange.provenance.lastUpdatedAt").value(NOW.toString()))
         .andExpect(jsonPath("$.crowd.level").value("HIGH"))
         .andExpect(jsonPath("$.crowd.provenance.sourceName").value("Ribeira Live"))
-        .andExpect(jsonPath("$.crowd.provenance.lastUpdatedAt").value(NOW.toString()));
+        .andExpect(jsonPath("$.crowd.provenance.lastUpdatedAt").value(NOW.toString()))
+        .andExpect(jsonPath("$.queues[0].pointName").value("Porta A"))
+        .andExpect(jsonPath("$.queues[0].waitMinutes").value(15))
+        .andExpect(jsonPath("$.queues[0].provenance.sourceType").value("ORGANIZATION"))
+        .andExpect(jsonPath("$.queues[0].provenance.lastUpdatedAt").value(NOW.toString()));
   }
 
   @Test

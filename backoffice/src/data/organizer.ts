@@ -53,7 +53,17 @@ export interface OrgEvent {
   imageUpdatedAt?: string
   /** The crowd level participants see now; absent until one is published. */
   crowd?: PublishedCrowd
+  /** The waiting times participants see now, at the points that have one. */
+  queues?: PublishedQueue[]
   gradient: [string, string]
+}
+
+/** A waiting time as Core keeps it at one of the event's queue points. */
+export interface PublishedQueue {
+  point: string
+  minutes: number
+  publishedBy: string
+  publishedAt: Date
 }
 
 /** A crowd level as Core keeps it: the organization is its source. */
@@ -426,7 +436,12 @@ export function suggestedLevel(entries: number, capacity: number): CrowdLevel {
 }
 
 export function isStale(q: QueuePoint, now: Date): boolean {
-  return q.source === 'manual' && now.getTime() - q.updatedAt.getTime() > STALE_MINUTES * 60000
+  return q.source === 'manual' && isOutdated(q.updatedAt, now)
+}
+
+/** Whether a time published at `at` is older than STALE_MINUTES. */
+export function isOutdated(at: Date, now: Date): boolean {
+  return now.getTime() - at.getTime() > STALE_MINUTES * 60000
 }
 
 export function demoLive(now: Date): Record<string, LiveState> {

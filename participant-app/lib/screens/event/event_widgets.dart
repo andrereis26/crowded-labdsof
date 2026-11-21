@@ -157,15 +157,16 @@ class LiveVenuePanel extends StatelessWidget {
             const LiveTag(),
           ],
         ),
-        Row(
-          spacing: AppSpacing.md,
-          children: [
-            const Icon(Icons.people_outline, size: 26, color: AppColors.ink),
-            Expanded(child: CrowdLevelIndicator(level: status.crowdLevel)),
-          ],
-        ),
+        if (status.crowdLevel case final level?)
+          Row(
+            spacing: AppSpacing.md,
+            children: [
+              const Icon(Icons.people_outline, size: 26, color: AppColors.ink),
+              Expanded(child: CrowdLevelIndicator(level: level)),
+            ],
+          ),
         if (status.queues.isNotEmpty) ...[
-          const Divider(),
+          if (status.crowdLevel != null) const Divider(),
           Text('Filas', style: AppTextStyles.footnote),
           for (final queue in status.queues) QueueRow(queue: queue),
         ],

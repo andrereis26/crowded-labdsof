@@ -1,14 +1,15 @@
 import { ChartNoAxesColumn, DoorClosed, Info, Send } from 'lucide-react'
 import { useState } from 'react'
-import { eventErrorMessage, EventsApiError } from '../../data/eventsApi'
+import { Link } from 'react-router'
+import { eventErrorMessage, EventsApiError, type QueueWait } from '../../data/eventsApi'
 import {
   ago,
   formatNumber,
-  isStale,
+  isOutdated,
   suggestedLevel,
   type LiveState,
   type OrgEvent,
-  type QueuePoint,
+  type PublishedQueue,
 } from '../../data/organizer'
 import {
   Button,
@@ -20,30 +21,37 @@ import {
   Tag,
 } from '../../ui/components'
 import { crowdLevels, type CrowdLevel } from '../../ui/styles'
-import { RadioOption, Stepper, Toggle } from '../../ui/forms'
+import { RadioOption, Stepper } from '../../ui/forms'
 
 const levels = Object.keys(crowdLevels) as CrowdLevel[]
 
-/** O5 · Atualizar lotação e filas. The crowd level is published in Core;
- * the entry counter and the queues are still demo state. */
+/** O5 · Atualizar lotação e filas. The crowd level and the queue times are
+ * published in Core; the entry counter is still demo state. */
 export function CrowdPage({
   event,
   live,
   now,
   onPublishLevel,
+  onPublishQueues,
   onChange,
 }: {
   event: OrgEvent
   live?: LiveState
   now: Date
   onPublishLevel: (level: CrowdLevel) => Promise<void>
+  onPublishQueues: (waits: QueueWait[]) => Promise<void>
   onChange: (state: LiveState) => void
 }) {
   const [level, setLevel] = useState<CrowdLevel>(event.crowd?.level ?? 'low')
-  const [queues, setQueues] = useState<QueuePoint[]>(live?.queues ?? [])
+  // Only the points with a time, published or set here, are published.
+  const [minutes, setMinutes] = useState<Record<string, number>>(() =>
+    Object.fromEntries((event.queues ?? []).map((q) => [q.point, q.minutes])),
+  )
   const [message, setMessage] = useState('')
   const [failure, setFailure] = useState('')
+  const [queueFailure, setQueueFailure] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendingQueues, setSendingQueues] = useState(false)
 
   if (!live) {
     return (
@@ -67,7 +75,7 @@ export function CrowdPage({
     try {
       await onPublishLevel(level)
       // The live dashboard still reads the demo state.
-      onChange({ ...live, level, levelPublishedAt: now, queues })
+      onChange({ ...live, level, levelPublishedAt: now })
       setMessage(`Lotação publicada: ${crowdLevels[level].label}.`)
     } catch (error) {
       setFailure(eventErrorMessage(error instanceof EventsApiError ? error.code : 'UNKNOWN'))
@@ -76,15 +84,23 @@ export function CrowdPage({
     }
   }
 
-  const publishQueues = () => {
-    const updated = queues.map((q) => (q.source === 'manual' ? { ...q, updatedAt: now } : q))
-    setQueues(updated)
-    onChange({ ...live, queues: updated })
-    setMessage('Filas publicadas.')
-  }
+  const waits = event.entrances
+    .filter((point) => minutes[point] !== undefined)
+    .map((point) => ({ point, minutes: minutes[point] }))
 
-  const updateQueue = (id: string, patch: Partial<QueuePoint>) =>
-    setQueues((all) => all.map((q) => (q.id === id ? { ...q, ...patch } : q)))
+  const publishQueues = async () => {
+    setSendingQueues(true)
+    setQueueFailure('')
+    setMessage('')
+    try {
+      await onPublishQueues(waits)
+      setMessage('Filas publicadas.')
+    } catch (error) {
+      setQueueFailure(eventErrorMessage(error instanceof EventsApiError ? error.code : 'UNKNOWN'))
+    } finally {
+      setSendingQueues(false)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
@@ -149,31 +165,50 @@ export function CrowdPage({
           </Button>
         </Panel>
 
-        <Panel
-          title="Filas por ponto"
-          titleClassName="text-base"
-          className="min-w-0 flex-1 gap-1"
-          action={
-            <span className="text-xs text-ink-secondary max-sm:hidden">
-              Valores automáticos vêm do contador de entradas
-            </span>
-          }
-        >
-          <ul>
-            {queues.map((q) => (
-              <QueueRow
-                key={q.id}
-                queue={q}
-                now={now}
-                onChange={(patch) => updateQueue(q.id, patch)}
-              />
-            ))}
-          </ul>
-          <div className="pt-3">
-            <Button size="lg" icon={Send} onClick={publishQueues} className="max-sm:w-full">
-              Publicar filas
-            </Button>
-          </div>
+        <Panel title="Filas por ponto" titleClassName="text-base" className="min-w-0 flex-1 gap-1">
+          {event.entrances.length === 0 ? (
+            <p className="py-2 text-sm text-ink-secondary">
+              Este evento ainda não tem entradas nem pontos de fila.{' '}
+              <Link
+                to={`/organization/events/${event.id}/edit`}
+                className="font-semibold text-ink underline"
+              >
+                Acrescenta-os ao editar o evento
+              </Link>
+              .
+            </p>
+          ) : (
+            <>
+              <ul>
+                {event.entrances.map((point) => (
+                  <QueueRow
+                    key={point}
+                    name={point}
+                    published={event.queues?.find((q) => q.point === point)}
+                    minutes={minutes[point]}
+                    now={now}
+                    onChange={(m) => setMinutes((all) => ({ ...all, [point]: m }))}
+                  />
+                ))}
+              </ul>
+              {queueFailure && (
+                <p role="alert" className="pt-3 text-sm text-danger">
+                  {queueFailure}
+                </p>
+              )}
+              <div className="pt-3">
+                <Button
+                  size="lg"
+                  icon={Send}
+                  onClick={() => void publishQueues()}
+                  disabled={sendingQueues || waits.length === 0}
+                  className="max-sm:w-full"
+                >
+                  Publicar filas
+                </Button>
+              </div>
+            </>
+          )}
         </Panel>
       </div>
     </div>
@@ -181,50 +216,33 @@ export function CrowdPage({
 }
 
 function QueueRow({
-  queue: q,
+  name,
+  published,
+  minutes,
   now,
   onChange,
 }: {
-  queue: QueuePoint
+  name: string
+  published?: PublishedQueue
+  minutes?: number
   now: Date
-  onChange: (patch: Partial<QueuePoint>) => void
+  onChange: (minutes: number) => void
 }) {
-  const stale = isStale(q, now)
   return (
     <li className="flex items-center gap-3 border-b border-border py-3">
       <DoorClosed size={20} className="shrink-0" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-1.5 text-[15px] font-semibold">
-          {q.name}
-          {q.rising && <Tag tone="warning">A aumentar</Tag>}
-          {stale && <Tag tone="warning">Desatualizado</Tag>}
+          {name}
+          {published && isOutdated(published.publishedAt, now) && (
+            <Tag tone="warning">Desatualizado</Tag>
+          )}
         </p>
-        <p
-          className={`mt-[3px] text-xs ${q.source === 'counter' ? 'text-success' : 'text-ink-secondary'}`}
-        >
-          {q.source === 'counter' ? 'Contador automático' : 'Manual'} · {ago(q.updatedAt, now)}
+        <p className="mt-[3px] text-xs text-ink-secondary">
+          {published ? `Manual · ${ago(published.publishedAt, now)}` : 'Sem tempo publicado'}
         </p>
       </div>
-      {q.source === 'counter' ? (
-        <p className="text-[15px] font-semibold">~{q.minutes} min</p>
-      ) : q.kind === 'entrance' ? (
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-ink-secondary">
-            {q.open ? 'Aberta' : 'Fechada'}
-          </span>
-          <Toggle
-            checked={q.open}
-            onChange={(open) => onChange({ open })}
-            label={`${q.name} aberta`}
-          />
-        </div>
-      ) : (
-        <Stepper
-          value={q.minutes}
-          onChange={(minutes) => onChange({ minutes })}
-          label={`espera em ${q.name}`}
-        />
-      )}
+      <Stepper value={minutes ?? 0} onChange={onChange} label={`espera em ${name}`} />
     </li>
   )
 }

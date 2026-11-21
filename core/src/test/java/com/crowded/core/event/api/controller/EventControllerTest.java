@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.crowded.core.event.api.mapper.EventApiMapperImpl;
+import com.crowded.core.event.api.mapper.EventPageApiMapperImpl;
 import com.crowded.core.event.application.dto.CorrectEventCommand;
 import com.crowded.core.event.application.dto.ManagedEvent;
 import com.crowded.core.event.application.dto.RegisterEventCommand;
@@ -32,7 +33,9 @@ import com.crowded.core.event.domain.model.EventProfile;
 import com.crowded.core.event.domain.model.EventState;
 import com.crowded.core.event.domain.model.EventStatus;
 import com.crowded.core.event.domain.model.EventType;
+import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.model.QueuePoints;
+import com.crowded.core.event.domain.model.QueueWait;
 import com.crowded.core.event.domain.model.Schedule;
 import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.shared.domain.exception.ConflictException;
@@ -57,7 +60,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @WebMvcTest(
     controllers = EventController.class,
     properties = "JWT_PUBLIC_KEY_LOCATION=file:unused.pem")
-@Import({SecurityConfiguration.class, EventApiMapperImpl.class})
+@Import({SecurityConfiguration.class, EventApiMapperImpl.class, EventPageApiMapperImpl.class})
 class EventControllerTest {
 
   private static final UUID USER = UUID.randomUUID();
@@ -131,7 +134,10 @@ class EventControllerTest {
   }
 
   @Test
-  void listsTheMembersEvents() throws Exception {
+  void listsTheMembersEventsWithTheirQueueTimes() throws Exception {
+    Instant published = Instant.parse("2026-11-12T10:00:00Z");
+    event.publishQueueTimes(
+        List.of(new QueueWait("Bar", 15)), Provenance.organization("Ribeira Live", published));
     when(service.listForMember(USER))
         .thenReturn(List.of(new ManagedEvent(event, 12, Instant.parse("2026-11-12T09:30:00Z"))));
 
@@ -141,7 +147,12 @@ class EventControllerTest {
         .andExpect(jsonPath("$[0].name").value("São João no Parque"))
         .andExpect(jsonPath("$[0].connectedUsers").value(12))
         .andExpect(jsonPath("$[0].imageUpdatedAt").value("2026-11-12T09:30:00Z"))
-        .andExpect(jsonPath("$[0].startDateTime").value("2026-12-12T21:00:00Z"));
+        .andExpect(jsonPath("$[0].startDateTime").value("2026-12-12T21:00:00Z"))
+        .andExpect(jsonPath("$[0].queues.length()").value(1))
+        .andExpect(jsonPath("$[0].queues[0].pointName").value("Bar"))
+        .andExpect(jsonPath("$[0].queues[0].waitMinutes").value(15))
+        .andExpect(jsonPath("$[0].queues[0].provenance.sourceName").value("Ribeira Live"))
+        .andExpect(jsonPath("$[0].queues[0].provenance.lastUpdatedAt").value(published.toString()));
   }
 
   @Test

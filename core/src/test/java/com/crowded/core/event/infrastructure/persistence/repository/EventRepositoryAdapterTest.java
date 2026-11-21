@@ -19,15 +19,20 @@ import com.crowded.core.event.domain.model.EventStatus;
 import com.crowded.core.event.domain.model.EventType;
 import com.crowded.core.event.domain.model.NewValues;
 import com.crowded.core.event.domain.model.Provenance;
+import com.crowded.core.event.domain.model.QueuePoint;
 import com.crowded.core.event.domain.model.QueuePoints;
+import com.crowded.core.event.domain.model.QueueTime;
+import com.crowded.core.event.domain.model.QueueWait;
 import com.crowded.core.event.domain.model.ReportCategory;
 import com.crowded.core.event.domain.model.RequestedChange;
 import com.crowded.core.event.domain.model.Schedule;
+import com.crowded.core.event.domain.model.SourceType;
 import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.domain.repository.ReportCategoryRepository;
 import com.crowded.core.event.infrastructure.persistence.entity.EventCategorySettingEntity;
 import com.crowded.core.event.infrastructure.persistence.entity.EventEntity;
 import com.crowded.core.event.infrastructure.persistence.entity.QueuePointEntity;
+import com.crowded.core.event.infrastructure.persistence.entity.QueueTimeEntity;
 import com.crowded.core.event.infrastructure.persistence.mapper.EventPersistenceMapperImpl;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -41,6 +46,8 @@ import org.mockito.ArgumentCaptor;
 
 class EventRepositoryAdapterTest {
 
+  private static final Instant AT = Instant.parse("2026-11-20T21:00:00Z");
+
   private static final List<ReportCategory> CATALOG =
       List.of(
           new ReportCategory("CROWD_LEVEL", false, true),
@@ -51,15 +58,17 @@ class EventRepositoryAdapterTest {
   private final SpringDataEventRepository rows = mock(SpringDataEventRepository.class);
   private final SpringDataQueuePointRepository pointRows =
       mock(SpringDataQueuePointRepository.class);
+  private final SpringDataQueueTimeRepository timeRows = mock(SpringDataQueueTimeRepository.class);
   private final SpringDataEventCategorySettingRepository settingRows =
       mock(SpringDataEventCategorySettingRepository.class);
   private final ReportCategoryRepository categories = mock(ReportCategoryRepository.class);
   private final EventRepositoryAdapter events =
       new EventRepositoryAdapter(
-          rows, pointRows, settingRows, categories, new EventPersistenceMapperImpl());
+          rows, pointRows, timeRows, settingRows, categories, new EventPersistenceMapperImpl());
 
   private final EventEntity row = row();
   private final List<QueuePointEntity> points = new ArrayList<>();
+  private final List<QueueTimeEntity> times = new ArrayList<>();
   private final List<EventCategorySettingEntity> settings = new ArrayList<>();
 
   @BeforeEach
@@ -68,6 +77,7 @@ class EventRepositoryAdapterTest {
     when(rows.findForUpdateById(row.getId())).thenReturn(Optional.of(row));
     when(rows.findById(row.getId())).thenReturn(Optional.of(row));
     when(pointRows.findByEventIdInOrderByPosition(anyCollection())).thenReturn(points);
+    when(timeRows.findByEventIdIn(anyCollection())).thenReturn(times);
     when(settingRows.findByEventIdIn(anyCollection())).thenReturn(settings);
   }
 
@@ -163,6 +173,53 @@ class EventRepositoryAdapterTest {
   }
 
   @Test
+  void readsEachPointWithItsWaitingTime() {
+    QueuePointEntity doorA = point("Porta A", 0);
+    QueuePointEntity bar = point("Bar", 1);
+    points.addAll(List.of(doorA, bar));
+    times.add(time(bar, 10));
+
+    Event event = events.findById(row.getId()).orElseThrow();
+
+    assertThat(event.getQueuePoints().points())
+        .containsExactly(
+            new QueuePoint("Porta A", null),
+            new QueuePoint("Bar", new QueueTime(10, Provenance.organization("Ribeira Live", AT))));
+  }
+
+  @Test
+  void updatesAStoredWaitingTimeAndAddsTheFirstOfAPoint() {
+    QueuePointEntity doorA = point("Porta A", 0);
+    QueuePointEntity bar = point("Bar", 1);
+    points.addAll(List.of(doorA, bar));
+    QueueTimeEntity stored = time(doorA, 10);
+    times.add(stored);
+    Event event = events.findByIdForUpdate(row.getId()).orElseThrow();
+    Instant later = AT.plusSeconds(600);
+    event.publishQueueTimes(
+        List.of(new QueueWait("Porta A", 5), new QueueWait("Bar", 20)),
+        Provenance.organization("Ribeira Live", later));
+
+    events.save(event);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<QueueTimeEntity>> saved = ArgumentCaptor.forClass(List.class);
+    verify(timeRows).saveAll(saved.capture());
+    assertThat(saved.getValue())
+        .extracting(
+            QueueTimeEntity::getQueuePointId,
+            QueueTimeEntity::getWaitMinutes,
+            QueueTimeEntity::getProvenanceLastUpdatedAt)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(doorA.getId(), 5, later),
+            org.assertj.core.groups.Tuple.tuple(bar.getId(), 20, later));
+    assertThat(saved.getValue().getFirst()).isSameAs(stored);
+    assertThat(saved.getValue().getLast().getEventId()).isEqualTo(row.getId());
+    assertThat(saved.getValue().getLast().getProvenanceSourceType())
+        .isEqualTo(SourceType.ORGANIZATION);
+  }
+
+  @Test
   void writesOnlyTheCategorySettingsThatDifferFromWhatTheEventHad() {
     EventCategorySettingEntity accessibility = setting("ACCESSIBILITY_BARRIER", false);
     settings.add(accessibility);
@@ -239,6 +296,19 @@ class EventRepositoryAdapterTest {
     point.setName(name);
     point.setPosition(position);
     return point;
+  }
+
+  private QueueTimeEntity time(QueuePointEntity point, int minutes) {
+    QueueTimeEntity time = new QueueTimeEntity();
+    time.setId(UUID.randomUUID());
+    time.setEventId(row.getId());
+    time.setQueuePointId(point.getId());
+    time.setWaitMinutes(minutes);
+    time.setProvenanceSourceType(SourceType.ORGANIZATION);
+    time.setProvenanceSourceName("Ribeira Live");
+    time.setProvenanceLastUpdatedAt(AT);
+    time.setProvenanceConfirmed(true);
+    return time;
   }
 
   private EventCategorySettingEntity setting(String code, boolean prompts) {

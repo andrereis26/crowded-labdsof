@@ -91,7 +91,8 @@ class EventViewServiceTest {
             ORGANIZATION,
             "Ribeira Live",
             null,
-            null);
+            null,
+            List.of());
     when(pages.current(event.getId())).thenReturn(page);
 
     assertThat(service.page(PARTICIPANT, event.getId())).isEqualTo(page);

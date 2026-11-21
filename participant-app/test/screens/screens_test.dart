@@ -230,6 +230,9 @@ class _FakeEventsApi implements EventsApi {
 
   /// Core's `crowd`: null until the organization publishes a level.
   Map<String, Object?>? crowd;
+
+  /// Core's `queues`: the points with a published waiting time.
+  List<Map<String, Object?>> queues = [];
   List<Map<String, Object?>> history = [
     _coreChange('c-doors', 'TIME_CHANGE', {
       'doorsOpenAt': '2026-11-06T19:30:00Z',
@@ -263,6 +266,7 @@ class _FakeEventsApi implements EventsApi {
     'organization': {'id': 'o-1', 'name': 'Ribeira Live'},
     'latestChange': history.firstOrNull,
     'crowd': crowd,
+    'queues': queues,
   })!;
 
   @override
@@ -754,6 +758,55 @@ void main() {
       );
       expect(events.pages, 1, reason: 'no reload: the stream sent it');
     });
+
+    testWidgets(
+      'shows the queue times published today, before any crowd level',
+      (tester) async {
+        Map<String, Object?> queue(String point, int minutes, DateTime at) => {
+          'pointName': point,
+          'waitMinutes': minutes,
+          'provenance': {
+            'sourceType': 'ORGANIZATION',
+            'sourceName': 'Ribeira Live',
+            'lastUpdatedAt': at.toUtc().toIso8601String(),
+            'confirmed': true,
+          },
+        };
+        final events = _FakeEventsApi()
+          ..status = 'SCHEDULED'
+          ..history = []
+          ..start = _now.add(const Duration(hours: 4)).toUtc().toIso8601String()
+          ..queues = [
+            queue('Porta A', 10, _now.subtract(const Duration(minutes: 8))),
+            queue('Bar central', 25, _now.subtract(const Duration(minutes: 3))),
+          ];
+        await _pump(tester, location: page, events: events);
+
+        expect(find.text('Agora no recinto'), findsOneWidget);
+        expect(find.text('Filas'), findsOneWidget);
+        expect(find.text('Porta A'), findsOneWidget);
+        expect(find.text('~10 min'), findsOneWidget);
+        expect(find.text('~25 min'), findsOneWidget);
+        expect(find.textContaining('Lotação'), findsNothing);
+        expect(
+          find.text('Fonte: organização · atualizado há 8 min'),
+          findsOneWidget,
+          reason: 'the oldest time, never fresher than it is',
+        );
+
+        events
+          ..queues = [queue('Porta A', 5, _now), queue('Bar central', 15, _now)]
+          ..publish();
+        await tester.pumpAndSettle();
+
+        expect(find.text('~5 min'), findsOneWidget);
+        expect(
+          find.text('Fonte: organização · atualizado agora'),
+          findsOneWidget,
+        );
+        expect(events.pages, 1, reason: 'no reload: the stream sent it');
+      },
+    );
 
     testWidgets('follows what is published while the page is open', (
       tester,

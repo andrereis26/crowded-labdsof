@@ -264,7 +264,6 @@ EventPage? eventPageFromJson(Map<String, dynamic> json) {
     return null;
   }
   final latest = json['latestChange'];
-  final crowd = json['crowd'];
   return EventPage(
     id: id,
     name: name,
@@ -279,28 +278,55 @@ EventPage? eventPageFromJson(Map<String, dynamic> json) {
     latestChange: latest is Map<String, dynamic>
         ? coreChangeFromJson(latest)
         : null,
-    venueStatus: crowd is Map<String, dynamic>
-        ? venueStatusFromJson(crowd)
-        : null,
+    venueStatus: venueStatusFromJson(json),
   );
 }
 
-/// The crowd level in Core's `crowd`, or null when its level or time is
-/// missing or unknown to this version.
-VenueStatus? venueStatusFromJson(Map<String, dynamic> json) {
-  final level = switch (json['level']) {
-    'LOW' => CrowdLevel.low,
-    'MODERATE' => CrowdLevel.moderate,
-    'HIGH' => CrowdLevel.high,
-    'FULL' => CrowdLevel.full,
-    _ => null,
-  };
+/// The crowd level and queue times on Core's event [page], or null when it
+/// has neither. One whose value or time is missing or unknown to this
+/// version is left out.
+VenueStatus? venueStatusFromJson(Map<String, dynamic> page) {
+  final crowd = page['crowd'];
+  final level = crowd is Map<String, dynamic>
+      ? switch (crowd['level']) {
+          'LOW' => CrowdLevel.low,
+          'MODERATE' => CrowdLevel.moderate,
+          'HIGH' => CrowdLevel.high,
+          'FULL' => CrowdLevel.full,
+          _ => null,
+        }
+      : null;
+  final crowdAt = crowd is Map<String, dynamic> ? _updatedAt(crowd) : null;
+  final hasCrowd = level != null && crowdAt != null;
+
+  final queues = <QueueTime>[];
+  DateTime? queuesAt;
+  for (final queue in page['queues'] is List ? page['queues'] as List : []) {
+    if (queue is! Map<String, dynamic>) continue;
+    final place = queue['pointName'];
+    final minutes = queue['waitMinutes'];
+    final at = _updatedAt(queue);
+    if (place is! String || minutes is! int || at == null) continue;
+    queues.add(QueueTime(place: place, minutes: minutes));
+    // The oldest, so the panel never shows the times as fresher than they are.
+    if (queuesAt == null || at.isBefore(queuesAt)) queuesAt = at;
+  }
+
+  if (!hasCrowd && queues.isEmpty) return null;
+  return VenueStatus(
+    crowdLevel: hasCrowd ? level : null,
+    crowdUpdatedAt: hasCrowd ? crowdAt : null,
+    queues: queues,
+    queuesUpdatedAt: queuesAt,
+  );
+}
+
+/// The `lastUpdatedAt` of [json]'s provenance.
+DateTime? _updatedAt(Map<String, dynamic> json) {
   final provenance = json['provenance'];
-  final at = provenance is Map<String, dynamic>
+  return provenance is Map<String, dynamic>
       ? _instant(provenance['lastUpdatedAt'])
       : null;
-  if (level == null || at == null) return null;
-  return VenueStatus(crowdLevel: level, crowdUpdatedAt: at);
 }
 
 /// The change in [json], or null when a required field is missing.

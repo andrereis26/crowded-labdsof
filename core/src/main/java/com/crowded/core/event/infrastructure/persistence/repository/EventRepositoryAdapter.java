@@ -3,12 +3,14 @@ package com.crowded.core.event.infrastructure.persistence.repository;
 import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventCode;
 import com.crowded.core.event.domain.model.EventStatus;
+import com.crowded.core.event.domain.model.QueuePoint;
 import com.crowded.core.event.domain.model.ReportCategory;
 import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.event.domain.repository.ReportCategoryRepository;
 import com.crowded.core.event.infrastructure.persistence.entity.EventCategorySettingEntity;
 import com.crowded.core.event.infrastructure.persistence.entity.EventEntity;
 import com.crowded.core.event.infrastructure.persistence.entity.QueuePointEntity;
+import com.crowded.core.event.infrastructure.persistence.entity.QueueTimeEntity;
 import com.crowded.core.event.infrastructure.persistence.mapper.EventPersistenceMapper;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -26,7 +28,7 @@ import org.springframework.stereotype.Repository;
 
 /**
  * {@link EventRepository} on PostgreSQL: an event is its {@code event} row with its {@code
- * queue_point} and {@code event_category_setting} rows.
+ * queue_point}, {@code queue_time} and {@code event_category_setting} rows.
  */
 @Repository
 class EventRepositoryAdapter implements EventRepository {
@@ -43,6 +45,7 @@ class EventRepositoryAdapter implements EventRepository {
 
   private final SpringDataEventRepository events;
   private final SpringDataQueuePointRepository points;
+  private final SpringDataQueueTimeRepository times;
   private final SpringDataEventCategorySettingRepository settings;
   private final ReportCategoryRepository categories;
   private final EventPersistenceMapper mapper;
@@ -50,11 +53,13 @@ class EventRepositoryAdapter implements EventRepository {
   EventRepositoryAdapter(
       SpringDataEventRepository events,
       SpringDataQueuePointRepository points,
+      SpringDataQueueTimeRepository times,
       SpringDataEventCategorySettingRepository settings,
       ReportCategoryRepository categories,
       EventPersistenceMapper mapper) {
     this.events = events;
     this.points = points;
+    this.times = times;
     this.settings = settings;
     this.categories = categories;
     this.mapper = mapper;
@@ -148,6 +153,7 @@ class EventRepositoryAdapter implements EventRepository {
     Map<UUID, List<QueuePointEntity>> pointsByEvent =
         points.findByEventIdInOrderByPosition(ids).stream()
             .collect(Collectors.groupingBy(QueuePointEntity::getEventId));
+    Map<UUID, QueueTimeEntity> timesByPoint = timesByPoint(ids);
     Map<UUID, List<EventCategorySettingEntity>> settingsByEvent =
         settings.findByEventIdIn(ids).stream()
             .collect(Collectors.groupingBy(EventCategorySettingEntity::getEventId));
@@ -158,19 +164,29 @@ class EventRepositoryAdapter implements EventRepository {
                 mapper.toDomain(
                     row,
                     pointsByEvent.getOrDefault(row.getId(), List.of()),
+                    timesByPoint,
                     settingsByEvent.getOrDefault(row.getId(), List.of()),
                     catalog))
         .toList();
   }
 
+  private Map<UUID, QueueTimeEntity> timesByPoint(Collection<UUID> eventIds) {
+    return times.findByEventIdIn(eventIds).stream()
+        .collect(Collectors.toMap(QueueTimeEntity::getQueuePointId, Function.identity()));
+  }
+
   /** Writes only what differs, so a point keeps its id, and its waiting time, while it stays. */
   private void saveChildren(Event event) {
     List<UUID> id = List.of(event.getId());
-    saveQueuePoints(event, points.findByEventIdInOrderByPosition(id));
+    Map<String, QueuePointEntity> pointsByName =
+        saveQueuePoints(event, points.findByEventIdInOrderByPosition(id));
+    saveQueueTimes(event, pointsByName, timesByPoint(id));
     saveCategorySettings(event, settings.findByEventIdIn(id));
   }
 
-  private void saveQueuePoints(Event event, List<QueuePointEntity> stored) {
+  /** The event's points after the save, by name. */
+  private Map<String, QueuePointEntity> saveQueuePoints(
+      Event event, List<QueuePointEntity> stored) {
     List<String> names = event.getQueuePoints().names();
     Map<String, QueuePointEntity> byName =
         stored.stream().collect(Collectors.toMap(QueuePointEntity::getName, Function.identity()));
@@ -190,8 +206,32 @@ class EventRepositoryAdapter implements EventRepository {
       }
       point.setPosition(position);
       changed.add(point);
+      byName.put(point.getName(), point);
     }
     points.saveAll(changed);
+    return byName;
+  }
+
+  /**
+   * Writes the points' waiting times, which Hibernate updates only when they changed; a removed
+   * point's time goes with its row (ON DELETE CASCADE).
+   */
+  private void saveQueueTimes(
+      Event event, Map<String, QueuePointEntity> pointsByName, Map<UUID, QueueTimeEntity> stored) {
+    List<QueueTimeEntity> written = new ArrayList<>();
+    for (QueuePoint point : event.getQueuePoints().timed()) {
+      UUID pointId = pointsByName.get(point.name()).getId();
+      QueueTimeEntity time = stored.get(pointId);
+      if (time == null) {
+        time = new QueueTimeEntity();
+        time.setId(UUID.randomUUID());
+        time.setEventId(event.getId());
+        time.setQueuePointId(pointId);
+      }
+      mapper.updateEntity(point.time(), time);
+      written.add(time);
+    }
+    times.saveAll(written);
   }
 
   private void saveCategorySettings(Event event, Collection<EventCategorySettingEntity> stored) {

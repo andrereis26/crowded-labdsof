@@ -4,6 +4,7 @@ import com.crowded.core.event.api.dto.ConfirmationsResponse;
 import com.crowded.core.event.api.dto.CorrectEventRequest;
 import com.crowded.core.event.api.dto.CreateEventRequest;
 import com.crowded.core.event.api.dto.ManagedEventResponse;
+import com.crowded.core.event.api.dto.QueueTimeResponse;
 import com.crowded.core.event.api.dto.VenueResponse;
 import com.crowded.core.event.application.dto.CorrectEventCommand;
 import com.crowded.core.event.application.dto.ManagedEvent;
@@ -12,15 +13,17 @@ import com.crowded.core.event.domain.model.ConfirmationSettings;
 import com.crowded.core.event.domain.model.District;
 import com.crowded.core.event.domain.model.EventState;
 import com.crowded.core.event.domain.model.EventType;
+import com.crowded.core.event.domain.model.QueuePoint;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
 /** Maps the event endpoints' requests and responses to and from the application layer. */
-@Mapper
+@Mapper(uses = EventPageApiMapper.class)
 public interface EventApiMapper {
 
   @Mapping(target = "code", source = "request", qualifiedByName = "codeOfItsType")
@@ -53,7 +56,12 @@ public interface EventApiMapper {
   @Mapping(target = "queuePoints", expression = "java(managed.event().getQueuePoints().names())")
   @Mapping(target = "confirmations", source = "event.confirmations")
   @Mapping(target = "crowd", source = "event.crowd")
+  @Mapping(
+      target = "queues",
+      expression = "java(toQueues(managed.event().getQueuePoints().timed()))")
   ManagedEventResponse toResponse(ManagedEvent managed);
+
+  List<QueueTimeResponse> toQueues(List<QueuePoint> queues);
 
   default VenueResponse toVenue(EventState state, District district) {
     var venue = state.venue();

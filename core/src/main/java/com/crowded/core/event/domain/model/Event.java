@@ -5,6 +5,7 @@ import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
 import com.crowded.core.user.domain.model.User;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -194,9 +195,12 @@ public final class Event {
     admission = admission.withCode(new EventCode(code));
   }
 
-  /** Sets the entrances and queue points, in the order the organization lists them. */
+  /**
+   * Sets the entrances and queue points, in the order the organization lists them; a point that
+   * stays, by its exact name, keeps its waiting time.
+   */
   public void defineQueuePoints(QueuePoints points) {
-    queuePoints = Objects.requireNonNull(points, "queuePoints");
+    queuePoints = Objects.requireNonNull(points, "queuePoints").keepingTimesOf(queuePoints);
   }
 
   /** Sets which report categories ask for confirmations, and how. */
@@ -230,6 +234,23 @@ public final class Event {
       throw new ConflictException("EVENT_CLOSED", "This event is cancelled or ended.");
     }
     crowd = published;
+  }
+
+  /**
+   * Publishes the waiting times participants read now at the points the waits name, replacing their
+   * previous ones; the other points keep theirs. The same time again tells them it is still
+   * current.
+   *
+   * @throws RuleViolationException when there is no wait, or a wait names no point of this event or
+   *     the same point as another
+   * @throws ConflictException when the event is cancelled or ended
+   */
+  public void publishQueueTimes(List<QueueWait> waits, Provenance provenance) {
+    QueuePoints published = queuePoints.withTimes(waits, provenance);
+    if (CLOSED.contains(state.status())) {
+      throw new ConflictException("EVENT_CLOSED", "This event is cancelled or ended.");
+    }
+    queuePoints = published;
   }
 
   /**

@@ -244,6 +244,37 @@ void main() {
       );
     });
 
+    test('carries the queue times, with the oldest as their time', () {
+      Map<String, Object?> queue(Object? point, Object? minutes, String at) => {
+        'pointName': point,
+        'waitMinutes': minutes,
+        'provenance': {'sourceName': 'Ribeira Live', 'lastUpdatedAt': at},
+      };
+      final page = eventPageFromJson({
+        ..._page(),
+        'queues': [
+          queue('Porta A', 10, '2026-11-27T21:05:00Z'),
+          queue('Bar', 25, '2026-11-27T20:50:00Z'),
+          queue('WC', 'dez', '2026-11-27T21:05:00Z'),
+          queue(null, 5, '2026-11-27T21:05:00Z'),
+        ],
+      })!;
+
+      final status = eventFromCore(page, const []).venueStatus!;
+
+      expect(status.crowdLevel, isNull);
+      expect(status.crowdUpdatedAt, isNull);
+      expect(status.queues.map((q) => (q.place, q.minutes)), [
+        ('Porta A', 10),
+        ('Bar', 25),
+      ]);
+      expect(status.updatedAt, DateTime.utc(2026, 11, 27, 20, 50).toLocal());
+      expect(
+        eventPageFromJson({..._page(), 'queues': []})!.venueStatus,
+        isNull,
+      );
+    });
+
     test('builds the event with its changes, newest first', () {
       final history = [
         coreChangeFromJson(

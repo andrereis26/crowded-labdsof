@@ -3,9 +3,11 @@ package com.crowded.core.event.api.mapper;
 import com.crowded.core.event.api.dto.EventChangeResponse;
 import com.crowded.core.event.api.dto.EventPageResponse;
 import com.crowded.core.event.api.dto.ProvenanceResponse;
+import com.crowded.core.event.api.dto.QueueTimeResponse;
 import com.crowded.core.event.application.dto.EventChangeView;
 import com.crowded.core.event.application.dto.EventPage;
 import com.crowded.core.event.domain.model.Provenance;
+import com.crowded.core.event.domain.model.QueuePoint;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -23,6 +25,11 @@ public interface EventPageApiMapper {
   EventPageResponse toResponse(EventPage page);
 
   ProvenanceResponse toResponse(Provenance provenance);
+
+  @Mapping(target = "pointName", source = "name")
+  @Mapping(target = "waitMinutes", source = "time.waitMinutes")
+  @Mapping(target = "provenance", source = "time.provenance")
+  QueueTimeResponse toResponse(QueuePoint queue);
 
   /** By hand: a change always has both maps, which the response copies. */
   default EventChangeResponse toResponse(EventChangeView change) {

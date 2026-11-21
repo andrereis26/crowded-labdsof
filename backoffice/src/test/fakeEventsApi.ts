@@ -60,6 +60,17 @@ export function fakeEventsApi(events: OrgEvent[] = demoEvents()) {
       stored = stored.map((e) => (e.id === eventId ? { ...e, crowd } : e))
       return crowd
     },
+    async publishQueues(eventId, waits) {
+      check('publishQueues')
+      const event = stored.find((e) => e.id === eventId)
+      const published = new Map((event?.queues ?? []).map((q) => [q.point, q]))
+      for (const w of waits) {
+        published.set(w.point, { ...w, publishedBy: 'Ribeira Live', publishedAt: new Date() })
+      }
+      const queues = (event?.entrances ?? []).flatMap((p) => published.get(p) ?? [])
+      stored = stored.map((e) => (e.id === eventId ? { ...e, queues } : e))
+      return queues
+    },
     imageUrl(event) {
       return `/api/events/${event.id}/image?v=${event.imageUpdatedAt ?? ''}`
     },
