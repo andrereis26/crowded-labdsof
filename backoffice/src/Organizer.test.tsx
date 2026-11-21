@@ -502,7 +502,7 @@ describe('O2–O4 with Core', () => {
 })
 
 describe('O5–O7 live operations', () => {
-  it('publishes the crowd level in Core and manual queue times', async () => {
+  it('publishes the crowd level and the queue times in Core', async () => {
     const user = userEvent.setup()
     const { events } = await renderAt('/organization/live/crowd')
     expect(screen.getByText('Ainda não publicaste a lotação deste evento.')).toBeInTheDocument()
@@ -514,12 +514,53 @@ describe('O5–O7 live operations', () => {
     expect(events.events[0].crowd?.level).toBe('high')
     expect(screen.getByText(/^Publicado por Ribeira Live/)).toBeInTheDocument()
 
+    // Nothing to publish until a point has a time.
+    expect(screen.getByRole('button', { name: 'Publicar filas' })).toBeDisabled()
+    expect(screen.getAllByText('Sem tempo publicado')).toHaveLength(
+      events.events[0].entrances.length,
+    )
     await user.click(screen.getByRole('button', { name: 'Aumentar espera em Bar principal' }))
     expect(
-      within(screen.getByRole('group', { name: 'espera em Bar principal' })).getByText('6 min'),
+      within(screen.getByRole('group', { name: 'espera em Bar principal' })).getByText('1 min'),
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Publicar filas' }))
-    expect(screen.getByText('Filas publicadas.')).toBeInTheDocument()
+    expect(await screen.findByText('Filas publicadas.')).toBeInTheDocument()
+    expect(events.calls).toContain('publishQueues')
+    expect(events.events[0].queues).toMatchObject([{ point: 'Bar principal', minutes: 1 }])
+    expect(screen.getByText('Manual · agora')).toBeInTheDocument()
+  })
+
+  it('shows the queue times Core has, flags old ones and why Core refused new ones', async () => {
+    const user = userEvent.setup()
+    const old = new Date(now.getTime() - 25 * 60000)
+    const events = fakeEventsApi(
+      demoEvents().map((e) => ({
+        ...e,
+        queues: [{ point: 'Porta A', minutes: 12, publishedBy: 'Ribeira Live', publishedAt: old }],
+      })),
+    )
+    await renderAt('/organization/live/crowd', events)
+    expect(
+      within(screen.getByRole('group', { name: 'espera em Porta A' })).getByText('12 min'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Desatualizado')).toBeInTheDocument()
+
+    events.refuse = 'WAIT_MINUTES_INVALID'
+    await user.click(screen.getByRole('button', { name: 'Publicar filas' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Indica a espera em minutos, de 0 a 600.',
+    )
+    expect(screen.queryByText('Filas publicadas.')).not.toBeInTheDocument()
+  })
+
+  it('asks for queue points when the event has none', async () => {
+    const events = fakeEventsApi(demoEvents().map((e) => ({ ...e, entrances: [] })))
+    await renderAt('/organization/live/crowd', events)
+    expect(screen.getByRole('link', { name: 'Acrescenta-os ao editar o evento' })).toHaveAttribute(
+      'href',
+      `/organization/events/${events.events[0].id}/edit`,
+    )
+    expect(screen.queryByRole('button', { name: 'Publicar filas' })).not.toBeInTheDocument()
   })
 
   it('shows the level Core has and why Core refused a new one', async () => {

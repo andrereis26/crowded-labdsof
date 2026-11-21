@@ -314,6 +314,45 @@ describe('events in Core', () => {
     })
   })
 
+  it('publishes queue times and reads every time Core keeps', async () => {
+    const bar = {
+      pointName: 'Bar',
+      waitMinutes: 15,
+      provenance: {
+        sourceType: 'ORGANIZATION',
+        sourceName: 'Ribeira Live',
+        lastUpdatedAt: '2026-11-14T21:05:00Z',
+        confirmed: true,
+      },
+    }
+    const published = recording(200, { queues: [bar] })
+
+    expect(
+      await httpEventsApi(published.fetchImpl, '/api').publishQueues('e-1', [
+        { point: 'Bar', minutes: 15 },
+      ]),
+    ).toEqual([
+      {
+        point: 'Bar',
+        minutes: 15,
+        publishedBy: 'Ribeira Live',
+        publishedAt: new Date('2026-11-14T21:05:00Z'),
+      },
+    ])
+    expect(published.calls[0].url).toBe('/api/events/e-1/queues')
+    expect(published.calls[0].init?.method).toBe('PUT')
+    expect(JSON.parse(String(published.calls[0].init?.body))).toEqual({
+      queues: [{ pointName: 'Bar', waitMinutes: 15 }],
+    })
+    expect(fromJson({ ...json, queues: [bar] }).queues?.[0].point).toBe('Bar')
+    expect(fromJson(json).queues).toEqual([])
+
+    const unknown = recording(400, { code: 'QUEUE_POINT_UNKNOWN' })
+    await expect(
+      httpEventsApi(unknown.fetchImpl).publishQueues('e-1', [{ point: 'WC', minutes: 5 }]),
+    ).rejects.toMatchObject({ code: 'QUEUE_POINT_UNKNOWN' })
+  })
+
   it('gives each upload of the event image its own address, and uploads and removes it', async () => {
     const api = httpEventsApi(fetch, '/api')
     expect(api.imageUrl({ id: 'e-1', imageUpdatedAt: '2026-11-19T10:00:00Z' })).toBe(

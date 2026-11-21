@@ -82,9 +82,9 @@ class EventDetailsTest {
         .containsExactly("Porta A", "Bar");
     assertThatThrownBy(() -> QueuePoints.named(List.of("Porta A", "porta a")))
         .hasFieldOrPropertyWithValue("code", "QUEUE_POINT_REPEATED");
-    assertThatThrownBy(() -> new QueuePoint(""))
+    assertThatThrownBy(() -> new QueuePoint("", null))
         .hasFieldOrPropertyWithValue("code", "QUEUE_POINT_NAME_REQUIRED");
-    assertThatThrownBy(() -> new QueuePoint("x".repeat(61)))
+    assertThatThrownBy(() -> new QueuePoint("x".repeat(61), null))
         .hasFieldOrPropertyWithValue("code", "QUEUE_POINT_NAME_TOO_LONG");
     assertThatThrownBy(() -> QueuePoints.named(Collections.nCopies(31, "x")))
         .hasFieldOrPropertyWithValue("code", "TOO_MANY_QUEUE_POINTS");

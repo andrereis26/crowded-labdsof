@@ -8,7 +8,11 @@ import {
   type IncidentCategory,
   type OrgEvent,
   type PublishedCrowd,
+  type PublishedQueue,
 } from './organizer'
+
+/** A waiting time to publish at one of the event's queue points. */
+export type QueueWait = Pick<PublishedQueue, 'point' | 'minutes'>
 
 /** An organization's events in Core (API Outline, journeys 1 and 3). */
 export interface EventsApi {
@@ -26,6 +30,9 @@ export interface EventsApi {
   publishChange(event: OrgEvent, change: EventChange): Promise<void>
   /** Publishes the crowd level that connected participants see at once. */
   publishCrowd(eventId: string, level: CrowdLevel): Promise<PublishedCrowd>
+  /** Publishes waiting times at the event's queue points; the others keep
+   * theirs. Returns every time connected participants see now. */
+  publishQueues(eventId: string, waits: QueueWait[]): Promise<PublishedQueue[]>
   /** Where an image tag loads the event's image: the browser sends the
    * session cookie (ADR 0021), and each upload gets its own address, so a
    * replaced image is never shown from the cache. */
@@ -75,6 +82,22 @@ interface EventJson {
   }
   imageUpdatedAt?: string | null
   crowd?: CrowdJson | null
+  queues?: QueueJson[]
+}
+
+interface QueueJson {
+  pointName: string
+  waitMinutes: number
+  provenance: { sourceName: string; lastUpdatedAt: string }
+}
+
+function queueOf(json: QueueJson): PublishedQueue {
+  return {
+    point: json.pointName,
+    minutes: json.waitMinutes,
+    publishedBy: json.provenance.sourceName,
+    publishedAt: new Date(json.provenance.lastUpdatedAt),
+  }
 }
 
 interface CrowdJson {
@@ -211,6 +234,7 @@ export function fromJson(json: EventJson): OrgEvent {
     confirmations: confirmationsOf(json.confirmations),
     imageUpdatedAt: json.imageUpdatedAt ?? undefined,
     crowd: json.crowd ? crowdOf(json.crowd) : undefined,
+    queues: (json.queues ?? []).map(queueOf),
     gradient: gradientFor(json.id),
   }
 }
@@ -393,6 +417,11 @@ export function httpEventsApi(
         await call<CrowdJson>('PUT', `/events/${eventId}/crowd`, { level: level.toUpperCase() }),
       )
     },
+    async publishQueues(eventId, waits) {
+      const body = { queues: waits.map((w) => ({ pointName: w.point, waitMinutes: w.minutes })) }
+      const json = await call<{ queues: QueueJson[] }>('PUT', `/events/${eventId}/queues`, body)
+      return json.queues.map(queueOf)
+    },
     imageUrl(event) {
       const version = event.imageUpdatedAt ? `?v=${encodeURIComponent(event.imageUpdatedAt)}` : ''
       return `${base}/events/${event.id}/image${version}`
@@ -454,6 +483,10 @@ export function eventErrorMessage(code: string): string {
       return 'Indica a capacidade do recinto, de 1 a 1 000 000 pessoas.'
     case 'QUEUE_POINT_REPEATED':
       return 'Cada entrada ou ponto de fila tem um nome diferente.'
+    case 'QUEUE_POINT_UNKNOWN':
+      return 'Este ponto de fila já não existe no evento. Recarrega a página.'
+    case 'WAIT_MINUTES_INVALID':
+      return 'Indica a espera em minutos, de 0 a 600.'
     case 'EVENT_CLOSED':
       return 'Este evento já foi cancelado ou terminou.'
     case 'NOT_ORGANIZATION_MEMBER':

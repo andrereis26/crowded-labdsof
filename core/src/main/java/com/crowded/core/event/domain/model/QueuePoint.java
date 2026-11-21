@@ -4,11 +4,12 @@ import com.crowded.core.shared.domain.exception.RuleViolationException;
 
 /**
  * An entrance or another place where people queue at an event (a door, the ticket office, a bar),
- * named by its organization.
+ * named by its organization, with the waiting time published there.
  *
  * @param name stripped, at most {@value #MAX_NAME} characters
+ * @param time null while no waiting time was published
  */
-public record QueuePoint(String name) {
+public record QueuePoint(String name, QueueTime time) {
 
   static final int MAX_NAME = 60;
 

@@ -413,7 +413,8 @@ class _TodayPanel extends StatelessWidget {
             if (status != null) const LiveTag(),
           ],
         ),
-        if (status != null) CrowdLevelIndicator(level: status.crowdLevel),
+        if (status?.crowdLevel case final level?)
+          CrowdLevelIndicator(level: level),
         if (alert != null)
           Container(
             padding: const EdgeInsets.symmetric(
@@ -447,7 +448,8 @@ class _TodayPanel extends StatelessWidget {
           Row(
             spacing: AppSpacing.sm,
             children: [
-              for (final queue in status.queues)
+              // A summary: the event page lists every point.
+              for (final queue in status.queues.take(3))
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.all(10),

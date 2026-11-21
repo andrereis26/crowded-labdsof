@@ -15,26 +15,29 @@ import com.crowded.core.event.domain.model.EventType;
 import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.model.QueuePoint;
 import com.crowded.core.event.domain.model.QueuePoints;
+import com.crowded.core.event.domain.model.QueueTime;
 import com.crowded.core.event.domain.model.ReportCategory;
 import com.crowded.core.event.domain.model.Schedule;
 import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.infrastructure.persistence.entity.EventCategorySettingEntity;
 import com.crowded.core.event.infrastructure.persistence.entity.EventEntity;
 import com.crowded.core.event.infrastructure.persistence.entity.QueuePointEntity;
+import com.crowded.core.event.infrastructure.persistence.entity.QueueTimeEntity;
 import com.crowded.core.event.infrastructure.persistence.entity.ReportCategoryEntity;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
 /**
- * Maps {@code event} rows, with their queue points and category settings, to events, and an event's
- * values back onto its row.
+ * Maps {@code event} rows, with their queue points, waiting times and category settings, to events,
+ * and an event's values back onto its rows.
  */
 @Mapper
 public interface EventPersistenceMapper {
@@ -43,12 +46,14 @@ public interface EventPersistenceMapper {
    * The event of {@code entity}.
    *
    * @param points the event's queue points, in order
+   * @param timesByPoint the waiting times of the event's points, by point id
    * @param settings the event's own category settings; a category without one keeps its default
    * @param catalog every report category
    */
   default Event toDomain(
       EventEntity entity,
       List<QueuePointEntity> points,
+      Map<UUID, QueueTimeEntity> timesByPoint,
       Collection<EventCategorySettingEntity> settings,
       Collection<ReportCategory> catalog) {
     String code =
@@ -70,7 +75,10 @@ public interface EventPersistenceMapper {
                 Coordinates.ofNullable(entity.getLatitude(), entity.getLongitude()))),
         new District(entity.getDistrict()),
         entity.getCapacity() == null ? null : new Capacity(entity.getCapacity()),
-        new QueuePoints(points.stream().map(p -> new QueuePoint(p.getName())).toList()),
+        new QueuePoints(
+            points.stream()
+                .map(p -> new QueuePoint(p.getName(), queueTime(timesByPoint.get(p.getId()))))
+                .toList()),
         new ConfirmationSettings(
             promptCategories(settings, catalog),
             new ConfirmationRules(
@@ -92,6 +100,20 @@ public interface EventPersistenceMapper {
             entity.getCrowdSourceName(),
             entity.getCrowdLastUpdatedAt(),
             Boolean.TRUE.equals(entity.getCrowdConfirmed())));
+  }
+
+  /** The published waiting time; null when the point has none. */
+  private static QueueTime queueTime(QueueTimeEntity entity) {
+    if (entity == null) {
+      return null;
+    }
+    return new QueueTime(
+        entity.getWaitMinutes(),
+        new Provenance(
+            entity.getProvenanceSourceType(),
+            entity.getProvenanceSourceName(),
+            entity.getProvenanceLastUpdatedAt(),
+            entity.isProvenanceConfirmed()));
   }
 
   /** The categories that ask for confirmations: the event's choice, or the category's default. */
@@ -144,4 +166,13 @@ public interface EventPersistenceMapper {
       expression =
           "java(event.getCrowd() == null ? null : event.getCrowd().provenance().confirmed())")
   void updateEntity(Event event, @MappingTarget EventEntity entity);
+
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "eventId", ignore = true)
+  @Mapping(target = "queuePointId", ignore = true)
+  @Mapping(target = "provenanceSourceType", source = "provenance.sourceType")
+  @Mapping(target = "provenanceSourceName", source = "provenance.sourceName")
+  @Mapping(target = "provenanceLastUpdatedAt", source = "provenance.lastUpdatedAt")
+  @Mapping(target = "provenanceConfirmed", source = "provenance.confirmed")
+  void updateEntity(QueueTime time, @MappingTarget QueueTimeEntity entity);
 }

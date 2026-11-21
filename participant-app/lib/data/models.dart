@@ -33,17 +33,19 @@ class QueueTime {
   final bool increasing;
 }
 
-/// Live on-site information for the event day (P5).
+/// Live on-site information for the event day (P5): a crowd level, queue
+/// times or both.
 class VenueStatus {
   const VenueStatus({
-    required this.crowdLevel,
-    required this.crowdUpdatedAt,
+    this.crowdLevel,
+    this.crowdUpdatedAt,
     this.queues = const [],
     this.queuesUpdatedAt,
-  });
+  }) : assert(crowdUpdatedAt != null || queuesUpdatedAt != null);
 
-  final CrowdLevel crowdLevel;
-  final DateTime crowdUpdatedAt;
+  /// Null while the organization has published no crowd level.
+  final CrowdLevel? crowdLevel;
+  final DateTime? crowdUpdatedAt;
   final List<QueueTime> queues;
 
   /// Null while the organization has published no queue times.
@@ -51,7 +53,7 @@ class VenueStatus {
 
   /// The time the panel shows: its queues', or its crowd level's without
   /// queues.
-  DateTime get updatedAt => queuesUpdatedAt ?? crowdUpdatedAt;
+  DateTime get updatedAt => (queuesUpdatedAt ?? crowdUpdatedAt)!;
 }
 
 class WeatherInfo {

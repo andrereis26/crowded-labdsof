@@ -232,6 +232,67 @@ class EventPageIT extends IntegrationTest {
         .isEqualTo("HIGH");
   }
 
+  @Test
+  void sendsThePublishedQueueTimesOnTheLiveStreamAndRefusesInvalidOnes() throws Exception {
+    UUID bar = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO queue_point (id, event_id, name, position) VALUES (?, ?, 'Porta A', 0),"
+            + " (?, ?, 'Bar', 1)",
+        UUID.randomUUID(),
+        event,
+        bar,
+        event);
+    HttpResponse<InputStream> stream =
+        HTTP.send(
+            request(participant, base() + "/live").build(),
+            HttpResponse.BodyHandlers.ofInputStream());
+    BlockingQueue<String> pages = new LinkedBlockingQueue<>();
+    Thread reader = Thread.ofVirtual().start(() -> readData(stream.body(), pages));
+    try {
+      String first = pages.poll(10, TimeUnit.SECONDS);
+      assertThat(json.readTree(first).get("queues").size()).isZero();
+
+      HttpResponse<String> published =
+          putQueues(member, "{\"queues\": [{\"pointName\": \"Bar\", \"waitMinutes\": 25}]}");
+
+      assertThat(published.statusCode()).as(published.body()).isEqualTo(200);
+      assertThat(json.readTree(published.body()).get("queues").get(0).get("waitMinutes").asInt())
+          .isEqualTo(25);
+      String next = pages.poll(10, TimeUnit.SECONDS);
+      assertThat(next).isNotNull();
+      JsonNode queues = json.readTree(next).get("queues");
+      assertThat(queues.size()).isOne();
+      assertThat(queues.get(0).get("pointName").asString()).isEqualTo("Bar");
+      assertThat(queues.get(0).get("waitMinutes").asInt()).isEqualTo(25);
+      assertThat(queues.get(0).get("provenance").get("sourceName").asString())
+          .isEqualTo("Ribeira Página " + organization);
+      assertThat(Instant.parse(queues.get(0).get("provenance").get("lastUpdatedAt").asString()))
+          .isBetween(Instant.now().minusSeconds(30), Instant.now());
+    } finally {
+      stream.body().close();
+      reader.interrupt();
+    }
+
+    assertThat(
+            putQueues(member, "{\"queues\": [{\"pointName\": \"Bar\", \"waitMinutes\": -1}]}")
+                .statusCode())
+        .isEqualTo(400);
+    HttpResponse<String> unknown =
+        putQueues(member, "{\"queues\": [{\"pointName\": \"WC\", \"waitMinutes\": 5}]}");
+    assertThat(unknown.statusCode()).isEqualTo(400);
+    assertThat(json.readTree(unknown.body()).get("code").asString())
+        .isEqualTo("QUEUE_POINT_UNKNOWN");
+    HttpResponse<String> foreign =
+        putQueues(participant, "{\"queues\": [{\"pointName\": \"Bar\", \"waitMinutes\": 1}]}");
+    assertThat(foreign.statusCode()).isEqualTo(403);
+    assertThat(json.readTree(foreign.body()).get("code").asString())
+        .isEqualTo("NOT_EVENT_ORGANIZATION");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT wait_minutes FROM queue_time WHERE queue_point_id = ?", Integer.class, bar))
+        .isEqualTo(25);
+  }
+
   /** Puts the data of each server-sent event on {@code pages} until the stream ends. */
   private static void readData(InputStream body, BlockingQueue<String> pages) {
     try (BufferedReader lines =
@@ -262,6 +323,16 @@ class EventPageIT extends IntegrationTest {
       throws IOException, InterruptedException {
     return HTTP.send(
         request(user, base() + "/crowd")
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(body))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> putQueues(UUID user, String body)
+      throws IOException, InterruptedException {
+    return HTTP.send(
+        request(user, base() + "/queues")
             .header("Content-Type", "application/json")
             .PUT(HttpRequest.BodyPublishers.ofString(body))
             .build(),
