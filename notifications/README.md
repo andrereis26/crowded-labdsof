@@ -1,6 +1,6 @@
 # Crowded Notifications
 
-Notifications service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). It turns Core's `NotificationRequested` messages into notifications for the official changes, and serves each participant's notification center and live stream; the other types come with their stories.
+Notifications service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). It turns Core's `NotificationRequested` messages into notifications for the official changes and the operational alerts, and serves each participant's notification center and live stream; the other types come with their stories.
 
 - **Responsibility:** fan-out to connected users, preferences, deduplication, the notification center and live banners (SSE); push to the mobile app later.
 - **Owns (writes):** notifications, device tokens.
@@ -16,6 +16,8 @@ The service follows the onion layout of [`core/`](../core/README.md#code-layout)
 | `notifications.dlq`, durable | the dead-letter queue of `notifications` | messages that kept failing, kept for inspection and replay |
 
 For an official change (`OFFICIAL_CHANGE`), the service reads the change from Core's `event_change` and stores one `notification` per participant connected to the event through a ticket or the access code who did not turn official changes off, for the event or overall (FR-013, FR-041, FR-065). The title and body, in European Portuguese, say what kind of change it is and the new venue, and, for a ticket holder, whether the ticket stays valid and where to ask for a refund; the organization's message comes last (FR-075). The new date and time are not written into the text: they stay in the change (`cause_id`), which the clients read and show in the participant's time zone. The source shown to the participant is the organization, which the type implies.
+
+For an operational alert (`OPERATIONAL_ALERT`), it reads the alert from Core's `alert` and notifies the same participants, except those who turned operational alerts off, for the event or overall (FR-020, FR-041, FR-065). The title is the alert's kind ("Entrada fechada", "Lotação esgotada", "Atraso no horário", "Alerta da organização") and the body the organization's message; every participant reads the same text. A participant who turned them off still sees the alert on the event page, which Core sends.
 
 - **Once per participant (NFR-003):** the `deduplication_key` is the participant plus the message's `messageId`, and a notification whose key exists is skipped, so a redelivered message notifies no one twice.
 - **Retries and dead letters (NFR-004):** a failed message is retried after 5 s, 15 s and 30 s, then rejected into `notifications.dlq`. A message that cannot succeed, because it is not valid JSON or its type has no text yet, goes there at once. The message is acknowledged only after its notifications are committed.

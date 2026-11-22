@@ -13,6 +13,7 @@ Core service of Crowded ([Technical Design](../docs/deliverables/technical-desig
 | `POST /events/{eventId}/changes` | An organization publishes an official change to its event | #37 |
 | `PUT /events/{eventId}/crowd` | An organization publishes its event's crowd level, which connected participants see live | #39 |
 | `PUT /events/{eventId}/queues` | An organization publishes the waiting times at its event's queue points, which connected participants see live | #40 |
+| `POST /events/{eventId}/alerts` | An organization sends an operational alert to the participants connected to its event, which they see live on its page | #41 |
 | `GET /events/{eventId}`, `GET /events/{eventId}/changes`, `GET /events/{eventId}/live` | A connected participant or the organization reads the event page and its change history, and follows the page live | #34 |
 | `PUT`, `DELETE` and `GET /events/{eventId}/image` | Adds, removes and reads an event's image | #172 |
 | `POST /tickets` | Imports a ticket from its PDF | #20 |
