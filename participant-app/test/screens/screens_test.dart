@@ -349,12 +349,13 @@ Future<AppStore> _pump(
   AuthApi? auth,
   NotificationsApi? notifications,
   EventsApi? events,
+  DateTime Function()? clock,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final store = AppStore(
-    clock: () => _now,
+    clock: clock ?? () => _now,
     auth: auth ?? _FakeAuthApi(),
     notifications: notifications ?? _FakeNotificationsApi(),
     events: events ?? _FakeEventsApi(),
@@ -909,6 +910,40 @@ void main() {
         expect(find.text('Desatualizado'), findsNothing);
       },
     );
+
+    testWidgets('turns the tag on when the time Core gave goes by, without a '
+        'new page', (tester) async {
+      var now = _now;
+      final events = _FakeEventsApi()
+        ..status = 'SCHEDULED'
+        ..history = []
+        ..start = _now.add(const Duration(hours: 4)).toUtc().toIso8601String()
+        ..crowd = {
+          'level': 'HIGH',
+          'provenance': {
+            'sourceType': 'ORGANIZATION',
+            'sourceName': 'Ribeira Live',
+            'lastUpdatedAt': _now
+                .subtract(const Duration(minutes: 19))
+                .toUtc()
+                .toIso8601String(),
+            'confirmed': true,
+            'stale': false,
+            'staleAt': _now
+                .add(const Duration(minutes: 1))
+                .toUtc()
+                .toIso8601String(),
+          },
+        };
+      await _pump(tester, location: page, events: events, clock: () => now);
+
+      expect(find.text('Desatualizado'), findsNothing);
+
+      now = now.add(const Duration(minutes: 2));
+      await tester.pump(const Duration(seconds: 30));
+
+      expect(find.text('Desatualizado'), findsOneWidget);
+    });
 
     testWidgets('names each queue time its own source when they differ', (
       tester,
