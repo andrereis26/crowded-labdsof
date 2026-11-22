@@ -171,9 +171,18 @@ class LiveVenuePanel extends StatelessWidget {
         if (status.queues.isNotEmpty) ...[
           if (status.crowdLevel != null) const Divider(),
           Text('Filas', style: AppTextStyles.footnote),
-          for (final queue in status.queues) QueueRow(queue: queue),
-          if (status.queuesSource case final source?)
-            ProvenanceLabel(provenance: source, now: now, updated: true),
+          if (status.queuesShareSource) ...[
+            for (final queue in status.queues) QueueRow(queue: queue),
+            if (status.queuesSource case final source?)
+              ProvenanceLabel(provenance: source, now: now, updated: true),
+          ] else
+            // Sources differ: each time says its own, so an estimate never
+            // reads as the organization's.
+            for (final queue in status.queues) ...[
+              QueueRow(queue: queue),
+              if (queue.source case final source?)
+                ProvenanceLabel(provenance: source, now: now, updated: true),
+            ],
         ],
         if (footer != null) ...[const Divider(), footer!],
       ],

@@ -1,7 +1,7 @@
 package com.crowded.core.event.infrastructure.config;
 
+import com.crowded.core.event.domain.model.FreshnessPolicy;
 import com.crowded.core.event.domain.model.InformationKind;
-import com.crowded.core.event.domain.service.FreshnessPolicy;
 import java.time.Duration;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;

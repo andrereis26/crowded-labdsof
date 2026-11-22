@@ -195,11 +195,14 @@ class _EventPageData {
       time: formatTime(event.start),
       statusLabel: statusLabel,
       statusTone: tone,
-      source: offline
-          ? 'Fonte: organização · guardado às ${formatTime(savedAt)}'
-          : event.source == null
-          ? 'Fonte: organização'
-          : formatProvenance(event.source!, now: now),
+      source: switch (event.source) {
+        final origin? when offline =>
+          'Fonte: ${sourceName(origin)} · guardado às ${formatTime(savedAt)}',
+        _ when offline =>
+          'Fonte: organização · guardado às ${formatTime(savedAt)}',
+        final origin? => formatProvenance(origin, now: now),
+        null => 'Fonte: organização',
+      },
       gradient: event.art.gradient,
     );
   }

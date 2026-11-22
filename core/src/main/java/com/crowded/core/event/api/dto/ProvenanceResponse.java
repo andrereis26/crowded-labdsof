@@ -8,8 +8,9 @@ import java.time.Instant;
  *
  * @param stale whether on-site information is out of date at the time of the response; false for
  *     what is not on-site, such as an official change
- * @param staleAt when on-site information goes out of date, so a client that keeps the page open or
- *     offline can flag it without asking again; null for what is not on-site
+ * @param staleAt when on-site information goes out of date, so a client can tell whether it is out
+ *     of date each time it shows it, offline too, without asking again; null for what is not
+ *     on-site
  */
 public record ProvenanceResponse(
     SourceType sourceType,

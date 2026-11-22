@@ -62,10 +62,7 @@ public interface EventApiMapper {
       expression = "java(toQueues(managed.event().getQueuePoints().timed(), freshness))")
   ManagedEventResponse toResponse(ManagedEvent managed, @Context FreshnessView freshness);
 
-  /** By hand: each waiting time says whether it is out of date, which only the rule knows. */
-  default List<QueueTimeResponse> toQueues(List<QueuePoint> queues, FreshnessView freshness) {
-    return queues.stream().map(freshness::queue).toList();
-  }
+  List<QueueTimeResponse> toQueues(List<QueuePoint> queues, @Context FreshnessView freshness);
 
   default VenueResponse toVenue(EventState state, District district) {
     var venue = state.venue();

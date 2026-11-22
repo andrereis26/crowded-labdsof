@@ -10,14 +10,16 @@ import com.crowded.core.event.api.dto.QueueTimeResponse;
 import com.crowded.core.event.application.dto.EventChangeView;
 import com.crowded.core.event.application.dto.EventPage;
 import com.crowded.core.event.domain.model.CrowdStatus;
+import com.crowded.core.event.domain.model.InformationKind;
 import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.model.QueuePoint;
 import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
 /** Maps an event's page and its changes to the participant endpoints' responses. */
-@Mapper(imports = {Provenance.class, FreshnessView.class})
+@Mapper(imports = Provenance.class)
 public interface EventPageApiMapper {
 
   @Mapping(target = "venue.name", source = "venueName")
@@ -29,27 +31,44 @@ public interface EventPageApiMapper {
   @Mapping(target = "organization.name", source = "organizationName")
   EventPageResponse toResponse(EventPage page, @Context FreshnessView freshness);
 
-  /** By hand: the crowd level says whether it is out of date, which only the rule knows. */
-  default CrowdResponse toResponse(CrowdStatus crowd, @Context FreshnessView freshness) {
-    return freshness.crowd(crowd);
+  @Mapping(target = "provenance", qualifiedByName = "crowdProvenance")
+  CrowdResponse toResponse(CrowdStatus crowd, @Context FreshnessView freshness);
+
+  @Mapping(target = "pointName", source = "name")
+  @Mapping(target = "waitMinutes", source = "time.waitMinutes")
+  @Mapping(target = "provenance", source = "time.provenance", qualifiedByName = "queueProvenance")
+  QueueTimeResponse toResponse(QueuePoint queue, @Context FreshnessView freshness);
+
+  /** On-site information, with whether it is out of date at the time of the response. */
+  @Named("onSite")
+  @Mapping(target = "stale", expression = "java(freshness.isStale(kind, provenance))")
+  @Mapping(target = "staleAt", expression = "java(freshness.staleAt(kind, provenance))")
+  ProvenanceResponse onSite(
+      Provenance provenance, @Context InformationKind kind, @Context FreshnessView freshness);
+
+  @Named("crowdProvenance")
+  default ProvenanceResponse crowdProvenance(
+      Provenance provenance, @Context FreshnessView freshness) {
+    return onSite(provenance, InformationKind.CROWD, freshness);
   }
 
-  /** An official change is an announcement, not on-site information: it never goes out of date. */
-  default ProvenanceResponse toResponse(Provenance provenance) {
-    return FreshnessView.announced(provenance);
+  @Named("queueProvenance")
+  default ProvenanceResponse queueProvenance(
+      Provenance provenance, @Context FreshnessView freshness) {
+    return onSite(provenance, InformationKind.QUEUE, freshness);
   }
+
+  /** An announcement, such as an official change or an alert: it never goes out of date. */
+  @Mapping(target = "stale", constant = "false")
+  @Mapping(target = "staleAt", ignore = true)
+  ProvenanceResponse toResponse(Provenance provenance);
 
   @Mapping(target = "id", source = "alertId")
   @Mapping(
       target = "provenance",
       expression =
-          "java(FreshnessView.announced(Provenance.organization(alert.organizationName(), alert.sentAt())))")
+          "java(toResponse(Provenance.organization(alert.organizationName(), alert.sentAt())))")
   ActiveAlertResponse toResponse(ActiveAlert alert);
-
-  /** By hand: a waiting time says whether it is out of date, which only the rule knows. */
-  default QueueTimeResponse toResponse(QueuePoint queue, @Context FreshnessView freshness) {
-    return freshness.queue(queue);
-  }
 
   /** By hand: a change always has both maps, which the response copies. */
   default EventChangeResponse toResponse(EventChangeView change) {

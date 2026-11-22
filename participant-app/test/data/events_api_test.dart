@@ -231,10 +231,9 @@ void main() {
 
       expect(status.crowdLevel, CrowdLevel.high);
       expect(
-        status.crowdUpdatedAt,
+        status.crowd?.updatedAt,
         DateTime.utc(2026, 11, 27, 21, 5).toLocal(),
       );
-      expect(status.updatedAt, status.crowdUpdatedAt);
       expect(status.queues, isEmpty);
       expect(eventPageFromJson(_page())!.venueStatus, isNull);
       expect(
@@ -267,12 +266,15 @@ void main() {
       final status = eventFromCore(page, const []).venueStatus!;
 
       expect(status.crowdLevel, isNull);
-      expect(status.crowdUpdatedAt, isNull);
+      expect(status.crowd, isNull);
       expect(status.queues.map((q) => (q.place, q.minutes)), [
         ('Porta A', 10),
         ('Bar', 25),
       ]);
-      expect(status.updatedAt, DateTime.utc(2026, 11, 27, 20, 50).toLocal());
+      expect(
+        status.queuesSource?.updatedAt,
+        DateTime.utc(2026, 11, 27, 20, 50).toLocal(),
+      );
       expect(
         eventPageFromJson({..._page(), 'queues': []})!.venueStatus,
         isNull,

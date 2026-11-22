@@ -1,11 +1,8 @@
-package com.crowded.core.event.domain.service;
+package com.crowded.core.event.domain.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.crowded.core.event.domain.model.InformationKind;
-import com.crowded.core.event.domain.model.Provenance;
-import com.crowded.core.event.domain.model.SourceType;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumMap;
@@ -55,6 +52,17 @@ class FreshnessPolicyTest {
 
     assertThat(policy.isStale(InformationKind.ESTIMATE, estimate, UPDATED.plusSeconds(1800)))
         .isTrue();
+  }
+
+  @Test
+  void keepsItsPeriodsWhenTheGivenMapChangesLater() {
+    Map<InformationKind, Duration> given = new EnumMap<>(PERIODS);
+    FreshnessPolicy kept = new FreshnessPolicy(given);
+    given.put(InformationKind.CROWD, Duration.ofDays(1));
+
+    assertThat(kept.staleAt(InformationKind.CROWD, provenance))
+        .isEqualTo(UPDATED.plus(Duration.ofMinutes(20)));
+    assertThat(kept).isEqualTo(policy);
   }
 
   @Test

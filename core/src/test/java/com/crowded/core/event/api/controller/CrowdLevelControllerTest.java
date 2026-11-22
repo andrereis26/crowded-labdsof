@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.crowded.core.event.api.mapper.CrowdLevelApiMapperImpl;
+import com.crowded.core.event.api.mapper.EventPageApiMapperImpl;
 import com.crowded.core.event.api.mapper.FreshnessTestConfiguration;
 import com.crowded.core.event.application.dto.PublishCrowdLevelCommand;
 import com.crowded.core.event.application.service.CrowdLevelService;
@@ -44,6 +45,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @Import({
   SecurityConfiguration.class,
   CrowdLevelApiMapperImpl.class,
+  EventPageApiMapperImpl.class,
   FreshnessTestConfiguration.class,
   CrowdLevelControllerTest.FixedClock.class
 })

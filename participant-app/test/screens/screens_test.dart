@@ -910,6 +910,55 @@ void main() {
       },
     );
 
+    testWidgets('names each queue time its own source when they differ', (
+      tester,
+    ) async {
+      Map<String, Object?> origin(String type, String name, int minutesAgo) => {
+        'sourceType': type,
+        'sourceName': name,
+        'lastUpdatedAt': _now
+            .subtract(Duration(minutes: minutesAgo))
+            .toUtc()
+            .toIso8601String(),
+        'confirmed': type != 'PARTICIPANT_ESTIMATE',
+        'stale': false,
+        'staleAt': _now
+            .add(const Duration(minutes: 10))
+            .toUtc()
+            .toIso8601String(),
+      };
+      final events = _FakeEventsApi()
+        ..status = 'SCHEDULED'
+        ..history = []
+        ..start = _now.add(const Duration(hours: 4)).toUtc().toIso8601String()
+        ..queues = [
+          {
+            'pointName': 'Porta A',
+            'waitMinutes': 10,
+            'provenance': origin('ORGANIZATION', 'Ribeira Live', 4),
+          },
+          {
+            'pointName': 'Bar',
+            'waitMinutes': 25,
+            'provenance': origin('PARTICIPANT_ESTIMATE', 'Participantes', 8),
+          },
+        ];
+      await _pump(tester, location: page, events: events);
+
+      expect(
+        find.text('Fonte: organização · atualizado há 4 min'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Fonte: estimativa de participantes · atualizado há 8 min'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Fonte: organização · atualizado há 8 min'),
+        findsNothing,
+      );
+    });
+
     testWidgets('says when nothing was published on the site yet', (
       tester,
     ) async {
