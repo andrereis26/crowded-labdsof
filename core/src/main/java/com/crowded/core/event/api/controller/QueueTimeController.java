@@ -2,6 +2,7 @@ package com.crowded.core.event.api.controller;
 
 import com.crowded.core.event.api.dto.PublishQueueTimesRequest;
 import com.crowded.core.event.api.dto.QueueTimesResponse;
+import com.crowded.core.event.api.mapper.FreshnessViews;
 import com.crowded.core.event.api.mapper.QueueTimeApiMapper;
 import com.crowded.core.event.application.service.QueueTimeService;
 import com.crowded.core.shared.api.controller.CurrentUser;
@@ -20,10 +21,13 @@ public class QueueTimeController {
 
   private final QueueTimeService service;
   private final QueueTimeApiMapper mapper;
+  private final FreshnessViews freshness;
 
-  QueueTimeController(QueueTimeService service, QueueTimeApiMapper mapper) {
+  QueueTimeController(
+      QueueTimeService service, QueueTimeApiMapper mapper, FreshnessViews freshness) {
     this.service = service;
     this.mapper = mapper;
+    this.freshness = freshness;
   }
 
   @PutMapping("/events/{eventId}/queues")
@@ -32,6 +36,7 @@ public class QueueTimeController {
       @AuthenticationPrincipal Jwt token,
       @Valid @RequestBody PublishQueueTimesRequest request) {
     return mapper.toResponse(
-        service.publish(mapper.toCommand(eventId, CurrentUser.id(token), request)));
+        service.publish(mapper.toCommand(eventId, CurrentUser.id(token), request)),
+        freshness.now());
   }
 }

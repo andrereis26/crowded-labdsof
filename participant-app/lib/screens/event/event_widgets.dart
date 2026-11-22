@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/models.dart';
 import '../../ui/ui.dart';
 import '../../utils/pt_format.dart';
+import '../shared/provenance_label.dart';
 
 /// "• Ao vivo" pill.
 class LiveTag extends StatelessWidget {
@@ -165,16 +166,15 @@ class LiveVenuePanel extends StatelessWidget {
               Expanded(child: CrowdLevelIndicator(level: level)),
             ],
           ),
+        if (status.crowd case final source?)
+          ProvenanceLabel(provenance: source, now: now, updated: true),
         if (status.queues.isNotEmpty) ...[
           if (status.crowdLevel != null) const Divider(),
           Text('Filas', style: AppTextStyles.footnote),
           for (final queue in status.queues) QueueRow(queue: queue),
+          if (status.queuesSource case final source?)
+            ProvenanceLabel(provenance: source, now: now, updated: true),
         ],
-        Text(
-          'Fonte: organização · atualizado '
-          '${formatTimeAgo(status.updatedAt, now: now)}',
-          style: AppTextStyles.source,
-        ),
         if (footer != null) ...[const Divider(), footer!],
       ],
     );

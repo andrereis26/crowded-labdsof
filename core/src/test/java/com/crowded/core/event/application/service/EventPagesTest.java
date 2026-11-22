@@ -102,7 +102,12 @@ class EventPagesTest {
   void showsTheEventsActiveAlertsAndNoneWhenItHasNone() {
     ActiveAlert closure =
         new ActiveAlert(
-            UUID.randomUUID(), "ENTRANCE_CLOSURE", Severity.CRITICAL, "Usem a Porta B.", NOW);
+            UUID.randomUUID(),
+            "ENTRANCE_CLOSURE",
+            Severity.CRITICAL,
+            "Usem a Porta B.",
+            NOW,
+            "Ribeira Live");
     when(alerts.findByEvents(List.of(event.getId())))
         .thenReturn(Map.of(event.getId(), List.of(closure)))
         .thenReturn(Map.of());

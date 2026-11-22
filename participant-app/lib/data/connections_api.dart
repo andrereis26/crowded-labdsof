@@ -181,6 +181,7 @@ ConnectedEvent? _connectedEventFromJson(Map<String, dynamic> json) {
           ?eventAlertFromJson(item),
     ],
     updatedAt: change?.publishedAt,
+    provenance: change?.source,
   );
   final ticket = json['ticket'];
   return ConnectedEvent(

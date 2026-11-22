@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/app_store.dart';
 import '../../ui/ui.dart';
 import '../../utils/pt_format.dart';
+import '../shared/provenance_label.dart';
 import '../shared/shell.dart';
 import 'event_loading.dart';
 
@@ -206,7 +207,7 @@ class _ChangeDetailScreenState extends State<ChangeDetailScreen>
               ),
               Expanded(
                 child: Text(
-                  'Fonte: organização · publicado às '
+                  'Fonte: ${sourceName(change.source)} · publicado às '
                   '${formatTime(change.detectedAt)} · '
                   '${formatTimeAgo(change.detectedAt, now: now)}',
                   style: AppTextStyles.caption.copyWith(

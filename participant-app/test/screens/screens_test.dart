@@ -851,6 +851,65 @@ void main() {
       },
     );
 
+    testWidgets(
+      'flags the crowd level and the queues Core says are out of date',
+      (tester) async {
+        Map<String, Object?> origin({
+          String type = 'ORGANIZATION',
+          bool stale = false,
+          bool confirmed = true,
+        }) => {
+          'sourceType': type,
+          'sourceName': 'Ribeira Live',
+          'lastUpdatedAt': _now
+              .subtract(const Duration(minutes: 30))
+              .toUtc()
+              .toIso8601String(),
+          'confirmed': confirmed,
+          'stale': stale,
+          'staleAt':
+              (stale
+                      ? _now.subtract(const Duration(minutes: 10))
+                      : _now.add(const Duration(minutes: 10)))
+                  .toUtc()
+                  .toIso8601String(),
+        };
+        final events = _FakeEventsApi()
+          ..status = 'SCHEDULED'
+          ..history = []
+          ..start = _now.add(const Duration(hours: 4)).toUtc().toIso8601String()
+          ..crowd = {'level': 'HIGH', 'provenance': origin(stale: true)}
+          ..queues = [
+            {
+              'pointName': 'Porta A',
+              'waitMinutes': 10,
+              'provenance': origin(stale: true),
+            },
+          ];
+        await _pump(tester, location: page, events: events);
+
+        expect(
+          find.text('Fonte: organização · atualizado há 30 min'),
+          findsNWidgets(2),
+        );
+        expect(find.text('Desatualizado'), findsNWidgets(2));
+        expect(find.text('Gerado por IA'), findsNothing);
+
+        events
+          ..crowd = {
+            'level': 'HIGH',
+            'provenance': origin(type: 'AI_GENERATED', confirmed: false),
+          }
+          ..queues = []
+          ..publish();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Fonte: IA · atualizado há 30 min'), findsOneWidget);
+        expect(find.text('Gerado por IA'), findsOneWidget);
+        expect(find.text('Desatualizado'), findsNothing);
+      },
+    );
+
     testWidgets('says when nothing was published on the site yet', (
       tester,
     ) async {

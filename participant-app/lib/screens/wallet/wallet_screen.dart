@@ -6,6 +6,7 @@ import '../../data/models.dart';
 import '../../ui/ui.dart';
 import '../../utils/pt_format.dart';
 import '../event/event_widgets.dart';
+import '../shared/provenance_label.dart';
 import '../shared/shell.dart';
 import '../shared/ticket_card.dart';
 
@@ -303,9 +304,8 @@ class _DesktopWallet extends StatelessWidget {
                     AlertBanner(
                       kind: AlertBannerKind.officialChange,
                       message: postponedMessage(ticket.event),
-                      origin: formatSource(
-                        'organização',
-                        ticket.event.latestDateChange!.detectedAt,
+                      origin: formatProvenance(
+                        ticket.event.latestDateChange!.source,
                         now: now,
                       ),
                       onTap: () => context.push(
@@ -472,11 +472,8 @@ class _TodayPanel extends StatelessWidget {
                 ),
             ],
           ),
-          Text(
-            'Fonte: organização e contador de entradas · '
-            '${formatTimeAgo(status.updatedAt, now: now)}',
-            style: AppTextStyles.source,
-          ),
+          if (status.queuesSource case final source?)
+            ProvenanceLabel(provenance: source, now: now),
         ],
         Row(
           spacing: AppSpacing.md,

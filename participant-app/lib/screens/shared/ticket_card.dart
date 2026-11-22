@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/models.dart';
 import '../../ui/ui.dart';
 import '../../utils/pt_format.dart';
+import 'provenance_label.dart';
 
 /// The date line, status pill and its tone of an event's card ("HOJE",
 /// "ADIADO · 8 NOV"); [scheduledLabel] names an event that has not changed.
@@ -93,12 +94,13 @@ class ConnectionCard extends StatelessWidget {
       scheduledLabel: ticket == null ? 'Público' : 'Bilhete',
     );
 
-    final updatedAt = event.updatedAt;
-    final source = updatedAt == null
-        ? 'Fonte: organização'
+    final origin = event.source;
+    final name = origin == null ? 'organização' : sourceName(origin);
+    final source = origin == null
+        ? 'Fonte: $name'
         : savedAt != null
-        ? 'Fonte: organização · guardado às ${formatTime(savedAt!)}'
-        : formatSource('organização', updatedAt, now: now);
+        ? 'Fonte: $name · guardado às ${formatTime(savedAt!)}'
+        : formatProvenance(origin, now: now);
 
     return Hero(
       tag: heroTag(event.id),

@@ -14,17 +14,19 @@ import org.springframework.stereotype.Repository;
 
 /**
  * {@link ActiveAlertRepository} on PostgreSQL. It only reads {@code alert}, which the module that
- * sends alerts owns.
+ * sends alerts owns, and the name of the organization that sent each one.
  */
 @Repository
 class ActiveAlertRepositoryAdapter implements ActiveAlertRepository {
 
   private static final String ACTIVE_ALERTS =
       """
-      SELECT id, event_id, type::text AS type, severity::text AS severity, message, sent_at
+      SELECT alert.id, alert.event_id, alert.type::text AS type, alert.severity::text AS severity,
+             alert.message, alert.sent_at, organization.name AS organization_name
       FROM alert
-      WHERE event_id IN (:eventIds) AND status = 'SENT' AND resolved_at IS NULL
-      ORDER BY sent_at DESC, id DESC
+      JOIN organization ON organization.id = alert.organization_id
+      WHERE alert.event_id IN (:eventIds) AND alert.status = 'SENT' AND alert.resolved_at IS NULL
+      ORDER BY alert.sent_at DESC, alert.id DESC
       """;
 
   private final JdbcClient jdbc;
@@ -50,7 +52,8 @@ class ActiveAlertRepositoryAdapter implements ActiveAlertRepository {
                         rows.getString("type"),
                         Severity.valueOf(rows.getString("severity")),
                         rows.getString("message"),
-                        rows.getObject("sent_at", OffsetDateTime.class).toInstant())))
+                        rows.getObject("sent_at", OffsetDateTime.class).toInstant(),
+                        rows.getString("organization_name"))))
         .list()
         .stream()
         .collect(

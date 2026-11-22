@@ -10,9 +10,15 @@ import java.util.UUID;
  *
  * @param alertId the alert's identifier
  * @param type the kind of alert, as the organization recorded it
+ * @param organizationName the organization that sent it, the source of the alert
  */
 public record ActiveAlert(
-    UUID alertId, String type, Severity severity, String message, Instant sentAt) {
+    UUID alertId,
+    String type,
+    Severity severity,
+    String message,
+    Instant sentAt,
+    String organizationName) {
 
   public ActiveAlert {
     Objects.requireNonNull(alertId, "alertId");
@@ -20,5 +26,6 @@ public record ActiveAlert(
     Objects.requireNonNull(severity, "severity");
     Objects.requireNonNull(message, "message");
     Objects.requireNonNull(sentAt, "sentAt");
+    Objects.requireNonNull(organizationName, "organizationName");
   }
 }

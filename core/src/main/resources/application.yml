@@ -67,6 +67,14 @@ crowded:
     cookie-path: /api
     # Browsers keep Secure cookies only over HTTPS, or on http://localhost.
     cookie-secure: true
+  # How long on-site information stays current after its last update; after that
+  # participants see it flagged as outdated. An official change or an alert is an
+  # announcement and never goes out of date.
+  freshness:
+    crowd: 20m
+    queue: 20m
+    estimate: 30m
+    weather: 3h
   # Per-user limits (ADR 0004); NGINX keeps a coarse per-IP one.
   rate-limits:
     sign-ins-per-email: 10 # per 15 minutes

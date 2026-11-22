@@ -4,6 +4,7 @@ import com.crowded.core.event.api.dto.CorrectEventRequest;
 import com.crowded.core.event.api.dto.CreateEventRequest;
 import com.crowded.core.event.api.dto.ManagedEventResponse;
 import com.crowded.core.event.api.mapper.EventApiMapper;
+import com.crowded.core.event.api.mapper.FreshnessViews;
 import com.crowded.core.event.application.dto.ManagedEvent;
 import com.crowded.core.event.application.service.EventManagementService;
 import com.crowded.core.shared.api.controller.CurrentUser;
@@ -30,16 +31,20 @@ public class EventController {
 
   private final EventManagementService service;
   private final EventApiMapper mapper;
+  private final FreshnessViews freshness;
 
-  EventController(EventManagementService service, EventApiMapper mapper) {
+  EventController(EventManagementService service, EventApiMapper mapper, FreshnessViews freshness) {
     this.service = service;
     this.mapper = mapper;
+    this.freshness = freshness;
   }
 
   /** The events of the signed-in member's organization, the latest start first. */
   @GetMapping("/organizations/me/events")
   public List<ManagedEventResponse> mine(@AuthenticationPrincipal Jwt token) {
-    return service.listForMember(CurrentUser.id(token)).stream().map(mapper::toResponse).toList();
+    return service.listForMember(CurrentUser.id(token)).stream()
+        .map(event -> mapper.toResponse(event, freshness.now()))
+        .toList();
   }
 
   /** Registers and publishes an event of the member's organization: 201 with the new event. */
@@ -48,7 +53,7 @@ public class EventController {
       @AuthenticationPrincipal Jwt token, @Valid @RequestBody CreateEventRequest request) {
     ManagedEvent created = service.register(mapper.toCommand(CurrentUser.id(token), request));
     return ResponseEntity.created(URI.create("/events/" + created.event().getId()))
-        .body(mapper.toResponse(created));
+        .body(mapper.toResponse(created, freshness.now()));
   }
 
   /** Corrects details that are not an official change: 200 with the event as it is now. */
@@ -58,7 +63,8 @@ public class EventController {
       @AuthenticationPrincipal Jwt token,
       @Valid @RequestBody CorrectEventRequest request) {
     return mapper.toResponse(
-        service.correct(mapper.toCommand(CurrentUser.id(token), eventId, request)));
+        service.correct(mapper.toCommand(CurrentUser.id(token), eventId, request)),
+        freshness.now());
   }
 
   /** Deletes an event nobody is connected to, such as one created by mistake: 204. */

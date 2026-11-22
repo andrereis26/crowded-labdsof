@@ -363,7 +363,13 @@ class EventManagementServiceTest {
     when(connections.countByEvent(anyCollection())).thenReturn(Map.of(first.getId(), 7L));
     when(images.findUpdatedAt(anyCollection())).thenReturn(Map.of(second.getId(), NOW));
     ActiveAlert full =
-        new ActiveAlert(UUID.randomUUID(), "CAPACITY_REACHED", Severity.WARNING, "Lotação.", NOW);
+        new ActiveAlert(
+            UUID.randomUUID(),
+            "CAPACITY_REACHED",
+            Severity.WARNING,
+            "Lotação.",
+            NOW,
+            "Ribeira Live");
     when(alerts.findByEvents(anyCollection())).thenReturn(Map.of(first.getId(), List.of(full)));
 
     assertThat(service.listForMember(MEMBER))

@@ -57,7 +57,8 @@ class ConnectedEventTest {
 
     ConnectedEvent connected =
         new ConnectedEvent(connectionTo(event, USER), event, null, alerts, null);
-    alerts.add(new ActiveAlert(UUID.randomUUID(), "OTHER", Severity.INFO, "Aviso.", NOW));
+    alerts.add(
+        new ActiveAlert(UUID.randomUUID(), "OTHER", Severity.INFO, "Aviso.", NOW, "Ribeira Live"));
 
     assertThat(connected.activeAlerts()).isEmpty();
     assertThatThrownBy(() -> connected.activeAlerts().add(null))
@@ -66,7 +67,10 @@ class ConnectedEventTest {
 
   @Test
   void anAlertNeedsEveryField() {
-    assertThatThrownBy(() -> new ActiveAlert(UUID.randomUUID(), "OTHER", Severity.INFO, null, NOW))
+    assertThatThrownBy(
+            () ->
+                new ActiveAlert(
+                    UUID.randomUUID(), "OTHER", Severity.INFO, null, NOW, "Ribeira Live"))
         .isInstanceOf(NullPointerException.class);
   }
 }

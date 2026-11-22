@@ -57,7 +57,13 @@ class MyConnectionServiceTest {
     EventConnection overByCode = connectionTo(over, USER);
     EventChange cancellation = cancellationOf(cancelled);
     ActiveAlert alert =
-        new ActiveAlert(UUID.randomUUID(), "ENTRANCE_CLOSURE", Severity.WARNING, "Fechada.", NOW);
+        new ActiveAlert(
+            UUID.randomUUID(),
+            "ENTRANCE_CLOSURE",
+            Severity.WARNING,
+            "Fechada.",
+            NOW,
+            "Ribeira Live");
     when(connections.findByUser(USER))
         .thenReturn(List.of(overByCode, cancelledByCode, soonByTicket));
     when(events.findAllById(anyCollection())).thenReturn(List.of(cancelled, over, soon));

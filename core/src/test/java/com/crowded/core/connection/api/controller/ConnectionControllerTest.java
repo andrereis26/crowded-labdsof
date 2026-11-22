@@ -124,7 +124,12 @@ class ConnectionControllerTest {
             Provenance.organization("Arraiais", START));
     ActiveAlert alert =
         new ActiveAlert(
-            UUID.randomUUID(), "ENTRANCE_CLOSURE", Severity.WARNING, "Entrada fechada.", START);
+            UUID.randomUUID(),
+            "ENTRANCE_CLOSURE",
+            Severity.WARNING,
+            "Entrada fechada.",
+            START,
+            "Ribeira Live");
     when(myConnections.listOf(USER))
         .thenReturn(
             new MyConnections(

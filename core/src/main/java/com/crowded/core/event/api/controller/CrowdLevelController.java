@@ -3,6 +3,7 @@ package com.crowded.core.event.api.controller;
 import com.crowded.core.event.api.dto.CrowdResponse;
 import com.crowded.core.event.api.dto.PublishCrowdLevelRequest;
 import com.crowded.core.event.api.mapper.CrowdLevelApiMapper;
+import com.crowded.core.event.api.mapper.FreshnessViews;
 import com.crowded.core.event.application.service.CrowdLevelService;
 import com.crowded.core.shared.api.controller.CurrentUser;
 import jakarta.validation.Valid;
@@ -20,10 +21,13 @@ public class CrowdLevelController {
 
   private final CrowdLevelService service;
   private final CrowdLevelApiMapper mapper;
+  private final FreshnessViews freshness;
 
-  CrowdLevelController(CrowdLevelService service, CrowdLevelApiMapper mapper) {
+  CrowdLevelController(
+      CrowdLevelService service, CrowdLevelApiMapper mapper, FreshnessViews freshness) {
     this.service = service;
     this.mapper = mapper;
+    this.freshness = freshness;
   }
 
   @PutMapping("/events/{eventId}/crowd")
@@ -32,6 +36,7 @@ public class CrowdLevelController {
       @AuthenticationPrincipal Jwt token,
       @Valid @RequestBody PublishCrowdLevelRequest request) {
     return mapper.toResponse(
-        service.publish(mapper.toCommand(eventId, CurrentUser.id(token), request)));
+        service.publish(mapper.toCommand(eventId, CurrentUser.id(token), request)),
+        freshness.now());
   }
 }

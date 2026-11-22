@@ -133,6 +133,11 @@ class MyConnectionsIT extends IntegrationTest {
     assertThat(alerts.get(0).get("severity").asString()).isEqualTo("WARNING");
     assertThat(alerts.get(0).get("message").asString()).isEqualTo("Entrada Sul fechada.");
     assertThat(Instant.parse(alerts.get(0).get("sentAt").asString())).isEqualTo(hours(-1));
+    JsonNode origin = alerts.get(0).get("provenance");
+    assertThat(origin.get("sourceType").asString()).isEqualTo("ORGANIZATION");
+    assertThat(origin.get("sourceName").asString()).isEqualTo("Arraiais " + organization);
+    assertThat(Instant.parse(origin.get("lastUpdatedAt").asString())).isEqualTo(hours(-1));
+    assertThat(origin.get("stale").asBoolean()).isFalse();
     assertThat(alerts.get(1).get("id").asString()).isEqualTo(older.toString());
   }
 

@@ -44,8 +44,16 @@ class DemoData {
     ],
     venueStatus: VenueStatus(
       crowdLevel: CrowdLevel.moderate,
-      crowdUpdatedAt: _ago(const Duration(minutes: 2)),
-      queuesUpdatedAt: _ago(const Duration(minutes: 1)),
+      crowd: Provenance.organization(
+        _ago(const Duration(minutes: 2)),
+        staleAt: _ago(const Duration(minutes: 2))
+            .add(const Duration(minutes: 20)),
+      ),
+      queuesSource: Provenance.organization(
+        _ago(const Duration(minutes: 1)),
+        staleAt: _ago(const Duration(minutes: 1))
+            .add(const Duration(minutes: 20)),
+      ),
       queues: const [
         QueueTime(place: 'Porta A', minutes: 10),
         QueueTime(place: 'Porta C', minutes: 25, increasing: true),

@@ -248,7 +248,11 @@ void main() {
       Map<String, Object?> queue(Object? point, Object? minutes, String at) => {
         'pointName': point,
         'waitMinutes': minutes,
-        'provenance': {'sourceName': 'Ribeira Live', 'lastUpdatedAt': at},
+        'provenance': {
+          'sourceType': 'ORGANIZATION',
+          'sourceName': 'Ribeira Live',
+          'lastUpdatedAt': at,
+        },
       };
       final page = eventPageFromJson({
         ..._page(),
@@ -306,6 +310,106 @@ void main() {
       expect(alerts.first.sentAt, DateTime.utc(2026, 11, 27, 21, 5).toLocal());
       expect(alerts.first.publisher, page.organization);
       expect(eventPageFromJson(_page())!.alerts, isEmpty);
+    });
+
+    test('reads each kind of source and when Core says it goes stale', () {
+      Provenance? read(String type, {Object? confirmed, Object? staleAt}) =>
+          provenanceFromJson({
+            'sourceType': type,
+            'sourceName': 'Nome',
+            'lastUpdatedAt': '2026-11-27T21:05:00Z',
+            'confirmed': ?confirmed,
+            'stale': true,
+            'staleAt': ?staleAt,
+          });
+
+      expect(read('OFFICIAL_SOURCE')!.type, SourceType.official);
+      expect(read('ORGANIZATION')!.type, SourceType.organization);
+      expect(read('PARTICIPANT_ESTIMATE')!.type, SourceType.estimate);
+      expect(read('EXTERNAL_SERVICE')!.type, SourceType.external);
+      final ai = read('AI_GENERATED', confirmed: false)!;
+      expect(ai.type, SourceType.ai);
+      expect(ai.isUnconfirmedAi, isTrue);
+      expect(read('AI_GENERATED', confirmed: true)!.isUnconfirmedAi, isFalse);
+      expect(read('ORGANIZATION')!.stale, isTrue);
+      expect(read('SOMETHING_NEW'), isNull);
+      expect(provenanceFromJson(null), isNull);
+      expect(
+        provenanceFromJson({'sourceType': 'ORGANIZATION', 'sourceName': 'A'}),
+        isNull,
+        reason: 'no time',
+      );
+    });
+
+    test('flags information from the deadline Core sent, not its own rule', () {
+      final updated = DateTime.utc(2026, 11, 27, 21, 5);
+      final provenance = Provenance.organization(
+        updated,
+        staleAt: updated.add(const Duration(minutes: 7)),
+      );
+
+      expect(
+        provenance.isStaleAt(updated.add(const Duration(minutes: 6))),
+        isFalse,
+      );
+      expect(
+        provenance.isStaleAt(updated.add(const Duration(minutes: 7))),
+        isTrue,
+      );
+      expect(
+        Provenance.organization(updated)
+            .isStaleAt(updated.add(const Duration(days: 9))),
+        isFalse,
+        reason: 'no deadline: an announcement never goes out of date',
+      );
+    });
+
+    test('keeps the origin of the crowd level, the queues and an alert', () {
+      Map<String, Object?> origin(String at, {bool stale = false}) => {
+        'sourceType': 'ORGANIZATION',
+        'sourceName': 'Ribeira Live',
+        'lastUpdatedAt': at,
+        'confirmed': true,
+        'stale': stale,
+        'staleAt': '2026-11-27T21:25:00Z',
+      };
+      final page = eventPageFromJson({
+        ..._page(),
+        'crowd': {
+          'level': 'HIGH',
+          'provenance': origin('2026-11-27T21:05:00Z'),
+        },
+        'queues': [
+          {
+            'pointName': 'Bar',
+            'waitMinutes': 25,
+            'provenance': origin('2026-11-27T20:50:00Z', stale: true),
+          },
+        ],
+        'activeAlerts': [
+          {
+            'id': 'a-1',
+            'type': 'ENTRANCE_CLOSURE',
+            'severity': 'CRITICAL',
+            'message': 'Usem a Porta B.',
+            'sentAt': '2026-11-27T21:00:00Z',
+            'provenance': origin('2026-11-27T21:00:00Z'),
+          },
+        ],
+      })!;
+
+      final event = eventFromCore(page, const []);
+      final status = event.venueStatus!;
+
+      expect(status.crowd!.name, 'Ribeira Live');
+      expect(status.crowd!.stale, isFalse);
+      expect(status.queuesSource!.stale, isTrue);
+      expect(
+        status.queuesSource!.staleAt,
+        DateTime.utc(2026, 11, 27, 21, 25).toLocal(),
+      );
+      expect(event.alerts.single.source.type, SourceType.organization);
+      expect(event.alerts.single.source.name, 'Ribeira Live');
     });
 
     test('builds the event with its changes, newest first', () {

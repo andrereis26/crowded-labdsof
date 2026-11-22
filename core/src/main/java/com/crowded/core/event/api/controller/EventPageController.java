@@ -3,6 +3,7 @@ package com.crowded.core.event.api.controller;
 import com.crowded.core.event.api.dto.EventChangeResponse;
 import com.crowded.core.event.api.dto.EventPageResponse;
 import com.crowded.core.event.api.mapper.EventPageApiMapper;
+import com.crowded.core.event.api.mapper.FreshnessViews;
 import com.crowded.core.event.application.dto.EventPage;
 import com.crowded.core.event.application.service.EventViewService;
 import com.crowded.core.event.application.service.LiveEventPages;
@@ -43,20 +44,26 @@ public class EventPageController {
   private final EventViewService service;
   private final LiveEventPages live;
   private final EventPageApiMapper mapper;
+  private final FreshnessViews freshness;
   private final Clock clock;
   private final Set<SseEmitter> open = ConcurrentHashMap.newKeySet();
 
   EventPageController(
-      EventViewService service, LiveEventPages live, EventPageApiMapper mapper, Clock clock) {
+      EventViewService service,
+      LiveEventPages live,
+      EventPageApiMapper mapper,
+      FreshnessViews freshness,
+      Clock clock) {
     this.service = service;
     this.live = live;
     this.mapper = mapper;
+    this.freshness = freshness;
     this.clock = clock;
   }
 
   @GetMapping("/events/{eventId}")
   public EventPageResponse page(@PathVariable UUID eventId, @AuthenticationPrincipal Jwt token) {
-    return mapper.toResponse(service.page(CurrentUser.id(token), eventId));
+    return mapper.toResponse(service.page(CurrentUser.id(token), eventId), freshness.now());
   }
 
   /** The official changes, the newest first; an empty list when there are none. */
@@ -139,7 +146,7 @@ public class EventPageController {
       emitter.send(
           SseEmitter.event()
               .name("event")
-              .data(mapper.toResponse(page), MediaType.APPLICATION_JSON));
+              .data(mapper.toResponse(page, freshness.now()), MediaType.APPLICATION_JSON));
     } catch (IOException e) {
       emitter.completeWithError(e);
       throw new UncheckedIOException(e);

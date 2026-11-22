@@ -93,6 +93,7 @@ class CoreChange {
     required this.newValue,
     required this.publisher,
     required this.publishedAt,
+    this.provenance,
     this.ticketStillValid,
     this.refundInfo,
     this.message,
@@ -107,6 +108,15 @@ class CoreChange {
   final Map<String, dynamic> newValue;
   final String publisher;
   final DateTime publishedAt;
+
+  /// The origin Core sent, or null when it was missing or unknown.
+  final Provenance? provenance;
+
+  /// Where the change comes from: the origin Core sent, or the organization's
+  /// at [publishedAt].
+  Provenance get source =>
+      provenance ?? Provenance.organization(publishedAt, name: publisher);
+
   final bool? ticketStillValid;
   final String? refundInfo;
   final String? message;
@@ -304,12 +314,39 @@ EventAlert? eventAlertFromJson(
   final sentAt = _instant(json['sentAt']);
   if (message is! String || sentAt == null) return null;
   final severity = severityFromCore(json['severity']);
+  final origin = provenanceFromJson(json['provenance']);
   return EventAlert(
     message: message,
-    publisher: publisher,
+    publisher: origin?.name ?? publisher,
     sentAt: sentAt,
+    provenance: origin,
     urgent: severity == Severity.critical,
     severity: severity,
+  );
+}
+
+/// The origin in Core's `provenance`, or null when its type, name or time is
+/// missing or unknown to this version.
+Provenance? provenanceFromJson(Object? json) {
+  if (json is! Map<String, dynamic>) return null;
+  final type = switch (json['sourceType']) {
+    'OFFICIAL_SOURCE' => SourceType.official,
+    'ORGANIZATION' => SourceType.organization,
+    'PARTICIPANT_ESTIMATE' => SourceType.estimate,
+    'AI_GENERATED' => SourceType.ai,
+    'EXTERNAL_SERVICE' => SourceType.external,
+    _ => null,
+  };
+  final name = stringFromJson(json['sourceName']);
+  final updatedAt = _instant(json['lastUpdatedAt']);
+  if (type == null || name == null || updatedAt == null) return null;
+  return Provenance(
+    type: type,
+    name: name,
+    updatedAt: updatedAt,
+    confirmed: json['confirmed'] != false,
+    stale: json['stale'] == true,
+    staleAt: _instant(json['staleAt']),
   );
 }
 
@@ -327,37 +364,34 @@ VenueStatus? venueStatusFromJson(Map<String, dynamic> page) {
           _ => null,
         }
       : null;
-  final crowdAt = crowd is Map<String, dynamic> ? _updatedAt(crowd) : null;
-  final hasCrowd = level != null && crowdAt != null;
+  final crowdSource = crowd is Map<String, dynamic>
+      ? provenanceFromJson(crowd['provenance'])
+      : null;
+  final hasCrowd = level != null && crowdSource != null;
 
   final queues = <QueueTime>[];
-  DateTime? queuesAt;
+  Provenance? queuesSource;
   for (final queue in page['queues'] is List ? page['queues'] as List : []) {
     if (queue is! Map<String, dynamic>) continue;
     final place = queue['pointName'];
     final minutes = queue['waitMinutes'];
-    final at = _updatedAt(queue);
-    if (place is! String || minutes is! int || at == null) continue;
+    final source = provenanceFromJson(queue['provenance']);
+    if (place is! String || minutes is! int || source == null) continue;
     queues.add(QueueTime(place: place, minutes: minutes));
     // The oldest, so the panel never shows the times as fresher than they are.
-    if (queuesAt == null || at.isBefore(queuesAt)) queuesAt = at;
+    if (queuesSource == null ||
+        source.updatedAt.isBefore(queuesSource.updatedAt)) {
+      queuesSource = source;
+    }
   }
 
   if (!hasCrowd && queues.isEmpty) return null;
   return VenueStatus(
     crowdLevel: hasCrowd ? level : null,
-    crowdUpdatedAt: hasCrowd ? crowdAt : null,
+    crowd: hasCrowd ? crowdSource : null,
     queues: queues,
-    queuesUpdatedAt: queuesAt,
+    queuesSource: queuesSource,
   );
-}
-
-/// The `lastUpdatedAt` of [json]'s provenance.
-DateTime? _updatedAt(Map<String, dynamic> json) {
-  final provenance = json['provenance'];
-  return provenance is Map<String, dynamic>
-      ? _instant(provenance['lastUpdatedAt'])
-      : null;
 }
 
 /// The change in [json], or null when a required field is missing.
@@ -380,6 +414,7 @@ CoreChange? coreChangeFromJson(Map<String, dynamic> json) {
         stringFromJson((provenance as Map<String, dynamic>)['sourceName']) ??
         'Organização',
     publishedAt: publishedAt,
+    provenance: provenanceFromJson(provenance),
     ticketStillValid: switch (json['ticketStillValid']) {
       final bool valid => valid,
       _ => null,
@@ -447,6 +482,7 @@ Event eventFromCore(EventPage page, List<CoreChange> history) {
     joinedWithAccessCode: page.isPublic,
     changes: changes,
     updatedAt: (page.latestChange ?? history.firstOrNull)?.publishedAt,
+    provenance: (page.latestChange ?? history.firstOrNull)?.source,
     venueStatus: page.venueStatus,
     alerts: page.alerts,
   );
@@ -506,6 +542,7 @@ EventChange? changeFromCore(CoreChange change) {
     description: description,
     detectedAt: change.publishedAt,
     publisher: change.publisher,
+    provenance: change.provenance,
     previousStart: previousStart,
     newStart: newStart,
     ticketStillValid: change.ticketStillValid ?? true,

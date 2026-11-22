@@ -5,6 +5,7 @@ import '../../data/app_store.dart';
 import '../../data/models.dart';
 import '../../ui/ui.dart';
 import '../../utils/pt_format.dart';
+import '../shared/provenance_label.dart';
 import '../shared/shell.dart';
 import 'event_loading.dart';
 
@@ -186,7 +187,7 @@ class _CurrentStatus extends StatelessWidget {
                     ),
                   ),
                 Text(
-                  'Fonte: organização · publicado às '
+                  'Fonte: ${sourceName(change.source)} · publicado às '
                   '${formatTime(change.detectedAt)}',
                   style: AppTextStyles.source.copyWith(
                     color: AppColors.warning,
