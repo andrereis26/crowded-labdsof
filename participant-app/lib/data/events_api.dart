@@ -57,6 +57,7 @@ class EventPage {
     this.end,
     this.latestChange,
     this.venueStatus,
+    this.alerts = const [],
   });
 
   final String id;
@@ -77,6 +78,10 @@ class EventPage {
 
   /// The crowd level the organization published; null before the first.
   final VenueStatus? venueStatus;
+
+  /// The alerts the organization sent and has not resolved, newest first.
+  /// Shown even to a participant who turned their notifications off.
+  final List<EventAlert> alerts;
 }
 
 /// An official change as Core sends it, before the app words it.
@@ -264,6 +269,8 @@ EventPage? eventPageFromJson(Map<String, dynamic> json) {
     return null;
   }
   final latest = json['latestChange'];
+  final organizationName = organization['name'] as String? ?? 'Organização';
+  final alerts = json['activeAlerts'];
   return EventPage(
     id: id,
     name: name,
@@ -273,12 +280,36 @@ EventPage? eventPageFromJson(Map<String, dynamic> json) {
     end: _instant(json['endDateTime']),
     venueName: venue['name'] as String? ?? '',
     district: venue['district'] as String? ?? '',
-    organization: organization['name'] as String? ?? 'Organização',
+    organization: organizationName,
     isPublic: json['type'] == 'PUBLIC',
     latestChange: latest is Map<String, dynamic>
         ? coreChangeFromJson(latest)
         : null,
     venueStatus: venueStatusFromJson(json),
+    alerts: [
+      if (alerts is List)
+        for (final item in alerts.whereType<Map<String, dynamic>>())
+          ?eventAlertFromJson(item, publisher: organizationName),
+    ],
+  );
+}
+
+/// An active alert as Core sends it, or null when a required field is
+/// missing. A critical one is urgent.
+EventAlert? eventAlertFromJson(
+  Map<String, dynamic> json, {
+  String publisher = 'Organização',
+}) {
+  final message = json['message'];
+  final sentAt = _instant(json['sentAt']);
+  if (message is! String || sentAt == null) return null;
+  final severity = severityFromCore(json['severity']);
+  return EventAlert(
+    message: message,
+    publisher: publisher,
+    sentAt: sentAt,
+    urgent: severity == Severity.critical,
+    severity: severity,
   );
 }
 
@@ -417,6 +448,7 @@ Event eventFromCore(EventPage page, List<CoreChange> history) {
     changes: changes,
     updatedAt: (page.latestChange ?? history.firstOrNull)?.publishedAt,
     venueStatus: page.venueStatus,
+    alerts: page.alerts,
   );
 }
 

@@ -1,5 +1,6 @@
 package com.crowded.core.event.application.service;
 
+import com.crowded.core.connection.domain.repository.ActiveAlertRepository;
 import com.crowded.core.event.application.dto.EventChangeView;
 import com.crowded.core.event.application.dto.EventPage;
 import com.crowded.core.event.domain.model.Coordinates;
@@ -10,6 +11,7 @@ import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.organization.domain.model.Organization;
 import com.crowded.core.organization.domain.repository.OrganizationRepository;
 import com.crowded.core.shared.domain.exception.NotFoundException;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -29,12 +31,17 @@ public class EventPages {
   private final EventRepository events;
   private final EventChangeRepository changes;
   private final OrganizationRepository organizations;
+  private final ActiveAlertRepository alerts;
 
   EventPages(
-      EventRepository events, EventChangeRepository changes, OrganizationRepository organizations) {
+      EventRepository events,
+      EventChangeRepository changes,
+      OrganizationRepository organizations,
+      ActiveAlertRepository alerts) {
     this.events = events;
     this.changes = changes;
     this.organizations = organizations;
+    this.alerts = alerts;
   }
 
   /**
@@ -73,6 +80,7 @@ public class EventPages {
         organization.getName(),
         changes.findLatest(eventId).map(EventChangeView::of).orElse(null),
         event.getCrowd(),
-        event.getQueuePoints().timed());
+        event.getQueuePoints().timed(),
+        alerts.findByEvents(List.of(eventId)).getOrDefault(eventId, List.of()));
   }
 }

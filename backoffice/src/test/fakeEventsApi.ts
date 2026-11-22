@@ -1,6 +1,6 @@
 import { EventsApiError, type EventsApi } from '../data/eventsApi'
 import type { Geocoder } from '../data/geocoding'
-import { applyChange, demoEvents, slug, type OrgEvent } from '../data/organizer'
+import { alertTypes, applyChange, demoEvents, slug, type OrgEvent } from '../data/organizer'
 
 /** {@link EventsApi} in memory, seeded with the demo events, for the pages'
  * tests. `refuse` makes the next call fail with that code, as Core would. */
@@ -70,6 +70,20 @@ export function fakeEventsApi(events: OrgEvent[] = demoEvents()) {
       const queues = (event?.entrances ?? []).flatMap((p) => published.get(p) ?? [])
       stored = stored.map((e) => (e.id === eventId ? { ...e, queues } : e))
       return queues
+    },
+    async sendAlert(eventId, type, message) {
+      check('sendAlert')
+      const alert = {
+        id: `alerta-${fake.calls.length}`,
+        type,
+        severity: alertTypes[type].severity,
+        message,
+        sentAt: new Date(),
+      }
+      stored = stored.map((e) =>
+        e.id === eventId ? { ...e, alerts: [alert, ...(e.alerts ?? [])] } : e,
+      )
+      return { ...alert, recipients: stored.find((e) => e.id === eventId)?.connected ?? 0 }
     },
     imageUrl(event) {
       return `/api/events/${event.id}/image?v=${event.imageUpdatedAt ?? ''}`

@@ -353,6 +353,48 @@ describe('events in Core', () => {
     ).rejects.toMatchObject({ code: 'QUEUE_POINT_UNKNOWN' })
   })
 
+  it('sends an alert and reads the active alerts Core keeps', async () => {
+    const closure = {
+      id: 'a-1',
+      type: 'ENTRANCE_CLOSURE',
+      severity: 'CRITICAL' as const,
+      message: 'Porta A fechada.',
+      sentAt: '2026-11-14T21:05:00Z',
+    }
+    const sent = recording(201, { ...closure, recipientsCount: 312 })
+
+    expect(
+      await httpEventsApi(sent.fetchImpl, '/api').sendAlert(
+        'e-1',
+        'ENTRANCE_CLOSURE',
+        'Porta A fechada.',
+      ),
+    ).toEqual({
+      id: 'a-1',
+      type: 'ENTRANCE_CLOSURE',
+      severity: 'critical',
+      message: 'Porta A fechada.',
+      sentAt: new Date('2026-11-14T21:05:00Z'),
+      recipients: 312,
+    })
+    expect(sent.calls[0].url).toBe('/api/events/e-1/alerts')
+    expect(sent.calls[0].init?.method).toBe('POST')
+    expect(JSON.parse(String(sent.calls[0].init?.body))).toEqual({
+      type: 'ENTRANCE_CLOSURE',
+      message: 'Porta A fechada.',
+    })
+    expect(fromJson({ ...json, activeAlerts: [closure] }).alerts?.[0]).toMatchObject({
+      id: 'a-1',
+      severity: 'critical',
+    })
+    expect(fromJson(json).alerts).toEqual([])
+
+    const closed = recording(409, { code: 'EVENT_CLOSED' })
+    await expect(
+      httpEventsApi(closed.fetchImpl).sendAlert('e-1', 'OTHER', 'Olá.'),
+    ).rejects.toMatchObject({ code: 'EVENT_CLOSED' })
+  })
+
   it('gives each upload of the event image its own address, and uploads and removes it', async () => {
     const api = httpEventsApi(fetch, '/api')
     expect(api.imageUrl({ id: 'e-1', imageUpdatedAt: '2026-11-19T10:00:00Z' })).toBe(

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.crowded.core.connection.domain.model.ActiveAlert;
+import com.crowded.core.connection.domain.repository.ActiveAlertRepository;
 import com.crowded.core.event.application.dto.EventPage;
 import com.crowded.core.event.domain.model.ChangeType;
 import com.crowded.core.event.domain.model.Coordinates;
@@ -16,6 +18,7 @@ import com.crowded.core.event.domain.model.EventType;
 import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.model.RequestedChange;
 import com.crowded.core.event.domain.model.Schedule;
+import com.crowded.core.event.domain.model.Severity;
 import com.crowded.core.event.domain.model.StoredEvents;
 import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
@@ -24,6 +27,8 @@ import com.crowded.core.organization.domain.model.Organization;
 import com.crowded.core.organization.domain.repository.OrganizationRepository;
 import com.crowded.core.shared.domain.exception.NotFoundException;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +44,8 @@ class EventPagesTest {
   private final EventRepository events = mock(EventRepository.class);
   private final EventChangeRepository changes = mock(EventChangeRepository.class);
   private final OrganizationRepository organizations = mock(OrganizationRepository.class);
-  private final EventPages pages = new EventPages(events, changes, organizations);
+  private final ActiveAlertRepository alerts = mock(ActiveAlertRepository.class);
+  private final EventPages pages = new EventPages(events, changes, organizations, alerts);
   private Event event;
 
   @BeforeEach
@@ -90,6 +96,19 @@ class EventPagesTest {
     when(changes.findLatest(event.getId())).thenReturn(Optional.empty());
 
     assertThat(pages.current(event.getId()).latestChange()).isNull();
+  }
+
+  @Test
+  void showsTheEventsActiveAlertsAndNoneWhenItHasNone() {
+    ActiveAlert closure =
+        new ActiveAlert(
+            UUID.randomUUID(), "ENTRANCE_CLOSURE", Severity.CRITICAL, "Usem a Porta B.", NOW);
+    when(alerts.findByEvents(List.of(event.getId())))
+        .thenReturn(Map.of(event.getId(), List.of(closure)))
+        .thenReturn(Map.of());
+
+    assertThat(pages.current(event.getId()).activeAlerts()).containsExactly(closure);
+    assertThat(pages.current(event.getId()).activeAlerts()).isEmpty();
   }
 
   @Test

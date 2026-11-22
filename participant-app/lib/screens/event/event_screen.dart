@@ -224,15 +224,14 @@ class _EventPageData {
   ];
 
   List<Widget> alerts() => [
-    if (isEventDay)
-      for (final alert in event.alerts)
-        AlertBanner(
-          kind: alert.urgent
-              ? AlertBannerKind.urgent
-              : AlertBannerKind.organizationAlert,
-          message: alert.message,
-          origin: alertOrigin(alert),
-        ),
+    for (final alert in event.alerts)
+      AlertBanner(
+        kind: alert.urgent
+            ? AlertBannerKind.urgent
+            : AlertBannerKind.organizationAlert,
+        message: alert.message,
+        origin: alertOrigin(alert),
+      ),
     for (final warning in event.warnings)
       AlertBanner(
         kind: switch (warning.level) {

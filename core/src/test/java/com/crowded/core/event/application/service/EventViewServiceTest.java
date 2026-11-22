@@ -92,6 +92,7 @@ class EventViewServiceTest {
             "Ribeira Live",
             null,
             null,
+            List.of(),
             List.of());
     when(pages.current(event.getId())).thenReturn(page);
 

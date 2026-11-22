@@ -4,25 +4,27 @@ import com.crowded.notifications.notification.application.dto.NotifyParticipants
 import com.crowded.notifications.notification.domain.exception.CauseNotFoundException;
 import com.crowded.notifications.notification.domain.exception.UnsupportedNotificationTypeException;
 import com.crowded.notifications.notification.domain.model.Notification;
-import com.crowded.notifications.notification.domain.model.NotificationType;
+import com.crowded.notifications.notification.domain.model.NotificationText;
 import com.crowded.notifications.notification.domain.model.OfficialChange;
 import com.crowded.notifications.notification.domain.model.Recipient;
 import com.crowded.notifications.notification.domain.repository.ConnectionRepository;
 import com.crowded.notifications.notification.domain.repository.NotificationAnnouncements;
 import com.crowded.notifications.notification.domain.repository.NotificationRepository;
 import com.crowded.notifications.notification.domain.repository.OfficialChangeRepository;
+import com.crowded.notifications.notification.domain.repository.OperationalAlertRepository;
 import com.crowded.notifications.notification.domain.service.RecipientSelector;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Notifies the participants connected to an event of an official change, once per participant
- * however often the request arrives.
+ * Notifies the participants connected to an event of an official change or an operational alert,
+ * once per participant however often the request arrives.
  */
 @Service
 public class ParticipantNotifier {
@@ -30,6 +32,7 @@ public class ParticipantNotifier {
   private static final Logger log = LoggerFactory.getLogger(ParticipantNotifier.class);
 
   private final OfficialChangeRepository changes;
+  private final OperationalAlertRepository alerts;
   private final ConnectionRepository connections;
   private final NotificationRepository notifications;
   private final NotificationAnnouncements announcements;
@@ -37,11 +40,13 @@ public class ParticipantNotifier {
 
   ParticipantNotifier(
       OfficialChangeRepository changes,
+      OperationalAlertRepository alerts,
       ConnectionRepository connections,
       NotificationRepository notifications,
       NotificationAnnouncements announcements,
       Clock clock) {
     this.changes = changes;
+    this.alerts = alerts;
     this.connections = connections;
     this.notifications = notifications;
     this.announcements = announcements;
@@ -54,19 +59,13 @@ public class ParticipantNotifier {
    * announced again, so a redelivered message shows no second banner.
    *
    * @return how many notifications were stored; none for a request already processed
-   * @throws UnsupportedNotificationTypeException for a type other than an official change
-   * @throws CauseNotFoundException when the event has no such change
+   * @throws UnsupportedNotificationTypeException for a type other than an official change or an
+   *     operational alert
+   * @throws CauseNotFoundException when the event has no such change or alert
    */
   @Transactional
   public int notify(NotifyParticipantsCommand command) {
-    if (command.type() != NotificationType.OFFICIAL_CHANGE) {
-      throw new UnsupportedNotificationTypeException(command.type());
-    }
-    OfficialChange change =
-        changes
-            .findById(command.causeId())
-            .filter(found -> found.isOf(command.eventId()))
-            .orElseThrow(() -> new CauseNotFoundException(command.eventId(), command.causeId()));
+    Function<Recipient, NotificationText> text = textOf(command);
     List<Recipient> recipients =
         RecipientSelector.select(
             connections.findByEvent(command.eventId(), command.type()), command.userIds());
@@ -79,8 +78,8 @@ public class ParticipantNotifier {
               recipient,
               command.eventId(),
               command.type(),
-              change.getId(),
-              change.describeFor(recipient),
+              command.causeId(),
+              text.apply(recipient),
               now);
       if (notifications.addIfAbsent(notification)) {
         announcements.announce(notification.getId());
@@ -92,9 +91,37 @@ public class ParticipantNotifier {
         command.messageId(),
         stored,
         command.type(),
-        change.getId(),
+        command.causeId(),
         recipients.size(),
         command.eventId());
     return stored;
+  }
+
+  /** What each recipient reads, from the change or alert behind the request. */
+  private Function<Recipient, NotificationText> textOf(NotifyParticipantsCommand command) {
+    return switch (command.type()) {
+      case OFFICIAL_CHANGE -> {
+        OfficialChange change =
+            changes
+                .findById(command.causeId())
+                .filter(found -> found.isOf(command.eventId()))
+                .orElseThrow(() -> notFound(command));
+        yield change::describeFor;
+      }
+      case OPERATIONAL_ALERT -> {
+        NotificationText alert =
+            alerts
+                .findById(command.causeId())
+                .filter(found -> found.isOf(command.eventId()))
+                .orElseThrow(() -> notFound(command))
+                .describe();
+        yield recipient -> alert;
+      }
+      default -> throw new UnsupportedNotificationTypeException(command.type());
+    };
+  }
+
+  private static CauseNotFoundException notFound(NotifyParticipantsCommand command) {
+    return new CauseNotFoundException(command.eventId(), command.causeId());
   }
 }

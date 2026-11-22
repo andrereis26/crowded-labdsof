@@ -1,12 +1,10 @@
 package com.crowded.core.connection.api.mapper;
 
-import com.crowded.core.connection.api.dto.ActiveAlertResponse;
 import com.crowded.core.connection.api.dto.ConnectionResponse;
 import com.crowded.core.connection.api.dto.MyConnectionsResponse;
 import com.crowded.core.connection.application.dto.JoinWithAccessCodeCommand;
 import com.crowded.core.connection.application.dto.JoinedEvent;
 import com.crowded.core.connection.application.dto.MyConnections;
-import com.crowded.core.connection.domain.model.ActiveAlert;
 import com.crowded.core.event.api.mapper.EventPageApiMapper;
 import java.util.UUID;
 import org.mapstruct.Mapper;
@@ -26,7 +24,4 @@ public interface ConnectionApiMapper {
   ConnectionResponse toResponse(JoinedEvent joined);
 
   MyConnectionsResponse toResponse(MyConnections connections);
-
-  @Mapping(target = "id", source = "alertId")
-  ActiveAlertResponse toResponse(ActiveAlert alert);
 }

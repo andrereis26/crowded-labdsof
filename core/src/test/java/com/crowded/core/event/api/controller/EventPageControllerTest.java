@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.crowded.core.connection.domain.model.ActiveAlert;
 import com.crowded.core.event.api.mapper.EventPageApiMapperImpl;
 import com.crowded.core.event.application.dto.EventChangeView;
 import com.crowded.core.event.application.dto.EventPage;
@@ -59,6 +60,7 @@ class EventPageControllerTest {
   private static final UUID EVENT = UUID.randomUUID();
   private static final UUID USER = UUID.randomUUID();
   private static final UUID ORGANIZATION = UUID.randomUUID();
+  private static final UUID ALERT = UUID.randomUUID();
   private static final EventChangeView POSTPONEMENT =
       new EventChangeView(
           UUID.randomUUID(),
@@ -91,7 +93,10 @@ class EventPageControllerTest {
           new CrowdStatus(CrowdLevel.HIGH, Provenance.organization("Ribeira Live", NOW)),
           List.of(
               new QueuePoint(
-                  "Porta A", new QueueTime(15, Provenance.organization("Ribeira Live", NOW)))));
+                  "Porta A", new QueueTime(15, Provenance.organization("Ribeira Live", NOW)))),
+          List.of(
+              new ActiveAlert(
+                  ALERT, "ENTRANCE_CLOSURE", Severity.CRITICAL, "Usem a Porta B.", NOW)));
 
   @Autowired private MockMvc mockMvc;
 
@@ -124,7 +129,12 @@ class EventPageControllerTest {
         .andExpect(jsonPath("$.queues[0].pointName").value("Porta A"))
         .andExpect(jsonPath("$.queues[0].waitMinutes").value(15))
         .andExpect(jsonPath("$.queues[0].provenance.sourceType").value("ORGANIZATION"))
-        .andExpect(jsonPath("$.queues[0].provenance.lastUpdatedAt").value(NOW.toString()));
+        .andExpect(jsonPath("$.queues[0].provenance.lastUpdatedAt").value(NOW.toString()))
+        .andExpect(jsonPath("$.activeAlerts[0].id").value(ALERT.toString()))
+        .andExpect(jsonPath("$.activeAlerts[0].type").value("ENTRANCE_CLOSURE"))
+        .andExpect(jsonPath("$.activeAlerts[0].severity").value("CRITICAL"))
+        .andExpect(jsonPath("$.activeAlerts[0].message").value("Usem a Porta B."))
+        .andExpect(jsonPath("$.activeAlerts[0].sentAt").value(NOW.toString()));
   }
 
   @Test
