@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../ui/ui.dart';
+import '../utils/pt_format.dart';
 
 /// Placeholder picture of an event: a gradient until the catalog has photos.
 class EventArt {
@@ -284,6 +285,12 @@ class Event {
   bool get isPublic => joinedWithAccessCode || accessCode != null;
 
   String get place => city.isEmpty ? venue : '$venue, $city';
+
+  /// Starts on [now]'s day or is in progress at [now], so a night event
+  /// stays "today" after midnight.
+  bool isToday(DateTime now) =>
+      isSameDay(start, now) ||
+      (end != null && start.isBefore(now) && end!.isAfter(now));
 
   /// The change that set the current date, if the event was postponed.
   EventChange? get latestDateChange =>

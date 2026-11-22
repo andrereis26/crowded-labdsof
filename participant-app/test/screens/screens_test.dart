@@ -227,6 +227,7 @@ class _FakeEventsApi implements EventsApi {
 
   String status = 'POSTPONED';
   String start = '2026-11-07T21:30:00Z';
+  String? end;
 
   /// Core's `crowd`: null until the organization publishes a level.
   Map<String, Object?>? crowd;
@@ -265,6 +266,7 @@ class _FakeEventsApi implements EventsApi {
     'name': 'Festival Margens do Douro',
     'status': status,
     'startDateTime': start,
+    'endDateTime': end,
     'venue': {'name': 'Cais da Ribeira', 'district': 'Porto'},
     'organization': {'id': 'o-1', 'name': 'Ribeira Live'},
     'latestChange': history.firstOrNull,
@@ -848,6 +850,80 @@ void main() {
         expect(events.pages, 1, reason: 'no reload: the stream sent it');
       },
     );
+
+    testWidgets('says when nothing was published on the site yet', (
+      tester,
+    ) async {
+      final at = _now.toUtc().toIso8601String();
+      final events = _FakeEventsApi()
+        ..status = 'SCHEDULED'
+        ..history = []
+        ..start = _now.add(const Duration(hours: 4)).toUtc().toIso8601String();
+      await _pump(tester, location: page, events: events);
+
+      expect(find.text('Ainda sem informação do recinto'), findsOneWidget);
+      expect(
+        find.textContaining('a lotação, as filas nem alertas'),
+        findsOneWidget,
+      );
+
+      events
+        ..alerts = [
+          {
+            'id': 'a-1',
+            'type': 'OTHER',
+            'severity': 'WARNING',
+            'message': 'A Porta A abre às 18h.',
+            'sentAt': at,
+          },
+        ]
+        ..publish();
+      await tester.pumpAndSettle();
+
+      expect(find.text('A Porta A abre às 18h.'), findsOneWidget);
+      expect(find.textContaining('a lotação nem as filas'), findsOneWidget);
+
+      events
+        ..crowd = {
+          'level': 'LOW',
+          'provenance': {
+            'sourceType': 'ORGANIZATION',
+            'sourceName': 'Ribeira Live',
+            'lastUpdatedAt': at,
+            'confirmed': true,
+          },
+        }
+        ..publish();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ainda sem informação do recinto'), findsNothing);
+      expect(find.text('Lotação Baixa', findRichText: true), findsOneWidget);
+      expect(events.pages, 1, reason: 'no reload: the stream sent it');
+    });
+
+    testWidgets('keeps a night event live after midnight', (tester) async {
+      final events = _FakeEventsApi()
+        ..status = 'ONGOING'
+        ..history = []
+        ..start = _now
+            .subtract(const Duration(hours: 17))
+            .toUtc()
+            .toIso8601String()
+        ..end = _now.add(const Duration(hours: 1)).toUtc().toIso8601String()
+        ..crowd = {
+          'level': 'HIGH',
+          'provenance': {
+            'sourceType': 'ORGANIZATION',
+            'sourceName': 'Ribeira Live',
+            'lastUpdatedAt': _now.toUtc().toIso8601String(),
+            'confirmed': true,
+          },
+        };
+      await _pump(tester, location: page, events: events);
+
+      expect(find.text('Agora no recinto'), findsOneWidget);
+      expect(find.text('Lotação Elevada', findRichText: true), findsOneWidget);
+    });
 
     testWidgets('follows what is published while the page is open', (
       tester,

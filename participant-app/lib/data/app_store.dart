@@ -6,7 +6,6 @@ import 'package:flutter/widgets.dart';
 
 import '../ui/ui.dart';
 
-import '../utils/pt_format.dart';
 import 'auth_api.dart';
 import 'connections_api.dart';
 import 'demo_data.dart';
@@ -273,11 +272,7 @@ class AppStore extends ChangeNotifier {
   /// Connected events taking place today, the one in progress (or starting
   /// next) first: the events a participant can report about (P11).
   List<Event> get eventsToday {
-    final today = connectedEvents.where(
-      (e) =>
-          isSameDay(e.start, now) ||
-          (e.end != null && e.start.isBefore(now) && e.end!.isAfter(now)),
-    );
+    final today = connectedEvents.where((e) => e.isToday(now));
     bool inProgress(Event e) =>
         !e.start.isAfter(now) && (e.end == null || e.end!.isAfter(now));
     return [...today.where(inProgress), ...today.where((e) => !inProgress(e))];

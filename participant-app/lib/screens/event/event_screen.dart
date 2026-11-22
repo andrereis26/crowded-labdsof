@@ -93,7 +93,7 @@ class _EventPageData {
 
   /// When the data shown was saved, while [offline].
   DateTime get savedAt => store.savedAtFor(event.id)!;
-  bool get isEventDay => isSameDay(event.start, now);
+  bool get isEventDay => event.isToday(now);
   int get daysToGo => daysBetween(now, event.start);
   bool get hasEntryCode => ticket?.hasEntryCode ?? false;
 
@@ -281,7 +281,17 @@ class _EventPageData {
       );
     }
     final status = event.venueStatus;
-    if (status == null) return null;
+    if (status == null) {
+      return MutedNotice(
+        icon: Icons.people_outline,
+        title: 'Ainda sem informação do recinto',
+        message: event.alerts.isEmpty
+            ? 'A organização ainda não publicou a lotação, as filas nem '
+                  'alertas. Aparecem aqui assim que forem publicados.'
+            : 'A organização ainda não publicou a lotação nem as filas. '
+                  'Aparecem aqui assim que forem publicadas.',
+      );
+    }
     final estimates = visibleEstimates;
     return LiveVenuePanel(
       status: status,
