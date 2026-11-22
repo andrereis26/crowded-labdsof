@@ -27,11 +27,15 @@ class QueueTime {
     required this.place,
     required this.minutes,
     this.increasing = false,
+    this.source,
   });
 
   final String place;
   final int minutes;
   final bool increasing;
+
+  /// Who published this time; null in demo data, which has one source.
+  final Provenance? source;
 }
 
 /// Where a piece of information comes from, as Core names it.
@@ -74,8 +78,9 @@ class Provenance {
   /// Whether Core judged it out of date when it answered.
   final bool stale;
 
-  /// When Core says it goes out of date, so a page kept open or offline
-  /// is flagged on time. Null for what never goes out of date.
+  /// When Core says it goes out of date, so the app can tell each time it
+  /// shows it, offline too, without asking again. Null for what never goes
+  /// out of date.
   final DateTime? staleAt;
 
   /// Whether it is out of date at [now].
@@ -105,16 +110,26 @@ class VenueStatus {
   final Provenance? crowd;
   final List<QueueTime> queues;
 
-  /// Where the queue times come from: the oldest of them, so the panel never
-  /// shows them as fresher than they are. Null while none was published.
+  /// The oldest of the queue times' origins, so one label never shows them as
+  /// fresher than they are. Null while none was published.
   final Provenance? queuesSource;
 
-  DateTime? get crowdUpdatedAt => crowd?.updatedAt;
-  DateTime? get queuesUpdatedAt => queuesSource?.updatedAt;
+  /// The queue times' origins, one per source (the oldest of each), in the
+  /// order the queues list them.
+  List<Provenance> get queueSources {
+    final oldest = <(SourceType, String), Provenance>{};
+    for (final source in queues.map((queue) => queue.source).nonNulls) {
+      final key = (source.type, source.name);
+      final kept = oldest[key];
+      if (kept == null || source.updatedAt.isBefore(kept.updatedAt)) {
+        oldest[key] = source;
+      }
+    }
+    return oldest.values.toList();
+  }
 
-  /// The time the panel shows: its queues', or its crowd level's without
-  /// queues.
-  DateTime get updatedAt => (queuesUpdatedAt ?? crowdUpdatedAt)!;
+  /// Whether one label can name the source of every queue time.
+  bool get queuesShareSource => queueSources.length <= 1;
 }
 
 class WeatherInfo {

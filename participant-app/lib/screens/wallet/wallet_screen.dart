@@ -472,7 +472,12 @@ class _TodayPanel extends StatelessWidget {
                 ),
             ],
           ),
-          if (status.queuesSource case final source?)
+          // One label per source, so an estimate never reads as the
+          // organization's.
+          for (final source
+              in status.queuesShareSource
+                  ? [?status.queuesSource]
+                  : status.queueSources)
             ProvenanceLabel(provenance: source, now: now),
         ],
         Row(

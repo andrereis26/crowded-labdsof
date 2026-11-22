@@ -1,35 +1,30 @@
-package com.crowded.core.event.domain.service;
+package com.crowded.core.event.domain.model;
 
-import com.crowded.core.event.domain.model.InformationKind;
-import com.crowded.core.event.domain.model.Provenance;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 
 /**
- * Decides when on-site information goes out of date: each kind of information has the time it stays
- * current after its last update.
+ * How long each kind of on-site information stays current after its last update, and so when it
+ * goes out of date.
+ *
+ * @param periods how long each kind stays current; every kind needs a positive period
  */
-public final class FreshnessPolicy {
-
-  private final Map<InformationKind, Duration> periods;
+public record FreshnessPolicy(Map<InformationKind, Duration> periods) {
 
   /**
-   * @param periods how long each kind stays current; every kind needs a positive period
    * @throws IllegalArgumentException when a kind has no period or a period is not positive
    */
-  public FreshnessPolicy(Map<InformationKind, Duration> periods) {
-    Map<InformationKind, Duration> copy = new EnumMap<>(InformationKind.class);
+  public FreshnessPolicy {
+    Objects.requireNonNull(periods, "periods");
     for (InformationKind kind : InformationKind.values()) {
       Duration period = periods.get(kind);
       if (period == null || period.isZero() || period.isNegative()) {
         throw new IllegalArgumentException("Freshness period of " + kind + " must be positive");
       }
-      copy.put(kind, period);
     }
-    this.periods = copy;
+    periods = Map.copyOf(periods);
   }
 
   /** The moment the information given at {@code provenance} stops being current. */

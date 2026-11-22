@@ -377,7 +377,7 @@ VenueStatus? venueStatusFromJson(Map<String, dynamic> page) {
     final minutes = queue['waitMinutes'];
     final source = provenanceFromJson(queue['provenance']);
     if (place is! String || minutes is! int || source == null) continue;
-    queues.add(QueueTime(place: place, minutes: minutes));
+    queues.add(QueueTime(place: place, minutes: minutes, source: source));
     // The oldest, so the panel never shows the times as fresher than they are.
     if (queuesSource == null ||
         source.updatedAt.isBefore(queuesSource.updatedAt)) {

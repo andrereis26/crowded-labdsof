@@ -1,6 +1,6 @@
 package com.crowded.core.event.api.mapper;
 
-import com.crowded.core.event.domain.service.FreshnessPolicy;
+import com.crowded.core.event.domain.model.FreshnessPolicy;
 import java.time.Clock;
 import org.springframework.stereotype.Component;
 
