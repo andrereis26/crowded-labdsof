@@ -34,23 +34,83 @@ class QueueTime {
   final bool increasing;
 }
 
+/// Where a piece of information comes from, as Core names it.
+enum SourceType { official, organization, estimate, ai, external }
+
+/// Who gave a piece of information, when, and whether it is out of date.
+/// Core decides that: the app only shows it, so there is one rule.
+class Provenance {
+  const Provenance({
+    required this.type,
+    required this.name,
+    required this.updatedAt,
+    this.confirmed = true,
+    this.stale = false,
+    this.staleAt,
+  });
+
+  /// Information the organization gave, for what Core sends without its
+  /// origin and for demo data. Never out of date unless [staleAt] says so.
+  factory Provenance.organization(
+    DateTime updatedAt, {
+    String name = 'Organização',
+    DateTime? staleAt,
+  }) => Provenance(
+    type: SourceType.organization,
+    name: name,
+    updatedAt: updatedAt,
+    staleAt: staleAt,
+  );
+
+  final SourceType type;
+
+  /// "Organização Margens", "IPMA".
+  final String name;
+  final DateTime updatedAt;
+
+  /// False for content nobody has confirmed, such as AI output.
+  final bool confirmed;
+
+  /// Whether Core judged it out of date when it answered.
+  final bool stale;
+
+  /// When Core says it goes out of date, so a page kept open or offline
+  /// is flagged on time. Null for what never goes out of date.
+  final DateTime? staleAt;
+
+  /// Whether it is out of date at [now].
+  bool isStaleAt(DateTime now) {
+    final deadline = staleAt;
+    return deadline == null ? stale : !now.isBefore(deadline);
+  }
+
+  /// AI-generated content that nobody confirmed.
+  bool get isUnconfirmedAi => type == SourceType.ai && !confirmed;
+}
+
 /// Live on-site information for the event day (P5): a crowd level, queue
 /// times or both.
 class VenueStatus {
   const VenueStatus({
     this.crowdLevel,
-    this.crowdUpdatedAt,
+    this.crowd,
     this.queues = const [],
-    this.queuesUpdatedAt,
-  }) : assert(crowdUpdatedAt != null || queuesUpdatedAt != null);
+    this.queuesSource,
+  }) : assert(crowd != null || queuesSource != null);
 
   /// Null while the organization has published no crowd level.
   final CrowdLevel? crowdLevel;
-  final DateTime? crowdUpdatedAt;
+
+  /// Who published the crowd level, when, and whether it is out of date.
+  final Provenance? crowd;
   final List<QueueTime> queues;
 
-  /// Null while the organization has published no queue times.
-  final DateTime? queuesUpdatedAt;
+  /// Where the queue times come from: the oldest of them, so the panel never
+  /// shows them as fresher than they are. Null while none was published.
+  final Provenance? queuesSource;
+
+  DateTime? get crowdUpdatedAt => crowd?.updatedAt;
+  DateTime? get queuesUpdatedAt => queuesSource?.updatedAt;
 
   /// The time the panel shows: its queues', or its crowd level's without
   /// queues.
@@ -97,6 +157,7 @@ class EventAlert {
     required this.sentAt,
     this.urgent = false,
     this.severity = Severity.information,
+    this.provenance,
   });
 
   final String message;
@@ -104,6 +165,14 @@ class EventAlert {
   final DateTime sentAt;
   final bool urgent;
   final Severity severity;
+
+  /// The origin Core sent; the organization's, at [sentAt], when it sent none
+  /// (demo data).
+  final Provenance? provenance;
+
+  /// Where the alert comes from and when.
+  Provenance get source =>
+      provenance ?? Provenance.organization(sentAt, name: publisher);
 }
 
 /// Participant estimate confirmed by others (P5 desktop, P14).
@@ -141,6 +210,7 @@ class EventChange {
     this.ticketStillValid = true,
     this.refund,
     this.severity = Severity.information,
+    this.provenance,
   });
 
   final String id;
@@ -163,6 +233,14 @@ class EventChange {
 
   /// How much the change matters, as Core classifies it.
   final Severity severity;
+
+  /// The origin Core sent; the organization's, at [detectedAt], when it sent
+  /// none (demo data).
+  final Provenance? provenance;
+
+  /// Where the change comes from and when.
+  Provenance get source =>
+      provenance ?? Provenance.organization(detectedAt, name: publisher);
 }
 
 /// Refund information that the organization adds to a change (O4, P7).
@@ -233,6 +311,7 @@ class Event {
     this.weather,
     this.estimates = const [],
     this.updatedAt,
+    this.provenance,
     this.places = const [],
     this.directions,
     this.district = 'Porto',
@@ -262,6 +341,16 @@ class Event {
 
   /// When the organization last updated the event.
   final DateTime? updatedAt;
+
+  /// The origin of those details, from the latest change Core sent.
+  final Provenance? provenance;
+
+  /// Where the details come from: the latest change's origin, or the
+  /// organization's at [updatedAt]; null when the event has neither.
+  Provenance? get source {
+    final time = updatedAt;
+    return provenance ?? (time == null ? null : Provenance.organization(time));
+  }
 
   /// Gates and services a report can point to ("Onde?" in P11).
   final List<VenuePlace> places;

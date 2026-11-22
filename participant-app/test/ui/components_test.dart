@@ -59,7 +59,9 @@ void main() {
   });
 
   group('SourceLabel', () {
-    testWidgets('shows "Desatualizado" after 20 minutes', (tester) async {
+    testWidgets('shows the tags only when told, with words and an icon', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           Column(
@@ -71,8 +73,15 @@ void main() {
               ),
               SourceLabel(
                 source: 'organização',
-                updatedAt: now.subtract(const Duration(minutes: 20)),
+                updatedAt: now.subtract(const Duration(hours: 5)),
                 now: now,
+                stale: true,
+              ),
+              SourceLabel(
+                source: 'IA',
+                updatedAt: now.subtract(const Duration(minutes: 2)),
+                now: now,
+                generatedByAi: true,
               ),
             ],
           ),
@@ -80,8 +89,12 @@ void main() {
       );
 
       expect(find.text('Fonte: IPMA · há 19 min'), findsOneWidget);
-      expect(find.text('Fonte: organização · há 20 min'), findsOneWidget);
+      expect(find.text('Fonte: organização · há 5 h'), findsOneWidget);
+      expect(find.text('Fonte: IA · há 2 min'), findsOneWidget);
       expect(find.text('Desatualizado'), findsOneWidget);
+      expect(find.text('Gerado por IA'), findsOneWidget);
+      expect(find.byIcon(Icons.schedule), findsOneWidget);
+      expect(find.byIcon(Icons.auto_awesome), findsOneWidget);
     });
   });
 

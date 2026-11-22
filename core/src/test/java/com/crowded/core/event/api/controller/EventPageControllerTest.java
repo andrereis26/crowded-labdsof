@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.crowded.core.connection.domain.model.ActiveAlert;
 import com.crowded.core.event.api.mapper.EventPageApiMapperImpl;
+import com.crowded.core.event.api.mapper.FreshnessTestConfiguration;
 import com.crowded.core.event.application.dto.EventChangeView;
 import com.crowded.core.event.application.dto.EventPage;
 import com.crowded.core.event.application.service.EventViewService;
@@ -52,6 +53,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @Import({
   SecurityConfiguration.class,
   EventPageApiMapperImpl.class,
+  FreshnessTestConfiguration.class,
   EventPageControllerTest.FixedClock.class
 })
 class EventPageControllerTest {
@@ -96,7 +98,12 @@ class EventPageControllerTest {
                   "Porta A", new QueueTime(15, Provenance.organization("Ribeira Live", NOW)))),
           List.of(
               new ActiveAlert(
-                  ALERT, "ENTRANCE_CLOSURE", Severity.CRITICAL, "Usem a Porta B.", NOW)));
+                  ALERT,
+                  "ENTRANCE_CLOSURE",
+                  Severity.CRITICAL,
+                  "Usem a Porta B.",
+                  NOW,
+                  "Ribeira Live")));
 
   @Autowired private MockMvc mockMvc;
 
@@ -126,6 +133,12 @@ class EventPageControllerTest {
         .andExpect(jsonPath("$.crowd.level").value("HIGH"))
         .andExpect(jsonPath("$.crowd.provenance.sourceName").value("Ribeira Live"))
         .andExpect(jsonPath("$.crowd.provenance.lastUpdatedAt").value(NOW.toString()))
+        .andExpect(jsonPath("$.crowd.provenance.stale").value(false))
+        .andExpect(
+            jsonPath("$.crowd.provenance.staleAt").value(NOW.plusSeconds(20 * 60).toString()))
+        .andExpect(jsonPath("$.latestChange.provenance.stale").value(false))
+        .andExpect(jsonPath("$.latestChange.provenance.staleAt").doesNotExist())
+        .andExpect(jsonPath("$.queues[0].provenance.stale").value(false))
         .andExpect(jsonPath("$.queues[0].pointName").value("Porta A"))
         .andExpect(jsonPath("$.queues[0].waitMinutes").value(15))
         .andExpect(jsonPath("$.queues[0].provenance.sourceType").value("ORGANIZATION"))
@@ -134,7 +147,54 @@ class EventPageControllerTest {
         .andExpect(jsonPath("$.activeAlerts[0].type").value("ENTRANCE_CLOSURE"))
         .andExpect(jsonPath("$.activeAlerts[0].severity").value("CRITICAL"))
         .andExpect(jsonPath("$.activeAlerts[0].message").value("Usem a Porta B."))
-        .andExpect(jsonPath("$.activeAlerts[0].sentAt").value(NOW.toString()));
+        .andExpect(jsonPath("$.activeAlerts[0].sentAt").value(NOW.toString()))
+        .andExpect(jsonPath("$.activeAlerts[0].provenance.sourceType").value("ORGANIZATION"))
+        .andExpect(jsonPath("$.activeAlerts[0].provenance.sourceName").value("Ribeira Live"))
+        .andExpect(jsonPath("$.activeAlerts[0].provenance.lastUpdatedAt").value(NOW.toString()))
+        .andExpect(jsonPath("$.activeAlerts[0].provenance.stale").value(false))
+        .andExpect(jsonPath("$.activeAlerts[0].provenance.staleAt").doesNotExist());
+  }
+
+  @Test
+  void flagsTheCrowdLevelAndTheQueuesOnceTheirPeriodHasEnded() throws Exception {
+    when(service.page(USER, EVENT))
+        .thenReturn(pageUpdatedAt(NOW.minusSeconds(20 * 60 - 1)))
+        .thenReturn(pageUpdatedAt(NOW.minusSeconds(20 * 60)));
+
+    mockMvc
+        .perform(asUser(get("/events/{eventId}", EVENT)))
+        .andExpect(jsonPath("$.crowd.provenance.stale").value(false))
+        .andExpect(jsonPath("$.queues[0].provenance.stale").value(false));
+    mockMvc
+        .perform(asUser(get("/events/{eventId}", EVENT)))
+        .andExpect(jsonPath("$.crowd.provenance.stale").value(true))
+        .andExpect(jsonPath("$.crowd.provenance.staleAt").value(NOW.toString()))
+        .andExpect(jsonPath("$.queues[0].provenance.stale").value(true))
+        .andExpect(jsonPath("$.queues[0].provenance.staleAt").value(NOW.toString()));
+  }
+
+  private static EventPage pageUpdatedAt(Instant at) {
+    Provenance ribeira = Provenance.organization("Ribeira Live", at);
+    return new EventPage(
+        PAGE.id(),
+        PAGE.name(),
+        PAGE.description(),
+        PAGE.type(),
+        PAGE.status(),
+        PAGE.startDateTime(),
+        PAGE.doorsOpenAt(),
+        PAGE.endDateTime(),
+        PAGE.venueName(),
+        PAGE.address(),
+        PAGE.district(),
+        PAGE.latitude(),
+        PAGE.longitude(),
+        PAGE.organizationId(),
+        PAGE.organizationName(),
+        PAGE.latestChange(),
+        new CrowdStatus(CrowdLevel.HIGH, ribeira),
+        List.of(new QueuePoint("Porta A", new QueueTime(15, ribeira))),
+        PAGE.activeAlerts());
   }
 
   @Test

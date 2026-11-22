@@ -7,6 +7,7 @@ import '../../ui/ui.dart';
 import '../../utils/pt_format.dart';
 import '../report/confirmation_request.dart';
 import '../report/report_flow.dart';
+import '../shared/provenance_label.dart';
 import '../shared/shell.dart';
 import '../shared/shell.dart' as shell show reportAction;
 import '../shared/ticket_card.dart';
@@ -167,9 +168,12 @@ class _EventPageData {
   }
 
   /// Only the time: the banner's overline already says who sent it.
-  String alertOrigin(EventAlert alert) => offline
-      ? 'enviado às ${formatTime(alert.sentAt)}'
-      : formatTimeAgo(alert.sentAt, now: now);
+  String alertOrigin(EventAlert alert) {
+    final when = offline
+        ? 'enviado às ${formatTime(alert.sentAt)}'
+        : formatTimeAgo(alert.sentAt, now: now);
+    return alert.source.isUnconfirmedAi ? 'Gerado por IA · $when' : when;
+  }
 
   Widget header(BuildContext context) {
     if (ticket != null) {
@@ -193,9 +197,9 @@ class _EventPageData {
       statusTone: tone,
       source: offline
           ? 'Fonte: organização · guardado às ${formatTime(savedAt)}'
-          : event.updatedAt == null
+          : event.source == null
           ? 'Fonte: organização'
-          : formatSource('organização', event.updatedAt!, now: now),
+          : formatProvenance(event.source!, now: now),
       gradient: event.art.gradient,
     );
   }
@@ -218,7 +222,7 @@ class _EventPageData {
       AlertBanner(
         kind: AlertBannerKind.officialChange,
         message: postponedMessage(event),
-        origin: formatSource('organização', change.detectedAt, now: now),
+        origin: formatProvenance(change.source, now: now),
         onTap: () => context.push('/event/${event.id}/change/${change.id}'),
       ),
   ];
@@ -267,7 +271,10 @@ class _EventPageData {
 
   Widget schedule() => schedulePanel(
     event,
-    source: source('organização', event.updatedAt),
+    source: source(
+      event.source == null ? 'organização' : sourceName(event.source!),
+      event.updatedAt,
+    ),
     large: isEventDay,
   );
 

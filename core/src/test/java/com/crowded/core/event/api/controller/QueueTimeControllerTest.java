@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.crowded.core.event.api.mapper.EventPageApiMapperImpl;
+import com.crowded.core.event.api.mapper.FreshnessTestConfiguration;
 import com.crowded.core.event.api.mapper.QueueTimeApiMapperImpl;
 import com.crowded.core.event.application.dto.PublishQueueTimesCommand;
 import com.crowded.core.event.application.service.QueueTimeService;
@@ -23,14 +24,18 @@ import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.domain.exception.NotFoundException;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
 import com.crowded.core.shared.infrastructure.config.SecurityConfiguration;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -42,7 +47,13 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @WebMvcTest(
     controllers = QueueTimeController.class,
     properties = "JWT_PUBLIC_KEY_LOCATION=file:unused.pem")
-@Import({SecurityConfiguration.class, QueueTimeApiMapperImpl.class, EventPageApiMapperImpl.class})
+@Import({
+  SecurityConfiguration.class,
+  QueueTimeApiMapperImpl.class,
+  EventPageApiMapperImpl.class,
+  FreshnessTestConfiguration.class,
+  QueueTimeControllerTest.FixedClock.class
+})
 class QueueTimeControllerTest {
 
   private static final UUID EVENT = UUID.randomUUID();
@@ -73,7 +84,10 @@ class QueueTimeControllerTest {
         .andExpect(jsonPath("$.queues[1].waitMinutes").value(15))
         .andExpect(jsonPath("$.queues[1].provenance.sourceType").value("ORGANIZATION"))
         .andExpect(jsonPath("$.queues[1].provenance.sourceName").value("Ribeira Live"))
-        .andExpect(jsonPath("$.queues[1].provenance.lastUpdatedAt").value(NOW.toString()));
+        .andExpect(jsonPath("$.queues[1].provenance.lastUpdatedAt").value(NOW.toString()))
+        .andExpect(jsonPath("$.queues[1].provenance.stale").value(false))
+        .andExpect(
+            jsonPath("$.queues[1].provenance.staleAt").value(NOW.plusSeconds(20 * 60).toString()));
 
     verify(service)
         .publish(new PublishQueueTimesCommand(EVENT, USER, List.of(new QueueWait("Bar", 15))));
@@ -133,5 +147,14 @@ class QueueTimeControllerTest {
         .content(body)
         // MockMvc sends no bearer header, so the CSRF check applies; real API calls skip it.
         .with(csrf());
+  }
+
+  @TestConfiguration
+  static class FixedClock {
+
+    @Bean
+    Clock clock() {
+      return Clock.fixed(NOW, ZoneOffset.UTC);
+    }
   }
 }

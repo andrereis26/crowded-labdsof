@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.crowded.core.event.api.mapper.CrowdLevelApiMapperImpl;
+import com.crowded.core.event.api.mapper.FreshnessTestConfiguration;
 import com.crowded.core.event.application.dto.PublishCrowdLevelCommand;
 import com.crowded.core.event.application.service.CrowdLevelService;
 import com.crowded.core.event.domain.model.CrowdLevel;
@@ -20,11 +21,15 @@ import com.crowded.core.shared.domain.exception.ConflictException;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.domain.exception.NotFoundException;
 import com.crowded.core.shared.infrastructure.config.SecurityConfiguration;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -36,7 +41,12 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @WebMvcTest(
     controllers = CrowdLevelController.class,
     properties = "JWT_PUBLIC_KEY_LOCATION=file:unused.pem")
-@Import({SecurityConfiguration.class, CrowdLevelApiMapperImpl.class})
+@Import({
+  SecurityConfiguration.class,
+  CrowdLevelApiMapperImpl.class,
+  FreshnessTestConfiguration.class,
+  CrowdLevelControllerTest.FixedClock.class
+})
 class CrowdLevelControllerTest {
 
   private static final UUID EVENT = UUID.randomUUID();
@@ -59,7 +69,9 @@ class CrowdLevelControllerTest {
         .andExpect(jsonPath("$.level").value("HIGH"))
         .andExpect(jsonPath("$.provenance.sourceType").value("ORGANIZATION"))
         .andExpect(jsonPath("$.provenance.sourceName").value("Ribeira Live"))
-        .andExpect(jsonPath("$.provenance.lastUpdatedAt").value(NOW.toString()));
+        .andExpect(jsonPath("$.provenance.lastUpdatedAt").value(NOW.toString()))
+        .andExpect(jsonPath("$.provenance.stale").value(false))
+        .andExpect(jsonPath("$.provenance.staleAt").value(NOW.plusSeconds(20 * 60).toString()));
 
     verify(service).publish(new PublishCrowdLevelCommand(EVENT, USER, CrowdLevel.HIGH));
   }
@@ -105,5 +117,14 @@ class CrowdLevelControllerTest {
         .content(body)
         // MockMvc sends no bearer header, so the CSRF check applies; real API calls skip it.
         .with(csrf());
+  }
+
+  @TestConfiguration
+  static class FixedClock {
+
+    @Bean
+    Clock clock() {
+      return Clock.fixed(NOW, ZoneOffset.UTC);
+    }
   }
 }

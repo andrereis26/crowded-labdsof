@@ -293,6 +293,55 @@ class EventPageIT extends IntegrationTest {
         .isEqualTo(25);
   }
 
+  @Test
+  void flagsTheCrowdLevelAndTheQueuesOnceTheirPeriodHasEndedAndNeverAnOfficialChange()
+      throws Exception {
+    UUID bar = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO queue_point (id, event_id, name, position) VALUES (?, ?, 'Bar', 0)",
+        bar,
+        event);
+    publish(
+        "{\"type\": \"TIME_CHANGE\", \"newValue\": {\"doorsOpenAt\": \""
+            + START.minus(60, ChronoUnit.MINUTES)
+            + "\"}}");
+    assertThat(putCrowd(member, "{\"level\": \"HIGH\"}").statusCode()).isEqualTo(200);
+    assertThat(
+            putQueues(member, "{\"queues\": [{\"pointName\": \"Bar\", \"waitMinutes\": 25}]}")
+                .statusCode())
+        .isEqualTo(200);
+
+    JsonNode fresh = json.readTree(get(participant, "").body());
+    JsonNode crowd = fresh.get("crowd").get("provenance");
+    assertThat(crowd.get("stale").asBoolean()).isFalse();
+    assertThat(Instant.parse(crowd.get("staleAt").asString()))
+        .isEqualTo(
+            Instant.parse(crowd.get("lastUpdatedAt").asString()).plus(Duration.ofMinutes(20)));
+    assertThat(fresh.get("queues").get(0).get("provenance").get("stale").asBoolean()).isFalse();
+
+    Timestamp longAgo = Timestamp.from(Instant.now().minus(Duration.ofMinutes(25)));
+    jdbc.update(
+        "UPDATE event SET crowd_provenance_last_updated_at = ? WHERE id = ?", longAgo, event);
+    jdbc.update(
+        "UPDATE queue_time SET provenance_last_updated_at = ? WHERE queue_point_id = ?",
+        longAgo,
+        bar);
+    jdbc.update(
+        "UPDATE event_change SET provenance_last_updated_at = ? WHERE event_id = ?",
+        Timestamp.from(Instant.now().minus(Duration.ofDays(3))),
+        event);
+    caches.getCache(EventPages.CACHE).clear();
+
+    JsonNode late = json.readTree(get(participant, "").body());
+    assertThat(late.get("crowd").get("provenance").get("stale").asBoolean()).isTrue();
+    assertThat(late.get("queues").get(0).get("provenance").get("stale").asBoolean()).isTrue();
+    JsonNode change = late.get("latestChange").get("provenance");
+    assertThat(change.get("stale").asBoolean()).isFalse();
+    assertThat(change.get("staleAt").isNull()).isTrue();
+    JsonNode history = json.readTree(get(participant, "/changes").body());
+    assertThat(history.get(0).get("provenance").get("stale").asBoolean()).isFalse();
+  }
+
   /** Puts the data of each server-sent event on {@code pages} until the stream ends. */
   private static void readData(InputStream body, BlockingQueue<String> pages) {
     try (BufferedReader lines =

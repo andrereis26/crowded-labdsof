@@ -117,7 +117,16 @@ class _ComponentGalleryState extends State<ComponentGallery> {
               ]),
               _section('Etiqueta de origem e etiquetas', [
                 SourceLabel(source: 'organização', updatedAt: _ago(2)),
-                SourceLabel(source: 'organização', updatedAt: _ago(42)),
+                SourceLabel(
+                  source: 'organização',
+                  updatedAt: _ago(42),
+                  stale: true,
+                ),
+                SourceLabel(
+                  source: 'IA',
+                  updatedAt: _ago(3),
+                  generatedByAi: true,
+                ),
                 const Wrap(
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.sm,

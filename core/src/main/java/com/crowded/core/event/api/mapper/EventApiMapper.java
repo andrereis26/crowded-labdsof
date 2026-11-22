@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -58,10 +59,13 @@ public interface EventApiMapper {
   @Mapping(target = "crowd", source = "event.crowd")
   @Mapping(
       target = "queues",
-      expression = "java(toQueues(managed.event().getQueuePoints().timed()))")
-  ManagedEventResponse toResponse(ManagedEvent managed);
+      expression = "java(toQueues(managed.event().getQueuePoints().timed(), freshness))")
+  ManagedEventResponse toResponse(ManagedEvent managed, @Context FreshnessView freshness);
 
-  List<QueueTimeResponse> toQueues(List<QueuePoint> queues);
+  /** By hand: each waiting time says whether it is out of date, which only the rule knows. */
+  default List<QueueTimeResponse> toQueues(List<QueuePoint> queues, FreshnessView freshness) {
+    return queues.stream().map(freshness::queue).toList();
+  }
 
   default VenueResponse toVenue(EventState state, District district) {
     var venue = state.venue();

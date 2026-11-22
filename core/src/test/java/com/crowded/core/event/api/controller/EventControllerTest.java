@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.crowded.core.connection.domain.model.ActiveAlert;
 import com.crowded.core.event.api.mapper.EventApiMapperImpl;
 import com.crowded.core.event.api.mapper.EventPageApiMapperImpl;
+import com.crowded.core.event.api.mapper.FreshnessTestConfiguration;
 import com.crowded.core.event.application.dto.CorrectEventCommand;
 import com.crowded.core.event.application.dto.ManagedEvent;
 import com.crowded.core.event.application.dto.RegisterEventCommand;
@@ -43,14 +44,18 @@ import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.shared.domain.exception.ConflictException;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.infrastructure.config.SecurityConfiguration;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -62,7 +67,13 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @WebMvcTest(
     controllers = EventController.class,
     properties = "JWT_PUBLIC_KEY_LOCATION=file:unused.pem")
-@Import({SecurityConfiguration.class, EventApiMapperImpl.class, EventPageApiMapperImpl.class})
+@Import({
+  SecurityConfiguration.class,
+  EventApiMapperImpl.class,
+  EventPageApiMapperImpl.class,
+  FreshnessTestConfiguration.class,
+  EventControllerTest.FixedClock.class
+})
 class EventControllerTest {
 
   private static final UUID USER = UUID.randomUUID();
@@ -137,12 +148,17 @@ class EventControllerTest {
 
   @Test
   void listsTheMembersEventsWithTheirQueueTimesAndActiveAlerts() throws Exception {
-    Instant published = Instant.parse("2026-11-12T10:00:00Z");
+    Instant published = Instant.parse("2026-11-20T20:50:00Z");
     event.publishQueueTimes(
         List.of(new QueueWait("Bar", 15)), Provenance.organization("Ribeira Live", published));
     ActiveAlert delay =
         new ActiveAlert(
-            UUID.randomUUID(), "SCHEDULE_DELAY", Severity.WARNING, "Começa às 22h.", published);
+            UUID.randomUUID(),
+            "SCHEDULE_DELAY",
+            Severity.WARNING,
+            "Começa às 22h.",
+            published,
+            "Ribeira Live");
     when(service.listForMember(USER))
         .thenReturn(
             List.of(
@@ -161,6 +177,7 @@ class EventControllerTest {
         .andExpect(jsonPath("$[0].queues[0].waitMinutes").value(15))
         .andExpect(jsonPath("$[0].queues[0].provenance.sourceName").value("Ribeira Live"))
         .andExpect(jsonPath("$[0].queues[0].provenance.lastUpdatedAt").value(published.toString()))
+        .andExpect(jsonPath("$[0].queues[0].provenance.stale").value(false))
         .andExpect(jsonPath("$[0].activeAlerts[0].id").value(delay.alertId().toString()))
         .andExpect(jsonPath("$[0].activeAlerts[0].type").value("SCHEDULE_DELAY"))
         .andExpect(jsonPath("$[0].activeAlerts[0].severity").value("WARNING"))
@@ -251,5 +268,14 @@ class EventControllerTest {
         // MockMvc sends no bearer header, so the CSRF check applies; real API calls skip it.
         .with(csrf())
         .with(jwt().jwt(token -> token.subject(USER.toString())));
+  }
+
+  @TestConfiguration
+  static class FixedClock {
+
+    @Bean
+    Clock clock() {
+      return Clock.fixed(Instant.parse("2026-11-20T21:00:00Z"), ZoneOffset.UTC);
+    }
   }
 }
