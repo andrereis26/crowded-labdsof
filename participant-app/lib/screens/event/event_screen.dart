@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -34,13 +36,28 @@ class EventScreen extends StatefulWidget {
 
 class _EventScreenState extends State<EventScreen>
     with RefreshesEvent<EventScreen> {
+  /// How often the page is drawn again, so a time that Core said goes out of
+  /// date turns "Desatualizado" on while the page stays open.
+  static const _redraw = Duration(seconds: 30);
+
+  Timer? _timer;
+
   @override
   String eventIdOf(EventScreen widget) => widget.eventId;
 
   @override
   void initState() {
     super.initState();
+    _timer = Timer.periodic(_redraw, (_) {
+      if (mounted) setState(() {});
+    });
     _askToConfirm(widget.confirmationId);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
