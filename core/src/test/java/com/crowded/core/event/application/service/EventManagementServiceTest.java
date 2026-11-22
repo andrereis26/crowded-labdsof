@@ -12,6 +12,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.crowded.core.audit.application.service.AuditLog;
+import com.crowded.core.connection.domain.model.ActiveAlert;
+import com.crowded.core.connection.domain.repository.ActiveAlertRepository;
 import com.crowded.core.connection.domain.repository.ConnectionRepository;
 import com.crowded.core.event.application.dto.ConfirmationsInput;
 import com.crowded.core.event.application.dto.CorrectEventCommand;
@@ -28,6 +30,7 @@ import com.crowded.core.event.domain.model.EventStatus;
 import com.crowded.core.event.domain.model.EventType;
 import com.crowded.core.event.domain.model.ReportCategory;
 import com.crowded.core.event.domain.model.Schedule;
+import com.crowded.core.event.domain.model.Severity;
 import com.crowded.core.event.domain.model.StoredEvents;
 import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.domain.repository.EventImageRepository;
@@ -70,6 +73,7 @@ class EventManagementServiceTest {
   private final UserRepository users = mock(UserRepository.class);
   private final ConnectionRepository connections = mock(ConnectionRepository.class);
   private final EventImageRepository images = mock(EventImageRepository.class);
+  private final ActiveAlertRepository alerts = mock(ActiveAlertRepository.class);
   private final EventUpdates updates = mock(EventUpdates.class);
   private final AuditLog audit = mock(AuditLog.class);
   private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
@@ -80,6 +84,7 @@ class EventManagementServiceTest {
           users,
           connections,
           images,
+          alerts,
           new EventAccess(events, users, connections, meters),
           updates,
           audit,
@@ -101,7 +106,7 @@ class EventManagementServiceTest {
     ArgumentCaptor<Event> added = ArgumentCaptor.forClass(Event.class);
     verify(events).add(added.capture());
     Event event = added.getValue();
-    assertThat(registered).isEqualTo(new ManagedEvent(event, 0, null));
+    assertThat(registered).isEqualTo(new ManagedEvent(event, 0, null, List.of()));
     assertThat(event.getOrganizationId()).isEqualTo(ORGANIZATION);
     assertThat(event.getState().status()).isEqualTo(EventStatus.SCHEDULED);
     assertThat(event.getAdmission().accessCode()).isEqualTo("SAOJOAO26");
@@ -351,15 +356,20 @@ class EventManagementServiceTest {
   }
 
   @Test
-  void listsTheMembersOrganizationsEventsWithTheirConnections() {
+  void listsTheMembersOrganizationsEventsWithTheirConnectionsAndActiveAlerts() {
     Event first = StoredEvents.restore(UUID.randomUUID(), ORGANIZATION, scheduled());
     Event second = StoredEvents.restore(UUID.randomUUID(), ORGANIZATION, scheduled());
     when(events.findByOrganization(ORGANIZATION)).thenReturn(List.of(first, second));
     when(connections.countByEvent(anyCollection())).thenReturn(Map.of(first.getId(), 7L));
     when(images.findUpdatedAt(anyCollection())).thenReturn(Map.of(second.getId(), NOW));
+    ActiveAlert full =
+        new ActiveAlert(UUID.randomUUID(), "CAPACITY_REACHED", Severity.WARNING, "Lotação.", NOW);
+    when(alerts.findByEvents(anyCollection())).thenReturn(Map.of(first.getId(), List.of(full)));
 
     assertThat(service.listForMember(MEMBER))
-        .containsExactly(new ManagedEvent(first, 7, null), new ManagedEvent(second, 0, NOW));
+        .containsExactly(
+            new ManagedEvent(first, 7, null, List.of(full)),
+            new ManagedEvent(second, 0, NOW, List.of()));
     verify(connections).countByEvent(eq(List.of(first.getId(), second.getId())));
   }
 

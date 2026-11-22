@@ -36,6 +36,7 @@ class LiveEventPagesTest {
           "Ribeira Live",
           null,
           null,
+          List.of(),
           List.of());
 
   private final EventPages pages = mock(EventPages.class);

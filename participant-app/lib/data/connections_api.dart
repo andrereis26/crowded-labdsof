@@ -178,7 +178,7 @@ ConnectedEvent? _connectedEventFromJson(Map<String, dynamic> json) {
     alerts: [
       if (alerts is List)
         for (final item in alerts.whereType<Map<String, dynamic>>())
-          ?_alertFromJson(item),
+          ?eventAlertFromJson(item),
     ],
     updatedAt: change?.publishedAt,
   );
@@ -197,19 +197,5 @@ ConnectedEvent? _connectedEventFromJson(Map<String, dynamic> json) {
             hasEntryCode: false,
           )
         : null,
-  );
-}
-
-EventAlert? _alertFromJson(Map<String, dynamic> json) {
-  final message = json['message'];
-  final sentAt = instantFromJson(json['sentAt']);
-  if (message is! String || sentAt == null) return null;
-  final severity = severityFromCore(json['severity']);
-  return EventAlert(
-    message: message,
-    publisher: 'Organização',
-    sentAt: sentAt,
-    urgent: severity == Severity.critical,
-    severity: severity,
   );
 }

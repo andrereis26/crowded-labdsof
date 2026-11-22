@@ -6,11 +6,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.crowded.notifications.notification.application.dto.NotifyParticipantsCommand;
 import com.crowded.notifications.notification.domain.exception.CauseNotFoundException;
 import com.crowded.notifications.notification.domain.exception.UnsupportedNotificationTypeException;
+import com.crowded.notifications.notification.domain.model.AlertType;
 import com.crowded.notifications.notification.domain.model.ChangeType;
 import com.crowded.notifications.notification.domain.model.Connection;
 import com.crowded.notifications.notification.domain.model.Notification;
 import com.crowded.notifications.notification.domain.model.NotificationType;
 import com.crowded.notifications.notification.domain.model.OfficialChange;
+import com.crowded.notifications.notification.domain.model.OperationalAlert;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -42,6 +44,12 @@ class ParticipantNotifierTest {
           false,
           "Até 5 DEZ em ribeira-live.test/reembolsos",
           null);
+  private final OperationalAlert closure =
+      OperationalAlert.restore(
+          UUID.randomUUID(),
+          EVENT,
+          AlertType.ENTRANCE_CLOSURE,
+          "Usem a Porta B, na Rua do Almada.");
   private final List<Connection> connections =
       List.of(
           new Connection(TICKET_HOLDER, true, null, null),
@@ -52,6 +60,7 @@ class ParticipantNotifierTest {
   private final ParticipantNotifier notifier =
       new ParticipantNotifier(
           id -> Optional.ofNullable(Map.of(cancellation.getId(), cancellation).get(id)),
+          id -> Optional.ofNullable(Map.of(closure.getId(), closure).get(id)),
           (eventId, type) -> eventId.equals(EVENT) ? connections : List.of(),
           notifications,
           announced::add,
@@ -83,6 +92,58 @@ class ParticipantNotifierTest {
     assertThat(notifications.stored.get(1).getBody()).isEqualTo("A organização cancelou o evento.");
     assertThat(announced)
         .containsExactly(notifications.stored.get(0).getId(), notifications.stored.get(1).getId());
+  }
+
+  @Test
+  void notifiesEveryConnectedParticipantWhoWantsOperationalAlertsWithTheSameText() {
+    int stored =
+        notifier.notify(
+            new NotifyParticipantsCommand(
+                UUID.randomUUID(),
+                NotificationType.OPERATIONAL_ALERT,
+                EVENT,
+                closure.getId(),
+                List.of()));
+
+    assertThat(stored).isEqualTo(2);
+    assertThat(notifications.stored)
+        .extracting(Notification::getUserId)
+        .containsExactly(TICKET_HOLDER, ACCESS_CODE);
+    assertThat(notifications.stored)
+        .allSatisfy(
+            notification -> {
+              assertThat(notification.getType()).isEqualTo(NotificationType.OPERATIONAL_ALERT);
+              assertThat(notification.getCauseId()).isEqualTo(closure.getId());
+              assertThat(notification.getTitle()).isEqualTo("Entrada fechada");
+              assertThat(notification.getBody()).isEqualTo("Usem a Porta B, na Rua do Almada.");
+            });
+    assertThat(announced).hasSize(2);
+  }
+
+  @Test
+  void failsWhenTheAlertIsMissingOrAboutAnotherEvent() {
+    assertThatThrownBy(
+            () ->
+                notifier.notify(
+                    new NotifyParticipantsCommand(
+                        UUID.randomUUID(),
+                        NotificationType.OPERATIONAL_ALERT,
+                        EVENT,
+                        UUID.randomUUID(),
+                        List.of())))
+        .isInstanceOf(CauseNotFoundException.class);
+    assertThatThrownBy(
+            () ->
+                notifier.notify(
+                    new NotifyParticipantsCommand(
+                        UUID.randomUUID(),
+                        NotificationType.OPERATIONAL_ALERT,
+                        UUID.randomUUID(),
+                        closure.getId(),
+                        List.of())))
+        .isInstanceOf(CauseNotFoundException.class);
+    assertThat(notifications.stored).isEmpty();
+    assertThat(announced).isEmpty();
   }
 
   @Test

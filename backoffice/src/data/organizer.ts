@@ -1,6 +1,6 @@
-/** Organizer area (O2–O12). The events come from Core (`eventsApi.ts`); the
- * live operations, incidents and alerts are still demo data, whose times are
- * built from `now` so the demo always reads "há 3 min". */
+/** Organizer area (O2–O12). The events and their alerts come from Core
+ * (`eventsApi.ts`); the live operations and incidents are still demo data,
+ * whose times are built from `now` so the demo always reads "há 3 min". */
 
 import type { Confidence } from '../ui/components'
 import type { CrowdLevel } from '../ui/styles'
@@ -55,6 +55,8 @@ export interface OrgEvent {
   crowd?: PublishedCrowd
   /** The waiting times participants see now, at the points that have one. */
   queues?: PublishedQueue[]
+  /** The alerts participants see now, the newest first. */
+  alerts?: SentAlert[]
   gradient: [string, string]
 }
 
@@ -771,98 +773,38 @@ export function parseAnswers(answers: string): number | string {
 
 // ——— Alerts (O6) ———
 
-export type AlertImportance = 'info' | 'warning' | 'critical'
+/** The kinds of alert a member chooses from. Core decides each one's
+ * severity from its kind. */
+export type AlertType = 'ENTRANCE_CLOSURE' | 'CAPACITY_REACHED' | 'SCHEDULE_DELAY' | 'OTHER'
 
+export const alertTypes: Record<AlertType, { label: string; severity: AlertSeverity }> = {
+  ENTRANCE_CLOSURE: { label: 'Entrada fechada', severity: 'critical' },
+  CAPACITY_REACHED: { label: 'Lotação esgotada', severity: 'warning' },
+  SCHEDULE_DELAY: { label: 'Atraso no horário', severity: 'warning' },
+  OTHER: { label: 'Outro', severity: 'warning' },
+}
+
+export type AlertSeverity = 'critical' | 'warning' | 'info'
+
+export const alertSeverities: Record<AlertSeverity, string> = {
+  critical: 'Crítico',
+  warning: 'Aviso',
+  info: 'Informação',
+}
+
+/** An alert the organization sent and has not resolved, as Core keeps it. */
 export interface SentAlert {
   id: string
-  eventId: string
-  title: string
+  /** One of {@link AlertType}, or a kind this page does not offer. */
+  type: string
+  severity: AlertSeverity
   message: string
-  importance: AlertImportance
   sentAt: Date
-  delivered: number
-  seconds: number
 }
 
-export function demoAlerts(now: Date): SentAlert[] {
-  const minAgo = (m: number) => new Date(now.getTime() - m * 60000)
-  const base = { importance: 'info' as const, message: '' }
-  return [
-    {
-      ...base,
-      id: 'a1',
-      eventId: 'festival-margens-2026',
-      title: 'Água disponível no bar principal',
-      sentAt: minAgo(3),
-      delivered: 1240,
-      seconds: 0.8,
-    },
-    {
-      ...base,
-      id: 'a2',
-      eventId: 'festival-margens-2026',
-      title: 'Portas abertas',
-      sentAt: minAgo(140),
-      delivered: 1180,
-      seconds: 0.9,
-    },
-    {
-      ...base,
-      id: 'a3',
-      eventId: 'festival-margens-2026',
-      title: 'Bilhetes disponíveis na bilheteira',
-      sentAt: minAgo(26 * 60),
-      delivered: 1100,
-      seconds: 0.9,
-    },
-    {
-      ...base,
-      id: 'a4',
-      eventId: 'festival-margens-2026',
-      title: 'Horários dos palcos publicados',
-      sentAt: minAgo(2 * 24 * 60),
-      delivered: 1050,
-      seconds: 1.1,
-    },
-    {
-      ...base,
-      id: 'a5',
-      eventId: 'jazz-no-parque',
-      title: 'Entrada pelo portão norte',
-      sentAt: minAgo(3 * 24 * 60),
-      delivered: 290,
-      seconds: 0.7,
-    },
-    {
-      ...base,
-      id: 'a6',
-      eventId: 'margens-inverno',
-      title: 'Primeiros artistas anunciados',
-      sentAt: minAgo(5 * 24 * 60),
-      delivered: 120,
-      seconds: 0.6,
-    },
-  ]
-}
-
-/** Stand-in for the AI drafting service until it exists: turns the
- * organizer's description into a title and a clear message. */
-export function draftAlert(description: string): { title: string; message: string } {
-  const text = description.trim().replace(/\s+/g, ' ')
-  const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean)
-  const first = (sentences[0] ?? text).replace(/[.!?]$/, '')
-  const title = first.split(/ (?:por|devido a|porque) /)[0].slice(0, 60)
-  const doorClosed = /^(.+?) fechad[ao]/i.exec(first)
-  const redirect = /desvia[r]? para (?:a |o )?(.+?)(?:,\s*(.+))?$/i.exec(sentences[1] ?? '')
-  if (doorClosed && redirect) {
-    const place = redirect[1].replace(/[.!?]$/, '')
-    const where = redirect[2] ? `, a ${redirect[2].replace(/[.!?]$/, '')} da entrada principal` : ''
-    return {
-      title,
-      message: `A ${doorClosed[1]} está temporariamente fechada. Use a ${place}${where}. Obrigado pela paciência.`,
-    }
-  }
-  return { title, message: `${sentences.join(' ')} Obrigado pela compreensão.`.trim() }
+/** The alert's kind in words; "Alerta" for one this page does not offer. */
+export function alertLabel(alert: Pick<SentAlert, 'type'>): string {
+  return alertTypes[alert.type as AlertType]?.label ?? 'Alerta'
 }
 
 // ——— Requests to participants (O12) ———

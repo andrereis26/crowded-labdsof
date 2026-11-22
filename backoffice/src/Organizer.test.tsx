@@ -8,7 +8,6 @@ import {
   accessCodeFor,
   applyChange,
   demoEvents,
-  draftAlert,
   formatNumber,
   suggestedLevel,
   validateEvent,
@@ -43,20 +42,11 @@ async function renderAt(path: string, events = fakeEventsApi()) {
 const nbsp = (text: string) => text.replace(/ /g, ' ')
 
 describe('organizer helpers', () => {
-  it('formats numbers, suggests crowd levels and drafts alerts', () => {
+  it('formats numbers and suggests crowd levels', () => {
     expect(formatNumber(1680)).toBe(nbsp('1 680'))
     expect(formatNumber(312)).toBe('312')
     expect(suggestedLevel(2790, 4500)).toBe('moderate')
     expect(suggestedLevel(4400, 4500)).toBe('full')
-    expect(
-      draftAlert(
-        'Porta B fechada por avaria no torniquete. Desviar para a Porta C, 200 m à direita.',
-      ),
-    ).toEqual({
-      title: 'Porta B fechada',
-      message:
-        'A Porta B está temporariamente fechada. Use a Porta C, a 200 m à direita da entrada principal. Obrigado pela paciência.',
-    })
   })
 
   it('checks event codes and applies time changes', () => {
@@ -583,26 +573,74 @@ describe('O5–O7 live operations', () => {
     expect(screen.queryByText(/Lotação publicada/)).not.toBeInTheDocument()
   })
 
-  it('drafts an alert with AI and sends it', async () => {
+  it('sends an alert written by hand once its type and message are filled', async () => {
     const user = userEvent.setup()
-    await renderAt('/organization/alerts')
+    const { events } = await renderAt('/organization/alerts')
+    expect(screen.queryByRole('button', { name: /rascunho/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Ainda não enviaste alertas.')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Gerar rascunho com IA' }))
-    expect(screen.getByText('Descreve o que aconteceu para gerar o rascunho.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Enviar alerta' }))
+    expect(screen.getByText('Escolhe o tipo de alerta.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mensagem')).toHaveAccessibleDescription(/Escreve a mensagem\./)
+    await user.click(screen.getByRole('radio', { name: /Entrada fechada/ }))
+    expect(screen.queryByText('Escolhe o tipo de alerta.')).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText('Mensagem'), '   ')
+    await user.click(screen.getByRole('button', { name: 'Enviar alerta' }))
+    expect(screen.getByText('Escreve a mensagem.')).toBeInTheDocument()
+    expect(events.calls).not.toContain('sendAlert')
 
-    await user.type(
-      screen.getByLabelText('O que aconteceu e o que devem fazer?'),
-      'Porta B fechada por avaria no torniquete. Desviar para a Porta C, 200 m à direita.',
-    )
-    await user.click(screen.getByRole('button', { name: 'Gerar rascunho com IA' }))
-    expect(screen.getByText('Rascunho gerado por IA')).toBeInTheDocument()
-    expect(screen.getByLabelText('Título')).toHaveValue('Porta B fechada')
-
-    await user.click(screen.getByRole('radio', { name: 'Crítico' }))
+    await user.type(screen.getByLabelText('Mensagem'), 'A Porta B está fechada. Usem a Porta C.')
+    expect(screen.queryByText('Escreve a mensagem.')).not.toBeInTheDocument()
+    expect(screen.getByText('Crítico na página do evento.')).toBeInTheDocument()
     expect(screen.getByText(/bilhete ou código de acesso\) · 1 240/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Enviar alerta' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Alerta enviado a 1 240 pessoas.')
-    expect(screen.getByText('Porta B fechada')).toBeInTheDocument()
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Alerta enviado a 1 240 pessoas.')
+    expect(events.events[0].alerts?.[0]).toMatchObject({
+      type: 'ENTRANCE_CLOSURE',
+      message: 'A Porta B está fechada. Usem a Porta C.',
+    })
+    expect(screen.getByText('A Porta B está fechada. Usem a Porta C.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mensagem')).toHaveValue('')
+    expect(screen.getByRole('radio', { name: /Entrada fechada/ })).not.toBeChecked()
+  })
+
+  it('keeps the alert and says why when Core refuses it', async () => {
+    const user = userEvent.setup()
+    const { events } = await renderAt('/organization/alerts')
+
+    await user.click(screen.getByRole('radio', { name: /Atraso no horário/ }))
+    await user.type(screen.getByLabelText('Mensagem'), 'O concerto começa às 22h30.')
+    events.refuse = 'EVENT_CLOSED'
+    await user.click(screen.getByRole('button', { name: 'Enviar alerta' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Este evento já foi cancelado ou terminou.',
+    )
+    expect(screen.getByLabelText('Mensagem')).toHaveValue('O concerto começa às 22h30.')
+    expect(screen.getByRole('radio', { name: /Atraso no horário/ })).toBeChecked()
+  })
+
+  it('counts the alerts of the last seven days on the events page', async () => {
+    const minutesAgo = (m: number) => new Date(now.getTime() - m * 60000)
+    const alert = (id: string, sentAt: Date) => ({
+      id,
+      type: 'OTHER',
+      severity: 'warning' as const,
+      message: 'Olá.',
+      sentAt,
+    })
+    const events = fakeEventsApi(
+      demoEvents().map((e, i) =>
+        i === 0
+          ? { ...e, alerts: [alert('a1', minutesAgo(3)), alert('a2', minutesAgo(9 * 24 * 60))] }
+          : e,
+      ),
+    )
+    await renderAt('/organization/events', events)
+
+    expect(screen.getByText('Alertas (7 dias)').parentElement).toHaveTextContent('1')
+    expect(screen.getByText('Último há 3 min')).toBeInTheDocument()
   })
 
   it('shows the live dashboard from the shared state', async () => {

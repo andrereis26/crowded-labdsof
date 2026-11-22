@@ -1,5 +1,6 @@
 package com.crowded.core.event.api.dto;
 
+import com.crowded.core.connection.api.dto.ActiveAlertResponse;
 import com.crowded.core.event.domain.model.EventStatus;
 import com.crowded.core.event.domain.model.EventType;
 import java.time.Instant;
@@ -8,12 +9,13 @@ import java.util.UUID;
 
 /**
  * Response of {@code GET /events/{eventId}} and each update on {@code GET /events/{eventId}/live}:
- * the event's details, all from its organization, its latest change, its crowd level and its queue
- * waiting times.
+ * the event's details, all from its organization, its latest change, its crowd level, its queue
+ * waiting times and its active alerts, which a participant sees even with their notifications off.
  *
  * @param latestChange null when the event has no change
  * @param crowd null when no crowd level was published
  * @param queues the queue points with a waiting time, in order
+ * @param activeAlerts the alerts sent and not resolved, the newest first
  */
 public record EventPageResponse(
     UUID id,
@@ -28,9 +30,11 @@ public record EventPageResponse(
     OrganizationSummaryResponse organization,
     EventChangeResponse latestChange,
     CrowdResponse crowd,
-    List<QueueTimeResponse> queues) {
+    List<QueueTimeResponse> queues,
+    List<ActiveAlertResponse> activeAlerts) {
 
   public EventPageResponse {
     queues = List.copyOf(queues);
+    activeAlerts = List.copyOf(activeAlerts);
   }
 }

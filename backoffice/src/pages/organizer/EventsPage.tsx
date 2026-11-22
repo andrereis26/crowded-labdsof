@@ -24,22 +24,16 @@ import {
 const DAY = 24 * 3600000
 
 /** O2 · Lista de eventos (início do backoffice). */
-export function EventsPage({
-  events,
-  alerts,
-  now,
-}: {
-  events: OrgEvent[]
-  alerts: SentAlert[]
-  now: Date
-}) {
+export function EventsPage({ events, now }: { events: OrgEvent[]; now: Date }) {
   const location = useLocation()
   // Set by the page that sent the member here, such as after deleting an event.
   const [message] = useState<string>((location.state as { message?: string } | null)?.message ?? '')
   const liveEvents = events.filter((e) => e.status === 'live')
   const upcoming = events.filter((e) => e.status === 'published')
   const active = events.filter((e) => e.status !== 'ended' && e.status !== 'cancelled')
-  const recentAlerts = alerts.filter((a) => now.getTime() - a.sentAt.getTime() < 7 * DAY)
+  const recentAlerts = events
+    .flatMap((e) => e.alerts ?? [])
+    .filter((a) => now.getTime() - a.sentAt.getTime() < 7 * DAY)
   const lastAlert = recentAlerts.reduce<SentAlert | undefined>(
     (last, a) => (!last || a.sentAt > last.sentAt ? a : last),
     undefined,

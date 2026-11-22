@@ -4,14 +4,13 @@ import type { EventsApi, QueueWait } from './data/eventsApi'
 import type { CrowdLevel } from './ui/styles'
 import type { Geocoder } from './data/geocoding'
 import {
-  demoAlerts,
   demoIncidents,
   demoLive,
+  type AlertType,
   type EventChange,
   type Incident,
   type LiveState,
   type OrgEvent,
-  type SentAlert,
 } from './data/organizer'
 import { OrganizerLayout, type OrganizerScope } from './layout/OrganizerLayout'
 import { AlertPage } from './pages/organizer/AlertPage'
@@ -35,12 +34,12 @@ const titles: [string, string][] = [
   ['/organization/more', 'Mais'],
 ]
 
-/** The demo event whose live state, incidents and alerts stand in for any
- * event until those pages read Core. */
+/** The demo event whose live state and incidents stand in for any event
+ * until those pages read Core. */
 const DEMO_EVENT = 'festival-margens-2026'
 
-/** Organizer area: the member's events come from Core; the live operations,
- * incidents and alerts of O5–O12 are still demo state. */
+/** Organizer area: the member's events and their alerts come from Core; the
+ * live operations and incidents of O5–O12 are still demo state. */
 export function OrganizerApp({
   now,
   api,
@@ -56,7 +55,6 @@ export function OrganizerApp({
   const [loadError, setLoadError] = useState(false)
   const [live, setLive] = useState<Record<string, LiveState>>(() => demoLive(now))
   const [incidents, setIncidents] = useState<Incident[]>(() => demoIncidents(now))
-  const [alerts, setAlerts] = useState<SentAlert[]>(() => demoAlerts(now))
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -199,6 +197,15 @@ export function OrganizerApp({
     setLoaded((all = []) => all.map((e) => (e.id === event.id ? { ...e, queues } : e)))
   }
 
+  /** Sends the alert in Core and shows it first among the event's alerts. */
+  const sendAlert = async (event: OrgEvent, type: AlertType, message: string) => {
+    const { recipients, ...alert } = await api.sendAlert(event.id, type, message)
+    setLoaded((all = []) =>
+      all.map((e) => (e.id === event.id ? { ...e, alerts: [alert, ...(e.alerts ?? [])] } : e)),
+    )
+    return recipients
+  }
+
   const updateIncident = (updated: Incident) =>
     setIncidents((all) => all.map((i) => (i.id === updated.id ? updated : i)))
 
@@ -220,7 +227,7 @@ export function OrganizerApp({
     >
       <Routes>
         <Route index element={<Navigate to="events" replace />} />
-        <Route path="events" element={<EventsPage events={events} alerts={alerts} now={now} />} />
+        <Route path="events" element={<EventsPage events={events} now={now} />} />
         <Route
           path="events/new"
           element={
@@ -289,10 +296,9 @@ export function OrganizerApp({
           path="alerts"
           element={forEvent((event) => (
             <AlertPage
+              key={event.id}
               event={event}
-              alerts={alerts.filter((a) => a.eventId === event.id)}
-              now={now}
-              onSend={(alert) => setAlerts((all) => [alert, ...all])}
+              onSend={(type, message) => sendAlert(event, type, message)}
             />
           ))}
         />

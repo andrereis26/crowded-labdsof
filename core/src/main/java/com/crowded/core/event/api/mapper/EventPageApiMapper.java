@@ -1,5 +1,7 @@
 package com.crowded.core.event.api.mapper;
 
+import com.crowded.core.connection.api.dto.ActiveAlertResponse;
+import com.crowded.core.connection.domain.model.ActiveAlert;
 import com.crowded.core.event.api.dto.EventChangeResponse;
 import com.crowded.core.event.api.dto.EventPageResponse;
 import com.crowded.core.event.api.dto.ProvenanceResponse;
@@ -25,6 +27,9 @@ public interface EventPageApiMapper {
   EventPageResponse toResponse(EventPage page);
 
   ProvenanceResponse toResponse(Provenance provenance);
+
+  @Mapping(target = "id", source = "alertId")
+  ActiveAlertResponse toResponse(ActiveAlert alert);
 
   @Mapping(target = "pointName", source = "name")
   @Mapping(target = "waitMinutes", source = "time.waitMinutes")

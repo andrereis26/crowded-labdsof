@@ -2,6 +2,8 @@ import type { CrowdLevel } from '../ui/styles'
 import { apiBaseUrl } from './auth'
 import {
   categories,
+  type AlertSeverity,
+  type AlertType,
   type ConfirmationSettings,
   type EventChange,
   type EventStatus,
@@ -9,6 +11,7 @@ import {
   type OrgEvent,
   type PublishedCrowd,
   type PublishedQueue,
+  type SentAlert,
 } from './organizer'
 
 /** A waiting time to publish at one of the event's queue points. */
@@ -33,6 +36,13 @@ export interface EventsApi {
   /** Publishes waiting times at the event's queue points; the others keep
    * theirs. Returns every time connected participants see now. */
   publishQueues(eventId: string, waits: QueueWait[]): Promise<PublishedQueue[]>
+  /** Sends an operational alert to everyone connected to the event; Core
+   * notifies those who want alerts. Returns it with how many it was sent to. */
+  sendAlert(
+    eventId: string,
+    type: AlertType,
+    message: string,
+  ): Promise<SentAlert & { recipients: number }>
   /** Where an image tag loads the event's image: the browser sends the
    * session cookie (ADR 0021), and each upload gets its own address, so a
    * replaced image is never shown from the cache. */
@@ -83,6 +93,25 @@ interface EventJson {
   imageUpdatedAt?: string | null
   crowd?: CrowdJson | null
   queues?: QueueJson[]
+  activeAlerts?: AlertJson[]
+}
+
+interface AlertJson {
+  id: string
+  type: string
+  severity: 'CRITICAL' | 'WARNING' | 'INFO'
+  message: string
+  sentAt: string
+}
+
+function alertOf(json: AlertJson): SentAlert {
+  return {
+    id: json.id,
+    type: json.type,
+    severity: json.severity.toLowerCase() as AlertSeverity,
+    message: json.message,
+    sentAt: new Date(json.sentAt),
+  }
 }
 
 interface QueueJson {
@@ -235,6 +264,7 @@ export function fromJson(json: EventJson): OrgEvent {
     imageUpdatedAt: json.imageUpdatedAt ?? undefined,
     crowd: json.crowd ? crowdOf(json.crowd) : undefined,
     queues: (json.queues ?? []).map(queueOf),
+    alerts: (json.activeAlerts ?? []).map(alertOf),
     gradient: gradientFor(json.id),
   }
 }
@@ -421,6 +451,14 @@ export function httpEventsApi(
       const body = { queues: waits.map((w) => ({ pointName: w.point, waitMinutes: w.minutes })) }
       const json = await call<{ queues: QueueJson[] }>('PUT', `/events/${eventId}/queues`, body)
       return json.queues.map(queueOf)
+    },
+    async sendAlert(eventId, type, message) {
+      const json = await call<AlertJson & { recipientsCount: number }>(
+        'POST',
+        `/events/${eventId}/alerts`,
+        { type, message },
+      )
+      return { ...alertOf(json), recipients: json.recipientsCount }
     },
     imageUrl(event) {
       const version = event.imageUpdatedAt ? `?v=${encodeURIComponent(event.imageUpdatedAt)}` : ''

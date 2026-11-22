@@ -1,5 +1,6 @@
 package com.crowded.core.event.api.dto;
 
+import com.crowded.core.connection.api.dto.ActiveAlertResponse;
 import com.crowded.core.event.domain.model.EventStatus;
 import com.crowded.core.event.domain.model.EventType;
 import java.time.Instant;
@@ -18,6 +19,7 @@ import java.util.UUID;
  *     it has none
  * @param crowd the crowd level participants read now; null when none was published
  * @param queues the queue points with a waiting time participants read now, in order
+ * @param activeAlerts the alerts sent and not resolved, the newest first
  */
 public record ManagedEventResponse(
     UUID id,
@@ -37,10 +39,12 @@ public record ManagedEventResponse(
     ConfirmationsResponse confirmations,
     Instant imageUpdatedAt,
     CrowdResponse crowd,
-    List<QueueTimeResponse> queues) {
+    List<QueueTimeResponse> queues,
+    List<ActiveAlertResponse> activeAlerts) {
 
   public ManagedEventResponse {
     queuePoints = List.copyOf(queuePoints);
     queues = List.copyOf(queues);
+    activeAlerts = List.copyOf(activeAlerts);
   }
 }

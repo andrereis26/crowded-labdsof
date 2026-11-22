@@ -254,6 +254,25 @@ public final class Event {
   }
 
   /**
+   * Sends an operational alert of {@code type} to the {@code recipients} participants connected to
+   * this event now. The event itself does not change.
+   *
+   * @throws RuleViolationException when the type is missing or the message is missing, blank or too
+   *     long
+   * @throws ConflictException when the event is cancelled or ended
+   */
+  public Alert sendAlert(AlertType type, String message, int recipients, Instant now) {
+    if (type == null) {
+      throw new RuleViolationException("ALERT_TYPE_REQUIRED", "Choose the alert's type.");
+    }
+    AlertMessage text = new AlertMessage(message);
+    if (CLOSED.contains(state.status())) {
+      throw new ConflictException("EVENT_CLOSED", "This event is cancelled or ended.");
+    }
+    return Alert.send(id, organizationId, type, text, recipients, now);
+  }
+
+  /**
    * The change a repeated request matches: {@code latest}, the latest published change of its type,
    * when this event still has its values.
    *

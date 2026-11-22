@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.crowded.core.connection.domain.model.ActiveAlert;
 import com.crowded.core.event.api.mapper.EventApiMapperImpl;
 import com.crowded.core.event.api.mapper.EventPageApiMapperImpl;
 import com.crowded.core.event.application.dto.CorrectEventCommand;
@@ -37,6 +38,7 @@ import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.model.QueuePoints;
 import com.crowded.core.event.domain.model.QueueWait;
 import com.crowded.core.event.domain.model.Schedule;
+import com.crowded.core.event.domain.model.Severity;
 import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.shared.domain.exception.ConflictException;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
@@ -102,7 +104,7 @@ class EventControllerTest {
 
   @Test
   void createsTheEventWithTheCodeOfItsType() throws Exception {
-    when(service.register(any())).thenReturn(new ManagedEvent(event, 0, null));
+    when(service.register(any())).thenReturn(new ManagedEvent(event, 0, null, List.of()));
 
     mockMvc
         .perform(asUser(post("/events"), CREATE))
@@ -134,12 +136,18 @@ class EventControllerTest {
   }
 
   @Test
-  void listsTheMembersEventsWithTheirQueueTimes() throws Exception {
+  void listsTheMembersEventsWithTheirQueueTimesAndActiveAlerts() throws Exception {
     Instant published = Instant.parse("2026-11-12T10:00:00Z");
     event.publishQueueTimes(
         List.of(new QueueWait("Bar", 15)), Provenance.organization("Ribeira Live", published));
+    ActiveAlert delay =
+        new ActiveAlert(
+            UUID.randomUUID(), "SCHEDULE_DELAY", Severity.WARNING, "Começa às 22h.", published);
     when(service.listForMember(USER))
-        .thenReturn(List.of(new ManagedEvent(event, 12, Instant.parse("2026-11-12T09:30:00Z"))));
+        .thenReturn(
+            List.of(
+                new ManagedEvent(
+                    event, 12, Instant.parse("2026-11-12T09:30:00Z"), List.of(delay))));
 
     mockMvc
         .perform(get("/organizations/me/events").with(jwt().jwt(t -> t.subject(USER.toString()))))
@@ -152,12 +160,17 @@ class EventControllerTest {
         .andExpect(jsonPath("$[0].queues[0].pointName").value("Bar"))
         .andExpect(jsonPath("$[0].queues[0].waitMinutes").value(15))
         .andExpect(jsonPath("$[0].queues[0].provenance.sourceName").value("Ribeira Live"))
-        .andExpect(jsonPath("$[0].queues[0].provenance.lastUpdatedAt").value(published.toString()));
+        .andExpect(jsonPath("$[0].queues[0].provenance.lastUpdatedAt").value(published.toString()))
+        .andExpect(jsonPath("$[0].activeAlerts[0].id").value(delay.alertId().toString()))
+        .andExpect(jsonPath("$[0].activeAlerts[0].type").value("SCHEDULE_DELAY"))
+        .andExpect(jsonPath("$[0].activeAlerts[0].severity").value("WARNING"))
+        .andExpect(jsonPath("$[0].activeAlerts[0].message").value("Começa às 22h."))
+        .andExpect(jsonPath("$[0].activeAlerts[0].sentAt").value(published.toString()));
   }
 
   @Test
   void correctsTheFieldsSent() throws Exception {
-    when(service.correct(any())).thenReturn(new ManagedEvent(event, 3, null));
+    when(service.correct(any())).thenReturn(new ManagedEvent(event, 3, null, List.of()));
 
     mockMvc
         .perform(

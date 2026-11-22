@@ -233,6 +233,9 @@ class _FakeEventsApi implements EventsApi {
 
   /// Core's `queues`: the points with a published waiting time.
   List<Map<String, Object?>> queues = [];
+
+  /// Core's `activeAlerts`: the alerts sent and not resolved.
+  List<Map<String, Object?>> alerts = [];
   List<Map<String, Object?>> history = [
     _coreChange('c-doors', 'TIME_CHANGE', {
       'doorsOpenAt': '2026-11-06T19:30:00Z',
@@ -267,6 +270,7 @@ class _FakeEventsApi implements EventsApi {
     'latestChange': history.firstOrNull,
     'crowd': crowd,
     'queues': queues,
+    'activeAlerts': alerts,
   })!;
 
   @override
@@ -718,6 +722,43 @@ void main() {
       expect(store.showsSavedData(id), isFalse);
       store.signOut();
     });
+
+    testWidgets(
+      'shows the alerts the organization sends, live, before the day',
+      (tester) async {
+        Map<String, Object?> alert(String severity, String message) => {
+          'id': 'a-$severity',
+          'type': 'OTHER',
+          'severity': severity,
+          'message': message,
+          'sentAt': _now
+              .subtract(const Duration(minutes: 2))
+              .toUtc()
+              .toIso8601String(),
+        };
+        final events = _FakeEventsApi()
+          ..status = 'SCHEDULED'
+          ..history = []
+          ..start = _now.add(const Duration(days: 2)).toUtc().toIso8601String()
+          ..alerts = [alert('WARNING', 'O concerto começa às 22h30.')];
+        await _pump(tester, location: page, events: events);
+
+        expect(find.text('O concerto começa às 22h30.'), findsOneWidget);
+        expect(find.text('ALERTA DA ORGANIZAÇÃO'), findsOneWidget);
+
+        events
+          ..alerts = [
+            alert('CRITICAL', 'A Porta A fechou. Usem a Porta B.'),
+            ...events.alerts,
+          ]
+          ..publish();
+        await tester.pumpAndSettle();
+
+        expect(find.text('A Porta A fechou. Usem a Porta B.'), findsOneWidget);
+        expect(find.text('O concerto começa às 22h30.'), findsOneWidget);
+        expect(events.pages, 1, reason: 'no reload: the stream sent it');
+      },
+    );
 
     testWidgets('shows the crowd level the organization publishes today', (
       tester,

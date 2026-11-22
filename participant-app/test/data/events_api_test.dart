@@ -275,6 +275,39 @@ void main() {
       );
     });
 
+    test('carries the active alerts, critical ones as urgent', () {
+      final page = eventPageFromJson({
+        ..._page(),
+        'activeAlerts': [
+          {
+            'id': 'a-2',
+            'type': 'ENTRANCE_CLOSURE',
+            'severity': 'CRITICAL',
+            'message': 'Porta A fechada. Usem a B.',
+            'sentAt': '2026-11-27T21:05:00Z',
+          },
+          {
+            'id': 'a-1',
+            'type': 'SCHEDULE_DELAY',
+            'severity': 'WARNING',
+            'message': 'Começa às 22h.',
+            'sentAt': '2026-11-27T20:50:00Z',
+          },
+          {'id': 'a-0', 'type': 'OTHER', 'severity': 'INFO'},
+        ],
+      })!;
+
+      final alerts = eventFromCore(page, const []).alerts;
+
+      expect(alerts.map((a) => (a.message, a.urgent, a.severity)), [
+        ('Porta A fechada. Usem a B.', true, Severity.critical),
+        ('Começa às 22h.', false, Severity.warning),
+      ]);
+      expect(alerts.first.sentAt, DateTime.utc(2026, 11, 27, 21, 5).toLocal());
+      expect(alerts.first.publisher, page.organization);
+      expect(eventPageFromJson(_page())!.alerts, isEmpty);
+    });
+
     test('builds the event with its changes, newest first', () {
       final history = [
         coreChangeFromJson(

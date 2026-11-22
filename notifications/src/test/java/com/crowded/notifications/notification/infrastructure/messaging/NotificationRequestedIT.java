@@ -59,6 +59,11 @@ class NotificationRequestedIT extends IntegrationTest {
   private static final UUID ANA_FADO_TICKET =
       UUID.fromString("40000000-0000-4000-8000-000000000002");
 
+  // Concerto na Avenida, its south entrance closed; Ana, Bruno and Carla joined with its code.
+  private static final UUID AVENIDA = UUID.fromString("30000000-0000-4000-8000-000000000002");
+  private static final UUID AVENIDA_CLOSURE =
+      UUID.fromString("60000000-0000-4000-8000-000000000001");
+
   private static final Duration TIMEOUT = Duration.ofSeconds(20);
 
   @Autowired private RabbitTemplate rabbit;
@@ -161,6 +166,43 @@ class NotificationRequestedIT extends IntegrationTest {
       assertThat(count(Notification.deduplicationKey(ANA, command.messageId()))).isZero();
     } finally {
       jdbc.update("DELETE FROM event_notification_setting WHERE id = ?", setting);
+    }
+  }
+
+  @Test
+  @ResourceLock(SHARED_STATE)
+  void theParticipantsWhoWantOperationalAlertsAreNotifiedOfOneWithinAMinute() {
+    UUID setting = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO user_notification_setting (id, user_id, type, enabled) "
+            + "VALUES (?, ?, 'OPERATIONAL_ALERT', false)",
+        setting,
+        BRUNO);
+    try {
+      UUID messageId = UUID.randomUUID();
+      Instant published = Instant.now();
+
+      publish(messageId, json(messageId, "OPERATIONAL_ALERT", AVENIDA, AVENIDA_CLOSURE));
+
+      String ana = Notification.deduplicationKey(ANA, messageId);
+      await(() -> count(ana) == 1 && count(Notification.deduplicationKey(CARLA, messageId)) == 1);
+      assertThat(Duration.between(published, Instant.now())).isLessThan(Duration.ofMinutes(1));
+      assertThat(
+              jdbc.queryForMap(
+                  "SELECT event_id, CAST(type AS text) AS type, cause_id, title, body "
+                      + "FROM notification WHERE deduplication_key = ?",
+                  ana))
+          .containsEntry("event_id", AVENIDA)
+          .containsEntry("type", "OPERATIONAL_ALERT")
+          .containsEntry("cause_id", AVENIDA_CLOSURE)
+          .containsEntry("title", "Entrada fechada")
+          .containsEntry(
+              "body", "A Entrada Sul está fechada. Usem a Entrada Norte, na Rua do Almada.");
+      assertThat(count(Notification.deduplicationKey(BRUNO, messageId)))
+          .as("operational alerts turned off overall")
+          .isZero();
+    } finally {
+      jdbc.update("DELETE FROM user_notification_setting WHERE id = ?", setting);
     }
   }
 
