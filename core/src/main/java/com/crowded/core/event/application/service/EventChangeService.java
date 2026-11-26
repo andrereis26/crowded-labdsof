@@ -46,6 +46,7 @@ public class EventChangeService {
   private final OrganizationRepository organizations;
   private final NotificationRequester notifications;
   private final EventUpdates updates;
+  private final WeatherService weather;
   private final AuditLog audit;
   private final Clock clock;
   private final MeterRegistry meters;
@@ -57,6 +58,7 @@ public class EventChangeService {
       OrganizationRepository organizations,
       NotificationRequester notifications,
       EventUpdates updates,
+      WeatherService weather,
       AuditLog audit,
       Clock clock,
       MeterRegistry meters) {
@@ -66,6 +68,7 @@ public class EventChangeService {
     this.organizations = organizations;
     this.notifications = notifications;
     this.updates = updates;
+    this.weather = weather;
     this.audit = audit;
     this.clock = clock;
     this.meters = meters;
@@ -108,6 +111,8 @@ public class EventChangeService {
   private PublishedChange record(Event event, PublishChangeCommand command, EventChange change) {
     changes.save(change);
     events.save(event);
+    // A new date or venue may fall under other forecasts and warnings.
+    weather.refresh(event);
     notifications.request(OFFICIAL_CHANGE, event.getId(), change.getId());
     updates.announce(event.getId());
     audit.record(

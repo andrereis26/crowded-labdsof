@@ -58,6 +58,8 @@ class EventPage {
     this.latestChange,
     this.venueStatus,
     this.alerts = const [],
+    this.weather,
+    this.warnings = const [],
   });
 
   final String id;
@@ -82,6 +84,13 @@ class EventPage {
   /// The alerts the organization sent and has not resolved, newest first.
   /// Shown even to a participant who turned their notifications off.
   final List<EventAlert> alerts;
+
+  /// IPMA's forecast for the event's first day it has; null before IPMA
+  /// forecasts it.
+  final WeatherInfo? weather;
+
+  /// IPMA's warnings for the district during the event, most severe first.
+  final List<WeatherWarning> warnings;
 }
 
 /// An official change as Core sends it, before the app words it.
@@ -301,6 +310,84 @@ EventPage? eventPageFromJson(Map<String, dynamic> json) {
         for (final item in alerts.whereType<Map<String, dynamic>>())
           ?eventAlertFromJson(item, publisher: organizationName),
     ],
+    weather: weatherFromJson(json),
+    warnings: weatherWarningsFromJson(json),
+  );
+}
+
+/// The forecast of the first day on Core's event [page], worded for P5,
+/// with IPMA's update time; null when there is none it can read.
+WeatherInfo? weatherFromJson(Map<String, dynamic> page) {
+  final weather = page['weather'];
+  final forecast = weather is Map<String, dynamic> ? weather['forecast'] : null;
+  if (forecast is! List) return null;
+  for (final day in forecast.whereType<Map<String, dynamic>>()) {
+    final conditions = day['conditions'];
+    final min = day['minTemperature'];
+    final max = day['maxTemperature'];
+    final rain = day['precipitationProbability'];
+    final at = provenanceFromJson(day['provenance'])?.updatedAt;
+    if (conditions is! String ||
+        min is! num ||
+        max is! num ||
+        rain is! num ||
+        at == null) {
+      continue;
+    }
+    return WeatherInfo(
+      summary: '${max.round()}° · $conditions',
+      detail:
+          'Mínima de ${min.round()}° · ${rain.round()}% de probabilidade '
+          'de chuva',
+      updatedAt: at,
+      icon: weatherIconFor(conditions, rain),
+    );
+  }
+  return null;
+}
+
+/// Rain for a wet forecast, a cloud for a grey one, the sun otherwise.
+WeatherIcon weatherIconFor(String conditions, num rainChance) {
+  final text = conditions.toLowerCase();
+  const wet = ['chuv', 'aguaceiro', 'trovoada', 'granizo', 'neve'];
+  const grey = ['nublado', 'encoberto', 'nevoeiro', 'neblina', 'nebulosidade'];
+  if (rainChance >= 50 || wet.any(text.contains)) return WeatherIcon.rain;
+  if (grey.any(text.contains)) return WeatherIcon.cloud;
+  return WeatherIcon.sun;
+}
+
+/// The IPMA warnings on Core's event [page], most severe first.
+List<WeatherWarning> weatherWarningsFromJson(Map<String, dynamic> page) {
+  final weather = page['weather'];
+  final warnings = weather is Map<String, dynamic> ? weather['warnings'] : null;
+  return [
+    if (warnings is List)
+      for (final item in warnings.whereType<Map<String, dynamic>>())
+        ?weatherWarningFromJson(item),
+  ];
+}
+
+/// An IPMA warning as Core sends it, or null when its level, type or times
+/// are missing or unknown to this version. Its time is when Crowded saw it.
+WeatherWarning? weatherWarningFromJson(Map<String, dynamic> json) {
+  final level = switch (json['level']) {
+    'YELLOW' => WarningLevel.yellow,
+    'ORANGE' => WarningLevel.orange,
+    'RED' => WarningLevel.red,
+    _ => null,
+  };
+  final type = json['awarenessType'];
+  final issuedAt = provenanceFromJson(json['provenance'])?.updatedAt;
+  final until = _instant(json['endTime']);
+  if (level == null || type is! String || issuedAt == null || until == null) {
+    return null;
+  }
+  return WeatherWarning(
+    level: level,
+    title: type,
+    detail: stringFromJson(json['description']),
+    issuedAt: issuedAt,
+    until: until,
   );
 }
 
@@ -485,6 +572,8 @@ Event eventFromCore(EventPage page, List<CoreChange> history) {
     provenance: (page.latestChange ?? history.firstOrNull)?.source,
     venueStatus: page.venueStatus,
     alerts: page.alerts,
+    weather: page.weather,
+    warnings: page.warnings,
   );
 }
 

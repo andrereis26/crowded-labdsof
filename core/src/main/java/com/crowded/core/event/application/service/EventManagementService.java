@@ -64,6 +64,7 @@ public class EventManagementService {
   private final EventAccess access;
   private final EventCodes codes;
   private final EventUpdates updates;
+  private final WeatherService weather;
   private final AuditLog audit;
   private final Clock clock;
   private final MeterRegistry meters;
@@ -77,6 +78,7 @@ public class EventManagementService {
       ActiveAlertRepository alerts,
       EventAccess access,
       EventUpdates updates,
+      WeatherService weather,
       AuditLog audit,
       Clock clock,
       MeterRegistry meters) {
@@ -89,6 +91,7 @@ public class EventManagementService {
     this.access = access;
     this.codes = new EventCodes(events);
     this.updates = updates;
+    this.weather = weather;
     this.audit = audit;
     this.clock = clock;
     this.meters = meters;
@@ -126,6 +129,7 @@ public class EventManagementService {
             now);
     codes.checkFree(event.getAdmission().code(), null, now);
     events.add(event);
+    weather.refresh(event);
 
     audit.record(
         command.userId(),
@@ -200,6 +204,9 @@ public class EventManagementService {
       corrected.add("confirmations");
     }
     events.save(event);
+    if (command.district() != null) {
+      weather.refresh(event);
+    }
     updates.announce(event.getId());
 
     audit.record(

@@ -75,6 +75,7 @@ class EventManagementServiceTest {
   private final EventImageRepository images = mock(EventImageRepository.class);
   private final ActiveAlertRepository alerts = mock(ActiveAlertRepository.class);
   private final EventUpdates updates = mock(EventUpdates.class);
+  private final WeatherService weather = mock(WeatherService.class);
   private final AuditLog audit = mock(AuditLog.class);
   private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private final EventManagementService service =
@@ -87,6 +88,7 @@ class EventManagementServiceTest {
           alerts,
           new EventAccess(events, users, connections, meters),
           updates,
+          weather,
           audit,
           Clock.fixed(NOW, ZoneOffset.UTC),
           meters);
@@ -116,6 +118,7 @@ class EventManagementServiceTest {
     assertThat(event.getConfirmations().promptCategories()).containsExactly("CROWD_LEVEL");
     verify(events).lockCodes();
     verify(events).isCodeUsedByAnotherUpcomingEvent(new EventCode("SAOJOAO26"), null, NOW);
+    verify(weather).refresh(event);
     verify(audit)
         .record(
             MEMBER,
@@ -196,6 +199,7 @@ class EventManagementServiceTest {
     verify(events)
         .isCodeUsedByAnotherUpcomingEvent(new EventCode("INVERNO-26"), event.getId(), NOW);
     verify(events).save(event);
+    verify(weather, never()).refresh(event);
     verify(updates).announce(event.getId());
     verify(audit)
         .record(
@@ -228,6 +232,7 @@ class EventManagementServiceTest {
     assertThat(event.getAdmission())
         .isEqualTo(new Admission(EventType.PUBLIC, new EventCode("INVERNO-26")));
     assertThat(event.getDistrict()).isEqualTo(new District("Braga"));
+    verify(weather).refresh(event);
     verify(events)
         .isCodeUsedByAnotherUpcomingEvent(new EventCode("INVERNO-26"), event.getId(), NOW);
     verify(audit)

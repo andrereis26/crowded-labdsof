@@ -213,15 +213,16 @@ ON CONFLICT DO NOTHING;
 -- An orange warning, already notified, for the Arraial; a yellow one, shown on
 -- the page without a notification, for the concert.
 INSERT INTO weather_warning (
-  id, event_id, awareness_type, start_time, level, end_time, notified_level,
+  id, event_id, awareness_type, start_time, level, end_time, notified_level, description,
   provenance_source_type, provenance_source_name, provenance_last_updated_at, provenance_confirmed
 ) VALUES
   ('a0000000-0000-4000-8000-000000000043', '30000000-0000-4000-8000-000000000004', 'Trovoada',
    date_trunc('hour', now()) + interval '5 days 18 hours', 'ORANGE', date_trunc('hour', now()) + interval '6 days 3 hours',
-   'ORANGE', 'EXTERNAL_SERVICE', 'IPMA', now() - interval '1 hour', true),
+   'ORANGE', 'Trovoada, por vezes acompanhada de granizo e rajadas fortes.',
+   'EXTERNAL_SERVICE', 'IPMA', now() - interval '1 hour', true),
   ('a0000000-0000-4000-8000-000000000044', '30000000-0000-4000-8000-000000000002', 'Vento',
    date_trunc('hour', now()) - interval '2 hours', 'YELLOW', date_trunc('hour', now()) + interval '6 hours',
-   NULL, 'EXTERNAL_SERVICE', 'IPMA', now() - interval '30 minutes', true)
+   NULL, 'Rajadas até 70 km/h.', 'EXTERNAL_SERVICE', 'IPMA', now() - interval '30 minutes', true)
 ON CONFLICT DO NOTHING;
 
 -- Reports, confirmations and incidents -----------------------------------------------------------

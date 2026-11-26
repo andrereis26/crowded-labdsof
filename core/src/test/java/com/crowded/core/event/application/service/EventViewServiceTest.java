@@ -93,6 +93,8 @@ class EventViewServiceTest {
             null,
             null,
             List.of(),
+            List.of(),
+            List.of(),
             List.of());
     when(pages.current(event.getId())).thenReturn(page);
 

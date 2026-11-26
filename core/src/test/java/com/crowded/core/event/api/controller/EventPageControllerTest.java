@@ -16,6 +16,7 @@ import com.crowded.core.event.api.mapper.EventPageApiMapperImpl;
 import com.crowded.core.event.api.mapper.FreshnessTestConfiguration;
 import com.crowded.core.event.application.dto.EventChangeView;
 import com.crowded.core.event.application.dto.EventPage;
+import com.crowded.core.event.application.dto.WeatherWarningView;
 import com.crowded.core.event.application.service.EventViewService;
 import com.crowded.core.event.application.service.LiveEventPages;
 import com.crowded.core.event.domain.model.ChangeType;
@@ -27,10 +28,13 @@ import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.model.QueuePoint;
 import com.crowded.core.event.domain.model.QueueTime;
 import com.crowded.core.event.domain.model.Severity;
+import com.crowded.core.event.domain.model.WarningLevel;
+import com.crowded.core.event.domain.model.WeatherForecast;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.infrastructure.config.SecurityConfiguration;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +67,7 @@ class EventPageControllerTest {
   private static final UUID USER = UUID.randomUUID();
   private static final UUID ORGANIZATION = UUID.randomUUID();
   private static final UUID ALERT = UUID.randomUUID();
+  private static final UUID WARNING = UUID.randomUUID();
   private static final EventChangeView POSTPONEMENT =
       new EventChangeView(
           UUID.randomUUID(),
@@ -103,7 +108,20 @@ class EventPageControllerTest {
                   Severity.CRITICAL,
                   "Usem a Porta B.",
                   NOW,
-                  "Ribeira Live")));
+                  "Ribeira Live")),
+          List.of(
+              new WeatherForecast(
+                  LocalDate.parse("2026-11-21"), "Chuvisco", 9.5, 14, 80, Provenance.ipma(NOW))),
+          List.of(
+              new WeatherWarningView(
+                  WARNING,
+                  "Vento",
+                  WarningLevel.RED,
+                  Severity.CRITICAL,
+                  Instant.parse("2026-11-21T18:00:00Z"),
+                  Instant.parse("2026-11-22T03:00:00Z"),
+                  "Rajadas até 130 km/h.",
+                  Provenance.ipma(NOW))));
 
   @Autowired private MockMvc mockMvc;
 
@@ -152,7 +170,26 @@ class EventPageControllerTest {
         .andExpect(jsonPath("$.activeAlerts[0].provenance.sourceName").value("Ribeira Live"))
         .andExpect(jsonPath("$.activeAlerts[0].provenance.lastUpdatedAt").value(NOW.toString()))
         .andExpect(jsonPath("$.activeAlerts[0].provenance.stale").value(false))
-        .andExpect(jsonPath("$.activeAlerts[0].provenance.staleAt").doesNotExist());
+        .andExpect(jsonPath("$.activeAlerts[0].provenance.staleAt").doesNotExist())
+        .andExpect(jsonPath("$.weather.forecast[0].date").value("2026-11-21"))
+        .andExpect(jsonPath("$.weather.forecast[0].conditions").value("Chuvisco"))
+        .andExpect(jsonPath("$.weather.forecast[0].minTemperature").value(9.5))
+        .andExpect(jsonPath("$.weather.forecast[0].precipitationProbability").value(80.0))
+        .andExpect(
+            jsonPath("$.weather.forecast[0].provenance.sourceType").value("EXTERNAL_SERVICE"))
+        .andExpect(jsonPath("$.weather.forecast[0].provenance.sourceName").value("IPMA"))
+        .andExpect(jsonPath("$.weather.forecast[0].provenance.lastUpdatedAt").value(NOW.toString()))
+        .andExpect(jsonPath("$.weather.warnings[0].id").value(WARNING.toString()))
+        .andExpect(jsonPath("$.weather.warnings[0].awarenessType").value("Vento"))
+        .andExpect(jsonPath("$.weather.warnings[0].level").value("RED"))
+        .andExpect(jsonPath("$.weather.warnings[0].severity").value("CRITICAL"))
+        .andExpect(jsonPath("$.weather.warnings[0].startTime").value("2026-11-21T18:00:00Z"))
+        .andExpect(jsonPath("$.weather.warnings[0].endTime").value("2026-11-22T03:00:00Z"))
+        .andExpect(jsonPath("$.weather.warnings[0].description").value("Rajadas até 130 km/h."))
+        .andExpect(jsonPath("$.weather.warnings[0].provenance.sourceName").value("IPMA"))
+        .andExpect(jsonPath("$.weather.forecast[0].provenance.stale").value(false))
+        .andExpect(jsonPath("$.weather.warnings[0].provenance.stale").value(false))
+        .andExpect(jsonPath("$.weather.warnings[0].provenance.staleAt").doesNotExist());
   }
 
   @Test
@@ -171,6 +208,60 @@ class EventPageControllerTest {
         .andExpect(jsonPath("$.crowd.provenance.staleAt").value(NOW.toString()))
         .andExpect(jsonPath("$.queues[0].provenance.stale").value(true))
         .andExpect(jsonPath("$.queues[0].provenance.staleAt").value(NOW.toString()));
+  }
+
+  @Test
+  void flagsTheForecastAfterThreeHoursButNeverAWarning() throws Exception {
+    when(service.page(USER, EVENT))
+        .thenReturn(weatherSeenAt(NOW.minusSeconds(3 * 3600 - 1)))
+        .thenReturn(weatherSeenAt(NOW.minusSeconds(3 * 3600)));
+
+    mockMvc
+        .perform(asUser(get("/events/{eventId}", EVENT)))
+        .andExpect(jsonPath("$.weather.forecast[0].provenance.stale").value(false))
+        .andExpect(jsonPath("$.weather.warnings[0].provenance.stale").value(false));
+    mockMvc
+        .perform(asUser(get("/events/{eventId}", EVENT)))
+        .andExpect(jsonPath("$.weather.forecast[0].provenance.stale").value(true))
+        .andExpect(jsonPath("$.weather.forecast[0].provenance.staleAt").value(NOW.toString()))
+        .andExpect(jsonPath("$.weather.warnings[0].provenance.stale").value(false));
+  }
+
+  private static EventPage weatherSeenAt(Instant at) {
+    WeatherWarningView warning = PAGE.warnings().getFirst();
+    return new EventPage(
+        PAGE.id(),
+        PAGE.name(),
+        PAGE.description(),
+        PAGE.type(),
+        PAGE.status(),
+        PAGE.startDateTime(),
+        PAGE.doorsOpenAt(),
+        PAGE.endDateTime(),
+        PAGE.venueName(),
+        PAGE.address(),
+        PAGE.district(),
+        PAGE.latitude(),
+        PAGE.longitude(),
+        PAGE.organizationId(),
+        PAGE.organizationName(),
+        PAGE.latestChange(),
+        PAGE.crowd(),
+        PAGE.queues(),
+        PAGE.activeAlerts(),
+        List.of(
+            new WeatherForecast(
+                LocalDate.parse("2026-11-21"), "Chuvisco", 9.5, 14, 80, Provenance.ipma(at))),
+        List.of(
+            new WeatherWarningView(
+                warning.id(),
+                warning.awarenessType(),
+                warning.level(),
+                warning.severity(),
+                warning.startTime(),
+                warning.endTime(),
+                warning.description(),
+                Provenance.ipma(at))));
   }
 
   private static EventPage pageUpdatedAt(Instant at) {
@@ -194,7 +285,9 @@ class EventPageControllerTest {
         PAGE.latestChange(),
         new CrowdStatus(CrowdLevel.HIGH, ribeira),
         List.of(new QueuePoint("Porta A", new QueueTime(15, ribeira))),
-        PAGE.activeAlerts());
+        PAGE.activeAlerts(),
+        PAGE.forecast(),
+        PAGE.warnings());
   }
 
   @Test

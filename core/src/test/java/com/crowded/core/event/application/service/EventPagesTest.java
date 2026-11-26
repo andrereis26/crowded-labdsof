@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.crowded.core.connection.domain.model.ActiveAlert;
 import com.crowded.core.connection.domain.repository.ActiveAlertRepository;
 import com.crowded.core.event.application.dto.EventPage;
+import com.crowded.core.event.application.dto.WeatherWarningView;
 import com.crowded.core.event.domain.model.ChangeType;
 import com.crowded.core.event.domain.model.Coordinates;
 import com.crowded.core.event.domain.model.Event;
@@ -15,18 +16,24 @@ import com.crowded.core.event.domain.model.EventChange;
 import com.crowded.core.event.domain.model.EventState;
 import com.crowded.core.event.domain.model.EventStatus;
 import com.crowded.core.event.domain.model.EventType;
+import com.crowded.core.event.domain.model.EventWeather;
 import com.crowded.core.event.domain.model.Provenance;
 import com.crowded.core.event.domain.model.RequestedChange;
 import com.crowded.core.event.domain.model.Schedule;
 import com.crowded.core.event.domain.model.Severity;
 import com.crowded.core.event.domain.model.StoredEvents;
 import com.crowded.core.event.domain.model.Venue;
+import com.crowded.core.event.domain.model.WarningLevel;
+import com.crowded.core.event.domain.model.WeatherForecast;
+import com.crowded.core.event.domain.model.WeatherWarning;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
+import com.crowded.core.event.domain.repository.EventWeatherRepository;
 import com.crowded.core.organization.domain.model.Organization;
 import com.crowded.core.organization.domain.repository.OrganizationRepository;
 import com.crowded.core.shared.domain.exception.NotFoundException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,7 +52,8 @@ class EventPagesTest {
   private final EventChangeRepository changes = mock(EventChangeRepository.class);
   private final OrganizationRepository organizations = mock(OrganizationRepository.class);
   private final ActiveAlertRepository alerts = mock(ActiveAlertRepository.class);
-  private final EventPages pages = new EventPages(events, changes, organizations, alerts);
+  private final EventWeatherRepository weathers = mock(EventWeatherRepository.class);
+  private final EventPages pages = new EventPages(events, changes, organizations, alerts, weathers);
   private Event event;
 
   @BeforeEach
@@ -60,6 +68,7 @@ class EventPagesTest {
                 new Venue("Coliseu", "Rua de Passos Manuel 137", new Coordinates(41.146, -8.606))));
     when(events.findById(event.getId())).thenReturn(Optional.of(event));
     when(organizations.findById(RIBEIRA.getId())).thenReturn(Optional.of(RIBEIRA));
+    when(weathers.findByEvent(event.getId())).thenReturn(EventWeather.none(event.getId()));
   }
 
   @Test
@@ -114,6 +123,37 @@ class EventPagesTest {
 
     assertThat(pages.current(event.getId()).activeAlerts()).containsExactly(closure);
     assertThat(pages.current(event.getId()).activeAlerts()).isEmpty();
+  }
+
+  @Test
+  void showsIpmasForecastAndWarningsTheMostSevereFirst() {
+    WeatherForecast day =
+        new WeatherForecast(
+            LocalDate.parse("2026-11-20"), "Chuvisco", 9, 14, 80, Provenance.ipma(NOW));
+    WeatherWarning yellow = warning(WarningLevel.YELLOW);
+    WeatherWarning red = warning(WarningLevel.RED);
+    when(weathers.findByEvent(event.getId()))
+        .thenReturn(EventWeather.restore(event.getId(), List.of(day), List.of(yellow, red)));
+
+    EventPage page = pages.current(event.getId());
+
+    assertThat(page.forecast()).containsExactly(day);
+    assertThat(page.warnings())
+        .containsExactly(WeatherWarningView.of(red), WeatherWarningView.of(yellow));
+    assertThat(page.warnings().getFirst().severity()).isEqualTo(Severity.CRITICAL);
+  }
+
+  private WeatherWarning warning(WarningLevel level) {
+    return WeatherWarning.restore(
+        UUID.randomUUID(),
+        event.getId(),
+        "Vento",
+        START,
+        START.plusSeconds(3600),
+        level,
+        null,
+        null,
+        Provenance.ipma(NOW));
   }
 
   @Test

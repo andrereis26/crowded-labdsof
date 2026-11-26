@@ -1,5 +1,6 @@
 package com.crowded.core.event.domain.repository;
 
+import com.crowded.core.event.domain.model.District;
 import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventCode;
 import java.time.Instant;
@@ -23,6 +24,9 @@ public interface EventRepository {
 
   /** The events with these ids, to read them; one that does not exist is left out. */
   List<Event> findAllById(Collection<UUID> ids);
+
+  /** The events in {@code district} that have not ended or been cancelled by {@code now}. */
+  List<Event> findUpcomingInDistrict(District district, Instant now);
 
   /** The organization's events, the latest start first. */
   List<Event> findByOrganization(UUID organizationId);

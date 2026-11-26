@@ -15,6 +15,8 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -64,6 +66,16 @@ public abstract class IntegrationTest {
     DATABASE = TestDatabase.migrate(NETWORK, POSTGRES);
   }
 
+  /**
+   * The database as its owner, to write what another service owns, such as Jobs' weather snapshots;
+   * Core's own user cannot.
+   */
+  protected static JdbcTemplate asOwner() {
+    return new JdbcTemplate(
+        new DriverManagerDataSource(
+            POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()));
+  }
+
   /** A token of the user {@code userId}, signed with the key pair Core validates against. */
   protected static String token(UUID userId) {
     return JWT_KEYS.token(userId.toString());
@@ -88,6 +100,9 @@ public abstract class IntegrationTest {
     registry.add("crowded.tickets.entry-code-key", () -> ENTRY_CODE_KEY);
     registry.add("crowded.ai.groq.url", () -> "http://localhost:" + FAKE_AI.getAddress().getPort());
     registry.add("crowded.ai.groq.api-key", () -> "test-key");
+    // The same number of retries as in production, without waiting 50 s for them.
+    registry.add("spring.rabbitmq.listener.simple.retry.initial-interval", () -> "50ms");
+    registry.add("spring.rabbitmq.listener.simple.retry.max-interval", () -> "200ms");
   }
 
   private static final Pattern EVENT_CODE_LINE = Pattern.compile("C.digo do evento: ([A-Z0-9-]+)");

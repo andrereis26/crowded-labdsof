@@ -50,6 +50,8 @@ class NotificationRequestedIT extends IntegrationTest {
   private static final UUID ARRAIAL = UUID.fromString("30000000-0000-4000-8000-000000000004");
   private static final UUID ARRAIAL_MOVED = UUID.fromString("50000000-0000-4000-8000-000000000002");
   private static final UUID CARLA = UUID.fromString("10000000-0000-4000-8000-000000000013");
+  // Its orange thunderstorm warning, in the demo data.
+  private static final UUID ARRAIAL_STORM = UUID.fromString("a0000000-0000-4000-8000-000000000043");
 
   // Noite de Fado, postponed; Ana has a ticket, through connection ...0002.
   private static final UUID FADO = UUID.fromString("30000000-0000-4000-8000-000000000003");
@@ -63,6 +65,8 @@ class NotificationRequestedIT extends IntegrationTest {
   private static final UUID AVENIDA = UUID.fromString("30000000-0000-4000-8000-000000000002");
   private static final UUID AVENIDA_CLOSURE =
       UUID.fromString("60000000-0000-4000-8000-000000000001");
+  // Its wind warning, in the demo data.
+  private static final UUID AVENIDA_WIND = UUID.fromString("a0000000-0000-4000-8000-000000000044");
 
   private static final Duration TIMEOUT = Duration.ofSeconds(20);
 
@@ -208,6 +212,54 @@ class NotificationRequestedIT extends IntegrationTest {
 
   @Test
   @ResourceLock(SHARED_STATE)
+  void theParticipantsOfTheArraialAreNotifiedOfItsOrangeWarningWithIpmasText() {
+    UUID messageId = UUID.randomUUID();
+
+    publish(messageId, json(messageId, "WEATHER_WARNING", ARRAIAL, ARRAIAL_STORM));
+
+    String carla = Notification.deduplicationKey(CARLA, messageId);
+    await(() -> count(carla) == 1);
+    Map<String, Object> notification =
+        jdbc.queryForMap(
+            "SELECT CAST(type AS text) AS type, cause_id, title, body "
+                + "FROM notification WHERE deduplication_key = ?",
+            carla);
+    assertThat(notification)
+        .containsEntry("type", "WEATHER_WARNING")
+        .containsEntry("cause_id", ARRAIAL_STORM)
+        .containsEntry("title", "Aviso laranja de trovoada");
+    assertThat(notification.get("body").toString())
+        .startsWith("Trovoada, por vezes acompanhada de granizo e rajadas fortes. Em vigor das ");
+  }
+
+  @Test
+  @ResourceLock(SHARED_STATE)
+  void aParticipantWhoTurnedWeatherWarningsOffIsNotNotifiedOfOne() {
+    UUID setting = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO user_notification_setting (id, user_id, type, enabled) "
+            + "VALUES (?, ?, 'WEATHER_WARNING', false)",
+        setting,
+        BRUNO);
+    try {
+      UUID messageId = UUID.randomUUID();
+
+      publish(messageId, json(messageId, "WEATHER_WARNING", AVENIDA, AVENIDA_WIND));
+
+      await(
+          () ->
+              count(Notification.deduplicationKey(ANA, messageId)) == 1
+                  && count(Notification.deduplicationKey(CARLA, messageId)) == 1);
+      assertThat(count(Notification.deduplicationKey(BRUNO, messageId)))
+          .as("weather warnings turned off overall")
+          .isZero();
+    } finally {
+      jdbc.update("DELETE FROM user_notification_setting WHERE id = ?", setting);
+    }
+  }
+
+  @Test
+  @ResourceLock(SHARED_STATE)
   void aMessageThatKeepsFailingEndsInTheDeadLetterQueue() {
     UUID messageId = UUID.randomUUID();
 
@@ -220,18 +272,19 @@ class NotificationRequestedIT extends IntegrationTest {
   @Test
   @ResourceLock(SHARED_STATE)
   void aTypeWithoutTextAndInvalidJsonGoToTheDeadLetterQueue(CapturedOutput output) {
-    UUID weather = UUID.randomUUID();
+    UUID incident = UUID.randomUUID();
     UUID invalid = UUID.randomUUID();
     String traceId = traceId();
 
-    publish(weather, json(weather, "WEATHER_WARNING", ROCK, UUID.randomUUID()), traceId);
+    publish(incident, json(incident, "INCIDENT_STATUS", ROCK, UUID.randomUUID()), traceId);
     publish(invalid, "{\"messageId\": ");
 
-    assertThat(deadLettered(weather)).isTrue();
+    assertThat(deadLettered(incident)).isTrue();
     assertThat(deadLettered(invalid)).isTrue();
     // Reported as an error, under the trace of the request behind it.
     assertThat(output.getOut().lines())
-        .filteredOn(line -> line.contains("Message " + weather + " moved to the dead-letter queue"))
+        .filteredOn(
+            line -> line.contains("Message " + incident + " moved to the dead-letter queue"))
         .singleElement()
         .satisfies(line -> assertThat(line).contains("ERROR").contains(traceId));
   }

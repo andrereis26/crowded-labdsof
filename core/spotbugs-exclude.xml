@@ -11,6 +11,12 @@
     <Class name="com.crowded.core.shared.infrastructure.persistence.JsonColumnConverter"/>
     <Bug pattern="EI_EXPOSE_REP2"/>
   </Match>
+  <!-- WeatherSnapshotJson keeps the JsonMapper bean Spring injects, which is meant to
+       be shared; storing it is not exposing internal state. -->
+  <Match>
+    <Class name="com.crowded.core.event.infrastructure.persistence.mapper.WeatherSnapshotJson"/>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
   <!-- EventCodes keeps the EventRepository port it checks codes with; the port is a
        shared adapter, not state of its own. -->
   <Match>

@@ -12,6 +12,7 @@ import com.crowded.notifications.notification.domain.repository.NotificationAnno
 import com.crowded.notifications.notification.domain.repository.NotificationRepository;
 import com.crowded.notifications.notification.domain.repository.OfficialChangeRepository;
 import com.crowded.notifications.notification.domain.repository.OperationalAlertRepository;
+import com.crowded.notifications.notification.domain.repository.WeatherWarningRepository;
 import com.crowded.notifications.notification.domain.service.RecipientSelector;
 import java.time.Clock;
 import java.time.Instant;
@@ -23,8 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Notifies the participants connected to an event of an official change or an operational alert,
- * once per participant however often the request arrives.
+ * Notifies the participants connected to an event of an official change, an operational alert or an
+ * IPMA weather warning, once per participant however often the request arrives.
  */
 @Service
 public class ParticipantNotifier {
@@ -33,6 +34,7 @@ public class ParticipantNotifier {
 
   private final OfficialChangeRepository changes;
   private final OperationalAlertRepository alerts;
+  private final WeatherWarningRepository warnings;
   private final ConnectionRepository connections;
   private final NotificationRepository notifications;
   private final NotificationAnnouncements announcements;
@@ -41,12 +43,14 @@ public class ParticipantNotifier {
   ParticipantNotifier(
       OfficialChangeRepository changes,
       OperationalAlertRepository alerts,
+      WeatherWarningRepository warnings,
       ConnectionRepository connections,
       NotificationRepository notifications,
       NotificationAnnouncements announcements,
       Clock clock) {
     this.changes = changes;
     this.alerts = alerts;
+    this.warnings = warnings;
     this.connections = connections;
     this.notifications = notifications;
     this.announcements = announcements;
@@ -59,9 +63,9 @@ public class ParticipantNotifier {
    * announced again, so a redelivered message shows no second banner.
    *
    * @return how many notifications were stored; none for a request already processed
-   * @throws UnsupportedNotificationTypeException for a type other than an official change or an
-   *     operational alert
-   * @throws CauseNotFoundException when the event has no such change or alert
+   * @throws UnsupportedNotificationTypeException for a type other than an official change, an
+   *     operational alert or a weather warning
+   * @throws CauseNotFoundException when the event has no such change, alert or warning
    */
   @Transactional
   public int notify(NotifyParticipantsCommand command) {
@@ -97,7 +101,7 @@ public class ParticipantNotifier {
     return stored;
   }
 
-  /** What each recipient reads, from the change or alert behind the request. */
+  /** What each recipient reads, from the change, alert or warning behind the request. */
   private Function<Recipient, NotificationText> textOf(NotifyParticipantsCommand command) {
     return switch (command.type()) {
       case OFFICIAL_CHANGE -> {
@@ -116,6 +120,15 @@ public class ParticipantNotifier {
                 .orElseThrow(() -> notFound(command))
                 .describe();
         yield recipient -> alert;
+      }
+      case WEATHER_WARNING -> {
+        NotificationText warning =
+            warnings
+                .findById(command.causeId())
+                .filter(found -> found.isOf(command.eventId()))
+                .orElseThrow(() -> notFound(command))
+                .describe();
+        yield recipient -> warning;
       }
       default -> throw new UnsupportedNotificationTypeException(command.type());
     };

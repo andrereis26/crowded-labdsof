@@ -20,6 +20,9 @@ interface SpringDataEventRepository extends JpaRepository<EventEntity, UUID> {
 
   List<EventEntity> findByOrganizationIdOrderByStartDateTimeDesc(UUID organizationId);
 
+  List<EventEntity> findByDistrictAndEndDateTimeAfterAndStatusNotIn(
+      String district, Instant now, Collection<EventStatus> closed);
+
   /**
    * Whether an event other than {@code eventId}, not in one of the {@code closed} statuses, that
    * ends after {@code now} uses {@code code}.

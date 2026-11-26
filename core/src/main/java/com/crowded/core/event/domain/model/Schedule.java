@@ -3,6 +3,10 @@ package com.crowded.core.event.domain.model;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * When an event happens: the doors open before it starts, and it ends after it starts.
@@ -53,6 +57,27 @@ public record Schedule(Instant start, Instant doorsOpenAt, Instant end) {
         nextStart,
         newDoorsOpenAt == null ? doorsOpenAt : newDoorsOpenAt,
         orShifted(newEnd, end, shift));
+  }
+
+  /** Whether the event takes place at some time from {@code from} to {@code to}. */
+  public boolean overlaps(Instant from, Instant to) {
+    return !from.isAfter(endOrStart()) && !to.isBefore(start);
+  }
+
+  /** The days the event takes place on, in {@code zone}. */
+  public Set<LocalDate> days(ZoneId zone) {
+    Set<LocalDate> days = new TreeSet<>();
+    LocalDate last = endOrStart().atZone(zone).toLocalDate();
+    for (LocalDate day = start.atZone(zone).toLocalDate();
+        !day.isAfter(last);
+        day = day.plusDays(1)) {
+      days.add(day);
+    }
+    return days;
+  }
+
+  private Instant endOrStart() {
+    return end == null ? start : end;
   }
 
   private static Instant orShifted(Instant value, Instant current, Duration shift) {

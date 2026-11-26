@@ -10,8 +10,8 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Jobs' view of the database (ADR 0002, ADR 0012): it reads every table, owns none of the data
- * model yet (Core applies what Jobs detects), and cannot change the schema.
+ * Jobs' view of the database (ADR 0002, ADR 0012): it reads every table, writes only its weather
+ * snapshots (Core applies what Jobs detects), and cannot change the schema.
  */
 class DatabaseIT extends IntegrationTest {
 
@@ -46,6 +46,11 @@ class DatabaseIT extends IntegrationTest {
         .isInstanceOf(DataAccessException.class)
         .rootCause()
         .hasMessageContaining("permission denied for table notification");
+  }
+
+  @Test
+  void writesItsWeatherSnapshots() {
+    assertThat(jdbc.update("UPDATE weather_snapshot SET district = district")).isNotNegative();
   }
 
   @Test

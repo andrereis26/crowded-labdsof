@@ -3,11 +3,14 @@ package com.crowded.core.event.application.service;
 import com.crowded.core.connection.domain.repository.ActiveAlertRepository;
 import com.crowded.core.event.application.dto.EventChangeView;
 import com.crowded.core.event.application.dto.EventPage;
+import com.crowded.core.event.application.dto.WeatherWarningView;
 import com.crowded.core.event.domain.model.Coordinates;
 import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventState;
+import com.crowded.core.event.domain.model.EventWeather;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
+import com.crowded.core.event.domain.repository.EventWeatherRepository;
 import com.crowded.core.organization.domain.model.Organization;
 import com.crowded.core.organization.domain.repository.OrganizationRepository;
 import com.crowded.core.shared.domain.exception.NotFoundException;
@@ -32,16 +35,19 @@ public class EventPages {
   private final EventChangeRepository changes;
   private final OrganizationRepository organizations;
   private final ActiveAlertRepository alerts;
+  private final EventWeatherRepository weathers;
 
   EventPages(
       EventRepository events,
       EventChangeRepository changes,
       OrganizationRepository organizations,
-      ActiveAlertRepository alerts) {
+      ActiveAlertRepository alerts,
+      EventWeatherRepository weathers) {
     this.events = events;
     this.changes = changes;
     this.organizations = organizations;
     this.alerts = alerts;
+    this.weathers = weathers;
   }
 
   /**
@@ -61,6 +67,7 @@ public class EventPages {
             .findById(event.getOrganizationId())
             .orElseThrow(() -> new IllegalStateException("Event without its organization"));
     EventState state = event.getState();
+    EventWeather weather = weathers.findByEvent(eventId);
     Coordinates coordinates = state.venue().coordinates();
     return new EventPage(
         event.getId(),
@@ -81,6 +88,8 @@ public class EventPages {
         changes.findLatest(eventId).map(EventChangeView::of).orElse(null),
         event.getCrowd(),
         event.getQueuePoints().timed(),
-        alerts.findByEvents(List.of(eventId)).getOrDefault(eventId, List.of()));
+        alerts.findByEvents(List.of(eventId)).getOrDefault(eventId, List.of()),
+        weather.getForecast(),
+        weather.getWarnings().stream().map(WeatherWarningView::of).toList());
   }
 }

@@ -414,6 +414,88 @@ void main() {
       expect(event.alerts.single.source.name, 'Ribeira Live');
     });
 
+    test(
+      'carries IPMA\'s forecast and warnings, leaving out unreadable ones',
+      () {
+        Map<String, Object?> ipma(String at) => {
+          'sourceType': 'EXTERNAL_SERVICE',
+          'sourceName': 'IPMA',
+          'lastUpdatedAt': at,
+          'confirmed': true,
+        };
+        final page = eventPageFromJson({
+          ..._page(),
+          'weather': {
+            'forecast': [
+              {'date': '2026-11-27', 'conditions': 'Chuvisco'},
+              {
+                'date': '2026-11-27',
+                'conditions': 'Aguaceiros/chuva',
+                'minTemperature': 10.7,
+                'maxTemperature': 14.4,
+                'precipitationProbability': 100.0,
+                'provenance': ipma('2026-11-27T09:31:02Z'),
+              },
+            ],
+            'warnings': [
+              {
+                'awarenessType': 'Vento',
+                'level': 'RED',
+                'endTime': '2026-11-28T03:00:00Z',
+                'description': 'Rajadas até 130 km/h.',
+                'provenance': ipma('2026-11-27T10:05:00Z'),
+              },
+              {
+                'awarenessType': 'Nevoeiro',
+                'level': 'YELLOW',
+                'endTime': '2026-11-27T23:00:00Z',
+                'description': null,
+                'provenance': ipma('2026-11-27T10:05:00Z'),
+              },
+              {'awarenessType': 'Neve', 'level': 'PURPLE'},
+            ],
+          },
+        })!;
+
+        final event = eventFromCore(page, const []);
+
+        expect(event.weather!.summary, '14° · Aguaceiros/chuva');
+        expect(
+          event.weather!.detail,
+          'Mínima de 11° · 100% de probabilidade de chuva',
+        );
+        expect(event.weather!.icon, WeatherIcon.rain);
+        expect(
+          event.weather!.updatedAt,
+          DateTime.utc(2026, 11, 27, 9, 31, 2).toLocal(),
+        );
+        expect(event.warnings.map((w) => (w.level, w.title, w.detail)), [
+          (WarningLevel.red, 'Vento', 'Rajadas até 130 km/h.'),
+          (WarningLevel.yellow, 'Nevoeiro', null),
+        ]);
+        expect(
+          event.warnings.first.issuedAt,
+          DateTime.utc(2026, 11, 27, 10, 5).toLocal(),
+        );
+        expect(
+          event.warnings.first.until,
+          DateTime.utc(2026, 11, 28, 3).toLocal(),
+        );
+        expect(eventPageFromJson(_page())!.weather, isNull);
+        expect(eventPageFromJson(_page())!.warnings, isEmpty);
+      },
+    );
+
+    test('picks an icon from the forecast', () {
+      expect(weatherIconFor('Céu limpo', 0), WeatherIcon.sun);
+      expect(
+        weatherIconFor('Céu muito nublado ou encoberto', 20),
+        WeatherIcon.cloud,
+      );
+      expect(weatherIconFor('Trovoada', 30), WeatherIcon.rain);
+      expect(weatherIconFor('Céu limpo', 60), WeatherIcon.rain);
+    });
+
     test('builds the event with its changes, newest first', () {
       final history = [
         coreChangeFromJson(

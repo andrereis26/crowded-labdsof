@@ -1,5 +1,6 @@
 package com.crowded.core.event.infrastructure.persistence.repository;
 
+import com.crowded.core.event.domain.model.District;
 import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventCode;
 import com.crowded.core.event.domain.model.EventStatus;
@@ -78,6 +79,12 @@ class EventRepositoryAdapter implements EventRepository {
   @Override
   public List<Event> findAllById(Collection<UUID> ids) {
     return toDomain(events.findAllById(ids));
+  }
+
+  @Override
+  public List<Event> findUpcomingInDistrict(District district, Instant now) {
+    return toDomain(
+        events.findByDistrictAndEndDateTimeAfterAndStatusNotIn(district.name(), now, CLOSED));
   }
 
   @Override
