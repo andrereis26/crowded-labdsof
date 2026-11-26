@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/painting.dart';
 import 'package:http/http.dart' as http;
@@ -40,6 +41,10 @@ abstract interface class EventsApi {
   /// cancelled. Fails with an [EventsException] when it cannot be opened
   /// or drops.
   Stream<EventPage> live(String eventId);
+
+  /// `GET /events/{eventId}/image`: the event's image, fetched in the session,
+  /// which an image widget cannot send on Android and iOS.
+  Future<Uint8List> image(String eventId);
 }
 
 /// What `GET /events/{eventId}` says about an event.
@@ -60,11 +65,15 @@ class EventPage {
     this.alerts = const [],
     this.weather,
     this.warnings = const [],
+    this.imageUpdatedAt,
   });
 
   final String id;
   final String name;
   final EventStatus status;
+
+  /// When its image was uploaded; null when it has none.
+  final DateTime? imageUpdatedAt;
   final DateTime start;
   final DateTime? doorsOpen;
   final DateTime? end;
@@ -160,6 +169,27 @@ class HttpEventsApi implements EventsApi {
       for (final item in body.whereType<Map<String, dynamic>>())
         ?coreChangeFromJson(item),
     ];
+  }
+
+  @override
+  Future<Uint8List> image(String eventId) async {
+    final client = _client();
+    try {
+      final response = await _send(
+        client,
+        http.Request(
+          'GET',
+          _base.resolve('events/${Uri.encodeComponent(eventId)}/image'),
+        ),
+      );
+      try {
+        return await response.stream.toBytes();
+      } on Exception {
+        throw const EventsException('NETWORK');
+      }
+    } finally {
+      client.close();
+    }
   }
 
   @override
@@ -301,6 +331,7 @@ EventPage? eventPageFromJson(Map<String, dynamic> json) {
     district: venue['district'] as String? ?? '',
     organization: organizationName,
     isPublic: json['type'] == 'PUBLIC',
+    imageUpdatedAt: _instant(json['imageUpdatedAt']),
     latestChange: latest is Map<String, dynamic>
         ? coreChangeFromJson(latest)
         : null,
@@ -574,6 +605,7 @@ Event eventFromCore(EventPage page, List<CoreChange> history) {
     alerts: page.alerts,
     weather: page.weather,
     warnings: page.warnings,
+    imageUpdatedAt: page.imageUpdatedAt,
   );
 }
 

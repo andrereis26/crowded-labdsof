@@ -11,6 +11,8 @@ import java.util.UUID;
  *
  * @param doorsOpenAt null when the event does not say
  * @param latestChange null when the event has no change
+ * @param imageUpdatedAt when its image was uploaded, to fetch it again when it changes; null when
+ *     it has none
  */
 public record MyEventResponse(
     UUID id,
@@ -20,7 +22,8 @@ public record MyEventResponse(
     Instant doorsOpenAt,
     String venueName,
     EventChangeResponse latestChange,
-    List<ActiveAlertResponse> activeAlerts) {
+    List<ActiveAlertResponse> activeAlerts,
+    Instant imageUpdatedAt) {
 
   public MyEventResponse {
     activeAlerts = List.copyOf(activeAlerts);

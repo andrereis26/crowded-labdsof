@@ -85,6 +85,16 @@ class AppStore extends ChangeNotifier {
   static AppStore of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppStoreScope>()!.notifier!;
 
+  /// The store, or null outside the app, such as in the component gallery.
+  static AppStore? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<AppStoreScope>()?.notifier;
+
+  /// The event's image as a picture to draw, when it has one and it loaded.
+  static ImageProvider? imageOf(BuildContext context, Event event) {
+    final bytes = maybeOf(context)?.eventImage(event);
+    return bytes == null ? null : MemoryImage(bytes);
+  }
+
   // Account (C0, C1, C3): registration and sign-in in Core. The session
   // outlives a reload: cookies on the web, secure storage on a phone
   // (ADR 0021).
@@ -332,6 +342,33 @@ class AppStore extends ChangeNotifier {
 
   late final EventsApi _eventsApi;
   final Map<String, Event> _fromCore = {};
+
+  // Event images from Core, by event and upload time, fetched once each.
+  final Map<String, Uint8List> _images = {};
+  final Set<String> _imagesLoading = {};
+
+  /// The event's image, or null while it loads, when it has none or when it
+  /// cannot be fetched (the card keeps its gradient). The first call starts
+  /// the download; the store notifies its listeners once it arrives.
+  Uint8List? eventImage(Event event) {
+    final updatedAt = event.imageUpdatedAt;
+    if (updatedAt == null) return null;
+    final key = '${event.id}@${updatedAt.toIso8601String()}';
+    final image = _images[key];
+    if (image != null || !_imagesLoading.add(key)) return image;
+    unawaited(
+      _eventsApi.image(event.id).then(
+        (bytes) {
+          _images[key] = bytes;
+          notifyListeners();
+        },
+        // A failed image is not retried until the event's image changes.
+        onError: (Object _) {},
+      ),
+    );
+    return null;
+  }
+
   final Map<String, EventSync> _syncs = {};
   final Map<String, List<CoreChange>> _histories = {};
   final Map<String, _EventFollow> _follows = {};

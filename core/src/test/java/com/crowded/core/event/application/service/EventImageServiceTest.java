@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +23,7 @@ import com.crowded.core.event.domain.model.StoredEvents;
 import com.crowded.core.event.domain.model.Venue;
 import com.crowded.core.event.domain.repository.EventImageRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
+import com.crowded.core.event.domain.repository.EventUpdates;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.domain.exception.NotFoundException;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
@@ -57,12 +59,14 @@ class EventImageServiceTest {
   private final UserRepository users = mock(UserRepository.class);
   private final ConnectionRepository connections = mock(ConnectionRepository.class);
   private final AuditLog audit = mock(AuditLog.class);
+  private final EventUpdates updates = mock(EventUpdates.class);
   private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private final EventImageService service =
       new EventImageService(
           events,
           images,
           new EventAccess(events, users, connections, meters),
+          updates,
           audit,
           Clock.fixed(NOW, ZoneOffset.UTC),
           meters);
@@ -107,6 +111,8 @@ class EventImageServiceTest {
             event.getId(),
             Map.of("mediaType", "image/webp", "bytes", WEBP.length));
     assertThat(meters.counter("crowded.event.images", "action", "replaced").count()).isOne();
+    // Its page, cached and streamed, shows the new image.
+    verify(updates).announce(event.getId());
   }
 
   @Test
@@ -142,6 +148,7 @@ class EventImageServiceTest {
     verify(audit)
         .record(MEMBER, event.getId(), "EVENT_IMAGE_REMOVED", "Event", event.getId(), Map.of());
     assertThat(meters.counter("crowded.event.images", "action", "removed").count()).isOne();
+    verify(updates, times(1)).announce(event.getId());
   }
 
   @Test

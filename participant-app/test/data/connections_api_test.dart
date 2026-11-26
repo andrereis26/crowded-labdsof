@@ -134,7 +134,8 @@ void main() {
         '"confirmed":true}},'
         '"activeAlerts":[{"id":"a-1","type":"ENTRANCE_CLOSURE",'
         '"severity":"WARNING","message":"Entrada Sul fechada.",'
-        '"sentAt":"2026-11-27T21:00:00Z"}]},'
+        '"sentAt":"2026-11-27T21:00:00Z"}],'
+        '"imageUpdatedAt":"2026-11-13T21:27:09Z"},'
         '"ticket":{"gate":"A","sector":"2","seat":"14","hasEntryCode":true}},'
         '{"connectionId":"c-2","type":"ACCESS_CODE","event":{"id":"e-2",'
         '"name":"Arraial","status":"SCHEDULED",'
@@ -170,6 +171,10 @@ void main() {
       expect(ticketed.event.changes.single.severity, Severity.critical);
       expect(ticketed.event.alerts.single.severity, Severity.warning);
       expect(ticketed.event.alerts.single.message, 'Entrada Sul fechada.');
+      expect(
+        ticketed.event.imageUpdatedAt?.toUtc(),
+        DateTime.utc(2026, 11, 13, 21, 27, 9),
+      );
       expect(ticketed.ticket?.id, 't-1');
       expect(ticketed.ticket?.gate, 'A');
       expect(ticketed.ticket?.sector, '2');
@@ -182,6 +187,7 @@ void main() {
       expect(byCode.event.doorsOpen, isNull);
       expect(byCode.event.changes, isEmpty);
       expect(byCode.event.alerts, isEmpty);
+      expect(byCode.event.imageUpdatedAt, isNull);
     });
 
     test('an empty list is a participant without events', () async {

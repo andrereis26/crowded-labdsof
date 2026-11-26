@@ -95,6 +95,39 @@ void main() {
       expect(page.latestChange?.id, 'c-1');
     });
 
+    test('fetches the event image in the session', () async {
+      late http.Request sent;
+      final bytes = await _api((request) {
+        sent = request;
+        return http.Response.bytes([1, 2, 3], 200);
+      }).image(_event);
+
+      expect(sent.method, 'GET');
+      expect(
+        sent.url.toString(),
+        'https://crowded.test/api/events/$_event/image',
+      );
+      expect(bytes, [1, 2, 3]);
+      await expectLater(
+        _api((_) => _json({'code': 'EVENT_IMAGE_NOT_FOUND'}, 404))
+            .image(_event),
+        throwsA(
+          isA<EventsException>().having(
+            (e) => e.code,
+            'code',
+            'EVENT_IMAGE_NOT_FOUND',
+          ),
+        ),
+      );
+      expect(
+        eventPageFromJson({
+          ..._page(),
+          'imageUpdatedAt': '2026-11-13T21:27:09Z',
+        })?.imageUpdatedAt?.toUtc(),
+        DateTime.utc(2026, 11, 13, 21, 27, 9),
+      );
+    });
+
     test('reads the history in the order Core sends it', () async {
       late Uri asked;
       final changes = await _api((request) {

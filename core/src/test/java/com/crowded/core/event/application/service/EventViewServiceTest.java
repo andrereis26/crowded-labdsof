@@ -95,7 +95,8 @@ class EventViewServiceTest {
             List.of(),
             List.of(),
             List.of(),
-            List.of());
+            List.of(),
+            null);
     when(pages.current(event.getId())).thenReturn(page);
 
     assertThat(service.page(PARTICIPANT, event.getId())).isEqualTo(page);

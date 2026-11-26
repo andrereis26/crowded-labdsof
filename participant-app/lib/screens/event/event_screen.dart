@@ -220,6 +220,7 @@ class _EventPageData {
         final origin? => formatProvenance(origin, now: now),
         null => 'Fonte: organização',
       },
+      image: AppStore.imageOf(context, event),
       gradient: event.art.gradient,
     );
   }

@@ -27,6 +27,7 @@ import com.crowded.core.event.domain.model.WarningLevel;
 import com.crowded.core.event.domain.model.WeatherForecast;
 import com.crowded.core.event.domain.model.WeatherWarning;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
+import com.crowded.core.event.domain.repository.EventImageRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.event.domain.repository.EventWeatherRepository;
 import com.crowded.core.organization.domain.model.Organization;
@@ -53,7 +54,9 @@ class EventPagesTest {
   private final OrganizationRepository organizations = mock(OrganizationRepository.class);
   private final ActiveAlertRepository alerts = mock(ActiveAlertRepository.class);
   private final EventWeatherRepository weathers = mock(EventWeatherRepository.class);
-  private final EventPages pages = new EventPages(events, changes, organizations, alerts, weathers);
+  private final EventImageRepository images = mock(EventImageRepository.class);
+  private final EventPages pages =
+      new EventPages(events, changes, organizations, alerts, weathers, images);
   private Event event;
 
   @BeforeEach
@@ -98,6 +101,16 @@ class EventPagesTest {
     assertThat(page.latestChange().id()).isEqualTo(cancellation.getId());
     assertThat(page.latestChange().provenance().sourceName()).isEqualTo("Ribeira Live");
     assertThat(page.latestChange().newValue()).containsEntry("status", "CANCELLED");
+  }
+
+  @Test
+  void saysWhenTheEventsImageWasUploadedAndNothingWhenItHasNone() {
+    when(images.findUpdatedAt(List.of(event.getId()))).thenReturn(Map.of(event.getId(), NOW));
+
+    assertThat(pages.current(event.getId()).imageUpdatedAt()).isEqualTo(NOW);
+
+    when(images.findUpdatedAt(List.of(event.getId()))).thenReturn(Map.of());
+    assertThat(pages.current(event.getId()).imageUpdatedAt()).isNull();
   }
 
   @Test

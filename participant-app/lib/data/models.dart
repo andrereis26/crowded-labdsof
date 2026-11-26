@@ -334,6 +334,7 @@ class Event {
     this.eventCode,
     this.accessCode,
     this.joinedWithAccessCode = false,
+    this.imageUpdatedAt,
   });
 
   final String id;
@@ -356,6 +357,10 @@ class Event {
 
   /// When the organization last updated the event.
   final DateTime? updatedAt;
+
+  /// When the organization uploaded the event's image in Core; null when it
+  /// has none, and for demo events.
+  final DateTime? imageUpdatedAt;
 
   /// The origin of those details, from the latest change Core sent.
   final Provenance? provenance;
