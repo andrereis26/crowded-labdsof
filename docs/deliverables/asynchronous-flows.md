@@ -91,10 +91,11 @@ sequenceDiagram
 
 1. Every 5 minutes, Jobs fetches the IPMA warnings, with a 10 s timeout, and every hour the forecast of the district capital of each district with an upcoming event. This keeps detection within 10 minutes (NFR-021).
 2. Jobs validates the data, rejects and logs what is invalid (NFR-005), and keeps only the warning areas of districts with an upcoming or ongoing event.
-3. When a district's warnings or forecast differ from its last snapshot (content hash), Jobs stores a new snapshot and publishes `WeatherUpdated`. Jobs owns the snapshots ([Technical Design](technical-design.md#logical-view-level-2)).
-4. Core stores the forecast and the warnings for every event in that district, labelled with IPMA as source (FR-032), and updates the event page over SSE.
-5. For a warning that is new or raised to orange or red and overlaps the event's time, Core publishes `NotificationRequested` with `type = WEATHER_WARNING` (FR-036). A red warning is critical, an orange one a warning (FR-074). Yellow warnings appear on the event page without a notification.
-6. Notifications then follows Step 2 of the official change flow.
+3. When a district's warnings or forecast differ from its last snapshot of that kind, Jobs stores a new snapshot and publishes `WeatherUpdated`, with the snapshot's id as message id. The snapshot stays unpublished until RabbitMQ confirms the message, so one that was not confirmed is published again on the next run. Jobs owns the snapshots ([Technical Design](technical-design.md#logical-view-level-2)).
+4. Core applies the latest snapshot of the message's district and kind, so a late message never brings back older data.
+5. Core stores the forecast and the warnings for every event in that district, labelled with IPMA as source (FR-032), and updates the event page over SSE.
+6. For a warning that is new or raised to orange or red and overlaps the event's time, Core publishes `NotificationRequested` with `type = WEATHER_WARNING` (FR-036). A red warning is critical, an orange one a warning (FR-074). Yellow warnings appear on the event page without a notification.
+7. Notifications then follows Step 2 of the official change flow.
 
 ## 5. Failures and degraded mode
 
@@ -117,7 +118,7 @@ The push provider failure is the scenario shown in the final presentation ([Degr
 | Step | If the same input arrives twice |
 |---|---|
 | Publication resent by the backoffice | The event already has the new values, so no new `EventChange` is stored. |
-| Weather detection | The content hash is unchanged, so no new snapshot or message is created. |
+| Weather detection | The content equals the district's last snapshot, so no new snapshot or message is created. |
 | Weather storage | The warning is already stored at that level, so no new notification is requested. |
 | Notification | The `deduplicationKey` (user + `messageId`) already exists, so no second notification, banner or push is sent (NFR-003). |
 
