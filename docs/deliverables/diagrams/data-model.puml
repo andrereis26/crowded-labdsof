@@ -235,6 +235,7 @@ entity "WeatherWarning" as WeatherWarning {
   level : warning_level
   endTime : TIMESTAMPTZ
   notifiedLevel : warning_level [NULL]
+  description : TEXT [NULL]
   provenanceSourceType : source_type
   provenanceSourceName : TEXT
   provenanceLastUpdatedAt : TIMESTAMPTZ
@@ -425,6 +426,26 @@ end note
 
 }
 
+' Jobs-owned data
+package "Jobs" {
+entity "WeatherSnapshot" as WeatherSnapshot {
+  * id : UUID <<PK>>
+  --
+  district : TEXT
+  kind : weather_snapshot_kind
+  content : JSONB
+  fetchedAt : TIMESTAMPTZ
+  publishedAt : TIMESTAMPTZ [NULL]
+}
+
+note right of WeatherSnapshot
+  What Jobs last fetched from IPMA for a district, kept
+  only when it differs from the district's latest snapshot
+  of that kind. publishedAt stays null until RabbitMQ
+  confirmed its WeatherUpdated. Core reads it to apply it.
+end note
+}
+
 ' Notifications-owned data
 package "Notifications" {
 entity "Notification" as Notification {
@@ -514,6 +535,11 @@ enum "warning_level" as warning_level {
   YELLOW
   ORANGE
   RED
+}
+
+enum "weather_snapshot_kind" as weather_snapshot_kind {
+  WARNINGS
+  FORECAST
 }
 
 enum "crowd_level" as crowd_level {

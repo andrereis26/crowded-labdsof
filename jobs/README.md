@@ -1,10 +1,21 @@
 # Crowded Jobs
 
-Jobs service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). For now it is an empty skeleton: no endpoints, entities or queues yet.
+Jobs service of Crowded ([Technical Design](../docs/deliverables/technical-design.md), [ADR 0001](../docs/deliverables/adr/0001-three-backend-services.md)). It has no endpoints: it watches IPMA on a schedule and tells Core what changed.
 
 - **Responsibility:** background work: IPMA weather warnings and forecasts, AI report grouping and periodic tasks, on a schedule. It publishes what it fetches to the broker; Core applies it.
-- **Owns (writes):** sync snapshots.
-- **Dependencies:** Spring Web MVC, Spring Data JPA with the PostgreSQL driver, Spring AMQP, Spring Data Redis, Spring Security with OAuth2 Resource Server (JWT).
+- **Owns (writes):** sync snapshots (`weather_snapshot`).
+- **Dependencies:** Spring Web MVC, Spring Data JPA with the PostgreSQL driver, Spring AMQP, Spring Data Redis, Spring Security with OAuth2 Resource Server (JWT), MapStruct; ArchUnit in the tests.
+
+## Weather Watch
+
+Every 5 minutes (`crowded.weather.interval`), `WeatherWatch` reads the districts of the events that have not ended or been cancelled and start within 5 days, and asks IPMA's open data ([Asynchronous Flows](../docs/deliverables/asynchronous-flows.md#4-weather-warning-flow)):
+
+- `warnings_www.json` on every run, for the yellow, orange and red warnings of each district's warning area, so a new warning is detected within 10 minutes;
+- `cities/daily/{globalIdLocal}.json` once an hour per district (`crowded.weather.forecast-interval`), for the forecast of its capital. A region uses its capital: Ponta Delgada and Funchal.
+
+IPMA's times are UTC. Each call has a 10 s timeout and is tried again after 1 s, 2 s and 4 s; when IPMA still does not answer, nothing changes and the next run asks again. Data that does not parse or validate is rejected and logged for that district only (`crowded.weather.rejected`), and never replaces the last valid snapshot. A district's warnings or forecast that differ from its latest snapshot of that kind become a new `weather_snapshot` row (JSON in `content`, read by Core too) and a `WeatherUpdated` {`district`, `snapshotId`} on `crowded.events` with the routing key `weather.updated`. `published_at` stays null until RabbitMQ confirms the message, so an unconfirmed one is published again on the next run.
+
+To try it with your own data, point `IPMA_URL` at a server that answers the same two paths, for example `python3 -m http.server` in a folder with `forecast/warnings/warnings_www.json` and `forecast/meteorology/cities/daily/1131200.json` (Porto).
 
 ## Stack
 
@@ -65,3 +76,4 @@ The `Dockerfile` builds the service and runs it on a JRE as a non-root user; its
 | `REDIS_HOST`, `REDIS_PORT` | Redis | –, `6379` |
 | `REDIS_PASSWORD` | Redis password | empty (no auth) |
 | `JWT_PUBLIC_KEY_LOCATION` | Core's public key that checks token signatures, e.g. `file:/run/secrets/jwt-public.pem` | – |
+| `IPMA_URL` | IPMA's open data, or a stand-in that answers the same paths | `https://api.ipma.pt/open-data` |
