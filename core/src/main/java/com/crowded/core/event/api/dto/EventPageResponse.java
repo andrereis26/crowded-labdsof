@@ -10,7 +10,8 @@ import java.util.UUID;
 /**
  * Response of {@code GET /events/{eventId}} and each update on {@code GET /events/{eventId}/live}:
  * the event's details, all from its organization, its latest change, its crowd level, its queue
- * waiting times and its active alerts, which a participant sees even with their notifications off.
+ * waiting times, its active alerts, which a participant sees even with their notifications off, and
+ * IPMA's weather.
  *
  * @param latestChange null when the event has no change
  * @param crowd null when no crowd level was published
@@ -31,7 +32,8 @@ public record EventPageResponse(
     EventChangeResponse latestChange,
     CrowdResponse crowd,
     List<QueueTimeResponse> queues,
-    List<ActiveAlertResponse> activeAlerts) {
+    List<ActiveAlertResponse> activeAlerts,
+    WeatherResponse weather) {
 
   public EventPageResponse {
     queues = List.copyOf(queues);

@@ -69,6 +69,7 @@ class EventChangeServiceTest {
   private final OrganizationRepository organizations = mock(OrganizationRepository.class);
   private final NotificationRequester notifications = mock(NotificationRequester.class);
   private final EventUpdates updates = mock(EventUpdates.class);
+  private final WeatherService weather = mock(WeatherService.class);
   private final AuditLog audit = mock(AuditLog.class);
   private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
   private final EventChangeService service =
@@ -79,6 +80,7 @@ class EventChangeServiceTest {
           organizations,
           notifications,
           updates,
+          weather,
           audit,
           Clock.fixed(NOW, ZoneOffset.UTC),
           meters);
@@ -102,6 +104,7 @@ class EventChangeServiceTest {
     assertThat(change.getProvenance()).isEqualTo(Provenance.organization("Ribeira Live", NOW));
     assertThat(event.getState().status()).isEqualTo(EventStatus.CANCELLED);
     verify(events).save(event);
+    verify(weather).refresh(event);
     verify(notifications).request("OFFICIAL_CHANGE", event.getId(), change.getId());
     verify(updates).announce(event.getId());
     verify(audit)

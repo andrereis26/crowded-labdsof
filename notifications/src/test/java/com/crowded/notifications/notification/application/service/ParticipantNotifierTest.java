@@ -13,8 +13,11 @@ import com.crowded.notifications.notification.domain.model.Notification;
 import com.crowded.notifications.notification.domain.model.NotificationType;
 import com.crowded.notifications.notification.domain.model.OfficialChange;
 import com.crowded.notifications.notification.domain.model.OperationalAlert;
+import com.crowded.notifications.notification.domain.model.WarningLevel;
+import com.crowded.notifications.notification.domain.model.WeatherWarning;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +53,16 @@ class ParticipantNotifierTest {
           EVENT,
           AlertType.ENTRANCE_CLOSURE,
           "Usem a Porta B, na Rua do Almada.");
+  private final WeatherWarning storm =
+      WeatherWarning.restore(
+          UUID.randomUUID(),
+          EVENT,
+          "Trovoada",
+          WarningLevel.RED,
+          Instant.parse("2026-11-27T18:00:00Z"),
+          Instant.parse("2026-11-27T23:00:00Z"),
+          "Trovoada forte com granizo.",
+          ZoneId.of("Europe/Lisbon"));
   private final List<Connection> connections =
       List.of(
           new Connection(TICKET_HOLDER, true, null, null),
@@ -61,6 +74,7 @@ class ParticipantNotifierTest {
       new ParticipantNotifier(
           id -> Optional.ofNullable(Map.of(cancellation.getId(), cancellation).get(id)),
           id -> Optional.ofNullable(Map.of(closure.getId(), closure).get(id)),
+          id -> Optional.ofNullable(Map.of(storm.getId(), storm).get(id)),
           (eventId, type) -> eventId.equals(EVENT) ? connections : List.of(),
           notifications,
           announced::add,
@@ -121,6 +135,43 @@ class ParticipantNotifierTest {
   }
 
   @Test
+  void notifiesEveryConnectedParticipantWhoWantsWeatherWarningsOfARedOneAsCritical() {
+    int stored =
+        notifier.notify(
+            new NotifyParticipantsCommand(
+                UUID.randomUUID(),
+                NotificationType.WEATHER_WARNING,
+                EVENT,
+                storm.getId(),
+                List.of()));
+
+    assertThat(stored).isEqualTo(2);
+    assertThat(notifications.stored)
+        .allSatisfy(
+            notification -> {
+              assertThat(notification.getType()).isEqualTo(NotificationType.WEATHER_WARNING);
+              assertThat(notification.getCauseId()).isEqualTo(storm.getId());
+              assertThat(notification.getTitle()).isEqualTo("Crítico · Aviso vermelho de trovoada");
+              assertThat(notification.getBody())
+                  .isEqualTo("Trovoada forte com granizo. Em vigor das 18:00 às 23:00 de 27/11.");
+            });
+  }
+
+  @Test
+  void failsWhenTheWarningIsMissingOrAboutAnotherEvent() {
+    assertThatThrownBy(
+            () ->
+                notifier.notify(
+                    new NotifyParticipantsCommand(
+                        UUID.randomUUID(),
+                        NotificationType.WEATHER_WARNING,
+                        UUID.randomUUID(),
+                        storm.getId(),
+                        List.of())))
+        .isInstanceOf(CauseNotFoundException.class);
+  }
+
+  @Test
   void failsWhenTheAlertIsMissingOrAboutAnotherEvent() {
     assertThatThrownBy(
             () ->
@@ -174,7 +225,7 @@ class ParticipantNotifierTest {
   @Test
   void refusesATypeItHasNoTextFor() {
     NotifyParticipantsCommand command =
-        command(UUID.randomUUID(), NotificationType.WEATHER_WARNING, List.of());
+        command(UUID.randomUUID(), NotificationType.INCIDENT_STATUS, List.of());
 
     assertThatThrownBy(() -> notifier.notify(command))
         .isInstanceOf(UnsupportedNotificationTypeException.class)

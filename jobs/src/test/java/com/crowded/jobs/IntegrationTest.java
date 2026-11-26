@@ -2,6 +2,13 @@ package com.crowded.jobs;
 
 import static org.junit.jupiter.api.parallel.ResourceAccessMode.READ;
 
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
@@ -65,5 +72,39 @@ public abstract class IntegrationTest {
     registry.add("REDIS_HOST", REDIS::getHost);
     registry.add("REDIS_PORT", () -> REDIS.getMappedPort(6379));
     registry.add("JWT_PUBLIC_KEY_LOCATION", JWT_KEYS::publicKeyLocation);
+    registry.add(
+        "crowded.weather.ipma-url", () -> "http://localhost:" + FAKE_IPMA.getAddress().getPort());
+    registry.add("crowded.weather.first-retry", () -> "1ms");
+    // Tests run the weather watch themselves, so it never runs in the middle of one.
+    registry.add("crowded.weather.initial-delay", () -> "1d");
+  }
+
+  /** What the stand-in for IPMA answers, by path; any other path answers 503. */
+  protected static final Map<String, String> IPMA_ANSWERS = new ConcurrentHashMap<>();
+
+  private static final HttpServer FAKE_IPMA = startFakeIpma();
+
+  private static HttpServer startFakeIpma() {
+    try {
+      HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+      server.createContext(
+          "/",
+          exchange -> {
+            String answer = IPMA_ANSWERS.get(exchange.getRequestURI().getPath());
+            if (answer == null) {
+              exchange.sendResponseHeaders(503, -1);
+            } else {
+              byte[] body = answer.getBytes(StandardCharsets.UTF_8);
+              exchange.getResponseHeaders().add("Content-Type", "application/json");
+              exchange.sendResponseHeaders(200, body.length);
+              exchange.getResponseBody().write(body);
+            }
+            exchange.close();
+          });
+      server.start();
+      return server;
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 }

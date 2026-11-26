@@ -29,8 +29,8 @@ GRANT INSERT, UPDATE, DELETE ON
   audit_log_entry, outbox
   TO crowded_core;
 
--- Jobs: its sync snapshots, when a migration adds them. It owns no table of
--- the data model yet; it publishes what it detects and Core applies it.
+-- Jobs: its sync snapshots. It publishes what it detects and Core applies it.
+GRANT INSERT, UPDATE, DELETE ON weather_snapshot TO crowded_jobs;
 
 -- Notifications: notifications and preferences.
 GRANT INSERT, UPDATE, DELETE ON

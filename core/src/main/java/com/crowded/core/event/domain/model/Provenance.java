@@ -22,4 +22,9 @@ public record Provenance(
   public static Provenance organization(String name, Instant at) {
     return new Provenance(SourceType.ORGANIZATION, name, at, true);
   }
+
+  /** Weather from IPMA, the official source, as of {@code at}. */
+  public static Provenance ipma(Instant at) {
+    return new Provenance(SourceType.EXTERNAL_SERVICE, "IPMA", at, true);
+  }
 }

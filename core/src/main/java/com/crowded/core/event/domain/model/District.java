@@ -1,6 +1,7 @@
 package com.crowded.core.event.domain.model;
 
 import com.crowded.core.shared.domain.exception.RuleViolationException;
+import java.time.ZoneId;
 import java.util.Set;
 
 /**
@@ -41,5 +42,14 @@ public record District(String name) {
       throw new RuleViolationException(
           "DISTRICT_UNKNOWN", "Choose a district of Portugal or an autonomous region.");
     }
+  }
+
+  /** The legal time there, which says what day an event's time falls on. */
+  public ZoneId zone() {
+    return switch (name) {
+      case "Região Autónoma dos Açores" -> ZoneId.of("Atlantic/Azores");
+      case "Região Autónoma da Madeira" -> ZoneId.of("Atlantic/Madeira");
+      default -> ZoneId.of("Europe/Lisbon");
+    };
   }
 }

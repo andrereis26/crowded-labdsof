@@ -237,6 +237,9 @@ class _FakeEventsApi implements EventsApi {
 
   /// Core's `activeAlerts`: the alerts sent and not resolved.
   List<Map<String, Object?>> alerts = [];
+
+  /// Core's `weather`: IPMA's forecast and warnings.
+  Map<String, Object?>? weather;
   List<Map<String, Object?>> history = [
     _coreChange('c-doors', 'TIME_CHANGE', {
       'doorsOpenAt': '2026-11-06T19:30:00Z',
@@ -273,6 +276,7 @@ class _FakeEventsApi implements EventsApi {
     'crowd': crowd,
     'queues': queues,
     'activeAlerts': alerts,
+    'weather': weather,
   })!;
 
   @override
@@ -992,6 +996,70 @@ void main() {
         find.text('Fonte: organização · atualizado há 8 min'),
         findsNothing,
       );
+    });
+
+    testWidgets('shows IPMA\'s forecast and its warnings, live', (
+      tester,
+    ) async {
+      Map<String, Object?> ipma(DateTime at) => {
+        'sourceType': 'EXTERNAL_SERVICE',
+        'sourceName': 'IPMA',
+        'lastUpdatedAt': at.toUtc().toIso8601String(),
+        'confirmed': true,
+      };
+      final updated = _now.subtract(const Duration(hours: 2));
+      final forecast = {
+        'date': '2026-11-07',
+        'conditions': 'Céu pouco nublado',
+        'minTemperature': 9.6,
+        'maxTemperature': 17.2,
+        'precipitationProbability': 10.0,
+        'provenance': ipma(updated),
+      };
+      Map<String, Object?> warning(String level) => {
+        'id': 'w-1',
+        'awarenessType': 'Vento',
+        'level': level,
+        'severity': level == 'RED' ? 'CRITICAL' : 'INFO',
+        'startTime': _now.toUtc().toIso8601String(),
+        'endTime': _now.add(const Duration(hours: 6)).toUtc().toIso8601String(),
+        'description': 'Rajadas até 90 km/h.',
+        'provenance': ipma(_now.subtract(const Duration(minutes: 20))),
+      };
+      final events = _FakeEventsApi()
+        ..status = 'SCHEDULED'
+        ..history = []
+        ..weather = {
+          'forecast': [forecast],
+          'warnings': [warning('YELLOW')],
+        };
+      await _pump(tester, location: page, events: events);
+
+      expect(find.textContaining('17° · Céu pouco nublado'), findsOneWidget);
+      expect(
+        find.text(
+          'Previsão IPMA · distrito do Porto · atualizada às '
+          '${formatTime(updated)}',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('AVISO AMARELO · IPMA'), findsOneWidget);
+      expect(
+        find.textContaining('Vento · Rajadas até 90 km/h.'),
+        findsOneWidget,
+      );
+
+      events
+        ..weather = {
+          'forecast': [forecast],
+          'warnings': [warning('RED')],
+        }
+        ..publish();
+      await tester.pumpAndSettle();
+
+      expect(find.text('CRÍTICO · AVISO VERMELHO · IPMA'), findsOneWidget);
+      expect(find.text('AVISO AMARELO · IPMA'), findsNothing);
+      expect(events.pages, 1, reason: 'no reload: the stream sent it');
     });
 
     testWidgets('says when nothing was published on the site yet', (

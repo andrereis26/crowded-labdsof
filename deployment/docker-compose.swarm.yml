@@ -181,8 +181,8 @@ services:
       - { source: rabbitmq_password, target: RABBITMQ_PASSWORD }
       - { source: redis_password, target: REDIS_PASSWORD }
       - jwt_public_key
-    # No route to the internet yet. Add `edge` when Jobs calls IPMA.
-    networks: [backend]
+    # `edge` reaches the internet, for IPMA's open data.
+    networks: [edge, backend]
     deploy:
       <<: *app-deploy
       replicas: ${JOBS_REPLICAS:-1}

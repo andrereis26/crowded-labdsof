@@ -18,6 +18,13 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME}
     password: ${RABBITMQ_PASSWORD}
+    # A snapshot counts as published only once the broker confirmed its message.
+    publisher-confirm-type: simple
+    connection-timeout: 5s
+    template:
+      # Sends the trace of the weather run (traceparent header), so Core logs
+      # the message under the same traceId.
+      observation-enabled: true
   data:
     redis:
       host: ${REDIS_HOST}
@@ -29,6 +36,15 @@ spring:
         jwt:
           # Public key of the RSA key pair Core signs tokens with (ADR 0005).
           public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
+
+crowded:
+  weather:
+    # IPMA's open data (no key). Warnings are checked every 5 minutes, so one is
+    # detected within 10 minutes; each district's forecast once an hour.
+    ipma-url: ${IPMA_URL:https://api.ipma.pt/open-data}
+    interval: 5m
+    forecast-interval: 1h
+    timeout: 10s
 
 logging:
   structured:

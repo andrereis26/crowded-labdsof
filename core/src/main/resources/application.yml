@@ -25,6 +25,20 @@ spring:
     # While the broker is down, the relay gives up within 5 s instead of the
     # default 60 s, so it does not hold a database transaction that long.
     connection-timeout: 5s
+    listener:
+      simple:
+        # Continues the trace of the message (its traceparent header), so these
+        # log lines carry the same traceId as Jobs'.
+        observation-enabled: true
+        # A failed message is retried after 5 s, 15 s and 30 s, all within
+        # 1 minute, then dead-lettered (Asynchronous Flows).
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-retries: 3
+          initial-interval: 5s
+          multiplier: 3
+          max-interval: 30s
   data:
     redis:
       host: ${REDIS_HOST}
