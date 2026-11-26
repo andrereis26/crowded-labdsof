@@ -12,6 +12,7 @@ import java.util.UUID;
  *
  * @param doorsOpenAt null when the event does not say
  * @param latestChange null when the event has no change
+ * @param imageUpdatedAt when its image was uploaded; null when it has none
  */
 public record MyEvent(
     UUID id,
@@ -21,7 +22,8 @@ public record MyEvent(
     Instant doorsOpenAt,
     String venueName,
     EventChangeView latestChange,
-    List<ActiveAlert> activeAlerts) {
+    List<ActiveAlert> activeAlerts,
+    Instant imageUpdatedAt) {
 
   public MyEvent {
     activeAlerts = List.copyOf(activeAlerts);

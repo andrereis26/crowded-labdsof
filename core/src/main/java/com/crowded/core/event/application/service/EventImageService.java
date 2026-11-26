@@ -5,6 +5,7 @@ import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventImage;
 import com.crowded.core.event.domain.repository.EventImageRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
+import com.crowded.core.event.domain.repository.EventUpdates;
 import com.crowded.core.shared.domain.exception.NotAllowedException;
 import com.crowded.core.shared.domain.exception.NotFoundException;
 import com.crowded.core.shared.domain.exception.RuleViolationException;
@@ -30,6 +31,7 @@ public class EventImageService {
   private final EventRepository events;
   private final EventImageRepository images;
   private final EventAccess access;
+  private final EventUpdates updates;
   private final AuditLog audit;
   private final Clock clock;
   private final MeterRegistry meters;
@@ -38,12 +40,14 @@ public class EventImageService {
       EventRepository events,
       EventImageRepository images,
       EventAccess access,
+      EventUpdates updates,
       AuditLog audit,
       Clock clock,
       MeterRegistry meters) {
     this.events = events;
     this.images = images;
     this.access = access;
+    this.updates = updates;
     this.audit = audit;
     this.clock = clock;
     this.meters = meters;
@@ -61,6 +65,7 @@ public class EventImageService {
     access.checkManager(userId, event(eventId));
     EventImage image = EventImage.upload(eventId, file, clock.instant());
     images.save(image);
+    updates.announce(eventId);
     audit.record(
         userId,
         eventId,
@@ -89,6 +94,7 @@ public class EventImageService {
   public void remove(UUID userId, UUID eventId) {
     access.checkManager(userId, event(eventId));
     if (images.deleteByEventId(eventId)) {
+      updates.announce(eventId);
       audit.record(userId, eventId, "EVENT_IMAGE_REMOVED", "Event", eventId, Map.of());
       count("removed");
       log.info("Removed the image of event {} by user {}", eventId, userId);

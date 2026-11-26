@@ -108,6 +108,8 @@ The scripts in [`scripts/local/`](/scripts/local/) prepare a clone and run Crowd
 
 The ports are in `.env`: `HTTP_PORT` (8080), `DB_PORT` (5432), `RABBITMQ_PORT` (5672), `REDIS_PORT` (6379), and for the apps run from source `CORE_PORT` (8081), `JOBS_PORT` (8082), `NOTIFICATIONS_PORT` (8083), `BACKOFFICE_PORT` (5173) and `PARTICIPANT_APP_PORT` (8090). The stack and the infrastructure use the same ports, so only one of them runs at a time; `start` works with either. Running any script twice in a row is safe.
 
+With the stack running, `node scripts/ci/test-journeys.mjs` (Node 22 or later) checks the principal journeys across the apps' APIs with the demo accounts: real sign-in, a participant and another organization's member refused, an event created, connections by access code and by ticket, crowd level, queue times and alerts seen by both sides, and the change and alert notifications reaching the connected participants. It creates and cancels an event and sends an alert to Festival Margens do Douro, so it takes another API's address as an argument only for a test environment, never one with real participants.
+
 Each project's README has a **Setup** section: what it needs, what it reads from `.env`, how to run it alone and how to test it. See [`core/`](/core/README.md#setup), [`jobs/`](/jobs/README.md#setup), [`notifications/`](/notifications/README.md#setup), [`backoffice/`](/backoffice/README.md#setup), [`participant-app/`](/participant-app/README.md#setup) and [`database/`](/database/README.md#setup). Deployed environments take their configuration from Doppler instead of `.env` ([`deployment/`](/deployment/README.md)).
 
 ## Contributing

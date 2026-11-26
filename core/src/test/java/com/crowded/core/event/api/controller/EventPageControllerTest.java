@@ -121,7 +121,8 @@ class EventPageControllerTest {
                   Instant.parse("2026-11-21T18:00:00Z"),
                   Instant.parse("2026-11-22T03:00:00Z"),
                   "Rajadas até 130 km/h.",
-                  Provenance.ipma(NOW))));
+                  Provenance.ipma(NOW))),
+          null);
 
   @Autowired private MockMvc mockMvc;
 
@@ -261,7 +262,8 @@ class EventPageControllerTest {
                 warning.startTime(),
                 warning.endTime(),
                 warning.description(),
-                Provenance.ipma(at))));
+                Provenance.ipma(at))),
+        null);
   }
 
   private static EventPage pageUpdatedAt(Instant at) {
@@ -287,7 +289,8 @@ class EventPageControllerTest {
         List.of(new QueuePoint("Porta A", new QueueTime(15, ribeira))),
         PAGE.activeAlerts(),
         PAGE.forecast(),
-        PAGE.warnings());
+        PAGE.warnings(),
+        null);
   }
 
   @Test

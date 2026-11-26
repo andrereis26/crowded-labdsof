@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:crowded/app.dart';
 import 'package:crowded/data/app_store.dart';
@@ -271,4 +272,8 @@ class _OneEventApi implements EventsApi {
   @override
   Stream<EventPage> live(String eventId) =>
       StreamController<EventPage>().stream;
+
+  @override
+  Future<Uint8List> image(String eventId) async =>
+      throw const EventsException('EVENT_IMAGE_NOT_FOUND');
 }

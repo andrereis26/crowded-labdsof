@@ -39,7 +39,8 @@ class LiveEventPagesTest {
           List.of(),
           List.of(),
           List.of(),
-          List.of());
+          List.of(),
+          null);
 
   private final EventPages pages = mock(EventPages.class);
   private final LiveEventPages live = new LiveEventPages(pages);

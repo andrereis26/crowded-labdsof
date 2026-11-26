@@ -249,6 +249,11 @@ class _FakeEventsApi implements EventsApi {
     }, at: '2026-10-02T09:05:00Z'),
   ];
 
+  /// The event's image in Core; [image] fails while it is null.
+  Uint8List? imageBytes;
+  String? imageUpdatedAt;
+  int images = 0;
+
   /// While set, every request fails with this code.
   String? failWith;
   int pages = 0;
@@ -277,6 +282,7 @@ class _FakeEventsApi implements EventsApi {
     'queues': queues,
     'activeAlerts': alerts,
     'weather': weather,
+    'imageUpdatedAt': imageUpdatedAt,
   })!;
 
   @override
@@ -285,6 +291,14 @@ class _FakeEventsApi implements EventsApi {
     await gate?.future;
     if (failWith != null) throw EventsException(failWith!);
     return _current();
+  }
+
+  @override
+  Future<Uint8List> image(String eventId) async {
+    images++;
+    final bytes = imageBytes;
+    if (bytes == null) throw const EventsException('EVENT_IMAGE_NOT_FOUND');
+    return bytes;
   }
 
   /// Like Core, sends the page as soon as the stream opens.
@@ -664,6 +678,39 @@ void main() {
         find.text('HOJE · ${formatTime(_now.subtract(_doorsChangedAgo))}'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('shows the event image from Core, fetched once per upload', (
+      tester,
+    ) async {
+      final events = _FakeEventsApi()
+        ..imageUpdatedAt = '2026-11-13T21:27:09Z'
+        ..imageBytes = _pngPixel;
+      await _pump(tester, location: page, events: events);
+
+      final withImage = find.byWidgetPredicate(
+        (w) => w is WalletCard && w.image is MemoryImage,
+      );
+      expect(withImage, findsOneWidget);
+      expect(events.images, 1);
+
+      events.publish();
+      await tester.pumpAndSettle();
+      expect(withImage, findsOneWidget);
+      expect(events.images, 1, reason: 'the same upload is not fetched again');
+    });
+
+    testWidgets('keeps the gradient when the event has no image', (
+      tester,
+    ) async {
+      final events = _FakeEventsApi();
+      await _pump(tester, location: page, events: events);
+
+      expect(
+        find.byWidgetPredicate((w) => w is WalletCard && w.image != null),
+        findsNothing,
+      );
+      expect(events.images, 0);
     });
 
     testWidgets('says when no change has been recorded', (tester) async {
@@ -2006,3 +2053,13 @@ void main() {
     });
   }
 }
+
+/// A 1×1 PNG, as Core would send an event image.
+final _pngPixel = Uint8List.fromList(const [
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, //
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+  0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0xF8, 0xCF, 0xC0, 0xF0,
+  0x1F, 0x00, 0x05, 0x00, 0x01, 0xFF, 0x89, 0x99, 0x3D, 0x1D, 0x00, 0x00,
+  0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+]);

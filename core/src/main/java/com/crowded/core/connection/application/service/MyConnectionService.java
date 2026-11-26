@@ -15,6 +15,7 @@ import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventChange;
 import com.crowded.core.event.domain.model.Schedule;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
+import com.crowded.core.event.domain.repository.EventImageRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.ticket.domain.model.Ticket;
 import com.crowded.core.ticket.domain.repository.TicketRepository;
@@ -37,6 +38,7 @@ public class MyConnectionService {
 
   private final ConnectionRepository connections;
   private final EventRepository events;
+  private final EventImageRepository images;
   private final EventChangeRepository changes;
   private final ActiveAlertRepository alerts;
   private final TicketRepository tickets;
@@ -45,12 +47,14 @@ public class MyConnectionService {
   MyConnectionService(
       ConnectionRepository connections,
       EventRepository events,
+      EventImageRepository images,
       EventChangeRepository changes,
       ActiveAlertRepository alerts,
       TicketRepository tickets,
       Clock clock) {
     this.connections = connections;
     this.events = events;
+    this.images = images;
     this.changes = changes;
     this.alerts = alerts;
     this.tickets = tickets;
@@ -87,11 +91,15 @@ public class MyConnectionService {
                         activeAlerts.getOrDefault(connection.getEventId(), List.of()),
                         ticketsById.get(connection.getId())))
             .toList();
+    Map<UUID, Instant> imaged = images.findUpdatedAt(eventIds);
     return new MyConnections(
-        ConnectedEventOrder.sort(connected, now).stream().map(this::view).toList(), now);
+        ConnectedEventOrder.sort(connected, now).stream()
+            .map(c -> view(c, imaged.get(c.event().getId())))
+            .toList(),
+        now);
   }
 
-  private MyConnection view(ConnectedEvent connected) {
+  private MyConnection view(ConnectedEvent connected, Instant imageUpdatedAt) {
     Event event = connected.event();
     Schedule schedule = event.getState().schedule();
     EventChange latest = connected.latestChange();
@@ -107,7 +115,8 @@ public class MyConnectionService {
             schedule.doorsOpenAt(),
             event.getState().venue().name(),
             latest == null ? null : EventChangeView.of(latest),
-            connected.activeAlerts()),
+            connected.activeAlerts(),
+            imageUpdatedAt),
         ticket == null
             ? null
             : new TicketSummary(

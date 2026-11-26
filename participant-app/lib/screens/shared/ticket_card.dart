@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/app_store.dart';
 import '../../data/models.dart';
 import '../../ui/ui.dart';
 import '../../utils/pt_format.dart';
@@ -116,6 +117,7 @@ class ConnectionCard extends StatelessWidget {
         statusLabel: statusLabel,
         statusTone: tone,
         source: source,
+        image: AppStore.imageOf(context, event),
         gradient: event.art.gradient,
         onTap: onTap,
       ),

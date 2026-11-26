@@ -9,6 +9,7 @@ import com.crowded.core.event.domain.model.Event;
 import com.crowded.core.event.domain.model.EventState;
 import com.crowded.core.event.domain.model.EventWeather;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
+import com.crowded.core.event.domain.repository.EventImageRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.event.domain.repository.EventWeatherRepository;
 import com.crowded.core.organization.domain.model.Organization;
@@ -36,18 +37,21 @@ public class EventPages {
   private final OrganizationRepository organizations;
   private final ActiveAlertRepository alerts;
   private final EventWeatherRepository weathers;
+  private final EventImageRepository images;
 
   EventPages(
       EventRepository events,
       EventChangeRepository changes,
       OrganizationRepository organizations,
       ActiveAlertRepository alerts,
-      EventWeatherRepository weathers) {
+      EventWeatherRepository weathers,
+      EventImageRepository images) {
     this.events = events;
     this.changes = changes;
     this.organizations = organizations;
     this.alerts = alerts;
     this.weathers = weathers;
+    this.images = images;
   }
 
   /**
@@ -90,6 +94,7 @@ public class EventPages {
         event.getQueuePoints().timed(),
         alerts.findByEvents(List.of(eventId)).getOrDefault(eventId, List.of()),
         weather.getForecast(),
-        weather.getWarnings().stream().map(WeatherWarningView::of).toList());
+        weather.getWarnings().stream().map(WeatherWarningView::of).toList(),
+        images.findUpdatedAt(List.of(eventId)).get(eventId));
   }
 }

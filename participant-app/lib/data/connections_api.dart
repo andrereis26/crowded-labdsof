@@ -182,6 +182,7 @@ ConnectedEvent? _connectedEventFromJson(Map<String, dynamic> json) {
     ],
     updatedAt: change?.publishedAt,
     provenance: change?.source,
+    imageUpdatedAt: instantFromJson(shown['imageUpdatedAt']),
   );
   final ticket = json['ticket'];
   return ConnectedEvent(

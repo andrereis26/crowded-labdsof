@@ -17,6 +17,8 @@ import java.util.UUID;
  * @param crowd null when no crowd level was published
  * @param queues the queue points with a waiting time, in order
  * @param activeAlerts the alerts sent and not resolved, the newest first
+ * @param imageUpdatedAt when its image was uploaded, to fetch it again when it changes; null when
+ *     it has none
  */
 public record EventPageResponse(
     UUID id,
@@ -33,7 +35,8 @@ public record EventPageResponse(
     CrowdResponse crowd,
     List<QueueTimeResponse> queues,
     List<ActiveAlertResponse> activeAlerts,
-    WeatherResponse weather) {
+    WeatherResponse weather,
+    Instant imageUpdatedAt) {
 
   public EventPageResponse {
     queues = List.copyOf(queues);

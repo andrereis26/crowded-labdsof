@@ -23,6 +23,7 @@ import java.util.UUID;
  * @param activeAlerts the alerts sent and not resolved, the newest first
  * @param forecast IPMA's forecast for the event's days it has, the earliest first
  * @param warnings IPMA's warnings for the district during the event, the most severe first
+ * @param imageUpdatedAt when its image was uploaded; null when it has none
  */
 public record EventPage(
     UUID id,
@@ -45,7 +46,8 @@ public record EventPage(
     List<QueuePoint> queues,
     List<ActiveAlert> activeAlerts,
     List<WeatherForecast> forecast,
-    List<WeatherWarningView> warnings) {
+    List<WeatherWarningView> warnings,
+    Instant imageUpdatedAt) {
 
   public EventPage {
     // A page cached by an earlier release has none.

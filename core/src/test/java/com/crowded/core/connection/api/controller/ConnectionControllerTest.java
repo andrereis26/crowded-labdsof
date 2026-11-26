@@ -145,7 +145,8 @@ class ConnectionControllerTest {
                             START.minusSeconds(3600),
                             "Fontainhas",
                             change,
-                            List.of(alert)),
+                            List.of(alert),
+                            START.minusSeconds(60)),
                         new TicketSummary("A", null, "14", true))),
                 START));
 
@@ -158,6 +159,9 @@ class ConnectionControllerTest {
         .andExpect(jsonPath("$.connections[0].event.id").value(EVENT.toString()))
         .andExpect(jsonPath("$.connections[0].event.status").value("CANCELLED"))
         .andExpect(jsonPath("$.connections[0].event.venueName").value("Fontainhas"))
+        .andExpect(
+            jsonPath("$.connections[0].event.imageUpdatedAt")
+                .value(START.minusSeconds(60).toString()))
         .andExpect(jsonPath("$.connections[0].event.latestChange.type").value("CANCELLATION"))
         .andExpect(jsonPath("$.connections[0].event.latestChange.severity").value("CRITICAL"))
         .andExpect(

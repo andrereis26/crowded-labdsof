@@ -24,6 +24,7 @@ import com.crowded.core.event.domain.model.EventChange;
 import com.crowded.core.event.domain.model.EventStatus;
 import com.crowded.core.event.domain.model.Severity;
 import com.crowded.core.event.domain.repository.EventChangeRepository;
+import com.crowded.core.event.domain.repository.EventImageRepository;
 import com.crowded.core.event.domain.repository.EventRepository;
 import com.crowded.core.ticket.domain.repository.TicketRepository;
 import java.time.Clock;
@@ -43,9 +44,10 @@ class MyConnectionServiceTest {
   private final EventChangeRepository changes = mock(EventChangeRepository.class);
   private final ActiveAlertRepository alerts = mock(ActiveAlertRepository.class);
   private final TicketRepository tickets = mock(TicketRepository.class);
+  private final EventImageRepository images = mock(EventImageRepository.class);
   private final MyConnectionService service =
       new MyConnectionService(
-          connections, events, changes, alerts, tickets, Clock.fixed(NOW, ZoneOffset.UTC));
+          connections, events, images, changes, alerts, tickets, Clock.fixed(NOW, ZoneOffset.UTC));
 
   @Test
   void listsTheEventsInOrderWithTheirChangeAlertsAndTicket() {
@@ -71,6 +73,7 @@ class MyConnectionServiceTest {
         .thenReturn(Map.of(cancelled.getId(), cancellation));
     when(alerts.findByEvents(anyCollection())).thenReturn(Map.of(soon.getId(), List.of(alert)));
     when(tickets.findByOwner(USER)).thenReturn(List.of(ticketOf(soonByTicket)));
+    when(images.findUpdatedAt(anyCollection())).thenReturn(Map.of(soon.getId(), NOW));
 
     MyConnections list = service.listOf(USER);
 
@@ -84,6 +87,8 @@ class MyConnectionServiceTest {
     assertThat(first.ticket().gate()).isEqualTo("A");
     assertThat(first.ticket().hasEntryCode()).isTrue();
     assertThat(first.event().activeAlerts()).containsExactly(alert);
+    assertThat(first.event().imageUpdatedAt()).isEqualTo(NOW);
+    assertThat(list.connections().get(1).event().imageUpdatedAt()).isNull();
     assertThat(first.event().latestChange()).isNull();
     MyConnection second = list.connections().get(1);
     assertThat(second.type()).isEqualTo(ConnectionType.ACCESS_CODE);
